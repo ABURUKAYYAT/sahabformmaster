@@ -1,0 +1,194 @@
+/* General Styles */
+:root {
+    --white: #ffffff;
+    --gold: #FFD700;
+    --dark-gold: #B8860B;
+    --transparent-gold: rgba(255, 215, 0, 0.12);
+    --light-gold: rgba(255, 215, 0, 0.05);
+    --muted: #777;
+    --error: #c00;
+    --success: #0a5;
+    --card-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+    --border: #ececec;
+}
+
+/* Page Layout */
+.dashboard-container {
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+}
+
+.main-content {
+    flex: 1;
+    background: var(--white);
+    border-radius: 10px;
+    box-shadow: var(--card-shadow);
+    padding: 20px;
+}
+
+.content-header {
+    margin-bottom: 20px;
+}
+
+.content-header h2 {
+    font-size: 24px;
+    color: var(--dark-gold);
+    margin: 0;
+}
+
+.content-header .small-muted {
+    font-size: 14px;
+    color: var(--muted);
+}
+
+/* Alerts */
+.alert {
+    padding: 12px 14px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    border: 1px solid;
+}
+
+.alert-error {
+    background: #ffefef;
+    color: var(--error);
+    border-color: #f5c6c6;
+}
+
+.alert-success {
+    background: #efffef;
+    color: var(--success);
+    border-color: #c6f5c6;
+}
+
+/* School Profile Section */
+.school-profile-section {
+    margin-top: 20px;
+}
+
+.profile-card {
+    background: var(--white);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: var(--card-shadow);
+}
+
+.profile-card h3 {
+    font-size: 20px;
+    color: var(--dark-gold);
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--gold);
+    padding-bottom: 10px;
+}
+
+/* Form Styles */
+.profile-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: var(--dark-gold);
+    margin-bottom: 6px;
+    font-size: 14px;
+}
+
+.form-control {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 8px var(--transparent-gold);
+    background-color: rgba(255, 245, 215, 0.3);
+}
+
+textarea.form-control {
+    resize: vertical;
+    min-height: 60px;
+}
+
+/* Form Row */
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.form-col {
+    flex: 1;
+}
+
+/* Buttons */
+.btn-gold {
+    padding: 10px 16px;
+    background: linear-gradient(135deg, var(--dark-gold) 0%, var(--gold) 100%);
+    color: var(--white);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-gold:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(184, 134, 11, 0.3);
+}
+
+/* Image Preview */
+.image-preview {
+    margin-top: 10px;
+    text-align: center;
+}
+
+.image-preview img {
+    max-width: 200px;
+    max-height: 150px;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive Design */
+@media (max-width: 900px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .btn-gold {
+        width: 100%;
+    }
+}
+
+@media (max-width: 600px) {
+    .profile-card {
+        padding: 16px;
+    }
+
+    .form-group label {
+        font-size: 13px;
+    }
+
+    .form-control {
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+}

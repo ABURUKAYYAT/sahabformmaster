@@ -1,0 +1,444 @@
+/* assets/css/dashboard.css */
+
+:root {
+    --white: #ffffff;
+    --gold: #FFD700;
+    --dark-gold: #B8860B;
+    --transparent-gold: rgba(255, 215, 0, 0.2);
+    --gold-shadow: rgba(184, 134, 11, 0.3);
+    --light-gray: #f5f5f5;
+    --dark-gray: #333333;
+    --border-color: #e0e0e0;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--light-gray);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* ===== HEADER STYLES ===== */
+.dashboard-header {
+    background: linear-gradient(135deg, var(--dark-gold) 0%, var(--gold) 100%);
+    color: var(--white);
+    padding: 15px 0;
+    box-shadow: 0 5px 15px var(--gold-shadow);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+}
+
+.school-logo-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.school-logo {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--white);
+}
+
+.school-name {
+    font-size: 24px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.teacher-info {
+    display: flex;
+    flex-direction: column;
+    text-align: right;
+}
+
+.teacher-name {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.btn-logout {
+    background-color: var(--white);
+    color: var(--dark-gold);
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-logout:hover {
+    background-color: var(--transparent-gold);
+    transform: scale(1.05);
+}
+
+/* ===== MAIN CONTAINER ===== */
+.dashboard-container {
+    display: flex;
+    flex: 1;
+    max-width: 1400px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 20px;
+    gap: 20px;
+}
+
+/* ===== SIDEBAR STYLES ===== */
+.sidebar {
+    width: 250px;
+    background: var(--white);
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    height: fit-content;
+    position: sticky;
+    top: 90px;
+}
+
+.sidebar-nav ul {
+    list-style: none;
+}
+
+.nav-item {
+    margin-bottom: 0;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px;
+    color: var(--dark-gray);
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    border-left: 4px solid transparent;
+}
+
+.nav-link:hover,
+.nav-link.active {
+    background-color: var(--transparent-gold);
+    color: var(--dark-gold);
+    border-left-color: var(--dark-gold);
+}
+
+.nav-icon {
+    font-size: 20px;
+}
+
+.nav-text {
+    font-size: 15px;
+}
+
+/* ===== MAIN CONTENT ===== */
+.main-content {
+    flex: 1;
+}
+
+.content-header {
+    margin-bottom: 30px;
+}
+
+.content-header h2 {
+    color: var(--dark-gold);
+    font-size: 28px;
+    margin-bottom: 5px;
+}
+
+.content-header p {
+    color: #999;
+    font-size: 14px;
+}
+
+/* ===== DASHBOARD CARDS ===== */
+.dashboard-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.card {
+    background: var(--white);
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    transition: all 0.3s ease;
+    border-top: 4px solid var(--dark-gold);
+}
+
+.card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 10px 25px var(--gold-shadow);
+}
+
+.card-icon {
+    font-size: 40px;
+    margin-bottom: 15px;
+}
+
+.card h3 {
+    color: var(--dark-gold);
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.card-value {
+    color: var(--dark-gold);
+    font-size: 32px;
+    font-weight: bold;
+    margin-bottom: 15px;
+}
+
+.card-link {
+    color: var(--dark-gold);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.card-link:hover {
+    color: var(--gold);
+    text-decoration: underline;
+}
+
+/* ===== ACTIVITY SECTION ===== */
+.activity-section {
+    background: var(--white);
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.activity-section h3 {
+    color: var(--dark-gold);
+    margin-bottom: 20px;
+    font-size: 18px;
+}
+
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.activity-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background-color: var(--light-gray);
+    border-radius: 8px;
+    border-left: 4px solid var(--dark-gold);
+}
+
+.activity-date {
+    background-color: var(--dark-gold);
+    color: var(--white);
+    padding: 5px 12px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: bold;
+    min-width: 60px;
+    text-align: center;
+}
+
+.activity-text {
+    color: var(--dark-gray);
+    font-size: 14px;
+}
+
+/* ===== FOOTER STYLES ===== */
+.dashboard-footer {
+    background: linear-gradient(135deg, var(--dark-gold) 0%, var(--gold) 100%);
+    color: var(--white);
+    padding: 30px 20px;
+    text-align: center;
+    margin-top: auto;
+    border-top: 5px solid var(--dark-gold);
+}
+
+.footer-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.footer-content p {
+    margin: 8px 0;
+    font-size: 14px;
+}
+
+.footer-content a {
+    color: var(--white);
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.footer-content a:hover {
+    text-decoration: underline;
+    opacity: 0.8;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+    .dashboard-container {
+        flex-direction: column;
+        padding: 15px;
+        gap: 15px;
+    }
+
+    .sidebar {
+        width: 100%;
+        position: static;
+        padding: 15px;
+    }
+
+    .sidebar-nav ul {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 10px;
+    }
+
+    .nav-link {
+        padding: 10px;
+        flex-direction: column;
+        text-align: center;
+        font-size: 13px;
+    }
+
+    .nav-text {
+        font-size: 12px;
+    }
+
+    .header-container {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+
+    .header-left,
+    .header-right {
+        width: 100%;
+    }
+
+    .dashboard-cards {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+    }
+
+    .card {
+        padding: 15px;
+    }
+
+    .card-value {
+        font-size: 24px;
+    }
+
+    .school-name {
+        font-size: 18px;
+    }
+
+    .school-logo {
+        width: 40px;
+        height: 40px;
+    }
+
+    .content-header h2 {
+        font-size: 22px;
+    }
+}
+
+@media (max-width: 480px) {
+    .dashboard-container {
+        padding: 10px;
+    }
+
+    .sidebar {
+        padding: 10px;
+    }
+
+    .sidebar-nav ul {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .nav-link {
+        padding: 8px;
+    }
+
+    .nav-icon {
+        font-size: 18px;
+    }
+
+    .btn-logout {
+        padding: 8px 15px;
+        font-size: 12px;
+    }
+
+    .teacher-name {
+        font-size: 13px;
+    }
+
+    .dashboard-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .card {
+        padding: 12px;
+    }
+
+    .content-header h2 {
+        font-size: 18px;
+    }
+
+    .activity-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .dashboard-footer {
+        padding: 20px 10px;
+    }
+
+    .footer-content p {
+        font-size: 12px;
+    }
+}

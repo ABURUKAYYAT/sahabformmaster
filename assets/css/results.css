@@ -1,0 +1,166 @@
+/* General Styles */
+:root {
+    --white: #ffffff;
+    --gold: #FFD700;
+    --dark-gold: #B8860B;
+    --transparent-gold: rgba(255, 215, 0, 0.12);
+    --light-gold: rgba(255, 215, 0, 0.05);
+    --muted: #777;
+    --error: #c00;
+    --success: #0a5;
+    --card-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+    --border: #ececec;
+}
+
+/* Page Layout */
+.dashboard-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.main-content {
+    background: var(--white);
+    border-radius: 10px;
+    box-shadow: var(--card-shadow);
+    padding: 20px;
+}
+
+.content-header {
+    margin-bottom: 20px;
+}
+
+.content-header h2 {
+    font-size: 24px;
+    color: var(--dark-gold);
+    margin: 0;
+}
+
+.content-header .small-muted {
+    font-size: 14px;
+    color: var(--muted);
+}
+
+/* Alerts */
+.alert {
+    padding: 12px 14px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    border: 1px solid;
+}
+
+.alert-error {
+    background: #ffefef;
+    color: var(--error);
+    border-color: #f5c6c6;
+}
+
+.alert-success {
+    background: #efffef;
+    color: var(--success);
+    border-color: #c6f5c6;
+}
+
+/* Results Table */
+.results-section {
+    margin-top: 20px;
+}
+
+.results-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+.results-table thead {
+    background: var(--gold);
+    color: var(--white);
+    font-weight: bold;
+}
+
+.results-table th,
+.results-table td {
+    padding: 10px;
+    text-align: center;
+    border: 1px solid var(--border);
+}
+
+.results-table tbody tr:nth-child(even) {
+    background: var(--light-gold);
+}
+
+.results-table tbody tr:hover {
+    background: rgba(255, 215, 0, 0.2);
+}
+
+/* Buttons */
+.btn-pdf {
+    padding: 8px 12px;
+    background: var(--dark-gold);
+    color: var(--white);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-pdf:hover {
+    background: var(--gold);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(184, 134, 11, 0.3);
+}
+
+.btn-delete {
+    padding: 6px 10px;
+    background: #c00;
+    color: var(--white);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-delete:hover {
+    background: #a00;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(200, 0, 0, 0.3);
+}
+
+/* Responsive Design */
+@media (max-width: 900px) {
+    .results-table th,
+    .results-table td {
+        font-size: 12px;
+        padding: 8px;
+    }
+
+    .btn-pdf,
+    .btn-delete {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+}
+
+@media (max-width: 600px) {
+    .content-header h2 {
+        font-size: 20px;
+    }
+
+    .results-table th,
+    .results-table td {
+        font-size: 11px;
+        padding: 6px;
+    }
+
+    .btn-pdf,
+    .btn-delete {
+        font-size: 11px;
+        padding: 5px 8px;
+    }
+}
