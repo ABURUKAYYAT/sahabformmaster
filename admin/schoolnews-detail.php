@@ -188,18 +188,936 @@ $user_role = $_SESSION['role'] ?? 'guest';
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title><?php echo htmlspecialchars($news['title']); ?> | SahabFormMaster</title>
-    <link rel="stylesheet" href="../assets/css/dashboard.css">
-    <link rel="stylesheet" href="../assets/css/schoolnews-detail.css">
+    <link rel="stylesheet" href="../assets/css/admin-unified.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            /* Color Palette - Matching Teacher Dashboard */
+            --primary-color: #4f46e5;
+            --primary-dark: #3730a3;
+            --secondary-color: #06b6d4;
+            --accent-color: #f59e0b;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --info-color: #3b82f6;
+
+            /* Gradient Colors for Cards - Matching Teacher Dashboard */
+            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --gradient-3: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --gradient-4: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            --gradient-5: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            --gradient-6: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+
+            /* Neutral Colors - Matching Teacher Dashboard */
+            --white: #ffffff;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+
+            /* Shadows - Matching Teacher Dashboard */
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+            /* Border Radius - Matching Teacher Dashboard */
+            --border-radius-sm: 0.375rem;
+            --border-radius-md: 0.5rem;
+            --border-radius-lg: 0.75rem;
+            --border-radius-xl: 1rem;
+
+            /* Transitions - Matching Teacher Dashboard */
+            --transition-fast: 0.15s ease-in-out;
+            --transition-normal: 0.3s ease-in-out;
+            --transition-slow: 0.5s ease-in-out;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            color: var(--dark-color);
+        }
+
+        /* Full-width layout without sidebar */
+        .detail-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            min-height: calc(100vh - 80px);
+        }
+
+        /* Page header styles */
+        .page-header {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--card-shadow);
+        }
+
+        .page-header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+
+        .btn-dashboard-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-dashboard-back:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            color: white;
+        }
+
+        .btn-dashboard-back i {
+            font-size: 1.1rem;
+        }
+
+        .page-title {
+            text-align: center;
+        }
+
+        .page-title h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--secondary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .page-title p {
+            color: var(--gray-color);
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        .dashboard-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .school-logo-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .school-logo {
+            height: 50px;
+            width: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid white;
+        }
+
+        .school-name {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #FFD700, #FFA500);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .teacher-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .teacher-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .teacher-role {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .btn-logout {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            padding: 0.6rem 1.5rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .btn-logout:hover {
+            background: rgba(255,255,255,0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .detail-main {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .news-article {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.3s ease;
+        }
+
+        .news-article:hover {
+            transform: translateY(-5px);
+        }
+
+        .article-header {
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #f8f9fa;
+            padding-bottom: 2rem;
+        }
+
+        .article-meta {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .category-badge, .priority-badge, .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .category-badge {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+
+        .priority-badge.priority-high {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .priority-badge.priority-medium {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .priority-badge.priority-low {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+            color: white;
+        }
+
+        .status-badge.status-published {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .status-badge.status-draft {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+            color: white;
+        }
+
+        .status-badge.status-scheduled {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+        }
+
+        .article-title {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--secondary-color);
+            line-height: 1.2;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 15px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .info-item .label {
+            font-size: 0.85rem;
+            color: var(--gray-color);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-item .value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+
+        .article-featured {
+            margin: 2rem 0;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+        }
+
+        .featured-image {
+            width: 100%;
+            height: auto;
+            max-height: 500px;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .featured-image:hover {
+            transform: scale(1.02);
+        }
+
+        .article-excerpt {
+            font-size: 1.25rem;
+            line-height: 1.6;
+            color: var(--gray-color);
+            margin: 2rem 0;
+            font-style: italic;
+            padding: 2rem;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 15px;
+            border-left: 5px solid var(--primary-color);
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--dark-color);
+            margin: 2rem 0;
+        }
+
+        .article-content h2.detail-h2 {
+            font-size: 2rem;
+            color: var(--secondary-color);
+            margin: 2rem 0 1rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid var(--primary-color);
+        }
+
+        .article-content h3.detail-h3 {
+            font-size: 1.5rem;
+            color: var(--secondary-color);
+            margin: 1.5rem 0 1rem 0;
+        }
+
+        .article-content blockquote.detail-quote {
+            margin: 1.5rem 0;
+            padding: 1.5rem 2rem;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 5px solid var(--warning-color);
+            font-style: italic;
+            color: var(--gray-color);
+        }
+
+        .article-content pre.code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        .article-content code.inline-code {
+            background: #f1f5f9;
+            color: #475569;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        .article-tags {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .tags-label {
+            font-weight: 600;
+            color: var(--secondary-color);
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            text-decoration: none;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .tag:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .admin-actions {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, var(--warning-color), var(--danger-color));
+            border-radius: 15px;
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .admin-actions .btn-gold, .admin-actions .btn-secondary {
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .admin-actions .btn-gold:hover, .admin-actions .btn-secondary:hover {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .comments-section {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 2rem;
+            color: var(--secondary-color);
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .comment-form-wrapper {
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: #f8f9fa;
+            border-radius: 15px;
+        }
+
+        .comment-form-wrapper h3 {
+            color: var(--secondary-color);
+            margin-bottom: 1.5rem;
+        }
+
+        .comment-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-control {
+            padding: 0.9rem 1.2rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+            background: white;
+        }
+
+        .char-count {
+            font-size: 0.85rem;
+            color: var(--gray-color);
+            text-align: right;
+        }
+
+        .btn-gold {
+            background: linear-gradient(135deg, var(--gold-color), #FFA500);
+            color: var(--dark-color);
+            padding: 0.9rem 2rem;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .btn-gold:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(255, 215, 0, 0.3);
+        }
+
+        .comments-list {
+            margin-top: 2rem;
+        }
+
+        .comments-list h3 {
+            color: var(--secondary-color);
+            margin-bottom: 2rem;
+            font-size: 1.5rem;
+        }
+
+        .comment-item {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-left: 5px solid var(--primary-color);
+            transition: all 0.3s ease;
+        }
+
+        .comment-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .comment-author {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .comment-author strong {
+            color: var(--secondary-color);
+            font-size: 1.1rem;
+        }
+
+        .comment-date {
+            font-size: 0.85rem;
+            color: var(--gray-color);
+        }
+
+        .comment-status {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .status-pending, .status-approved, .status-rejected {
+            font-size: 0.85rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .status-approved {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .status-rejected {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .btn-approve-comment, .btn-reject-comment, .btn-delete-comment {
+            background: none;
+            border: none;
+            padding: 0.5rem;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-approve-comment:hover {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-color);
+        }
+
+        .btn-reject-comment:hover {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger-color);
+        }
+
+        .btn-delete-comment:hover {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger-color);
+        }
+
+        .comment-body {
+            color: var(--dark-color);
+            line-height: 1.6;
+        }
+
+        .no-comments {
+            text-align: center;
+            padding: 3rem;
+            color: var(--gray-color);
+        }
+
+        .no-comments p {
+            font-size: 1.1rem;
+            font-style: italic;
+        }
+
+        .related-section {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
+        }
+
+        .related-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .related-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .related-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .related-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .related-image-placeholder {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: white;
+        }
+
+        .related-content {
+            padding: 1.5rem;
+        }
+
+        .related-content h4 {
+            color: var(--secondary-color);
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+            line-height: 1.4;
+        }
+
+        .related-content p {
+            color: var(--gray-color);
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
+        .related-content small {
+            color: var(--gray-color);
+            font-size: 0.9rem;
+        }
+
+        .read-more {
+            display: inline-block;
+            margin-top: 1rem;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .read-more:hover {
+            color: var(--secondary-color);
+            transform: translateX(5px);
+        }
+
+        .alert {
+            padding: 1.5rem 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            font-weight: 500;
+            border-left: 5px solid;
+            font-size: 1rem;
+        }
+
+        .alert-error {
+            background: #fef2f2;
+            color: #dc2626;
+            border-color: #dc2626;
+        }
+
+        .alert-success {
+            background: #f0fdf4;
+            color: #16a34a;
+            border-color: #16a34a;
+        }
+
+        .alert-info {
+            background: #eff6ff;
+            color: #2563eb;
+            border-color: #2563eb;
+        }
+
+        .dashboard-footer {
+            background: linear-gradient(135deg, var(--dark-color), #343a40);
+            color: white;
+            padding: 3rem 2rem 1.5rem;
+            margin-top: 3rem;
+        }
+
+        .footer-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 3rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-section h4 {
+            color: var(--gold-color);
+            margin-bottom: 1.2rem;
+            font-size: 1.2rem;
+        }
+
+        .footer-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .footer-links a {
+            color: #adb5bd;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: white;
+            transform: translateX(5px);
+        }
+
+        .footer-bottom {
+            border-top: 1px solid #495057;
+            padding-top: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .detail-main {
+                grid-template-columns: 1fr;
+            }
+
+            .article-title {
+                font-size: 2.5rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .detail-container {
+                padding: 1rem;
+            }
+
+            .page-header {
+                padding: 1.5rem;
+            }
+
+            .page-title h1 {
+                font-size: 2rem;
+            }
+
+            .article-title {
+                font-size: 2rem;
+            }
+
+            .news-article {
+                padding: 2rem;
+            }
+
+            .comments-section {
+                padding: 2rem;
+            }
+
+            .related-section {
+                padding: 2rem;
+            }
+
+            .article-info {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+
+            .admin-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .comment-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.75rem;
+            }
+
+            .related-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .page-header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .article-meta {
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            .article-title {
+                font-size: 1.75rem;
+            }
+
+            .news-article {
+                padding: 1.5rem;
+            }
+
+            .comments-section {
+                padding: 1.5rem;
+            }
+
+            .related-section {
+                padding: 1.5rem;
+            }
+
+            .section-title {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
 </head>
 <body>
 
 <header class="dashboard-header">
     <div class="header-container">
-        <div class="header-right">
-            <div class="school-logo-container">
-                <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
-                <h1 class="school-name">SahabFormMaster</h1>
-            </div>
+        <div class="school-logo-container">
+            <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+            <h1 class="school-name">SahabFormMaster</h1>
         </div>
 
         <div class="header-left">
@@ -213,9 +1131,17 @@ $user_role = $_SESSION['role'] ?? 'guest';
 </header>
 
 <div class="detail-container">
-    <!-- Back navigation -->
-    <div class="detail-nav">
-        <a href="schoolnews.php" class="btn-back">← Back to News</a>
+    <div class="page-header">
+        <div class="page-header-content">
+            <a href="index.php" class="btn-dashboard-back">
+                <i class="fas fa-arrow-left"></i>
+                <span>Back to Dashboard</span>
+            </a>
+            <div class="page-title">
+                <h1><i class="fas fa-newspaper"></i> News Article</h1>
+                <p><?php echo htmlspecialchars($news['title']); ?></p>
+            </div>
+        </div>
     </div>
 
     <main class="detail-main">
@@ -439,75 +1365,7 @@ $user_role = $_SESSION['role'] ?? 'guest';
         <?php endif; ?>
     </main>
 
-    <!-- Sidebar -->
-    <aside class="detail-sidebar">
-        <!-- Share Section -->
-        <div class="sidebar-card">
-            <h3>📤 Share</h3>
-            <div class="share-buttons">
-                <a href="https://www.facebook.com/sharer/sharer.php?u=<?php echo urlencode('http://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']); ?>" 
-                   class="share-btn facebook" target="_blank" title="Share on Facebook">f</a>
-                <a href="https://twitter.com/intent/tweet?url=<?php echo urlencode('http://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']); ?>&text=<?php echo urlencode($news['title']); ?>" 
-                   class="share-btn twitter" target="_blank" title="Share on Twitter">𝕏</a>
-                <a href="https://wa.me/?text=<?php echo urlencode($news['title'] . ' ' . 'http://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']); ?>" 
-                   class="share-btn whatsapp" target="_blank" title="Share on WhatsApp">W</a>
-                <a href="mailto:?subject=<?php echo urlencode($news['title']); ?>&body=<?php echo urlencode('http://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']); ?>" 
-                   class="share-btn email" title="Share via Email">✉️</a>
-            </div>
-        </div>
 
-        <!-- News Info -->
-        <div class="sidebar-card">
-            <h3>ℹ️ News Info</h3>
-            <div class="info-list">
-                <div class="info-row">
-                    <span class="label">Category</span>
-                    <span class="value"><?php echo htmlspecialchars($news['category']); ?></span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Priority</span>
-                    <span class="value"><?php echo ucfirst($news['priority']); ?></span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Audience</span>
-                    <span class="value"><?php echo htmlspecialchars($news['target_audience']); ?></span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Status</span>
-                    <span class="value"><?php echo ucfirst($news['status']); ?></span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Views</span>
-                    <span class="value"><?php echo intval($news['view_count']); ?></span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Comments</span>
-                    <span class="value"><?php echo count($comments); ?></span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Latest News -->
-        <div class="sidebar-card">
-            <h3>📰 Latest News</h3>
-            <div class="latest-list">
-                <?php 
-                $stmt = $pdo->prepare("SELECT id, title, published_date FROM school_news 
-                                      WHERE status = 'published' AND id != :id 
-                                      ORDER BY published_date DESC LIMIT 5");
-                $stmt->execute(['id' => $news_id]);
-                $latest = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                foreach ($latest as $item): 
-                ?>
-                    <a href="schoolnews-detail.php?id=<?php echo intval($item['id']); ?>" class="latest-item">
-                        <span><?php echo htmlspecialchars(substr($item['title'], 0, 40)); ?></span>
-                        <small><?php echo date('M d', strtotime($item['published_date'])); ?></small>
-                    </a>
-                <?php endforeach; ?>
-            </div>
-        </div>
-    </aside>
 </div>
 
 <footer class="dashboard-footer">

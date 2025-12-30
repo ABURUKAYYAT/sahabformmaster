@@ -1,0 +1,1538 @@
+<?php
+session_start();
+require_once '../config/db.php';
+
+// Check authorization
+if (!isset($_SESSION['user_id'])) {
+    header("Location: ../index.php");
+    exit;
+}
+
+// Only allow teachers and principal
+$allowed_roles = ['principal', 'teacher'];
+if (!in_array(strtolower($_SESSION['role'] ?? ''), $allowed_roles)) {
+    header("Location: ../index.php");
+    exit;
+}
+
+$errors = [];
+$success = '';
+$generated_html = '';
+$paper_id = 0;
+
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+    
+    if ($action === 'generate_paper') {
+        $paper_title = trim($_POST['paper_title'] ?? '');
+        $exam_type = $_POST['exam_type'] ?? 'unit_test';
+        $subject_id = intval($_POST['subject_id'] ?? 0);
+        $class_id = intval($_POST['class_id'] ?? 0);
+        $total_marks = floatval($_POST['total_marks'] ?? 100);
+        $time_allotted = intval($_POST['time_allotted'] ?? 180);
+        $instructions = trim($_POST['instructions'] ?? '');
+        $general_instructions = trim($_POST['general_instructions'] ?? '');
+        $selected_questions = $_POST['selected_questions'] ?? [];
+        
+        // Validation
+        if (empty($paper_title) || $subject_id <= 0 || $class_id <= 0) {
+            $errors[] = 'Paper title, subject and class are required.';
+        }
+        
+        if (empty($selected_questions)) {
+            $errors[] = 'Please select at least one question for the paper.';
+        }
+        
+        if ($total_marks <= 0) {
+            $errors[] = 'Total marks must be greater than 0.';
+        }
+        
+        if ($time_allotted <= 0) {
+            $errors[] = 'Time allotted must be greater than 0 minutes.';
+        }
+        
+        if (empty($errors)) {
+            try {
+                $pdo->beginTransaction();
+                
+                // Generate paper code
+                $prefix = 'PAP';
+                $year = date('y');
+                $month = date('m');
+                
+                $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM exam_papers WHERE YEAR(created_at) = YEAR(CURDATE())");
+                $stmt->execute();
+                $count = $stmt->fetch(PDO::FETCH_ASSOC)['count'] + 1;
+                
+                $paper_code = sprintf('%s%s%02d%04d', $prefix, $year, $month, $count);
+                
+                // Create exam paper
+                $stmt = $pdo->prepare("
+                    INSERT INTO exam_papers 
+                    (paper_code, paper_title, exam_type, subject_id, class_id, 
+                     total_marks, time_allotted, instructions, general_instructions, created_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                
+                $stmt->execute([
+                    $paper_code,
+                    $paper_title,
+                    $exam_type,
+                    $subject_id,
+                    $class_id,
+                    $total_marks,
+                    $time_allotted,
+                    $instructions,
+                    $general_instructions,
+                    $_SESSION['user_id']
+                ]);
+                
+                $paper_id = $pdo->lastInsertId();
+                
+                // Add selected questions
+                foreach ($selected_questions as $index => $question_id) {
+                    $question_id = intval($question_id);
+                    if ($question_id > 0) {
+                        $stmt = $pdo->prepare("
+                            INSERT INTO paper_questions (paper_id, question_id, question_order)
+                            VALUES (?, ?, ?)
+                        ");
+                        $stmt->execute([$paper_id, $question_id, $index + 1]);
+                    }
+                }
+                
+                // Generate paper HTML
+                $generated_html = generatePaperHTML($paper_id, $_SESSION['user_id']);
+                
+                // Save generated paper
+                $filename = 'paper_' . $paper_code . '_' . time() . '.html';
+                $filepath = '../generated_papers/' . $filename;
+                
+                // Create directory if it doesn't exist
+                if (!file_exists('../generated_papers')) {
+                    mkdir('../generated_papers', 0777, true);
+                }
+                
+                file_put_contents($filepath, $generated_html);
+                
+                // Save to database
+                $stmt = $pdo->prepare("
+                    INSERT INTO generated_papers (paper_id, file_path, file_format, generated_by)
+                    VALUES (?, ?, 'html', ?)
+                ");
+                $stmt->execute([$paper_id, $filepath, $_SESSION['user_id']]);
+                
+                $pdo->commit();
+                $success = 'Exam paper generated successfully! Paper Code: ' . $paper_code;
+                
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                $errors[] = 'Failed to generate paper: ' . $e->getMessage();
+            }
+        }
+    }
+}
+
+// Fetch data
+$subjects = $pdo->query("SELECT id, subject_name FROM subjects ORDER BY subject_name")->fetchAll(PDO::FETCH_ASSOC);
+$classes = $pdo->query("SELECT id, class_name FROM classes ORDER BY class_name")->fetchAll(PDO::FETCH_ASSOC);
+
+// Fetch questions based on filters
+$subject_filter = $_GET['subject_filter'] ?? '';
+$class_filter = $_GET['class_filter'] ?? '';
+$type_filter = $_GET['type_filter'] ?? '';
+$difficulty_filter = $_GET['difficulty_filter'] ?? '';
+
+$questions_query = "
+    SELECT q.*, s.subject_name, c.class_name,
+           GROUP_CONCAT(DISTINCT t.tag_name) as tags
+    FROM questions_bank q
+    LEFT JOIN subjects s ON q.subject_id = s.id
+    LEFT JOIN classes c ON q.class_id = c.id
+    LEFT JOIN question_tags t ON q.id = t.question_id
+    WHERE q.status = 'approved'
+";
+
+$params = [];
+$param_types = '';
+
+if (!empty($subject_filter)) {
+    $questions_query .= " AND q.subject_id = ?";
+    $params[] = $subject_filter;
+    $param_types .= 'i';
+}
+
+if (!empty($class_filter)) {
+    $questions_query .= " AND q.class_id = ?";
+    $params[] = $class_filter;
+    $param_types .= 'i';
+}
+
+if (!empty($type_filter)) {
+    $questions_query .= " AND q.question_type = ?";
+    $params[] = $type_filter;
+    $param_types .= 's';
+}
+
+if (!empty($difficulty_filter)) {
+    $questions_query .= " AND q.difficulty_level = ?";
+    $params[] = $difficulty_filter;
+    $param_types .= 's';
+}
+
+$questions_query .= " GROUP BY q.id ORDER BY q.created_at DESC LIMIT 100";
+
+if (!empty($params)) {
+    $stmt = $pdo->prepare($questions_query);
+    $stmt->execute($params);
+    $questions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} else {
+    $questions = $pdo->query($questions_query)->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Function to generate paper HTML
+function generatePaperHTML($paper_id, $user_id) {
+    global $pdo;
+    
+    // Fetch school information
+    $school_info = $pdo->query("SELECT * FROM school_info LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    
+    // Fetch paper details
+    $stmt = $pdo->prepare("
+        SELECT ep.*, s.subject_name, c.class_name, u.full_name as teacher_name
+        FROM exam_papers ep
+        LEFT JOIN subjects s ON ep.subject_id = s.id
+        LEFT JOIN classes c ON ep.class_id = c.id
+        LEFT JOIN users u ON ep.created_by = u.id
+        WHERE ep.id = ?
+    ");
+    $stmt->execute([$paper_id]);
+    $paper = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    // Fetch paper questions
+    $stmt = $pdo->prepare("
+        SELECT pq.*, qb.*, qo.option_text, qo.option_letter, qo.is_correct
+        FROM paper_questions pq
+        LEFT JOIN questions_bank qb ON pq.question_id = qb.id
+        LEFT JOIN question_options qo ON qb.id = qo.question_id
+        WHERE pq.paper_id = ?
+        ORDER BY pq.question_order
+    ");
+    $stmt->execute([$paper_id]);
+    $paper_questions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Organize questions with their options
+    $questions = [];
+    foreach ($paper_questions as $row) {
+        $question_id = $row['question_id'];
+        if (!isset($questions[$question_id])) {
+            $questions[$question_id] = [
+                'question_text' => $row['question_text'],
+                'question_type' => $row['question_type'],
+                'marks' => $row['marks'],
+                'difficulty' => $row['difficulty_level'],
+                'options' => []
+            ];
+        }
+        if ($row['option_text']) {
+            $questions[$question_id]['options'][] = [
+                'letter' => $row['option_letter'],
+                'text' => $row['option_text'],
+                'is_correct' => $row['is_correct']
+            ];
+        }
+    }
+    
+    // Generate HTML
+    $html = '<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>' . htmlspecialchars($paper['paper_title']) . '</title>
+        <style>
+            /* Professional Exam Paper Styling */
+            @page {
+                size: A4;
+                margin: 20mm;
+            }
+            
+            body {
+                font-family: "Times New Roman", Times, serif;
+                font-size: 12pt;
+                line-height: 1.5;
+                color: #000;
+                background: white;
+                margin: 0;
+                padding: 0;
+            }
+            
+            .exam-paper {
+                width: 210mm;
+                min-height: 297mm;
+                margin: 0 auto;
+                padding: 20mm;
+                box-sizing: border-box;
+                border: 1px solid #ccc;
+            }
+            
+            .header {
+                text-align: center;
+                margin-bottom: 20px;
+                border-bottom: 2px solid #000;
+                padding-bottom: 10px;
+            }
+            
+            .school-name {
+                font-size: 18pt;
+                font-weight: bold;
+                text-transform: uppercase;
+                margin-bottom: 5px;
+            }
+            
+            .school-motto {
+                font-size: 10pt;
+                font-style: italic;
+                margin-bottom: 10px;
+            }
+            
+            .paper-title {
+                font-size: 14pt;
+                font-weight: bold;
+                text-transform: uppercase;
+                margin: 15px 0;
+            }
+            
+            .paper-info {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 15px 0;
+                font-size: 11pt;
+            }
+            
+            .paper-info td {
+                padding: 5px 10px;
+                border: 1px solid #000;
+            }
+            
+            .paper-info .label {
+                font-weight: bold;
+                background: #f0f0f0;
+                width: 30%;
+            }
+            
+            .instructions {
+                margin: 20px 0;
+                padding: 15px;
+                border: 1px solid #000;
+                background: #f9f9f9;
+            }
+            
+            .instructions h3 {
+                margin-top: 0;
+                font-size: 12pt;
+            }
+            
+            .instructions ul {
+                margin: 10px 0;
+                padding-left: 20px;
+            }
+            
+            .instructions li {
+                margin-bottom: 5px;
+            }
+            
+            .question-section {
+                margin: 20px 0;
+            }
+            
+            .section-title {
+                font-weight: bold;
+                font-size: 12pt;
+                margin-bottom: 10px;
+                padding-bottom: 5px;
+                    border-bottom: 1px solid #000;
+                }
+                
+                .question {
+                    margin: 15px 0;
+                    page-break-inside: avoid;
+                }
+                
+                .question-number {
+                    font-weight: bold;
+                    float: left;
+                    width: 30px;
+                }
+                
+                .question-content {
+                    margin-left: 30px;
+                }
+                
+                .question-text {
+                    margin-bottom: 10px;
+                }
+                
+                .options {
+                    margin: 10px 0 10px 20px;
+                }
+                
+                .option {
+                    margin-bottom: 5px;
+                }
+                
+                .option-letter {
+                    font-weight: bold;
+                    display: inline-block;
+                    width: 20px;
+                }
+                
+                .true-false {
+                    margin-left: 20px;
+                }
+                
+                .true-false label {
+                    margin-right: 20px;
+                }
+                
+                .answer-space {
+                    margin: 15px 0;
+                    border-bottom: 1px dashed #000;
+                    min-height: 50px;
+                }
+                
+                .marks {
+                    float: right;
+                    font-weight: bold;
+                    font-style: italic;
+                }
+                
+                .footer {
+                    text-align: center;
+                    margin-top: 40px;
+                    padding-top: 10px;
+                    border-top: 1px solid #000;
+                    font-size: 10pt;
+                }
+                
+                .page-break {
+                    page-break-after: always;
+                }
+                
+                .no-print {
+                    display: none;
+                }
+                
+                /* For MCQ questions */
+                .mcq-grid {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 10px;
+                    margin: 10px 0;
+                }
+                
+                @media print {
+                    .exam-paper {
+                        border: none;
+                        padding: 0;
+                    }
+                    
+                    .no-print {
+                        display: none !important;
+                    }
+                    
+                    .page-break {
+                        page-break-after: always;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="exam-paper">
+                <!-- Header -->
+                <div class="header">
+                    <div class="school-name">' . htmlspecialchars($school_info['school_name'] ?? 'SCHOOL NAME') . '</div>
+                    <div class="school-motto">' . htmlspecialchars($school_info['motto'] ?? 'Motto: Excellence in Education') . '</div>
+                    <div class="paper-title">' . htmlspecialchars($paper['paper_title']) . '</div>
+                </div>
+                
+                <!-- Paper Information -->
+                <table class="paper-info">
+                    <tr>
+                        <td class="label">Subject</td>
+                        <td>' . htmlspecialchars($paper['subject_name']) . '</td>
+                        <td class="label">Class</td>
+                        <td>' . htmlspecialchars($paper['class_name']) . '</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Time Allowed</td>
+                        <td>' . $paper['time_allotted'] . ' minutes</td>
+                        <td class="label">Maximum Marks</td>
+                        <td>' . $paper['total_marks'] . '</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Paper Code</td>
+                        <td>' . htmlspecialchars($paper['paper_code']) . '</td>
+                        <td class="label">Date</td>
+                        <td>' . date('d/m/Y') . '</td>
+                    </tr>
+                </table>
+                
+                <!-- General Instructions -->
+                <div class="instructions">
+                    <h3>GENERAL INSTRUCTIONS:</h3>
+                    ' . (!empty($paper['general_instructions']) ? 
+                        '<p>' . nl2br(htmlspecialchars($paper['general_instructions'])) . '</p>' : 
+                        '<ul>
+                            <li>All questions are compulsory</li>
+                            <li>Read each question carefully before answering</li>
+                            <li>Write your answers neatly and legibly</li>
+                            <li>Marks are indicated against each question</li>
+                        </ul>') . '
+                </div>
+                
+                <!-- Specific Instructions -->
+                ' . (!empty($paper['instructions']) ? 
+                    '<div class="instructions">
+                        <h3>SPECIFIC INSTRUCTIONS:</h3>
+                        <p>' . nl2br(htmlspecialchars($paper['instructions'])) . '</p>
+                    </div>' : '') . '
+                
+                <!-- Questions -->
+                <div class="question-section">
+                    <div class="section-title">SECTION A - ALL QUESTIONS ARE COMPULSORY</div>';
+    
+    $question_counter = 1;
+    $total_marks_calculated = 0;
+    
+    foreach ($questions as $question_id => $question) {
+        $total_marks_calculated += $question['marks'];
+        
+        $html .= '
+                    <div class="question">
+                        <div class="question-number">' . $question_counter . '.</div>
+                        <div class="question-content">
+                            <div class="question-text">' . $question['question_text'] . '</div>
+                            <span class="marks">[' . $question['marks'] . ' marks]</span>';
+        
+        // Display based on question type
+        switch ($question['question_type']) {
+            case 'mcq':
+                $html .= '
+                            <div class="options">';
+                foreach ($question['options'] as $option) {
+                    $html .= '
+                                <div class="option">
+                                    <span class="option-letter">(' . $option['letter'] . ')</span> ' . $option['text'] . '
+                                </div>';
+                }
+                $html .= '
+                            </div>';
+                break;
+                
+            case 'true_false':
+                $html .= '
+                            <div class="true-false">
+                                <label><input type="radio" name="q' . $question_id . '"> True</label>
+                                <label><input type="radio" name="q' . $question_id . '"> False</label>
+                            </div>';
+                break;
+                
+            case 'fill_blank':
+                $html .= '
+                            <div class="answer-space"></div>';
+                break;
+                
+            case 'short_answer':
+                $html .= '
+                            <div class="answer-space" style="min-height: 100px;"></div>';
+                break;
+                
+            case 'essay':
+                $html .= '
+                            <div class="answer-space" style="min-height: 300px;"></div>';
+                break;
+        }
+        
+        $html .= '
+                        </div>
+                    </div>';
+        
+        $question_counter++;
+    }
+    
+    // Add total marks at the end
+    $html .= '
+                </div>
+                
+                <!-- Footer -->
+                <div class="footer">
+                    <div>--- End of Paper ---</div>
+                    <div>Total Marks: ' . $total_marks_calculated . '</div>
+                    <div>Paper Prepared by: ' . htmlspecialchars($paper['teacher_name'] ?? 'Teacher') . '</div>
+                </div>
+            </div>
+            
+            <!-- Print Button (for web view only) -->
+            <div class="no-print" style="text-align: center; margin: 20px;">
+                <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px;">
+                    <i class="fas fa-print"></i> Print Paper
+                </button>
+                <button onclick="generatePaperPDF()" style="padding: 10px 20px; font-size: 16px; margin-left: 10px;">
+                    <i class="fas fa-download"></i> Download as PDF
+                </button>
+            </div>
+            
+            <script>
+                function downloadPaper() {
+                    // In a real implementation, this would convert to PDF
+                    alert("PDF conversion would be implemented here. For now, use Print > Save as PDF");
+                    global $pdo;
+    
+    // Check if PDF already exists and is recent (less than 1 hour old)
+    $stmt = $pdo->prepare("SELECT pdf_file_path, pdf_generated_at FROM exam_papers WHERE id = ?");
+    $stmt->execute([$paper_id]);
+    $paper = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    return "generate_pdf.php?paper_id=" . $paper_id;
+}
+
+                
+                // Auto-print option
+                setTimeout(() => {
+                    if (window.location.hash === "#autoprint") {
+                        window.print();
+                    }
+                }, 1000);
+            </script>
+        </body>
+    </html>';
+    
+    return $html;
+}
+
+
+// Add this function to generate PDF
+function generatePaperPDF($paper_id, $user_id) {
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Paper Generator</title>
+    <link rel="stylesheet" href="../assets/css/admin-students.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css">
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --accent: #e74c3c;
+        }
+        
+        .generator-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        @media (max-width: 992px) {
+            .generator-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .paper-settings {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        }
+        
+        .questions-selection {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            max-height: 800px;
+            overflow-y: auto;
+        }
+        
+        .paper-preview {
+            grid-column: 1 / -1;
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            display: none;
+        }
+        
+        .paper-preview.active {
+            display: block;
+        }
+        
+        .preview-frame {
+            width: 100%;
+            height: 800px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .question-item {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            cursor: move;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .question-item:hover {
+            background: #e9ecef;
+            border-color: #3498db;
+        }
+        
+        .question-item.selected {
+            background: #d4edda;
+            border-color: #c3e6cb;
+        }
+        
+        .question-checkbox {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 20px;
+            height: 20px;
+        }
+        
+        .question-summary {
+            padding-right: 30px;
+        }
+        
+        .question-meta {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .meta-badge {
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            background: #e9ecef;
+            color: #495057;
+        }
+        
+        .marks-badge {
+            background: #3498db;
+            color: white;
+        }
+        
+        .type-badge {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        .difficulty-badge {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .selected-questions {
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            min-height: 150px;
+        }
+        
+        .selected-list {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0;
+        }
+        
+        .selected-list li {
+            padding: 8px 12px;
+            background: white;
+            border: 1px solid #dee2e6;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .remove-selected {
+            color: #dc3545;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+        
+        .total-marks-display {
+            background: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .instructions-editor {
+            width: 100%;
+            min-height: 100px;
+            padding: 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            resize: vertical;
+        }
+        
+        .template-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .template-card {
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .template-card:hover {
+            border-color: #3498db;
+            transform: translateY(-2px);
+        }
+        
+        .template-card.selected {
+            border-color: #28a745;
+            background: #f8fff9;
+        }
+        
+        .template-icon {
+            font-size: 2.5rem;
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+        
+        .question-counter {
+            background: #3498db;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        
+        .drag-handle {
+            cursor: move;
+            color: #6c757d;
+            margin-right: 10px;
+        }
+        
+        .question-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .preview-btn {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        @media (max-width: 768px) {
+            .generator-container {
+                gap: 15px;
+            }
+            
+            .paper-settings, .questions-selection {
+                padding: 15px;
+            }
+            
+            .preview-frame {
+                height: 500px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <div class="header-content">
+            <h1><i class="fas fa-file-alt"></i> Exam Paper Generator</h1>
+            <div class="user-info">
+                <i class="fas fa-user-circle"></i>
+                <span><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'User'); ?></span>
+                <span class="badge"><?php echo ucfirst($_SESSION['role'] ?? 'User'); ?></span>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Back Button -->
+        <div style="margin-bottom: 20px;">
+            <a href="questions.php" class="btn">
+                <i class="fas fa-arrow-left"></i> Back to Questions Bank
+            </a>
+            <a href="../admin/dashboard.php" class="btn secondary" style="margin-left: 10px;">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+        </div>
+
+        <!-- Messages -->
+        <?php if($errors): ?>
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-triangle"></i>
+                <?php foreach($errors as $e) echo htmlspecialchars($e) . '<br>'; ?>
+            </div>
+        <?php endif; ?>
+        
+        <?php if($success): ?>
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle"></i>
+                <?php echo htmlspecialchars($success); ?>
+                <?php if($paper_id > 0): ?>
+                    <a href="view_paper.php?id=<?php echo $paper_id; ?>" target="_blank" class="btn small" style="margin-left: 10px;">
+                        <i class="fas fa-eye"></i> View Paper
+                    </a>
+                    <button onclick="printPaper()" class="btn small primary">
+                        <i class="fas fa-print"></i> Print Now
+                    </button>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+
+        <div class="generator-container">
+            <!-- Left Column: Paper Settings -->
+            <div class="paper-settings">
+                <h2><i class="fas fa-cog"></i> Paper Settings</h2>
+                
+                <form id="paperForm" method="POST">
+                    <input type="hidden" name="action" value="generate_paper">
+                    <input type="hidden" name="selected_questions" id="selectedQuestions" value="">
+                    
+                    <div class="form-section">
+                        <h3>Basic Information</h3>
+                        <div class="form-inline">
+                            <input type="text" name="paper_title" placeholder="Paper Title *" required
+                                   value="End of Term Examination - <?php echo date('Y'); ?>">
+                            
+                            <select name="exam_type" required>
+                                <option value="">Exam Type *</option>
+                                <option value="unit_test">Unit Test</option>
+                                <option value="mid_term">Mid-Term</option>
+                                <option value="final" selected>Final Examination</option>
+                                <option value="pre_board">Pre-Board</option>
+                                <option value="quiz">Quiz</option>
+                                <option value="assignment">Assignment</option>
+                            </select>
+                            
+                            <select name="subject_id" id="subjectSelect" required 
+                                    onchange="filterQuestions()">
+                                <option value="">Select Subject *</option>
+                                <?php foreach($subjects as $subject): ?>
+                                    <option value="<?php echo $subject['id']; ?>">
+                                        <?php echo htmlspecialchars($subject['subject_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            
+                            <select name="class_id" id="classSelect" required 
+                                    onchange="filterQuestions()">
+                                <option value="">Select Class *</option>
+                                <?php foreach($classes as $class): ?>
+                                    <option value="<?php echo $class['id']; ?>">
+                                        <?php echo htmlspecialchars($class['class_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        
+                        <div class="form-inline" style="margin-top: 15px;">
+                            <input type="number" name="total_marks" placeholder="Total Marks *" 
+                                   min="10" max="500" step="5" value="100" required>
+                            
+                            <input type="number" name="time_allotted" placeholder="Time (minutes) *" 
+                                   min="30" max="360" step="5" value="180" required>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Instructions</h3>
+                        <textarea name="general_instructions" class="instructions-editor" 
+                                  placeholder="General instructions for all students...">
+1. All questions are compulsory.
+2. Read each question carefully before answering.
+3. Write your answers neatly and legibly.
+4. Marks are indicated against each question.
+5. Use black or blue pen only.
+                        </textarea>
+                        
+                        <textarea name="instructions" class="instructions-editor" 
+                                  placeholder="Specific instructions for this paper... (Optional)">
+- Section A contains multiple choice questions.
+- Section B contains short answer questions.
+- Section C contains essay type questions.
+                        </textarea>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Paper Template</h3>
+                        <div class="template-preview">
+                            <div class="template-card selected" onclick="selectTemplate(this, 'standard')">
+                                <div class="template-icon">
+                                    <i class="fas fa-file-contract"></i>
+                                </div>
+                                <h4>Standard</h4>
+                                <p>Traditional exam paper format</p>
+                            </div>
+                            
+                            <div class="template-card" onclick="selectTemplate(this, 'board')">
+                                <div class="template-icon">
+                                    <i class="fas fa-university"></i>
+                                </div>
+                                <h4>Board Pattern</h4>
+                                <p>Official board exam style</p>
+                            </div>
+                            
+                            <div class="template-card" onclick="selectTemplate(this, 'modern')">
+                                <div class="template-icon">
+                                    <i class="fas fa-palette"></i>
+                                </div>
+                                <h4>Modern</h4>
+                                <p>Clean, contemporary design</p>
+                            </div>
+                        </div>
+                        <input type="hidden" name="template" id="selectedTemplate" value="standard">
+                    </div>
+
+                    <!-- Selected Questions Summary -->
+                    <div class="selected-questions">
+                        <h3><i class="fas fa-list-check"></i> Selected Questions</h3>
+                        <div id="selectedList" class="selected-list">
+                            <div style="text-align: center; padding: 30px; color: #6c757d;">
+                                <i class="fas fa-question-circle fa-2x"></i>
+                                <p>No questions selected yet</p>
+                                <p>Select questions from the right panel</p>
+                            </div>
+                        </div>
+                        
+                        <div id="totalMarks" class="total-marks-display" style="display: none;">
+                            Total Marks: <span id="marksTotal">0</span> / <span id="marksTarget">100</span>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn primary">
+                            <a href="view_paper.php"><i class="fas fa-magic"></i> Generate Exam Paper</a>
+                        </button>
+                        <button type="button" class="btn secondary" onclick="previewPaper()">
+                            <i class="fas fa-eye"></i> Preview
+                        </button>
+                        <button type="reset" class="btn">
+                            <i class="fas fa-redo"></i> Reset
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Right Column: Questions Selection -->
+            <div class="questions-selection">
+                <div class="panel-header" style="margin-bottom: 20px;">
+                    <h2><i class="fas fa-question-circle"></i> Questions Bank</h2>
+                    <div class="question-counter" id="questionCounter">0 selected</div>
+                </div>
+                
+                <!-- Filter Options -->
+                <div style="margin-bottom: 20px;">
+                    <div class="form-inline">
+                        <select id="typeFilter" onchange="filterQuestions()" class="small">
+                            <option value="">All Types</option>
+                            <option value="mcq">MCQ</option>
+                            <option value="true_false">True/False</option>
+                            <option value="short_answer">Short Answer</option>
+                            <option value="essay">Essay</option>
+                            <option value="fill_blank">Fill in Blank</option>
+                        </select>
+                        
+                        <select id="difficultyFilter" onchange="filterQuestions()" class="small">
+                            <option value="">All Difficulty</option>
+                            <option value="easy">Easy</option>
+                            <option value="medium">Medium</option>
+                            <option value="hard">Hard</option>
+                            <option value="very_hard">Very Hard</option>
+                        </select>
+                        
+                        <button type="button" class="btn small" onclick="filterQuestions()">
+                            <i class="fas fa-filter"></i> Filter
+                        </button>
+                        
+                        <button type="button" class="btn small secondary" onclick="clearFilters()">
+                            <i class="fas fa-redo"></i> Clear
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Questions List -->
+                <div id="questionsList">
+                    <?php if(empty($questions)): ?>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> No questions found. 
+                            Please select a subject and class first, or add questions to the bank.
+                        </div>
+                    <?php else: ?>
+                        <?php foreach($questions as $question): ?>
+                            <div class="question-item" data-id="<?php echo $question['id']; ?>"
+                                 data-type="<?php echo $question['question_type']; ?>"
+                                 data-difficulty="<?php echo $question['difficulty_level']; ?>"
+                                 data-marks="<?php echo $question['marks']; ?>">
+                                
+                                <div class="question-summary">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                        <div>
+                                            <strong>Q<?php echo $question['id']; ?>:</strong> 
+                                            <?php echo htmlspecialchars(substr($question['question_text'], 0, 150)); ?>
+                                            <?php if(strlen($question['question_text']) > 150): ?>...<?php endif; ?>
+                                        </div>
+                                        <input type="checkbox" class="question-checkbox" 
+                                               onchange="toggleQuestionSelection(this, <?php echo $question['id']; ?>)">
+                                    </div>
+                                    
+                                    <div class="question-meta">
+                                        <span class="meta-badge marks-badge">
+                                            <i class="fas fa-star"></i> <?php echo $question['marks']; ?> marks
+                                        </span>
+                                        <span class="meta-badge type-badge">
+                                            <?php echo strtoupper($question['question_type']); ?>
+                                        </span>
+                                        <span class="meta-badge difficulty-badge">
+                                            <?php echo ucfirst($question['difficulty_level']); ?>
+                                        </span>
+                                        <?php if(!empty($question['tags'])): ?>
+                                            <span class="meta-badge">
+                                                <i class="fas fa-tag"></i> <?php echo substr($question['tags'], 0, 30); ?>
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+                                    
+                                    <div class="question-actions">
+                                        <button type="button" class="btn small" 
+                                                onclick="previewQuestion(<?php echo $question['id']; ?>)">
+                                            <i class="fas fa-eye"></i> Preview
+                                        </button>
+                                        <span class="drag-handle">
+                                            <i class="fas fa-arrows-alt"></i> Drag to reorder
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Paper Preview -->
+            <div id="paperPreview" class="paper-preview">
+                <div class="panel-header">
+                    <h2><i class="fas fa-file-pdf"></i> Paper Preview</h2>
+                    <button class="btn small" onclick="closePreview()">
+                        <i class="fas fa-times"></i> Close
+                    </button>
+                </div>
+                
+                <iframe id="previewFrame" class="preview-frame" 
+                        srcdoc="<?php echo htmlspecialchars($generated_html ?? ''); ?>">
+                </iframe>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button onclick="printPreview()" class="btn primary">
+                        <i class="fas fa-print"></i> Print Preview
+                    </button>
+                    <button onclick="downloadPreview()" class="btn secondary">
+                        <i class="fas fa-download"></i> Download as PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Question Preview Modal -->
+    <div id="questionPreviewModal" class="preview-modal" style="display: none;">
+        <div class="preview-content" style="max-width: 700px;">
+            <span class="close-preview" onclick="closeQuestionPreview()">&times;</span>
+            <div id="questionPreviewContent"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
+    <script>
+        // Global variables
+        let selectedQuestions = [];
+        let selectedQuestionsData = {};
+        let totalMarks = 0;
+        
+        // Initialize
+        $(document).ready(function() {
+            $('select').select2({
+                width: '100%'
+            });
+            
+            // Initialize drag and drop for selected questions
+            const selectedList = document.getElementById('selectedList');
+            if (selectedList) {
+                Sortable.create(selectedList, {
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    onEnd: function(evt) {
+                        updateSelectedQuestionsOrder();
+                    }
+                });
+            }
+            
+            // Initialize drag and drop for question items
+            const questionsList = document.getElementById('questionsList');
+            if (questionsList) {
+                Sortable.create(questionsList, {
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    handle: '.drag-handle'
+                });
+            }
+        });
+        
+        // Filter questions
+        function filterQuestions() {
+    
+            const subjectId = document.getElementById('subjectSelect').value;
+            const classId = document.getElementById('classSelect').value;
+            const typeFilter = document.getElementById('typeFilter').value;
+            const difficultyFilter = document.getElementById('difficultyFilter').value;
+            
+            // Build URL with filters
+            let url = 'generate_paper.php?';
+            if (subjectId) url += 'subject_filter=' + subjectId + '&';
+            if (classId) url += 'class_filter=' + classId + '&';
+            if (typeFilter) url += 'type_filter=' + typeFilter + '&';
+            if (difficultyFilter) url += 'difficulty_filter=' + difficultyFilter;
+            
+            window.location.href = url;
+        }
+        
+        // Clear filters
+        function clearFilters() {
+            document.getElementById('subjectSelect').value = '';
+            document.getElementById('classSelect').value = '';
+            document.getElementById('typeFilter').value = '';
+            document.getElementById('difficultyFilter').value = '';
+            
+            $('select').trigger('change');
+            filterQuestions();
+        }
+        
+        // Toggle question selection
+        function toggleQuestionSelection(checkbox, questionId) {
+            const questionItem = checkbox.closest('.question-item');
+            const marks = parseFloat(questionItem.dataset.marks);
+            
+            if (checkbox.checked) {
+                // Add to selected
+                selectedQuestions.push(questionId);
+                questionItem.classList.add('selected');
+                
+                // Store question data
+                selectedQuestionsData[questionId] = {
+                    id: questionId,
+                    text: questionItem.querySelector('.question-summary div strong').nextSibling.textContent.trim(),
+                    marks: marks,
+                    type: questionItem.dataset.type,
+                    difficulty: questionItem.dataset.difficulty
+                };
+                
+                totalMarks += marks;
+            } else {
+                // Remove from selected
+                const index = selectedQuestions.indexOf(questionId);
+                if (index > -1) {
+                    selectedQuestions.splice(index, 1);
+                    delete selectedQuestionsData[questionId];
+                    questionItem.classList.remove('selected');
+                    totalMarks -= marks;
+                }
+            }
+            
+            updateSelectedList();
+            updateQuestionCounter();
+            updateTotalMarks();
+            updateSelectedQuestionsInput();
+        }
+        
+        // Update selected questions list display
+        function updateSelectedList() {
+            const selectedList = document.getElementById('selectedList');
+            
+            if (selectedQuestions.length === 0) {
+                selectedList.innerHTML = `
+                    <div style="text-align: center; padding: 30px; color: #6c757d;">
+                        <i class="fas fa-question-circle fa-2x"></i>
+                        <p>No questions selected yet</p>
+                        <p>Select questions from the right panel</p>
+                    </div>`;
+                return;
+            }
+            
+            let html = '';
+            selectedQuestions.forEach((questionId, index) => {
+                const question = selectedQuestionsData[questionId];
+                if (question) {
+                    html += `
+                        <li data-id="${questionId}">
+                            <div>
+                                <strong>Q${index + 1}:</strong> 
+                                ${question.text.substring(0, 80)}${question.text.length > 80 ? '...' : ''}
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span class="meta-badge marks-badge" style="font-size: 0.8rem;">
+                                    ${question.marks} marks
+                                </span>
+                                <span class="remove-selected" onclick="removeSelectedQuestion(${questionId})">
+                                    <i class="fas fa-times"></i>
+                                </span>
+                            </div>
+                        </li>`;
+                }
+            });
+            
+            selectedList.innerHTML = '<ul class="selected-list">' + html + '</ul>';
+            
+            // Reinitialize Sortable on new list
+            if (selectedList.querySelector('ul')) {
+                Sortable.create(selectedList.querySelector('ul'), {
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    onEnd: function(evt) {
+                        updateSelectedQuestionsOrder();
+                    }
+                });
+            }
+        }
+        
+        // Remove selected question
+        function removeSelectedQuestion(questionId) {
+            const checkbox = document.querySelector(`.question-item[data-id="${questionId}"] .question-checkbox`);
+            if (checkbox) {
+                checkbox.checked = false;
+                toggleQuestionSelection(checkbox, questionId);
+            }
+        }
+        
+        // Update question counter
+        function updateQuestionCounter() {
+            const counter = document.getElementById('questionCounter');
+            counter.textContent = selectedQuestions.length + ' selected';
+        }
+        
+        // Update total marks display
+        function updateTotalMarks() {
+            const totalMarksDisplay = document.getElementById('totalMarks');
+            const marksTotal = document.getElementById('marksTotal');
+            const marksTarget = document.getElementById('marksTarget');
+            const targetMarks = parseFloat(document.querySelector('input[name="total_marks"]').value) || 100;
+            
+            if (selectedQuestions.length > 0) {
+                marksTotal.textContent = totalMarks.toFixed(1);
+                marksTarget.textContent = targetMarks;
+                
+                // Color code based on target
+                if (totalMarks < targetMarks * 0.9) {
+                    totalMarksDisplay.style.background = '#ffc107'; // Yellow
+                } else if (totalMarks > targetMarks * 1.1) {
+                    totalMarksDisplay.style.background = '#dc3545'; // Red
+                } else {
+                    totalMarksDisplay.style.background = '#28a745'; // Green
+                }
+                
+                totalMarksDisplay.style.display = 'block';
+            } else {
+                totalMarksDisplay.style.display = 'none';
+            }
+        }
+        
+        // Update selected questions order after drag and drop
+        function updateSelectedQuestionsOrder() {
+            const listItems = document.querySelectorAll('#selectedList li');
+            const newOrder = [];
+            
+            listItems.forEach(item => {
+                const questionId = parseInt(item.dataset.id);
+                newOrder.push(questionId);
+            });
+            
+            selectedQuestions = newOrder;
+            updateSelectedQuestionsInput();
+        }
+        
+        // Update hidden input with selected questions
+        function updateSelectedQuestionsInput() {
+            document.getElementById('selectedQuestions').value = JSON.stringify(selectedQuestions);
+        }
+        
+        // Select template
+        function selectTemplate(card, template) {
+            document.querySelectorAll('.template-card').forEach(c => {
+                c.classList.remove('selected');
+            });
+            card.classList.add('selected');
+            document.getElementById('selectedTemplate').value = template;
+        }
+        
+        // Preview question
+        function previewQuestion(questionId) {
+            // In a real implementation, this would fetch question details via AJAX
+            const question = selectedQuestionsData[questionId] || {};
+            const content = `
+                <h3>Question Preview</h3>
+                <div style="border: 1px solid #ddd; padding: 20px; border-radius: 5px; margin: 15px 0;">
+                    <strong>Question ID:</strong> ${questionId}<br>
+                    <strong>Type:</strong> ${question.type || 'Unknown'}<br>
+                    <strong>Marks:</strong> ${question.marks || 'Unknown'}<br>
+                    <strong>Difficulty:</strong> ${question.difficulty || 'Unknown'}<br>
+                    <hr>
+                    <p>${question.text || 'Question text not available'}</p>
+                </div>
+                <p>In a real implementation, this would show the complete question with options.</p>
+            `;
+            
+            document.getElementById('questionPreviewContent').innerHTML = content;
+            document.getElementById('questionPreviewModal').style.display = 'block';
+        }
+        
+        // Close question preview
+        function closeQuestionPreview() {
+            document.getElementById('questionPreviewModal').style.display = 'none';
+        }
+        
+        // Preview paper
+        function previewPaper() {
+            if (selectedQuestions.length === 0) {
+                alert('Please select at least one question to preview.');
+                return;
+            }
+            
+            // Collect form data
+            const formData = new FormData(document.getElementById('paperForm'));
+            
+            // Generate preview HTML (simplified version)
+            const previewHTML = generatePreviewHTML(formData);
+            document.getElementById('previewFrame').srcdoc = previewHTML;
+            document.getElementById('paperPreview').classList.add('active');
+            
+            // Scroll to preview
+            document.getElementById('paperPreview').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Generate preview HTML (simplified)
+        function generatePreviewHTML(formData) {
+            let html = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 20px; }
+                        .header { text-align: center; margin-bottom: 30px; }
+                        .question { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h2>ASAS NURSERY, PRIMARY AND SECONDARY SCHOOL PANDOGARI </h2>
+                        <h4>${formData.get('paper_title')}</h4>
+                        <p>Subject:  ${formData.get('subject_name')}  | Class: ${formData.get('class_name')}</p>
+                        <p>Time: ${formData.get('time_allotted')} minutes | Marks: ${formData.get('total_marks')}</p>
+                    </div>
+                    
+                    <div class="instructions">
+                        <h3>Instructions:</h3>
+                        <p>${formData.get('general_instructions')}</p>
+                    </div>
+                    
+                    <h3>Questions:</h3>`;
+            
+            // Add selected questions
+            selectedQuestions.forEach((questionId, index) => {
+                const question = selectedQuestionsData[questionId];
+                if (question) {
+                    html += `
+                        <div class="question">
+                            <strong>Q${index + 1}. [${question.marks} marks]</strong><br>
+                            ${question.text}<br>
+                            <em>Type: ${question.type} | Difficulty: ${question.difficulty}</em>
+                        </div>`;
+                }
+            });
+            
+            html += `
+                    <div style="margin-top: 30px; text-align: center;">
+                        <p>--- End of Preview ---</p>
+                        <p>Total Questions: ${selectedQuestions.length} | Total Marks: ${totalMarks}</p>
+                    </div>
+                </body>
+                </html>`;
+            
+            return html;
+        }
+        
+        // Close preview
+        function closePreview() {
+            document.getElementById('paperPreview').classList.remove('active');
+        }
+        
+        // Print preview
+        function printPreview() {
+            const iframe = document.getElementById('previewFrame');
+            iframe.contentWindow.print();
+        }
+        
+        // Download preview as PDF
+        function downloadPreview() {
+            alert('In a full implementation, this would convert the preview to PDF using a server-side library.');
+            // You would typically use a library like TCPDF, mPDF, or Dompdf
+        }
+        
+        // Print generated paper
+        function printPaper() {
+            if (<?php echo $paper_id; ?> > 0) {
+                window.open('view_paper.php?id=<?php echo $paper_id; ?>#autoprint', '_blank');
+            }
+        }
+        
+        // Auto-update marks when total marks input changes
+        document.querySelector('input[name="total_marks"]').addEventListener('input', function() {
+            updateTotalMarks();
+        });
+        
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const questionModal = document.getElementById('questionPreviewModal');
+            if (event.target === questionModal) {
+                closeQuestionPreview();
+            }
+        };
+    </script>
+</body>
+</html>

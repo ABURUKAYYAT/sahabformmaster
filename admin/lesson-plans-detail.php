@@ -155,99 +155,12 @@ function getApprovalBadge($status) {
                     </li>
                     
                     <li class="nav-item">
-                        <a href="schoolnews.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
-                            <span class="nav-text">School News</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="students.php" class="nav-link">
-                            <span class="nav-icon">👥</span>
-                            <span class="nav-text">Manage Students</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="results.php" class="nav-link">
-                            <span class="nav-icon">📈</span>
-                            <span class="nav-text">Manage Results</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
                         <a href="lesson-plans.php" class="nav-link">
-                            <span class="nav-icon">📝</span>
-                            <span class="nav-text">Manage Lesson Plans</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="manage_curriculum.php" class="nav-link">
                             <span class="nav-icon">📚</span>
-                            <span class="nav-text">Manage Curriculum</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="school.php" class="nav-link">
-                            <span class="nav-icon">🏫</span>
-                            <span class="nav-text">Manage School</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="manage_user.php" class="nav-link">
-                            <span class="nav-icon">🔐</span>
-                            <span class="nav-text">Manage Users</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="visitors.php" class="nav-link">
-                            <span class="nav-icon">🔐</span>
-                            <span class="nav-text">Manage Visitors</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="timebook.php" class="nav-link">
-                            <span class="nav-icon">🔐</span>
-                            <span class="nav-text">Manage Teachers Time Book</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="travelling.php" class="nav-link">
-                            <span class="nav-icon">🔐</span>
-                            <span class="nav-text">Manage Travelling</span>
-                        </a>
-                    </li>
-                                        
-                    <li class="nav-item">
-                        <a href="classwork.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
-                            <span class="nav-text">Class Work</span>
+                            <span class="nav-text">Lessons Plans</span>
                         </a>
                     </li>
                     
-                    <li class="nav-item">
-                        <a href="assignment.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
-                            <span class="nav-text">Assignment</span>
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a href="attendance.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
-                            <span class="nav-text">Attendance Register</span>
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a href="schoolfeed.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
-                            <span class="nav-text">School Feeds</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="schoolfees.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
-                            <span class="nav-text">School Fees Payments</span>
-                        </a>
-                    </li>
                 </ul>
             </nav>
         </aside>

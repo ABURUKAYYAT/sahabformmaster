@@ -9,8 +9,42 @@ if (!isset($_SESSION['student_id'])) {
     exit;
 }
 
+$student_id = $_SESSION['student_id'];
 $student_name = $_SESSION['student_name'];
-$admission_number = $_SESSION['admission_number'];
+$admission_number = $_SESSION['admission_no'];
+
+// Get student details and stats
+$stmt = $pdo->prepare("SELECT * FROM students WHERE id = ?");
+$stmt->execute([$student_id]);
+$student = $stmt->fetch();
+
+// Get attendance stats
+$attendance_stmt = $pdo->prepare("
+    SELECT
+        COUNT(*) as total_days,
+        SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present_days,
+        ROUND((SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) / COUNT(*)) * 100, 1) as attendance_rate
+    FROM attendance
+    WHERE student_id = ?
+");
+$attendance_stmt->execute([$student_id]);
+$attendance = $attendance_stmt->fetch();
+
+// Get results count
+$results_stmt = $pdo->prepare("SELECT COUNT(*) as results_count FROM results WHERE student_id = ?");
+$results_stmt->execute([$student_id]);
+$results_count = $results_stmt->fetch()['results_count'];
+
+// Get pending activities
+$activities_stmt = $pdo->prepare("
+    SELECT COUNT(*) as pending_activities
+    FROM student_submissions ss
+    JOIN class_activities ca ON ss.activity_id = ca.id
+    WHERE ss.student_id = ? AND ss.status = 'pending'
+");
+$activities_stmt->execute([$student_id]);
+$pending_activities = $activities_stmt->fetch()['pending_activities'];
+
 ?>
 
 <!DOCTYPE html>
@@ -19,29 +53,44 @@ $admission_number = $_SESSION['admission_number'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Dashboard | SahabFormMaster</title>
-    <!-- <link rel="stylesheet" href="../assets/css/styles.css"> -->
     <link rel="stylesheet" href="../assets/css/student-dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
+
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+        <i class="fas fa-bars"></i>
+    </button>
 
     <!-- Header -->
     <header class="dashboard-header">
         <div class="header-container">
-            <!-- Logo and School Name (Right) -->
-            <div class="header-right">
+            <!-- Logo and School Name -->
+            <div class="header-left">
                 <div class="school-logo-container">
                     <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
-                    <h1 class="school-name">SahabFormMaster</h1>
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Student Portal</p>
+                    </div>
                 </div>
             </div>
 
-            <!-- Student Info and Logout (Left) -->
-            <div class="header-left">
+            <!-- Student Info and Logout -->
+            <div class="header-right">
                 <div class="student-info">
+                    <p class="student-label">Student</p>
                     <span class="student-name"><?php echo htmlspecialchars($student_name); ?></span>
                     <span class="admission-number"><?php echo htmlspecialchars($admission_number); ?></span>
                 </div>
-                <a href="logout.php" class="btn-logout">Logout</a>
+                <a href="logout.php" class="btn-logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
             </div>
         </div>
     </header>
@@ -49,70 +98,65 @@ $admission_number = $_SESSION['admission_number'];
     <!-- Main Container -->
     <div class="dashboard-container">
         <!-- Sidebar Navigation -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3>Navigation</h3>
+                <button class="sidebar-close" id="sidebarClose">✕</button>
+            </div>
             <nav class="sidebar-nav">
                 <ul class="nav-list">
                     <li class="nav-item">
                         <a href="dashboard.php" class="nav-link active">
-                            <span class="nav-icon">📊</span>
+                            <i class="fas fa-tachometer-alt nav-icon"></i>
                             <span class="nav-text">Dashboard</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="first-term-result.php" class="nav-link">
-                            <span class="nav-icon">📈</span>
-                            <span class="nav-text">First Term Result</span>
+                        <a href="myresults.php" class="nav-link">
+                            <i class="fas fa-chart-line nav-icon"></i>
+                            <span class="nav-text">My Results</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="second-term-result.php" class="nav-link">
-                            <span class="nav-icon">📊</span>
-                            <span class="nav-text">Second Term Result</span>
+                        <a href="student_class_activities.php" class="nav-link">
+                            <i class="fas fa-tasks nav-icon"></i>
+                            <span class="nav-text">Class Activities</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="third-term-result.php" class="nav-link">
-                            <span class="nav-icon">📉</span>
-                            <span class="nav-text">Third Term Result</span>
-                        </a>
-                    </li>
-                                        
-                    <li class="nav-item">
-                        <a href="classwork.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
-                            <span class="nav-text">Class Work</span>
-                        </a>
-                    </li> 
-                    <li class="nav-item">
-                        <a href="subjects.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
+                        <a href="mysubjects.php" class="nav-link">
+                            <i class="fas fa-book-open nav-icon"></i>
                             <span class="nav-text">My Subjects</span>
                         </a>
                     </li>
-                    
                     <li class="nav-item">
-                        <a href="assignment.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
-                            <span class="nav-text">Assignment</span>
+                        <a href="my-evaluations.php" class="nav-link">
+                            <i class="fas fa-star nav-icon"></i>
+                            <span class="nav-text">My Evaluations</span>
                         </a>
                     </li>
-                    
                     <li class="nav-item">
                         <a href="attendance.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
-                            <span class="nav-text">Attendance Register</span>
+                            <i class="fas fa-calendar-check nav-icon"></i>
+                            <span class="nav-text">Attendance</span>
                         </a>
                     </li>
-                                        <li class="nav-item">
-                        <a href="schoolfees.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
-                            <span class="nav-text">School Fees Payments</span>
+                    <li class="nav-item">
+                        <a href="payment.php" class="nav-link">
+                            <i class="fas fa-money-bill-wave nav-icon"></i>
+                            <span class="nav-text">School Fees</span>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a href="schoolfeed.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
+                            <i class="fas fa-newspaper nav-icon"></i>
                             <span class="nav-text">School Feeds</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="school_diary.php" class="nav-link">
+                            <i class="fas fa-book nav-icon"></i>
+                            <span class="nav-text">School Diary</span>
                         </a>
                     </li>
                 </ul>
@@ -122,79 +166,188 @@ $admission_number = $_SESSION['admission_number'];
         <!-- Main Content -->
         <main class="main-content">
             <div class="content-header">
-                <h2>Welcome, <?php echo htmlspecialchars($student_name); ?>!</h2>
-                <p>Student Dashboard</p>
+                <div class="welcome-section">
+                    <h2>Welcome back, <?php echo htmlspecialchars($student_name); ?>! 🎓</h2>
+                    <p>Here's your academic overview for today</p>
+                </div>
+                <div class="header-stats">
+                    <div class="quick-stat">
+                        <span class="quick-stat-value"><?php echo $attendance['attendance_rate'] ?? 0; ?>%</span>
+                        <span class="quick-stat-label">Attendance</span>
+                    </div>
+                    <div class="quick-stat">
+                        <span class="quick-stat-value"><?php echo $results_count; ?></span>
+                        <span class="quick-stat-label">Results</span>
+                    </div>
+                    <div class="quick-stat">
+                        <span class="quick-stat-value"><?php echo $pending_activities; ?></span>
+                        <span class="quick-stat-label">Pending</span>
+                    </div>
+                </div>
             </div>
 
             <!-- Dashboard Cards -->
             <div class="dashboard-cards">
-                <div class="card">
-                    <div class="card-icon">📚</div>
-                    <h3>First Term Result</h3>
-                    <p class="card-description">View your first term examination results</p>
-                    <a href="first-term-result.php" class="card-link">View Results</a>
+                <div class="card card-gradient-1">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon"><i class="fas fa-chart-line"></i></div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Academic Results</h3>
+                        <p class="card-value"><?php echo $results_count; ?> Terms</p>
+                        <div class="card-footer">
+                            <span class="card-badge">Available</span>
+                            <a href="myresults.php" class="card-link">View Results →</a>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="card">
-                    <div class="card-icon">📖</div>
-                    <h3>Second Term Result</h3>
-                    <p class="card-description">View your second term examination results</p>
-                    <a href="second-term-result.php" class="card-link">View Results</a>
+                <div class="card card-gradient-2">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon"><i class="fas fa-calendar-check"></i></div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Attendance Rate</h3>
+                        <p class="card-value"><?php echo $attendance['attendance_rate'] ?? 0; ?>%</p>
+                        <div class="card-footer">
+                            <span class="card-badge"><?php echo $attendance['present_days'] ?? 0; ?>/<?php echo $attendance['total_days'] ?? 0; ?> days</span>
+                            <a href="attendance.php" class="card-link">View Details →</a>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="card">
-                    <div class="card-icon">📝</div>
-                    <h3>Third Term Result</h3>
-                    <p class="card-description">View your third term examination results</p>
-                    <a href="third-term-result.php" class="card-link">View Results</a>
+                <div class="card card-gradient-3">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon"><i class="fas fa-tasks"></i></div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Class Activities</h3>
+                        <p class="card-value"><?php echo $pending_activities; ?> Pending</p>
+                        <div class="card-footer">
+                            <span class="card-badge">Due Soon</span>
+                            <a href="student_class_activities.php" class="card-link">Complete Now →</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-gradient-4">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon"><i class="fas fa-book-open"></i></div>
+                    </div>
+                    <div class="card-content">
+                        <h3>My Subjects</h3>
+                        <p class="card-value">Active</p>
+                        <div class="card-footer">
+                            <span class="card-badge">Enrolled</span>
+                            <a href="mysubjects.php" class="card-link">View Subjects →</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-gradient-5">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon"><i class="fas fa-star"></i></div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Evaluations</h3>
+                        <p class="card-value">Latest</p>
+                        <div class="card-footer">
+                            <span class="card-badge">View</span>
+                            <a href="my-evaluations.php" class="card-link">See Reports →</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-gradient-6">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon"><i class="fas fa-money-bill-wave"></i></div>
+                    </div>
+                    <div class="card-content">
+                        <h3>School Fees</h3>
+                        <p class="card-value">Payment</p>
+                        <div class="card-footer">
+                            <span class="card-badge">Status</span>
+                            <a href="payment.php" class="card-link">Pay Fees →</a>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Overall Performance Section -->
-            <div class="performance-section">
-                <h3>Overall Performance</h3>
-                <div class="performance-grid">
-                    <div class="performance-item">
-                        <span class="performance-label">Total Score</span>
-                        <span class="performance-value">245/300</span>
-                        <span class="performance-percentage">82%</span>
-                    </div>
-                    <div class="performance-item">
-                        <span class="performance-label">Grade</span>
-                        <span class="performance-value">A</span>
-                        <span class="performance-percentage">Excellent</span>
-                    </div>
-                    <div class="performance-item">
-                        <span class="performance-label">Attendance</span>
-                        <span class="performance-value">95%</span>
-                        <span class="performance-percentage">Perfect</span>
-                    </div>
+            <!-- Quick Actions Section -->
+            <div class="quick-actions-section">
+                <div class="section-header">
+                    <h3>⚡ Quick Actions</h3>
+                    <span class="section-badge">Most Used</span>
+                </div>
+                <div class="quick-actions-grid">
+                    <a href="myresults.php" class="quick-action-card">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Check Results</span>
+                    </a>
+                    <a href="student_class_activities.php" class="quick-action-card">
+                        <i class="fas fa-tasks"></i>
+                        <span>Submit Assignment</span>
+                    </a>
+                    <a href="attendance.php" class="quick-action-card">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>View Attendance</span>
+                    </a>
+                    <a href="payment.php" class="quick-action-card">
+                        <i class="fas fa-credit-card"></i>
+                        <span>Pay School Fees</span>
+                    </a>
+                    <a href="schoolfeed.php" class="quick-action-card">
+                        <i class="fas fa-newspaper"></i>
+                        <span>School News</span>
+                    </a>
+                    <a href="school_diary.php" class="quick-action-card">
+                        <i class="fas fa-book"></i>
+                        <span>School Events</span>
+                    </a>
                 </div>
             </div>
 
             <!-- Recent Activity Section -->
             <div class="activity-section">
-                <h3>Recent Activity</h3>
+                <div class="section-header">
+                    <h3>📋 Recent Activity</h3>
+                    <a href="#" class="view-all-link">View All</a>
+                </div>
                 <div class="activity-list">
                     <div class="activity-item">
-                        <span class="activity-icon">✓</span>
+                        <div class="activity-icon activity-icon-success">
+                            <i class="fas fa-check"></i>
+                        </div>
                         <div class="activity-content">
-                            <span class="activity-text">Third Term Results Released</span>
+                            <span class="activity-text">Results published for <strong>Mathematics Term 1</strong></span>
+                            <span class="activity-date">Today, 9:00 AM</span>
+                        </div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-icon activity-icon-info">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <div class="activity-content">
+                            <span class="activity-text">New assignment posted in <strong>English Studies</strong></span>
+                            <span class="activity-date">Yesterday, 2:30 PM</span>
+                        </div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-icon activity-icon-warning">
+                            <i class="fas fa-calendar-check"></i>
+                        </div>
+                        <div class="activity-content">
+                            <span class="activity-text">Attendance marked for <strong>Science Class</strong></span>
                             <span class="activity-date">2 days ago</span>
                         </div>
                     </div>
                     <div class="activity-item">
-                        <span class="activity-icon">📝</span>
-                        <div class="activity-content">
-                            <span class="activity-text">Assignment Submitted - Mathematics</span>
-                            <span class="activity-date">1 week ago</span>
+                        <div class="activity-icon activity-icon-primary">
+                            <i class="fas fa-star"></i>
                         </div>
-                    </div>
-                    <div class="activity-item">
-                        <span class="activity-icon">✓</span>
                         <div class="activity-content">
-                            <span class="activity-text">Second Term Results Available</span>
-                            <span class="activity-date">2 weeks ago</span>
+                            <span class="activity-text">New evaluation report <strong>available</strong></span>
+                            <span class="activity-date">1 week ago</span>
                         </div>
                     </div>
                 </div>
@@ -206,41 +359,162 @@ $admission_number = $_SESSION['admission_number'];
     <footer class="dashboard-footer">
         <div class="footer-container">
             <div class="footer-content">
-                <!-- About Section -->
                 <div class="footer-section">
                     <h4>About SahabFormMaster</h4>
                     <p>A comprehensive educational management system designed to help students track their academic progress and performance.</p>
                 </div>
-
-                <!-- Quick Links Section -->
                 <div class="footer-section">
                     <h4>Quick Links</h4>
-                    <div class="footer-links">
-                        <a href="dashboard.php">Dashboard</a>
-                        <a href="first-term-result.php">First Term</a>
-                        <a href="second-term-result.php">Second Term</a>
-                        <a href="third-term-result.php">Third Term</a>
-                    </div>
+                    <ul class="footer-links">
+                        <li><a href="myresults.php">My Results</a></li>
+                        <li><a href="mysubjects.php">My Subjects</a></li>
+                        <li><a href="attendance.php">Attendance</a></li>
+                        <li><a href="#">Support</a></li>
+                    </ul>
                 </div>
-
-                <!-- Support Section -->
                 <div class="footer-section">
-                    <h4>Support & Help</h4>
-                    <p>Email: <a href="mailto:support@sahabformmaster.com">support@sahabformmaster.com</a></p>
-                    <p>Phone: +234 (0) 800 000 0000</p>
+                    <h4>Contact Information</h4>
+                    <p>📧 student.support@sahabformmaster.com</p>
+                    <p>📱 +234 808 683 5607</p>
+                    <p>🌐 www.sahabformmaster.com</p>
                 </div>
             </div>
-
-            <!-- Footer Bottom -->
             <div class="footer-bottom">
-                <p class="footer-copyright">&copy; 2025 SahabFormMaster. All rights reserved.</p>
-                <p class="footer-version">Version 1.0 | 
-                    <a href="#">Privacy Policy</a> | 
+                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="#">Privacy Policy</a>
+                    <span>•</span>
                     <a href="#">Terms of Service</a>
-                </p>
+                    <span>•</span>
+                    <span>Version 2.0</span>
+                </div>
             </div>
         </div>
     </footer>
+
+    <script>
+        // Mobile Menu Toggle
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarClose = document.getElementById('sidebarClose');
+
+        mobileMenuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+            mobileMenuToggle.classList.toggle('active');
+        });
+
+        sidebarClose.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            mobileMenuToggle.classList.remove('active');
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+                    sidebar.classList.remove('active');
+                    mobileMenuToggle.classList.remove('active');
+                }
+            }
+        });
+
+        // Smooth scroll for internal links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Add active class on scroll for header
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('.dashboard-header');
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+
+        // Animate cards on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Observe dashboard cards
+        document.querySelectorAll('.card').forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(card);
+        });
+
+        // Observe quick action cards
+        document.querySelectorAll('.quick-action-card').forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(card);
+        });
+
+        // Add hover effects for cards
+        document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-5px)';
+            });
+
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+            });
+        });
+
+        // Quick action cards hover effect
+        document.querySelectorAll('.quick-action-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'scale(1.05)';
+                this.style.boxShadow = 'var(--shadow-xl)';
+            });
+
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'scale(1)';
+                this.style.boxShadow = 'var(--shadow-sm)';
+            });
+        });
+
+        // Auto-refresh dashboard data every 5 minutes
+        setInterval(() => {
+            // You can add AJAX calls here to refresh dynamic data
+            console.log('Dashboard data refresh check...');
+        }, 300000);
+
+        // Add loading animation for quick actions
+        document.querySelectorAll('.quick-action-card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                // Add loading state
+                this.style.opacity = '0.7';
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Loading...</span>';
+
+                // Reset after a short delay (simulating navigation)
+                setTimeout(() => {
+                    this.style.opacity = '1';
+                    this.innerHTML = this.dataset.originalHtml || this.innerHTML;
+                }, 1000);
+            });
+        });
+    </script>
 
 </body>
 </html>

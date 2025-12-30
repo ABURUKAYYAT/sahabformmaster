@@ -1,0 +1,355 @@
+/* Professional Exam Paper Styles */
+
+/* Page Setup */
+@page {
+    size: A4;
+    margin: 20mm;
+}
+
+/* Base Styles */
+.paper-body {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 12pt;
+    line-height: 1.6;
+    color: #000000;
+    background: #ffffff;
+    margin: 0;
+    padding: 0;
+}
+
+/* Paper Container */
+.paper-container {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    padding: 20mm;
+    box-sizing: border-box;
+    position: relative;
+}
+
+/* Header Section */
+.paper-header {
+    text-align: center;
+    margin-bottom: 25px;
+    border-bottom: 2px solid #000000;
+    padding-bottom: 15px;
+}
+
+.school-name {
+    font-size: 18pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+}
+
+.school-motto {
+    font-size: 10pt;
+    font-style: italic;
+    color: #444444;
+    margin-bottom: 10px;
+}
+
+.school-address {
+    font-size: 9pt;
+    color: #666666;
+    margin-bottom: 15px;
+}
+
+.paper-title {
+    font-size: 16pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin: 20px 0;
+    padding: 10px 0;
+    border-top: 1px solid #000000;
+    border-bottom: 1px solid #000000;
+}
+
+/* Information Table */
+.info-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 11pt;
+}
+
+.info-table th,
+.info-table td {
+    padding: 8px 12px;
+    border: 1px solid #000000;
+    text-align: left;
+}
+
+.info-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+    width: 25%;
+}
+
+.info-table td {
+    width: 25%;
+}
+
+/* Instructions Box */
+.instructions-box {
+    margin: 25px 0;
+    padding: 20px;
+    border: 1px solid #000000;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+}
+
+.instructions-title {
+    font-size: 12pt;
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: #000000;
+}
+
+.instructions-list {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.instructions-list li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+/* Questions Section */
+.questions-section {
+    margin: 30px 0;
+}
+
+.section-heading {
+    font-size: 13pt;
+    font-weight: bold;
+    margin-bottom: 20px;
+    padding-bottom: 5px;
+    border-bottom: 2px solid #000000;
+}
+
+/* Question Styling */
+.question-item {
+    margin: 25px 0;
+    page-break-inside: avoid;
+}
+
+.question-number {
+    font-weight: bold;
+    float: left;
+    width: 30px;
+    font-size: 12pt;
+}
+
+.question-content {
+    margin-left: 30px;
+}
+
+.question-text {
+    margin-bottom: 15px;
+    text-align: justify;
+}
+
+/* MCQ Options */
+.mcq-options {
+    margin: 15px 0 15px 20px;
+}
+
+.option-row {
+    margin-bottom: 8px;
+    display: flex;
+    align-items: flex-start;
+}
+
+.option-letter {
+    font-weight: bold;
+    min-width: 25px;
+    padding-right: 10px;
+}
+
+.option-text {
+    flex: 1;
+}
+
+/* True/False Questions */
+.true-false-options {
+    margin: 15px 0 15px 20px;
+}
+
+.true-false-options label {
+    margin-right: 30px;
+    font-weight: normal;
+}
+
+/* Answer Spaces */
+.answer-space {
+    margin: 20px 0;
+    border-bottom: 1px dashed #666666;
+    min-height: 50px;
+}
+
+.short-answer-space {
+    min-height: 100px;
+}
+
+.essay-answer-space {
+    min-height: 300px;
+}
+
+/* Marks Display */
+.marks-display {
+    float: right;
+    font-weight: bold;
+    font-style: italic;
+    font-size: 11pt;
+    color: #333333;
+}
+
+/* Sub-questions */
+.sub-question {
+    margin: 15px 0 15px 30px;
+}
+
+.sub-question-number {
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+/* Fill in the Blanks */
+.fill-blank {
+    display: inline-block;
+    min-width: 100px;
+    border-bottom: 1px solid #000000;
+    margin: 0 5px;
+    text-align: center;
+}
+
+/* Footer */
+.paper-footer {
+    text-align: center;
+    margin-top: 50px;
+    padding-top: 20px;
+    border-top: 1px solid #000000;
+    font-size: 10pt;
+    color: #666666;
+}
+
+.end-marker {
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.total-marks {
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+.prepared-by {
+    margin-top: 15px;
+    font-style: italic;
+}
+
+/* Page Breaks */
+.page-break {
+    page-break-after: always;
+}
+
+.avoid-break {
+    page-break-inside: avoid;
+}
+
+/* For Printing */
+@media print {
+    .paper-container {
+        padding: 0;
+        border: none;
+        width: 100%;
+        height: 100%;
+    }
+    
+    .no-print {
+        display: none !important;
+    }
+    
+    .question-item {
+        page-break-inside: avoid;
+    }
+    
+    .page-break {
+        page-break-after: always;
+    }
+}
+
+/* Special Styles for Different Question Types */
+.math-equation {
+    font-family: "Cambria Math", "Times New Roman", serif;
+    font-style: italic;
+}
+
+.diagram-container {
+    text-align: center;
+    margin: 15px 0;
+}
+
+.diagram-container img {
+    max-width: 100%;
+    height: auto;
+}
+
+.code-snippet {
+    font-family: "Courier New", monospace;
+    background-color: #f5f5f5;
+    padding: 10px;
+    border-radius: 3px;
+    margin: 10px 0;
+    font-size: 10pt;
+}
+
+/* Grid Layout for Multiple Choice */
+.option-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.grid-option {
+    padding: 10px;
+    border: 1px solid #dddddd;
+    border-radius: 3px;
+    background-color: #fafafa;
+}
+
+/* Matching Questions */
+.matching-pairs {
+    margin: 15px 0;
+}
+
+.matching-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.matching-item {
+    margin-bottom: 10px;
+    padding: 5px;
+}
+
+/* Multiple Correct Options */
+.multiple-correct .option-row {
+    margin-bottom: 12px;
+}
+
+.multiple-correct .option-letter {
+    background-color: #f0f0f0;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+}

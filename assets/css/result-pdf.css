@@ -1,0 +1,306 @@
+/* Styles tuned for PDF output via TCPDF (use DejaVu Sans or a PDF-safe font) */
+
+@page {
+  margin: 15mm 10mm;
+}
+
+body {
+  font-family: "DejaVu Sans", "Helvetica", Arial, sans-serif;
+  color: #222;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+/* Header / school profile */
+.pdf-header {
+  display: block;
+  text-align: center;
+  margin-bottom: 8px;
+  border-bottom: 3px solid #f0e6c2;
+  padding-bottom: 8px;
+}
+.pdf-header .logo {
+  float: left;
+  width: 70px;
+  height: 70px;
+  margin-right: 12px;
+}
+.pdf-header .school-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #b8860b;
+  margin-bottom: 2px;
+}
+.pdf-header .school-sub {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 2px;
+}
+
+/* Clear float after header */
+.clearfix::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* Info block (student / class / meta) */
+.info-row {
+  display: block;
+  margin: 10px 0;
+  padding: 6px 0;
+}
+.info-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+}
+.info-table td {
+  padding: 6px 8px;
+  vertical-align: top;
+  font-size: 12px;
+}
+.info-table .label {
+  color: #555;
+  width: 160px;
+  font-weight: 600;
+}
+.info-table .value {
+  color: #111;
+}
+
+/* Results table */
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  page-break-inside: avoid;
+}
+.results-table thead th {
+  background: linear-gradient(180deg, #fff7e0, #fde9a8);
+  color: #333;
+  font-weight: 700;
+  padding: 8px;
+  text-align: left;
+  border: 1px solid #e9e1c3;
+}
+.results-table tbody td {
+  padding: 8px;
+  border: 1px solid #eee7cf;
+}
+.results-table tbody tr:nth-child(even) td {
+  background: #fffaf6;
+}
+.results-table .numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Totals & footer rows */
+.results-table tfoot td {
+  padding: 8px;
+  border-top: 2px solid #e9e1c3;
+  font-weight: 700;
+  background: #fffdf9;
+}
+
+/* Grade badge */
+.grade-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 11px;
+}
+.grade-A { background: #28a745; }
+.grade-B { background: #17a2b8; }
+.grade-C { background: #ffc107; color: #111; }
+.grade-D { background: #fd7e14; }
+.grade-E { background: #ff6b6b; }
+.grade-F { background: #c82333; }
+
+/* Comments / signatures */
+.signature-row {
+  display: block;
+  margin-top: 18px;
+}
+.signature {
+  width: 48%;
+  display: inline-block;
+  vertical-align: top;
+  text-align: left;
+  margin-right: 2%;
+}
+.signature .line {
+  margin-top: 36px;
+  border-top: 1px solid #bbb;
+  width: 80%;
+}
+.signature .label {
+  font-size: 12px;
+  color: #555;
+  margin-top: 6px;
+}
+
+/* Small print */
+.small {
+  font-size: 10px;
+  color: #666;
+  margin-top: 6px;
+}
+
+/* Make sure long tables break properly */
+.table-break {
+  page-break-inside: auto;
+}
+
+/* Utility */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+
+
+/* Common Styles for All Result Pages */
+.alert {
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-weight: 500;
+}
+
+.alert-error {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
+}
+
+.small-muted {
+    font-size: 14px;
+    color: #666;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.btn-gold {
+    background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    text-decoration: none;
+    display: inline-block;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.btn-gold:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.btn-small {
+    background: #6c757d;
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-small:hover {
+    background: #5a6268;
+}
+
+/* Grade Colors */
+.grade-a { color: #4CAF50; }
+.grade-b { color: #8BC34A; }
+.grade-c { color: #FFC107; }
+.grade-d { color: #FF9800; }
+.grade-e { color: #F44336; }
+.grade-f { color: #D32F2F; }
+
+/* Status Colors */
+.status-pending { color: #FF9800; }
+.status-resolved { color: #4CAF50; }
+.status-rejected { color: #F44336; }
+
+/* Responsive Utilities */
+@media (max-width: 768px) {
+    .hidden-mobile {
+        display: none !important;
+    }
+    
+    .visible-mobile {
+        display: block !important;
+    }
+    
+    .stack-mobile {
+        flex-direction: column !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .text-center-mobile {
+        text-align: center !important;
+    }
+    
+    .full-width-mobile {
+        width: 100% !important;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    .print-only {
+        display: block !important;
+    }
+    
+    body {
+        background: white !important;
+        color: black !important;
+    }
+    
+    .results-table {
+        border: 1px solid #000 !important;
+    }
+    
+    .results-table th {
+        background-color: #f0f0f0 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+  }
+/* Fallbacks for TCPDF: some CSS features may not be supported, prefer simple rules above */

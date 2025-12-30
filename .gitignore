@@ -1,0 +1,77 @@
+# PHP Dependencies
+/vendor/
+/composer.lock
+
+# IDE and Editor files
+/.idea/
+/.vscode/settings.json
+*.suo
+*.user
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+error_log
+
+# Cache and temp files
+cache/
+tmp/
+temp/
+*.cache
+
+# Database files (sensitive)
+/config/db.php
+database/*.sql
+!database/migrations/*.sql
+
+# Upload directories (user content)
+uploads/
+generated_papers/
+exports/
+*.pdf
+
+# Node.js (if used for frontend assets)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# TCPDF library (can be downloaded via Composer)
+TCPDF-main/
+TCPDF-main.zip
+
+# Generated files
+/generated_papers/
+/exports/receipts/
+/exports/reports/
+
+# Session files
+sessions/
+
+# Application specific
+.fix_database.php
+update_admin_css.php
+
+# Git
+.gitignore.swp

@@ -1,0 +1,196 @@
+/* Student results page styles (student/results.php) */
+:root{
+  --white:#fff;
+  --gold:#FFD700;
+  --dark-gold:#B8860B;
+  --muted:#666;
+  --border:#ececec;
+  --bg:#fbfbfa;
+  --card-shadow:0 6px 18px rgba(0,0,0,0.04);
+  --accent:#0a5;
+}
+
+.main-content { max-width:1100px; margin:20px auto; background:var(--white); padding:16px; border-radius:10px; box-shadow:var(--card-shadow); }
+h2 { color:var(--dark-gold); margin:0 0 6px 0; }
+.small-muted { color:var(--muted); font-size:13px; margin-bottom:12px; }
+
+/* Alerts */
+.alert { padding:10px 12px; border-radius:8px; margin-bottom:12px; }
+.alert-error { background:#fff6f6; color:#c00; border:1px solid #f2cfcf; }
+.alert-success { background:#f0fff2; color:var(--accent); border:1px solid #dff5df; }
+
+/* Results table */
+.results-table { width:100%; border-collapse:collapse; margin-top:12px; font-size:14px; }
+.results-table th, .results-table td { padding:10px 12px; border:1px solid var(--border); text-align:center; }
+.results-table thead th { background:linear-gradient(90deg,var(--gold),var(--dark-gold)); color:#fff; font-weight:600; }
+.results-table tbody tr:nth-child(even) { background:#fffaf0; }
+.results-table tbody tr:hover { background:rgba(255,215,0,0.05); }
+
+/* Actions and complaint form */
+.btn-small { padding:6px 10px; border-radius:6px; border:0; cursor:pointer; }
+.btn-gold { background:linear-gradient(135deg,var(--dark-gold),var(--gold)); color:#fff; padding:8px 12px; border-radius:6px; cursor:pointer; }
+.btn-pdf { background:var(--dark-gold); color:#fff; padding:8px 12px; border-radius:6px; cursor:pointer; border:0; }
+textarea { width:100%; padding:8px; border:1px solid var(--border); border-radius:6px; resize:vertical; }
+
+/* Complaints list */
+.results-table .status-pending { color:#f0ad4e; font-weight:600; }
+.results-table .status-resolved { color:var(--accent); font-weight:600; }
+
+/* Utility */
+.hidden { display:none !important; }
+.table-wrapper { overflow-x:auto; margin-top:10px; }
+
+/* Responsive */
+@media (max-width:900px){
+  .results-table th, .results-table td { padding:8px; font-size:13px; }
+  .btn-gold, .btn-pdf { padding:6px 10px; }
+}
+@media (max-width:600px){
+  .results-table th, .results-table td { font-size:12px; padding:6px; }
+  .btn-gold, .btn-pdf { width:100%; display:block; margin:6px 0; }
+}
+
+
+/* Common Styles for All Result Pages */
+.alert {
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-weight: 500;
+}
+
+.alert-error {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
+}
+
+.small-muted {
+    font-size: 14px;
+    color: #666;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.btn-gold {
+    background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    text-decoration: none;
+    display: inline-block;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.btn-gold:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.btn-small {
+    background: #6c757d;
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-small:hover {
+    background: #5a6268;
+}
+
+/* Grade Colors */
+.grade-a { color: #4CAF50; }
+.grade-b { color: #8BC34A; }
+.grade-c { color: #FFC107; }
+.grade-d { color: #FF9800; }
+.grade-e { color: #F44336; }
+.grade-f { color: #D32F2F; }
+
+/* Status Colors */
+.status-pending { color: #FF9800; }
+.status-resolved { color: #4CAF50; }
+.status-rejected { color: #F44336; }
+
+/* Responsive Utilities */
+@media (max-width: 768px) {
+    .hidden-mobile {
+        display: none !important;
+    }
+    
+    .visible-mobile {
+        display: block !important;
+    }
+    
+    .stack-mobile {
+        flex-direction: column !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .text-center-mobile {
+        text-align: center !important;
+    }
+    
+    .full-width-mobile {
+        width: 100% !important;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    .print-only {
+        display: block !important;
+    }
+    
+    body {
+        background: white !important;
+        color: black !important;
+    }
+    
+    .results-table {
+        border: 1px solid #000 !important;
+    }
+    
+    .results-table th {
+        background-color: #f0f0f0 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}

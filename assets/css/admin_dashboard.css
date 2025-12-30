@@ -502,8 +502,241 @@ body {
     opacity: 0.8;
 }
 
-/* ===== RESPONSIVE FOOTER ===== */
+/* ===== MOBILE MENU TOGGLE ===== */
+.mobile-menu-toggle {
+    display: none;
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 1001;
+    background: var(--gold);
+    color: var(--dark-gold);
+    border: none;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 4px 12px var(--gold-shadow);
+    transition: all 0.3s ease;
+    font-size: 1.2rem;
+}
+
+.mobile-menu-toggle:hover {
+    background: var(--dark-gold);
+    color: var(--white);
+    transform: scale(1.1);
+}
+
+.mobile-menu-toggle.active {
+    background: var(--dark-gray);
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+
+/* Large Desktop (1440px+) */
+@media (min-width: 1441px) {
+    .dashboard-container {
+        max-width: 1600px;
+    }
+
+    .dashboard-cards {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 25px;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* Desktop (1025px - 1440px) */
+@media (max-width: 1440px) {
+    .dashboard-cards {
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+}
+
+/* Tablet Landscape (769px - 1024px) */
+@media (max-width: 1024px) {
+    .dashboard-container {
+        padding: 20px;
+        gap: 20px;
+    }
+
+    .sidebar {
+        width: 220px;
+        position: fixed;
+        left: -100%;
+        top: 90px;
+        height: calc(100vh - 90px);
+        z-index: 1000;
+        transition: left 0.3s ease;
+    }
+
+    .sidebar.active {
+        left: 0;
+    }
+
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .mobile-menu-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .dashboard-cards {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 18px;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 18px;
+    }
+
+    .activity-item {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+
+    .activity-date {
+        align-self: center;
+    }
+}
+
+/* Tablet Portrait (601px - 768px) */
 @media (max-width: 768px) {
+    .header-container {
+        padding: 0 15px;
+        flex-direction: column;
+        gap: 15px;
+        height: auto;
+        padding: 15px;
+    }
+
+    .school-logo {
+        width: 50px;
+        height: 50px;
+    }
+
+    .school-name {
+        font-size: 22px;
+    }
+
+    .school-tagline {
+        font-size: 11px;
+    }
+
+    .principal-name {
+        font-size: 14px;
+    }
+
+    .btn-logout {
+        padding: 10px 20px;
+        font-size: 13px;
+    }
+
+    .dashboard-container {
+        padding: 15px;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .sidebar {
+        width: 100%;
+        position: static;
+        height: auto;
+        padding: 15px;
+    }
+
+    .sidebar-nav ul {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .nav-link {
+        padding: 12px;
+        font-size: 13px;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .nav-icon {
+        font-size: 18px;
+    }
+
+    .main-content {
+        width: 100%;
+    }
+
+    .content-header h2 {
+        font-size: 28px;
+    }
+
+    .content-header p {
+        font-size: 14px;
+    }
+
+    .dashboard-cards {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .card {
+        padding: 25px 20px;
+    }
+
+    .card-icon {
+        font-size: 40px;
+    }
+
+    .card-value {
+        font-size: 32px;
+    }
+
+    .stats-section {
+        padding: 25px 20px;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .stat-box {
+        padding: 18px;
+    }
+
+    .stat-value {
+        font-size: 28px;
+    }
+
+    .activity-section {
+        padding: 25px 20px;
+    }
+
+    .activity-item {
+        padding: 15px;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .activity-text {
+        font-size: 13px;
+    }
+
+    /* Footer responsive */
     .dashboard-footer {
         padding: 30px 15px;
     }
@@ -539,36 +772,483 @@ body {
     }
 }
 
+/* Mobile Landscape (481px - 600px) */
+@media (max-width: 600px) {
+    .header-container {
+        padding: 12px;
+        gap: 12px;
+    }
+
+    .school-logo-container {
+        gap: 10px;
+    }
+
+    .school-logo {
+        width: 45px;
+        height: 45px;
+    }
+
+    .school-name {
+        font-size: 20px;
+    }
+
+    .school-tagline {
+        font-size: 10px;
+    }
+
+    .header-left,
+    .header-right {
+        gap: 12px;
+    }
+
+    .principal-name {
+        font-size: 13px;
+    }
+
+    .btn-logout {
+        padding: 8px 16px;
+        font-size: 12px;
+    }
+
+    .dashboard-container {
+        padding: 12px;
+        gap: 15px;
+    }
+
+    .sidebar {
+        padding: 12px;
+    }
+
+    .sidebar-nav ul {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+
+    .nav-link {
+        padding: 10px;
+        font-size: 12px;
+    }
+
+    .nav-icon {
+        font-size: 16px;
+        min-width: 20px;
+    }
+
+    .main-content {
+        margin-top: 0;
+    }
+
+    .content-header {
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+    }
+
+    .content-header h2 {
+        font-size: 24px;
+    }
+
+    .content-header p {
+        font-size: 13px;
+    }
+
+    .dashboard-cards {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .card {
+        padding: 20px 15px;
+        border-radius: 10px;
+    }
+
+    .card-icon {
+        font-size: 35px;
+        margin-bottom: 12px;
+    }
+
+    .card h3 {
+        font-size: 15px;
+        margin-bottom: 10px;
+    }
+
+    .card-value {
+        font-size: 28px;
+        margin-bottom: 15px;
+    }
+
+    .card-link {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+
+    .stats-section {
+        padding: 20px 15px;
+        margin-bottom: 25px;
+    }
+
+    .stats-section h3 {
+        font-size: 18px;
+        margin-bottom: 20px;
+    }
+
+    .stats-grid {
+        gap: 12px;
+    }
+
+    .stat-box {
+        padding: 15px;
+        border-radius: 8px;
+    }
+
+    .stat-label {
+        font-size: 11px;
+    }
+
+    .stat-value {
+        font-size: 24px;
+    }
+
+    .activity-section {
+        padding: 20px 15px;
+    }
+
+    .activity-section h3 {
+        font-size: 18px;
+        margin-bottom: 20px;
+    }
+
+    .activity-list {
+        gap: 12px;
+    }
+
+    .activity-item {
+        padding: 12px;
+        border-radius: 8px;
+    }
+
+    .activity-date {
+        padding: 6px 10px;
+        font-size: 11px;
+        min-width: 60px;
+    }
+
+    .activity-text {
+        font-size: 12px;
+        line-height: 1.4;
+    }
+}
+
+/* Mobile Portrait (320px - 480px) */
 @media (max-width: 480px) {
+    .header-container {
+        padding: 10px;
+        gap: 10px;
+    }
+
+    .school-logo-container {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+    }
+
+    .school-logo {
+        width: 40px;
+        height: 40px;
+    }
+
+    .school-name {
+        font-size: 18px;
+        letter-spacing: 0.5px;
+    }
+
+    .school-tagline {
+        font-size: 9px;
+    }
+
+    .header-left,
+    .header-right {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .principal-info {
+        align-items: center;
+        gap: 2px;
+    }
+
+    .principal-label {
+        font-size: 10px;
+    }
+
+    .principal-name {
+        font-size: 12px;
+    }
+
+    .btn-logout {
+        padding: 6px 12px;
+        font-size: 11px;
+        width: 100%;
+        text-align: center;
+    }
+
+    .dashboard-container {
+        padding: 10px;
+        gap: 12px;
+    }
+
+    .sidebar {
+        padding: 10px;
+    }
+
+    .sidebar-nav ul {
+        gap: 4px;
+    }
+
+    .nav-link {
+        padding: 8px;
+        font-size: 11px;
+        border-radius: 6px;
+    }
+
+    .nav-icon {
+        font-size: 14px;
+        min-width: 18px;
+    }
+
+    .nav-text {
+        font-size: 11px;
+    }
+
+    .main-content {
+        margin-top: 0;
+    }
+
+    .content-header {
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+    }
+
+    .content-header h2 {
+        font-size: 20px;
+        margin-bottom: 5px;
+    }
+
+    .content-header p {
+        font-size: 12px;
+    }
+
+    .dashboard-cards {
+        gap: 10px;
+    }
+
+    .card {
+        padding: 15px 12px;
+        border-radius: 8px;
+    }
+
+    .card-icon {
+        font-size: 30px;
+        margin-bottom: 10px;
+    }
+
+    .card h3 {
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+
+    .card-value {
+        font-size: 24px;
+        margin-bottom: 12px;
+    }
+
+    .card-link {
+        font-size: 11px;
+        padding: 5px 8px;
+        border-radius: 4px;
+    }
+
+    .stats-section {
+        padding: 15px 12px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+    }
+
+    .stats-section h3 {
+        font-size: 16px;
+        margin-bottom: 15px;
+    }
+
+    .stats-grid {
+        gap: 10px;
+    }
+
+    .stat-box {
+        padding: 12px;
+        border-radius: 6px;
+    }
+
+    .stat-label {
+        font-size: 10px;
+    }
+
+    .stat-value {
+        font-size: 20px;
+    }
+
+    .activity-section {
+        padding: 15px 12px;
+        border-radius: 8px;
+    }
+
+    .activity-section h3 {
+        font-size: 16px;
+        margin-bottom: 15px;
+    }
+
+    .activity-list {
+        gap: 10px;
+    }
+
+    .activity-item {
+        padding: 10px;
+        border-radius: 6px;
+        gap: 8px;
+    }
+
+    .activity-date {
+        padding: 4px 8px;
+        font-size: 10px;
+        min-width: 50px;
+    }
+
+    .activity-text {
+        font-size: 11px;
+        line-height: 1.3;
+    }
+
+    /* Footer responsive */
     .dashboard-footer {
         padding: 20px 10px;
     }
 
     .footer-content {
-        grid-template-columns: 1fr;
         gap: 15px;
     }
 
     .footer-section h4 {
         font-size: 13px;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
     }
 
     .footer-section p {
         font-size: 11px;
+        margin: 6px 0;
     }
 
     .footer-links {
         flex-direction: column;
-        gap: 8px;
+        gap: 6px;
     }
 
     .footer-links a {
         font-size: 11px;
         padding: 3px 6px;
+        border-radius: 3px;
+    }
+
+    .footer-bottom {
+        padding-top: 15px;
     }
 
     .footer-bottom p {
         font-size: 11px;
+        margin: 4px 0;
+    }
+}
+
+/* Extra Small Devices (320px and below) */
+@media (max-width: 320px) {
+    .header-container {
+        padding: 8px;
+    }
+
+    .school-name {
+        font-size: 16px;
+    }
+
+    .dashboard-container {
+        padding: 8px;
+    }
+
+    .sidebar {
+        padding: 8px;
+    }
+
+    .nav-link {
+        padding: 6px;
+    }
+
+    .content-header h2 {
+        font-size: 18px;
+    }
+
+    .card {
+        padding: 12px 10px;
+    }
+
+    .card-value {
+        font-size: 20px;
+    }
+
+    .stat-value {
+        font-size: 18px;
+    }
+
+    .activity-item {
+        padding: 8px;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .mobile-menu-toggle,
+    .sidebar,
+    .btn-logout,
+    .footer-links a:not(.print-visible) {
+        display: none !important;
+    }
+
+    .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+
+    .dashboard-cards {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 15px !important;
+    }
+
+    .card {
+        break-inside: avoid;
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+
+    .stats-section,
+    .activity-section {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+
+    body {
+        background: white !important;
+    }
+
+    .dashboard-header,
+    .dashboard-footer {
+        background: #f8f9fa !important;
+        color: #333 !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
     }
 }

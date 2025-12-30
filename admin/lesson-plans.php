@@ -1,9 +1,8 @@
 <?php
-// filepath: c:\xampp\htdocs\sahabformmaster\admin\lesson-plan.php
 session_start();
 require_once '../config/db.php';
 
-// Only allow principal (admin) and teachers to access
+// Only allow principal (admin) and teachers
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'] ?? '', ['principal', 'teacher'])) {
     header("Location: ../index.php");
     exit;
@@ -20,7 +19,7 @@ $success = '';
 // Handle Create / Update via POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-
+    
     $subject_id = intval($_POST['subject_id'] ?? 0);
     $class_id = intval($_POST['class_id'] ?? 0);
     $teacher_id = intval($_POST['teacher_id'] ?? 0);
@@ -39,39 +38,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $principal_remarks = $is_principal ? trim($_POST['principal_remarks'] ?? '') : '';
 
     // Validate inputs
-    $date_planned = trim($_POST['date_planned'] ?? '');
-    $status = $_POST['status'] ?? 'draft';
-    $principal_remarks = $is_principal ? trim($_POST['principal_remarks'] ?? '') : '';
-
-    // Validate inputs
-    if ($subject_id <= 0) {
-        $errors[] = 'Subject is required.';
-    }
-    if ($class_id <= 0) {
-        $errors[] = 'Class is required.';
-    }
-    if ($topic === '') {
-        $errors[] = 'Topic is required.';
-    }
-    if ($duration <= 0) {
-        $errors[] = 'Duration must be a valid number.';
-    }
-    if ($learning_objectives === '') {
-        $errors[] = 'Learning objectives are required.';
-    }
-    if ($assessment_method === '') {
-        $errors[] = 'Assessment method is required.';
-    }
-    if ($date_planned === '' || !strtotime($date_planned)) {
-        $errors[] = 'Valid planned date is required.';
-    }
+    if ($subject_id <= 0) $errors[] = 'Subject is required.';
+    if ($class_id <= 0) $errors[] = 'Class is required.';
+    if ($topic === '') $errors[] = 'Topic is required.';
+    if ($duration <= 0) $errors[] = 'Duration must be a valid number.';
+    if ($learning_objectives === '') $errors[] = 'Learning objectives are required.';
+    if ($assessment_method === '') $errors[] = 'Assessment method is required.';
+    if ($date_planned === '' || !strtotime($date_planned)) $errors[] = 'Valid planned date is required.';
 
     // For teachers: set teacher_id to current user
     if ($user_role === 'teacher') {
         $teacher_id = $user_id;
     }
 
-    // Validate teacher_id (must exist and be a teacher)
+    // Validate teacher_id
     if ($teacher_id <= 0) {
         $errors[] = 'Teacher is required.';
     } else {
@@ -84,7 +64,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($errors)) {
         if ($action === 'add') {
-            // Check if teacher already has lesson plan for this topic/class on same date
             $stmt = $pdo->prepare("SELECT COUNT(*) FROM lesson_plans 
                                   WHERE teacher_id = :teacher_id AND class_id = :class_id 
                                   AND topic = :topic AND DATE(date_planned) = :date_planned");
@@ -122,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'status' => $status,
                     'principal_remarks' => $principal_remarks
                 ]);
-                $success = 'Lesson plan created successfully.';
+                $success = 'Lesson plan created successfully!';
                 header("Location: lesson-plans.php");
                 exit;
             }
@@ -133,7 +112,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($id <= 0) {
                 $errors[] = 'Invalid lesson plan ID.';
             } else {
-                // Check permissions: teacher can only edit own drafts, principal can edit all
                 $stmt = $pdo->prepare("SELECT teacher_id, status FROM lesson_plans WHERE id = :id");
                 $stmt->execute(['id' => $id]);
                 $plan = $stmt->fetch();
@@ -169,7 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'principal_remarks' => $principal_remarks,
                         'id' => $id
                     ]);
-                    $success = 'Lesson plan updated successfully.';
+                    $success = 'Lesson plan updated successfully!';
                     header("Location: lesson-plans.php");
                     exit;
                 }
@@ -190,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'status' => $new_status,
                     'id' => $id
                 ]);
-                $success = 'Lesson plan ' . $approval_status . ' successfully.';
+                $success = 'Lesson plan ' . $approval_status . ' successfully!';
                 header("Location: lesson-plans.php");
                 exit;
             }
@@ -203,7 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $stmt = $pdo->prepare("UPDATE lesson_plans SET status = :status WHERE id = :id");
                 $stmt->execute(['status' => 'completed', 'id' => $id]);
-                $success = 'Lesson plan marked as completed.';
+                $success = 'Lesson plan marked as completed!';
                 header("Location: lesson-plans.php");
                 exit;
             }
@@ -220,16 +198,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if (!$plan) {
                     $errors[] = 'Lesson plan not found.';
-                // } elseif ($user_role === 'teacher' && ($plan['teacher_id'] != $user_id || $plan['status'] !== 'draft')) {
-                //     $errors[] = 'You can only delete your own draft lesson plans.';
-                // } elseif ($user_role === 'teacher' && $plan['teacher_id'] != $user_id) {
-                //     // Teacher can delete only their own plans (allow regardless of status)
-                //     $errors[] = 'You can only delete your own lesson plans.';
+                } elseif ($user_role === 'teacher' && $plan['teacher_id'] != $user_id) {
+                    $errors[] = 'You can only delete your own lesson plans.';
                 } else {
                     $pdo->prepare("DELETE FROM lesson_plan_feedback WHERE lesson_plan_id = :id")->execute(['id' => $id]);
                     $pdo->prepare("DELETE FROM lesson_plan_attachments WHERE lesson_plan_id = :id")->execute(['id' => $id]);
                     $pdo->prepare("DELETE FROM lesson_plans WHERE id = :id")->execute(['id' => $id]);
-                    $success = 'Lesson plan deleted successfully.';
+                    $success = 'Lesson plan deleted successfully!';
                     header("Location: lesson-plans.php");
                     exit;
                 }
@@ -238,17 +213,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch subjects
-$stmt = $pdo->query("SELECT id, subject_name FROM subjects ORDER BY subject_name ASC");
-$subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Fetch classes
-$stmt = $pdo->query("SELECT id, class_name FROM classes ORDER BY class_name ASC");
-$classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Fetch teachers
-$stmt = $pdo->query("SELECT id, full_name FROM users WHERE role = 'teacher' ORDER BY full_name ASC");
-$teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// Fetch data for dropdowns
+$subjects = $pdo->query("SELECT id, subject_name FROM subjects ORDER BY subject_name ASC")->fetchAll(PDO::FETCH_ASSOC);
+$classes = $pdo->query("SELECT id, class_name FROM classes ORDER BY class_name ASC")->fetchAll(PDO::FETCH_ASSOC);
+$teachers = $pdo->query("SELECT id, full_name FROM users WHERE role = 'teacher' ORDER BY full_name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 // Search and filter
 $search = trim($_GET['search'] ?? '');
@@ -271,7 +239,7 @@ if ($user_role === 'teacher') {
 }
 
 if ($search !== '') {
-    $query .= " AND (lp.topic LIKE :search OR s.subject_name LIKE :search)";
+    $query .= " AND (lp.topic LIKE :search OR s.subject_name LIKE :search OR u.full_name LIKE :search)";
     $params['search'] = '%' . $search . '%';
 }
 
@@ -303,15 +271,12 @@ if (isset($_GET['edit'])) {
         $stmt = $pdo->prepare("SELECT * FROM lesson_plans WHERE id = :id");
         $stmt->execute(['id' => $edit_id]);
         $edit_plan = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        // Check permissions
         if ($edit_plan && $user_role === 'teacher' && ($edit_plan['teacher_id'] != $user_id || $edit_plan['status'] !== 'draft')) {
             $edit_plan = null;
         }
     }
 }
 
-// Get approval status color
 function getApprovalBadge($status) {
     $classes = [
         'approved' => 'badge-success',
@@ -321,10 +286,10 @@ function getApprovalBadge($status) {
     return $classes[$status] ?? 'badge-default';
 }
 
-// Get status color
 function getStatusBadge($status) {
     $classes = [
         'draft' => 'badge-secondary',
+        'submitted' => 'badge-warning',
         'scheduled' => 'badge-primary',
         'completed' => 'badge-success',
         'on_hold' => 'badge-warning',
@@ -338,9 +303,439 @@ function getStatusBadge($status) {
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Lesson Plans | SahabFormMaster</title>
+    <title>Lesson Plans Management | SahabFormMaster</title>
     <link rel="stylesheet" href="../assets/css/dashboard.css">
-    <link rel="stylesheet" href="../assets/css/lesson-plan.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3a0ca3;
+            --success-color: #4cc9f0;
+            --warning-color: #f8961e;
+            --danger-color: #f72585;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+            --gray-color: #6c757d;
+            --card-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            --hover-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        }
+        
+        .lesson-section {
+            margin-bottom: 2rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+        
+        .lesson-section:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--hover-shadow);
+        }
+        
+        .lesson-card {
+            padding: 2rem;
+        }
+        
+        .lesson-card h3 {
+            color: var(--secondary-color);
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.5rem;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .btn-gold {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: white;
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-gold:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
+        }
+        
+        .btn-secondary {
+            background: var(--gray-color);
+            color: white;
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .search-filter {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
+        }
+        
+        .search-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            align-items: end;
+        }
+        
+        .btn-search {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-reset {
+            background: var(--gray-color);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-align: center;
+        }
+        
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            background: white;
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1000px;
+        }
+        
+        .table th {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        
+        .table td {
+            padding: 1rem;
+            border-bottom: 1px solid #e9ecef;
+            vertical-align: middle;
+        }
+        
+        .table tr:hover {
+            background-color: rgba(67, 97, 238, 0.05);
+        }
+        
+        .badge {
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .badge-secondary { background: #6c757d; color: white; }
+        .badge-warning { background: #ffc107; color: #212529; }
+        .badge-primary { background: var(--primary-color); color: white; }
+        .badge-success { background: #28a745; color: white; }
+        .badge-danger { background: var(--danger-color); color: white; }
+        
+        .manage-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .btn-small {
+            padding: 0.4rem 0.8rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            text-decoration: none;
+        }
+        
+        .btn-view { background: #17a2b8; color: white; }
+        .btn-edit { background: #ffc107; color: #212529; }
+        .btn-approve { background: #28a745; color: white; }
+        .btn-reject { background: #dc3545; color: white; }
+        .btn-complete { background: #20c997; color: white; }
+        .btn-delete { background: var(--danger-color); color: white; }
+        
+        .btn-small:hover {
+            transform: translateY(-1px);
+            opacity: 0.9;
+        }
+        
+        .alert {
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease;
+        }
+        
+        .alert-error {
+            background: linear-gradient(135deg, #ffeaea, #ffcccc);
+            border-left: 4px solid var(--danger-color);
+            color: #721c24;
+        }
+        
+        .alert-success {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            border-left: 4px solid #28a745;
+            color: #155724;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .admin-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            text-align: center;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--hover-shadow);
+        }
+        
+        .stat-card i {
+            font-size: 2rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--dark-color);
+            margin: 0.5rem 0;
+        }
+        
+        .stat-label {
+            color: var(--gray-color);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .search-form {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .search-form {
+                grid-template-columns: 1fr;
+            }
+            
+            .lesson-card {
+                padding: 1rem;
+            }
+            
+            .form-actions {
+                flex-direction: column;
+            }
+            
+            .btn-gold, .btn-secondary {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .manage-actions {
+                flex-direction: column;
+                gap: 0.25rem;
+            }
+            
+            .admin-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .lesson-section {
+                margin: 0 -1rem;
+                border-radius: 0;
+            }
+            
+            .admin-stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .stat-card {
+                padding: 1rem;
+            }
+            
+            .stat-number {
+                font-size: 2rem;
+            }
+        }
+        
+        .principal-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+        
+        .quick-actions {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .quick-action-btn {
+            background: white;
+            border: 2px solid #e9ecef;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--dark-color);
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .quick-action-btn:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: var(--card-shadow);
+        }
+        
+        .quick-action-btn i {
+            font-size: 1.2rem;
+            color: var(--primary-color);
+        }
+    </style>
 </head>
 <body>
 
@@ -358,14 +753,17 @@ function getStatusBadge($status) {
                 <span class="teacher-name"><?php echo htmlspecialchars($user_name); ?></span>
                 <span class="teacher-role"><?php echo ucfirst($user_role); ?></span>
             </div>
-            <a href="../index.php" class="btn-logout">Logout</a>
+            <a href="../index.php" class="btn-logout">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
         </div>
     </div>
 </header>
 
 <div class="dashboard-container">
     <aside class="sidebar">
-            <nav class="sidebar-nav">
+        <!-- Sidebar content remains the same -->
+             <nav class="sidebar-nav">
                 <ul class="nav-list">
                     <li class="nav-item">
                         <a href="index.php" class="nav-link active">
@@ -374,120 +772,97 @@ function getStatusBadge($status) {
                         </a>
                     </li>
                     
-                    <li class="nav-item">
-                        <a href="schoolnews.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
-                            <span class="nav-text">School News</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="students.php" class="nav-link">
-                            <span class="nav-icon">👥</span>
-                            <span class="nav-text">Manage Students</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="results.php" class="nav-link">
-                            <span class="nav-icon">📈</span>
-                            <span class="nav-text">Manage Results</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="lesson-plans.php" class="nav-link">
-                            <span class="nav-icon">📝</span>
-                            <span class="nav-text">Manage Lesson Plans</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="manage_curriculum.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
-                            <span class="nav-text">Manage Curriculum</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="school.php" class="nav-link">
-                            <span class="nav-icon">🏫</span>
-                            <span class="nav-text">Manage School</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="manage_user.php" class="nav-link">
-                            <span class="nav-icon">🔐</span>
-                            <span class="nav-text">Manage Users</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="visitors.php" class="nav-link">
-                            <span class="nav-icon">🔐</span>
-                            <span class="nav-text">Manage Visitors</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="timebook.php" class="nav-link">
-                            <span class="nav-icon">🔐</span>
-                            <span class="nav-text">Manage Teachers Time Book</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="travelling.php" class="nav-link">
-                            <span class="nav-icon">🔐</span>
-                            <span class="nav-text">Manage Travelling</span>
-                        </a>
-                    </li>
-                                        
-                    <li class="nav-item">
-                        <a href="classwork.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
-                            <span class="nav-text">Class Work</span>
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a href="assignment.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
-                            <span class="nav-text">Assignment</span>
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a href="attendance.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
-                            <span class="nav-text">Attendance Register</span>
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a href="schoolfees.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
-                            <span class="nav-text">School Fees Payments</span>
-                        </a>
-                    </li>
+                                    
                 </ul>
             </nav>
-        </aside>
+    </aside>
 
     <main class="main-content">
         <div class="content-header">
-            <h2>Lesson Plans</h2>
-            <p class="small-muted"><?php echo $is_principal ? 'Review and manage all lesson plans' : 'Create and manage your lesson plans'; ?></p>
+            <h2><i class="fas fa-clipboard-list"></i> Lesson Plans Management</h2>
+            <p class="small-muted"><?php echo $is_principal ? 'Review, approve, and manage all lesson plans' : 'Create and manage your lesson plans'; ?></p>
         </div>
+
+        <!-- Quick Stats -->
+        <?php 
+        $pending_approval = 0;
+        $draft_count = 0;
+        $scheduled_count = 0;
+        $completed_count = 0;
+        $total_count = count($lesson_plans);
+        
+        foreach ($lesson_plans as $lp) {
+            if ($lp['approval_status'] === 'pending') $pending_approval++;
+            if ($lp['status'] === 'draft') $draft_count++;
+            if ($lp['status'] === 'scheduled') $scheduled_count++;
+            if ($lp['status'] === 'completed') $completed_count++;
+        }
+        ?>
+        
+        <div class="admin-stats">
+            <div class="stat-card">
+                <i class="fas fa-file-alt"></i>
+                <div class="stat-number"><?php echo $total_count; ?></div>
+                <div class="stat-label">Total Plans</div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-clock"></i>
+                <div class="stat-number"><?php echo $pending_approval; ?></div>
+                <div class="stat-label">Pending Approval</div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-calendar-check"></i>
+                <div class="stat-number"><?php echo $scheduled_count; ?></div>
+                <div class="stat-label">Scheduled</div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-check-circle"></i>
+                <div class="stat-number"><?php echo $completed_count; ?></div>
+                <div class="stat-label">Completed</div>
+            </div>
+        </div>
+
+        <!-- Quick Actions for Principal -->
+        <?php if ($is_principal && $pending_approval > 0): ?>
+        <div class="quick-actions">
+            <a href="lesson-plans.php?filter_status=submitted&approval_status=pending" class="quick-action-btn">
+                <i class="fas fa-hourglass-half"></i>
+                <span>Review Pending (<?php echo $pending_approval; ?>)</span>
+            </a>
+            <a href="lesson-plans.php?filter_status=scheduled" class="quick-action-btn">
+                <i class="fas fa-calendar-alt"></i>
+                <span>View Scheduled</span>
+            </a>
+            <a href="lesson-plans.php" class="quick-action-btn">
+                <i class="fas fa-sync-alt"></i>
+                <span>Refresh View</span>
+            </a>
+        </div>
+        <?php endif; ?>
 
         <?php if ($errors): ?>
             <div class="alert alert-error">
-                <?php foreach ($errors as $e) echo htmlspecialchars($e) . '<br>'; ?>
+                <i class="fas fa-exclamation-circle"></i>
+                <div>
+                    <?php foreach ($errors as $e) echo htmlspecialchars($e) . '<br>'; ?>
+                </div>
             </div>
         <?php endif; ?>
 
         <?php if ($success): ?>
             <div class="alert alert-success">
-                <?php echo htmlspecialchars($success); ?>
+                <i class="fas fa-check-circle"></i>
+                <div><?php echo htmlspecialchars($success); ?></div>
             </div>
         <?php endif; ?>
 
-        <!-- Create / Edit form -->
+        <!-- Create / Edit Form -->
         <section class="lesson-section">
             <div class="lesson-card">
-                <h3><?php echo $edit_plan ? 'Edit Lesson Plan' : 'Create New Lesson Plan'; ?></h3>
+                <h3>
+                    <i class="fas <?php echo $edit_plan ? 'fa-edit' : 'fa-plus-circle'; ?>"></i>
+                    <?php echo $edit_plan ? 'Edit Lesson Plan' : 'Create New Lesson Plan'; ?>
+                </h3>
 
                 <form method="POST" class="lesson-form" action="">
                     <input type="hidden" name="action" value="<?php echo $edit_plan ? 'edit' : 'add'; ?>">
@@ -496,157 +871,142 @@ function getStatusBadge($status) {
                     <?php endif; ?>
 
                     <div class="form-row">
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="subject_id">Subject *</label>
-                                <select id="subject_id" name="subject_id" class="form-control" required>
-                                    <option value="">Select Subject</option>
-                                    <?php $sel_subject = $edit_plan['subject_id'] ?? 0; ?>
-                                    <?php foreach ($subjects as $s): ?>
-                                        <option value="<?php echo intval($s['id']); ?>" <?php echo intval($s['id']) === $sel_subject ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($s['subject_name']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
+                        <div class="form-group">
+                            <label for="subject_id"><i class="fas fa-book"></i> Subject *</label>
+                            <select id="subject_id" name="subject_id" class="form-control" required>
+                                <option value="">Select Subject</option>
+                                <?php $sel_subject = $edit_plan['subject_id'] ?? 0; ?>
+                                <?php foreach ($subjects as $s): ?>
+                                    <option value="<?php echo intval($s['id']); ?>" <?php echo intval($s['id']) === $sel_subject ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($s['subject_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
 
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="class_id">Class *</label>
-                                <select id="class_id" name="class_id" class="form-control" required>
-                                    <option value="">Select Class</option>
-                                    <?php $sel_class = $edit_plan['class_id'] ?? 0; ?>
-                                    <?php foreach ($classes as $cl): ?>
-                                        <option value="<?php echo intval($cl['id']); ?>" <?php echo intval($cl['id']) === $sel_class ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($cl['class_name']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
+                        <div class="form-group">
+                            <label for="class_id"><i class="fas fa-users"></i> Class *</label>
+                            <select id="class_id" name="class_id" class="form-control" required>
+                                <option value="">Select Class</option>
+                                <?php $sel_class = $edit_plan['class_id'] ?? 0; ?>
+                                <?php foreach ($classes as $cl): ?>
+                                    <option value="<?php echo intval($cl['id']); ?>" <?php echo intval($cl['id']) === $sel_class ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($cl['class_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
 
-                       <div class="form-col">
-                           <div class="form-group">
-                               <label for="teacher_id">Teacher *</label>
-                               <select id="teacher_id" name="teacher_id" class="form-control" required <?php echo $user_role === 'teacher' ? 'disabled' : ''; ?>>
-                                   <option value="">Select Teacher</option>
-                                   <?php $sel_teacher = $edit_plan['teacher_id'] ?? ($user_role === 'teacher' ? $user_id : 0); ?>
-                                   <?php foreach ($teachers as $t): ?>
-                                       <option value="<?php echo intval($t['id']); ?>" <?php echo intval($t['id']) === intval($sel_teacher) ? 'selected' : ''; ?>>
-                                           <?php echo htmlspecialchars($t['full_name']); ?>
-                                       </option>
-                                   <?php endforeach; ?>
-                               </select>
-                               <?php if ($user_role === 'teacher'): ?>
-                                   <input type="hidden" name="teacher_id" value="<?php echo intval($user_id); ?>">
-                               <?php endif; ?>
-                           </div>
+                       <div class="form-group">
+                           <label for="teacher_id"><i class="fas fa-chalkboard-teacher"></i> Teacher *</label>
+                           <select id="teacher_id" name="teacher_id" class="form-control" required <?php echo $user_role === 'teacher' ? 'disabled' : ''; ?>>
+                               <option value="">Select Teacher</option>
+                               <?php $sel_teacher = $edit_plan['teacher_id'] ?? ($user_role === 'teacher' ? $user_id : 0); ?>
+                               <?php foreach ($teachers as $t): ?>
+                                   <option value="<?php echo intval($t['id']); ?>" <?php echo intval($t['id']) === intval($sel_teacher) ? 'selected' : ''; ?>>
+                                       <?php echo htmlspecialchars($t['full_name']); ?>
+                                   </option>
+                               <?php endforeach; ?>
+                           </select>
+                           <?php if ($user_role === 'teacher'): ?>
+                               <input type="hidden" name="teacher_id" value="<?php echo intval($user_id); ?>">
+                           <?php endif; ?>
                        </div>
+                    </div>
 
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="topic">Topic/Unit *</label>
-                                <input type="text" id="topic" name="topic" class="form-control" 
-                                       value="<?php echo htmlspecialchars($edit_plan['topic'] ?? ''); ?>" 
-                                       placeholder="e.g. Fractions, The Human Body" required>
-                            </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="topic"><i class="fas fa-tag"></i> Topic/Unit *</label>
+                            <input type="text" id="topic" name="topic" class="form-control" 
+                                   value="<?php echo htmlspecialchars($edit_plan['topic'] ?? ''); ?>" 
+                                   placeholder="e.g. Fractions, The Human Body" required>
                         </div>
 
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="duration">Duration (minutes) *</label>
-                                <input type="number" id="duration" name="duration" class="form-control" 
-                                       value="<?php echo intval($edit_plan['duration'] ?? 0); ?>" 
-                                       min="1" placeholder="45" required>
-                            </div>
+                        <div class="form-group">
+                            <label for="duration"><i class="fas fa-clock"></i> Duration (minutes) *</label>
+                            <input type="number" id="duration" name="duration" class="form-control" 
+                                   value="<?php echo intval($edit_plan['duration'] ?? 0); ?>" 
+                                   min="1" placeholder="45" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="date_planned"><i class="fas fa-calendar-alt"></i> Planned Date *</label>
+                            <input type="date" id="date_planned" name="date_planned" class="form-control" 
+                                   value="<?php echo htmlspecialchars($edit_plan['date_planned'] ?? ''); ?>" required>
                         </div>
                     </div>
 
                     <div class="form-row">
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="date_planned">Planned Date *</label>
-                                <input type="date" id="date_planned" name="date_planned" class="form-control" 
-                                       value="<?php echo htmlspecialchars($edit_plan['date_planned'] ?? ''); ?>" required>
-                            </div>
+                        <div class="form-group">
+                            <label for="assessment_method"><i class="fas fa-clipboard-check"></i> Assessment Method *</label>
+                            <select id="assessment_method" name="assessment_method" class="form-control" required>
+                                <option value="">Select Assessment Method</option>
+                                <?php $sel_assess = $edit_plan['assessment_method'] ?? ''; ?>
+                                <option value="Quiz" <?php echo $sel_assess === 'Quiz' ? 'selected' : ''; ?>>Quiz</option>
+                                <option value="Assignment" <?php echo $sel_assess === 'Assignment' ? 'selected' : ''; ?>>Assignment</option>
+                                <option value="Practical" <?php echo $sel_assess === 'Practical' ? 'selected' : ''; ?>>Practical</option>
+                                <option value="Observation" <?php echo $sel_assess === 'Observation' ? 'selected' : ''; ?>>Observation</option>
+                                <option value="Project" <?php echo $sel_assess === 'Project' ? 'selected' : ''; ?>>Project</option>
+                                <option value="Presentation" <?php echo $sel_assess === 'Presentation' ? 'selected' : ''; ?>>Presentation</option>
+                            </select>
                         </div>
 
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="assessment_method">Assessment Method *</label>
-                                <select id="assessment_method" name="assessment_method" class="form-control" required>
-                                    <option value="">Select Assessment Method</option>
-                                    <?php $sel_assess = $edit_plan['assessment_method'] ?? ''; ?>
-                                    <option value="Quiz" <?php echo $sel_assess === 'Quiz' ? 'selected' : ''; ?>>Quiz</option>
-                                    <option value="Assignment" <?php echo $sel_assess === 'Assignment' ? 'selected' : ''; ?>>Assignment</option>
-                                    <option value="Practical" <?php echo $sel_assess === 'Practical' ? 'selected' : ''; ?>>Practical</option>
-                                    <option value="Observation" <?php echo $sel_assess === 'Observation' ? 'selected' : ''; ?>>Observation</option>
-                                    <option value="Project" <?php echo $sel_assess === 'Project' ? 'selected' : ''; ?>>Project</option>
-                                    <option value="Presentation" <?php echo $sel_assess === 'Presentation' ? 'selected' : ''; ?>>Presentation</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="status">Status</label>
-                                <select id="status" name="status" class="form-control">
-                                    <?php $sel_status = $edit_plan['status'] ?? 'draft'; ?>
-                                    <option value="draft" <?php echo $sel_status === 'draft' ? 'selected' : ''; ?>>Draft</option>
-                                    <option value="scheduled" <?php echo $sel_status === 'scheduled' ? 'selected' : ''; ?>>Scheduled</option>
-                                    <option value="completed" <?php echo $sel_status === 'completed' ? 'selected' : ''; ?>>Completed</option>
-                                </select>
-                            </div>
+                        <div class="form-group">
+                            <label for="status"><i class="fas fa-info-circle"></i> Status</label>
+                            <select id="status" name="status" class="form-control">
+                                <?php $sel_status = $edit_plan['status'] ?? 'draft'; ?>
+                                <option value="draft" <?php echo $sel_status === 'draft' ? 'selected' : ''; ?>>Draft</option>
+                                <option value="scheduled" <?php echo $sel_status === 'scheduled' ? 'selected' : ''; ?>>Scheduled</option>
+                                <option value="completed" <?php echo $sel_status === 'completed' ? 'selected' : ''; ?>>Completed</option>
+                            </select>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label for="learning_objectives">Learning Objectives *</label>
+                        <label for="learning_objectives"><i class="fas fa-bullseye"></i> Learning Objectives *</label>
                         <textarea id="learning_objectives" name="learning_objectives" class="form-control" rows="3" 
                                   placeholder="What will students be able to do after this lesson?" required><?php echo htmlspecialchars($edit_plan['learning_objectives'] ?? ''); ?></textarea>
-                        <small class="small-muted">Be specific and use measurable outcomes (SMART objectives)</small>
                     </div>
 
                     <div class="form-group">
-                        <label for="teaching_methods">Teaching Methods</label>
+                        <label for="teaching_methods"><i class="fas fa-chalkboard-teacher"></i> Teaching Methods</label>
                         <textarea id="teaching_methods" name="teaching_methods" class="form-control" rows="2" 
                                   placeholder="e.g. Lecture, Discussion, Practical, Group Work, Role Play"><?php echo htmlspecialchars($edit_plan['teaching_methods'] ?? ''); ?></textarea>
                     </div>
 
                     <div class="form-group">
-                        <label for="resources">Learning Resources/Materials</label>
+                        <label for="resources"><i class="fas fa-tools"></i> Learning Resources/Materials</label>
                         <textarea id="resources" name="resources" class="form-control" rows="2" 
                                   placeholder="Textbooks, charts, videos, lab equipment, etc."><?php echo htmlspecialchars($edit_plan['resources'] ?? ''); ?></textarea>
                     </div>
 
                     <div class="form-group">
-                        <label for="lesson_content">Detailed Lesson Content</label>
+                        <label for="lesson_content"><i class="fas fa-file-alt"></i> Detailed Lesson Content</label>
                         <textarea id="lesson_content" name="lesson_content" class="form-control" rows="5" 
                                   placeholder="Lesson outline: Introduction, Main content, Activities, Conclusion"><?php echo htmlspecialchars($edit_plan['lesson_content'] ?? ''); ?></textarea>
                     </div>
 
                     <div class="form-group">
-                        <label for="assessment_tasks">Assessment Tasks</label>
+                        <label for="assessment_tasks"><i class="fas fa-tasks"></i> Assessment Tasks</label>
                         <textarea id="assessment_tasks" name="assessment_tasks" class="form-control" rows="3" 
                                   placeholder="Specific questions, tasks or criteria for assessment"><?php echo htmlspecialchars($edit_plan['assessment_tasks'] ?? ''); ?></textarea>
                     </div>
 
                     <div class="form-group">
-                        <label for="differentiation">Differentiation Strategies</label>
+                        <label for="differentiation"><i class="fas fa-users-cog"></i> Differentiation Strategies</label>
                         <textarea id="differentiation" name="differentiation" class="form-control" rows="3" 
                                   placeholder="Support for struggling learners, extension for advanced learners"><?php echo htmlspecialchars($edit_plan['differentiation'] ?? ''); ?></textarea>
                     </div>
 
                     <div class="form-group">
-                        <label for="homework">Homework/Assignment</label>
+                        <label for="homework"><i class="fas fa-home"></i> Homework/Assignment</label>
                         <textarea id="homework" name="homework" class="form-control" rows="2" 
                                   placeholder="Homework tasks and deadline"><?php echo htmlspecialchars($edit_plan['homework'] ?? ''); ?></textarea>
                     </div>
 
                     <?php if ($is_principal && $edit_plan): ?>
                     <div class="form-group">
-                        <label for="principal_remarks">Principal's Remarks/Feedback</label>
+                        <label for="principal_remarks"><i class="fas fa-comment-dots"></i> Principal's Remarks/Feedback</label>
                         <textarea id="principal_remarks" name="principal_remarks" class="form-control" rows="2" 
                                   placeholder="Your feedback or notes"><?php echo htmlspecialchars($edit_plan['principal_remarks'] ?? ''); ?></textarea>
                     </div>
@@ -654,10 +1014,16 @@ function getStatusBadge($status) {
 
                     <div class="form-actions">
                         <?php if ($edit_plan): ?>
-                            <button type="submit" class="btn-gold">Update Lesson Plan</button>
-                            <a href="lesson-plans.php" class="btn-secondary">Cancel</a>
+                            <button type="submit" class="btn-gold">
+                                <i class="fas fa-save"></i> Update Lesson Plan
+                            </button>
+                            <a href="lesson-plans.php" class="btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
                         <?php else: ?>
-                            <button type="submit" class="btn-gold">Create Lesson Plan</button>
+                            <button type="submit" class="btn-gold">
+                                <i class="fas fa-plus-circle"></i> Create Lesson Plan
+                            </button>
                         <?php endif; ?>
                     </div>
                 </form>
@@ -665,148 +1031,192 @@ function getStatusBadge($status) {
         </section>
 
         <!-- Search and Filter -->
-        <section class="lesson-section">
-            <div class="search-filter">
-                <form method="GET" class="search-form">
-                    <div class="form-group">
-                        <input type="text" name="search" class="form-control" 
-                               value="<?php echo htmlspecialchars($search); ?>" 
-                               placeholder="Search topic or subject...">
-                    </div>
+        <section class="search-filter">
+            <h3 style="margin-top: 0; margin-bottom: 1rem; color: var(--secondary-color);">
+                <i class="fas fa-search"></i> Search & Filter
+            </h3>
+            <form method="GET" class="search-form">
+                <div class="form-group">
+                    <input type="text" name="search" class="form-control" 
+                           value="<?php echo htmlspecialchars($search); ?>" 
+                           placeholder="Search topic, subject, or teacher...">
+                </div>
 
-                    <div class="form-group">
-                        <select name="filter_status" class="form-control">
-                            <option value="">All Status</option>
-                            <option value="draft" <?php echo $filter_status === 'draft' ? 'selected' : ''; ?>>Draft</option>
-                            <option value="scheduled" <?php echo $filter_status === 'scheduled' ? 'selected' : ''; ?>>Scheduled</option>
-                            <option value="completed" <?php echo $filter_status === 'completed' ? 'selected' : ''; ?>>Completed</option>
-                            <option value="on_hold" <?php echo $filter_status === 'on_hold' ? 'selected' : ''; ?>>On Hold</option>
-                        </select>
-                    </div>
+                <div class="form-group">
+                    <select name="filter_status" class="form-control">
+                        <option value="">All Status</option>
+                        <option value="draft" <?php echo $filter_status === 'draft' ? 'selected' : ''; ?>>Draft</option>
+                        <option value="submitted" <?php echo $filter_status === 'submitted' ? 'selected' : ''; ?>>Submitted</option>
+                        <option value="scheduled" <?php echo $filter_status === 'scheduled' ? 'selected' : ''; ?>>Scheduled</option>
+                        <option value="completed" <?php echo $filter_status === 'completed' ? 'selected' : ''; ?>>Completed</option>
+                        <option value="on_hold" <?php echo $filter_status === 'on_hold' ? 'selected' : ''; ?>>On Hold</option>
+                    </select>
+                </div>
 
-                    <?php if ($is_principal): ?>
-                    <div class="form-group">
-                        <select name="filter_teacher" class="form-control">
-                            <option value="">All Teachers</option>
-                            <?php foreach ($teachers as $t): ?>
-                                <option value="<?php echo intval($t['id']); ?>" <?php echo $filter_teacher == $t['id'] ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($t['full_name']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <?php endif; ?>
+                <?php if ($is_principal): ?>
+                <div class="form-group">
+                    <select name="filter_teacher" class="form-control">
+                        <option value="">All Teachers</option>
+                        <?php foreach ($teachers as $t): ?>
+                            <option value="<?php echo intval($t['id']); ?>" <?php echo $filter_teacher == $t['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($t['full_name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
 
-                    <div class="form-group">
-                        <select name="filter_class" class="form-control">
-                            <option value="">All Classes</option>
-                            <?php foreach ($classes as $cl): ?>
-                                <option value="<?php echo intval($cl['id']); ?>" <?php echo $filter_class == $cl['id'] ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($cl['class_name']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
+                <div class="form-group">
+                    <select name="filter_class" class="form-control">
+                        <option value="">All Classes</option>
+                        <?php foreach ($classes as $cl): ?>
+                            <option value="<?php echo intval($cl['id']); ?>" <?php echo $filter_class == $cl['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($cl['class_name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
-                    <button type="submit" class="btn-search">Search</button>
-                    <a href="lesson-plans.php" class="btn-reset">Reset</a>
-                </form>
-            </div>
+                <button type="submit" class="btn-search">
+                    <i class="fas fa-search"></i> Search
+                </button>
+                <a href="lesson-plans.php" class="btn-reset">
+                    <i class="fas fa-redo"></i> Reset
+                </a>
+            </form>
         </section>
 
         <!-- Lesson Plans Table -->
         <section class="lesson-section">
-            <div class="table-wrapper">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Subject</th>
-                            <th>Topic</th>
-                            <th>Class</th>
-                            <th>Teacher</th>
-                            <th>Planned Date</th>
-                            <th>Duration</th>
-                            <th>Status</th>
-                            <?php if ($is_principal): ?>
-                                <th>Approval</th>
-                            <?php endif; ?>
-                            <th style="width:200px;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (count($lesson_plans) === 0): ?>
-                            <tr><td colspan="<?php echo $is_principal ? 10 : 9; ?>" class="text-center small-muted">No lesson plans found.</td></tr>
-                        <?php else: ?>
-                            <?php foreach ($lesson_plans as $lp): ?>
+            <div class="lesson-card">
+                <h3><i class="fas fa-list-ul"></i> Lesson Plans Overview</h3>
+                
+                <div class="table-wrapper">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Subject</th>
+                                <th>Topic</th>
+                                <th>Class</th>
+                                <th>Teacher</th>
+                                <th>Date</th>
+                                <th>Duration</th>
+                                <th>Status</th>
+                                <?php if ($is_principal): ?>
+                                    <th>Approval</th>
+                                <?php endif; ?>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (count($lesson_plans) === 0): ?>
                                 <tr>
-                                    <td><?php echo intval($lp['id']); ?></td>
-                                    <td><?php echo htmlspecialchars($lp['subject_name']); ?></td>
-                                    <td><?php echo htmlspecialchars($lp['topic']); ?></td>
-                                    <td><?php echo htmlspecialchars($lp['class_name']); ?></td>
-                                    <td class="small-muted"><?php echo htmlspecialchars($lp['teacher_name']); ?></td>
-                                    <td><?php echo htmlspecialchars($lp['date_planned']); ?></td>
-                                    <td><?php echo intval($lp['duration']); ?> min</td>
-                                    <td>
-                                        <span class="badge <?php echo getStatusBadge($lp['status']); ?>">
-                                            <?php echo ucfirst($lp['status']); ?>
-                                        </span>
-                                    </td>
-                                    <?php if ($is_principal): ?>
-                                        <td>
-                                            <span class="badge <?php echo getApprovalBadge($lp['approval_status']); ?>">
-                                                <?php echo ucfirst($lp['approval_status']); ?>
-                                            </span>
-                                        </td>
-                                    <?php endif; ?>
-                                    <td>
-                                        <div class="manage-actions">
-                                            <a class="btn-small btn-view" href="lesson-plans-detail.php?id=<?php echo intval($lp['id']); ?>" title="View Details">👁</a>
-
-                                            <?php if ($user_role === 'teacher' && $lp['teacher_id'] == $user_id && $lp['status'] === 'draft'): ?>
-                                                <a class="btn-small btn-edit" href="lesson-plans.phps?edit=<?php echo intval($lp['id']); ?>">Edit</a>
-                                            <?php elseif ($is_principal): ?>
-                                                <a class="btn-small btn-edit" href="lesson-plans.php?edit=<?php echo intval($lp['id']); ?>">Edit</a>
-                                            <?php endif; ?>
-
-                                            <?php if ($is_principal && $lp['approval_status'] === 'pending'): ?>
-                                                <form method="POST" style="display:inline;">
-                                                    <input type="hidden" name="action" value="approve">
-                                                    <input type="hidden" name="id" value="<?php echo intval($lp['id']); ?>">
-                                                    <input type="hidden" name="approval_status" value="approved">
-                                                    <button type="submit" class="btn-small btn-approve" title="Approve">✓</button>
-                                                </form>
-
-                                                <form method="POST" style="display:inline;">
-                                                    <input type="hidden" name="action" value="approve">
-                                                    <input type="hidden" name="id" value="<?php echo intval($lp['id']); ?>">
-                                                    <input type="hidden" name="approval_status" value="rejected">
-                                                    <button type="submit" class="btn-small btn-reject" title="Reject" onclick="return confirm('Reject this lesson plan?');">✗</button>
-                                                </form>
-                                            <?php endif; ?>
-
-                                            <?php if ($is_principal && $lp['status'] === 'scheduled'): ?>
-                                                <form method="POST" style="display:inline;">
-                                                    <input type="hidden" name="action" value="complete">
-                                                    <input type="hidden" name="id" value="<?php echo intval($lp['id']); ?>">
-                                                    <button type="submit" class="btn-small btn-complete" title="Mark Completed">✔</button>
-                                                </form>
-                                            <?php endif; ?>
-
-                                            <?php if (($user_role === 'teacher' && $lp['teacher_id'] == $user_id && $lp['status'] === 'draft') || $is_principal): ?>
-                                                <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this lesson plan?');">
-                                                    <input type="hidden" name="action" value="delete">
-                                                    <input type="hidden" name="id" value="<?php echo intval($lp['id']); ?>">
-                                                    <button type="submit" class="btn-small btn-delete">Delete</button>
-                                                </form>
-                                            <?php endif; ?>
-                                        </div>
+                                    <td colspan="<?php echo $is_principal ? 10 : 9; ?>" class="text-center small-muted" style="padding: 3rem;">
+                                        <i class="fas fa-inbox" style="font-size: 3rem; color: #dee2e6; margin-bottom: 1rem;"></i>
+                                        <p>No lesson plans found matching your criteria</p>
                                     </td>
                                 </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+                            <?php else: ?>
+                                <?php foreach ($lesson_plans as $lp): ?>
+                                    <tr>
+                                        <td><strong>#<?php echo intval($lp['id']); ?></strong></td>
+                                        <td><?php echo htmlspecialchars($lp['subject_name']); ?></td>
+                                        <td>
+                                            <div style="font-weight: 500;"><?php echo htmlspecialchars($lp['topic']); ?></div>
+                                            <?php if ($is_principal && $lp['principal_remarks']): ?>
+                                                <small style="color: #666; font-size: 0.85rem;">
+                                                    <i class="fas fa-comment"></i> Has remarks
+                                                </small>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><?php echo htmlspecialchars($lp['class_name']); ?></td>
+                                        <td class="small-muted"><?php echo htmlspecialchars($lp['teacher_name']); ?></td>
+                                        <td><?php echo date('M d, Y', strtotime($lp['date_planned'])); ?></td>
+                                        <td><?php echo intval($lp['duration']); ?> min</td>
+                                        <td>
+                                            <span class="badge <?php echo getStatusBadge($lp['status']); ?>">
+                                                <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
+                                                <?php echo ucfirst($lp['status']); ?>
+                                            </span>
+                                        </td>
+                                        <?php if ($is_principal): ?>
+                                            <td>
+                                                <span class="badge <?php echo getApprovalBadge($lp['approval_status']); ?>">
+                                                    <?php if ($lp['approval_status'] === 'approved'): ?>
+                                                        <i class="fas fa-check"></i>
+                                                    <?php elseif ($lp['approval_status'] === 'rejected'): ?>
+                                                        <i class="fas fa-times"></i>
+                                                    <?php else: ?>
+                                                        <i class="fas fa-clock"></i>
+                                                    <?php endif; ?>
+                                                    <?php echo ucfirst($lp['approval_status']); ?>
+                                                </span>
+                                            </td>
+                                        <?php endif; ?>
+                                        <td>
+                                            <div class="manage-actions">
+                                                <a class="btn-small btn-view" href="lesson-plans-detail.php?id=<?php echo intval($lp['id']); ?>" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+
+                                                <?php if ($user_role === 'teacher' && $lp['teacher_id'] == $user_id && $lp['status'] === 'draft'): ?>
+                                                    <a class="btn-small btn-edit" href="lesson-plans.php?edit=<?php echo intval($lp['id']); ?>">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                <?php elseif ($is_principal): ?>
+                                                    <a class="btn-small btn-edit" href="lesson-plans.php?edit=<?php echo intval($lp['id']); ?>">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                <?php endif; ?>
+
+                                                <?php if ($is_principal && $lp['approval_status'] === 'pending'): ?>
+                                                    <form method="POST" style="display:inline;">
+                                                        <input type="hidden" name="action" value="approve">
+                                                        <input type="hidden" name="id" value="<?php echo intval($lp['id']); ?>">
+                                                        <input type="hidden" name="approval_status" value="approved">
+                                                        <button type="submit" class="btn-small btn-approve" title="Approve">
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                    </form>
+
+                                                    <form method="POST" style="display:inline;">
+                                                        <input type="hidden" name="action" value="approve">
+                                                        <input type="hidden" name="id" value="<?php echo intval($lp['id']); ?>">
+                                                        <input type="hidden" name="approval_status" value="rejected">
+                                                        <button type="submit" class="btn-small btn-reject" title="Reject" onclick="return confirm('Are you sure you want to reject this lesson plan?');">
+                                                            <i class="fas fa-times"></i>
+                                                        </button>
+                                                    </form>
+                                                <?php endif; ?>
+
+                                                <?php if ($is_principal && $lp['status'] === 'scheduled'): ?>
+                                                    <form method="POST" style="display:inline;">
+                                                        <input type="hidden" name="action" value="complete">
+                                                        <input type="hidden" name="id" value="<?php echo intval($lp['id']); ?>">
+                                                        <button type="submit" class="btn-small btn-complete" title="Mark Completed" onclick="return confirm('Mark this lesson plan as completed?');">
+                                                            <i class="fas fa-check-double"></i>
+                                                        </button>
+                                                    </form>
+                                                <?php endif; ?>
+
+                                                <?php if (($user_role === 'teacher' && $lp['teacher_id'] == $user_id && $lp['status'] === 'draft') || $is_principal): ?>
+                                                    <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this lesson plan?');">
+                                                        <input type="hidden" name="action" value="delete">
+                                                        <input type="hidden" name="id" value="<?php echo intval($lp['id']); ?>">
+                                                        <button type="submit" class="btn-small btn-delete">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                <?php endif; ?>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </section>
     </main>
@@ -816,7 +1226,7 @@ function getStatusBadge($status) {
     <div class="footer-container">
         <div class="footer-content">
             <div class="footer-section">
-                <h4>About SahabFormMaster</h4>
+                <h4><i class="fas fa-graduation-cap"></i> SahabFormMaster</h4>
                 <p>Professional lesson planning and management system.</p>
             </div>
             <div class="footer-section">
@@ -829,7 +1239,7 @@ function getStatusBadge($status) {
             </div>
             <div class="footer-section">
                 <h4>Support</h4>
-                <p>Email: <a href="mailto:support@sahabformmaster.com">support@sahabformmaster.com</a></p>
+                <p><i class="fas fa-envelope"></i> <a href="mailto:support@sahabformmaster.com">support@sahabformmaster.com</a></p>
             </div>
         </div>
         <div class="footer-bottom">
@@ -839,5 +1249,41 @@ function getStatusBadge($status) {
     </div>
 </footer>
 
+<script>
+    // Form validation
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add required field indicators
+        const requiredFields = document.querySelectorAll('[required]');
+        requiredFields.forEach(field => {
+            const label = field.closest('.form-group')?.querySelector('label');
+            if (label) {
+                const star = document.createElement('span');
+                star.textContent = ' *';
+                star.style.color = '#f72585';
+                label.appendChild(star);
+            }
+        });
+        
+        // Search form auto-submit on filter change
+        const filterSelects = document.querySelectorAll('.search-form select');
+        filterSelects.forEach(select => {
+            select.addEventListener('change', function() {
+                if (this.value) {
+                    this.closest('form').submit();
+                }
+            });
+        });
+        
+        // Highlight rows with pending approval
+        const pendingRows = document.querySelectorAll('tr');
+        pendingRows.forEach(row => {
+            const approvalBadge = row.querySelector('.badge-warning');
+            if (approvalBadge && approvalBadge.textContent.includes('pending')) {
+                row.style.backgroundColor = 'rgba(255, 193, 7, 0.1)';
+                row.style.borderLeft = '3px solid #ffc107';
+            }
+        });
+    });
+</script>
 </body>
 </html>

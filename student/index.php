@@ -6,22 +6,22 @@ require_once '../config/db.php';
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $admission_number = trim($_POST['admission_number']);
+    $admission_no = trim($_POST['admission_no']);
     $full_name = $_POST['student_name'];
  
-    if (empty($admission_number) || empty($full_name)) {
+    if (empty($admission_no) || empty($full_name)) {
         $error = "Please enter both admission number and name.";
     } else {
         // Prepare SQL to find student
-        $stmt = $pdo->prepare("SELECT * FROM students WHERE admission_number = :admission_number");
-        $stmt->execute(['admission_number' => $admission_number]);
+        $stmt = $pdo->prepare("SELECT * FROM students WHERE admission_no = :admission_no");
+        $stmt->execute(['admission_no' => $admission_no]);
         $student = $stmt->fetch();
 
         // Verify student exists and name matches
         if ($student && $full_name === $student['full_name']) {
             // Login Success
             $_SESSION['student_id'] = $student['id'];
-            $_SESSION['admission_number'] = $student['admission_number'];
+            $_SESSION['admission_no'] = $student['admission_no'];
             $_SESSION['student_name'] = $student['name'];
 
             // Redirect to student dashboard
@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <form action="index.php" method="POST">
             <div class="form-group">
                 <label for="admission_number">Admission Number</label>
-                <input type="text" name="admission_number" id="admission_number" class="form-control" placeholder="Enter your admission number" required>
+                <input type="text" name="admission_no" id="admission_no" class="form-control" placeholder="Enter your admission number" required>
             </div>
 
             <div class="form-group">

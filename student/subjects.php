@@ -2,11 +2,6 @@
 session_start();
 require_once '../config/db.php';
 
-// ...existing code...
-
-// Robust student access handling:
-// Users log in with admission number and name; role may be unset.
-// Accept session with either user_id (student id) or admission_no.
 $uid = $_SESSION['user_id'] ?? null;
 $role = strtolower($_SESSION['role'] ?? '');
 $admission_no = $_SESSION['admission_no'] ?? null;
@@ -67,7 +62,7 @@ $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>My Subjects - Student</title>
-<link rel="stylesheet" href="../assets/css/dashboard.css">
+<link rel="stylesheet" href="../assets/css/subjects.css">
 </head>
 <body>
 <main class="main-content">
