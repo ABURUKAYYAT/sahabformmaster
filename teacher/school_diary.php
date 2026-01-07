@@ -76,791 +76,8 @@ if (isset($_GET['id']) && !isset($_GET['pdf'])) {
     // Update view count
     $pdo->prepare("UPDATE school_diary SET view_count = view_count + 1 WHERE id = ?")->execute([$activity_id]);
 
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo htmlspecialchars($activity['activity_title']); ?> - Activity Details</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #4f46e5;
-            --primary-dark: #3730a3;
-            --secondary-color: #06b6d4;
-            --accent-color: #f59e0b;
-            --success-color: #10b981;
-            --warning-color: #f59e0b;
-            --error-color: #ef4444;
-            --info-color: #3b82f6;
-            --light-color: #f9fafb;
-            --dark-color: #1f2937;
-            --gray-color: #6b7280;
-            --card-bg: #ffffff;
-            --shadow: 0 20px 40px rgba(79, 70, 229, 0.15);
-            --shadow-hover: 0 30px 60px rgba(79, 70, 229, 0.25);
-            --radius: 20px;
-            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            --gradient-accent: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            --gradient-success: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-            --gradient-warning: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-            --gradient-info: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh;
-            color: var(--dark-color);
-            line-height: 1.6;
-        }
-
-        .page-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        .back-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1.5rem;
-            background: var(--gradient-primary);
-            color: white;
-            text-decoration: none;
-            border-radius: 12px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            margin-bottom: 2rem;
-        }
-
-        .back-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
-        }
-
-        .activity-header {
-            background: var(--card-bg);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            padding: 3rem;
-            margin-bottom: 2rem;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .activity-header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--gradient-primary);
-        }
-
-        .activity-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--dark-color);
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .activity-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .meta-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1rem;
-            background: var(--light-color);
-            border-radius: 12px;
-            font-size: 0.9rem;
-            color: var(--gray-color);
-            border: 1px solid rgba(79, 70, 229, 0.1);
-        }
-
-        .meta-item i {
-            color: var(--primary-color);
-        }
-
-        .activity-type-badge {
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .type-academics {
-            background: var(--gradient-success);
-            color: white;
-        }
-
-        .type-sports {
-            background: var(--gradient-accent);
-            color: var(--dark-color);
-        }
-
-        .type-cultural {
-            background: var(--gradient-secondary);
-            color: white;
-        }
-
-        .type-competition {
-            background: var(--gradient-warning);
-            color: var(--dark-color);
-        }
-
-        .status-badge {
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .status-upcoming { background: var(--gradient-info); color: white; }
-        .status-ongoing { background: var(--gradient-accent); color: var(--dark-color); }
-        .status-completed { background: var(--gradient-success); color: white; }
-        .status-cancelled { background: var(--gradient-secondary); color: white; }
-
-        .action-buttons {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .btn-pdf {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1.5rem;
-            background: var(--gradient-accent);
-            color: var(--dark-color);
-            text-decoration: none;
-            border-radius: 12px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-        }
-
-        .btn-pdf:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
-        }
-
-        .content-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        .content-card {
-            background: var(--card-bg);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            overflow: hidden;
-            border: 1px solid rgba(79, 70, 229, 0.08);
-        }
-
-        .content-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid #e5e7eb;
-            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        }
-
-        .content-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--dark-color);
-            margin-bottom: 0.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .content-title i {
-            color: var(--primary-color);
-        }
-
-        .content-body {
-            padding: 1.5rem;
-        }
-
-        .info-list {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .info-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 1rem;
-        }
-
-        .info-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--gradient-primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            flex-shrink: 0;
-            margin-top: 0.25rem;
-        }
-
-        .info-content {
-            flex: 1;
-        }
-
-        .info-label {
-            font-weight: 600;
-            color: var(--dark-color);
-            margin-bottom: 0.25rem;
-        }
-
-        .info-value {
-            color: var(--gray-color);
-            line-height: 1.5;
-        }
-
-        .text-content {
-            color: var(--gray-color);
-            line-height: 1.7;
-            margin-bottom: 1rem;
-        }
-
-        .attachments-section {
-            margin-bottom: 2rem;
-        }
-
-        .attachments-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 1rem;
-        }
-
-        .attachment-card {
-            background: var(--card-bg);
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            overflow: hidden;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-
-        .attachment-card:hover {
-            border-color: var(--primary-color);
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.2);
-        }
-
-        .attachment-preview {
-            height: 120px;
-            background: #f8fafc;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .attachment-preview img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: cover;
-        }
-
-        .attachment-preview .file-icon {
-            font-size: 2.5rem;
-            color: var(--gray-color);
-        }
-
-        .attachment-info {
-            padding: 1rem;
-        }
-
-        .attachment-name {
-            font-weight: 600;
-            color: var(--dark-color);
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-            word-break: break-word;
-        }
-
-        .attachment-meta {
-            font-size: 0.8rem;
-            color: var(--gray-color);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .stats-section {
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-            border-radius: var(--radius);
-            padding: 2rem;
-            margin-bottom: 2rem;
-            border: 2px solid rgba(59, 130, 246, 0.1);
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .stat-item {
-            text-align: center;
-        }
-
-        .stat-number {
-            font-size: 2rem;
-            font-weight: 800;
-            color: #0369a1;
-            line-height: 1;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-label {
-            color: #64748b;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 600;
-        }
-
-        @media (max-width: 768px) {
-            .page-container {
-                padding: 1rem;
-            }
-
-            .activity-title {
-                font-size: 2rem;
-            }
-
-            .content-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .activity-meta {
-                flex-direction: column;
-            }
-
-            .action-buttons {
-                flex-direction: column;
-            }
-
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 480px) {
-            .activity-header {
-                padding: 2rem 1.5rem;
-            }
-
-            .activity-title {
-                font-size: 1.75rem;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .attachments-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Modal for image preview */
-        .image-modal .modal-dialog {
-            max-width: 90vw;
-            max-height: 90vh;
-        }
-
-        .image-modal img {
-            width: 100%;
-            height: auto;
-            max-height: 80vh;
-            object-fit: contain;
-        }
-    </style>
-</head>
-<body>
-    <div class="page-container">
-        <a href="school_diary.php" class="back-button">
-            <i class="fas fa-arrow-left"></i>
-            Back to School Diary
-        </a>
-
-        <!-- Activity Header -->
-        <div class="activity-header">
-            <h1 class="activity-title">
-                <i class="fas fa-calendar-alt"></i>
-                <?php echo htmlspecialchars($activity['activity_title']); ?>
-            </h1>
-
-            <div class="activity-meta">
-                <span class="activity-type-badge type-<?php echo strtolower($activity['activity_type']); ?>">
-                    <i class="fas fa-tag"></i>
-                    <?php echo htmlspecialchars($activity['activity_type']); ?>
-                </span>
-                <span class="status-badge status-<?php echo strtolower($activity['status']); ?>">
-                    <?php echo htmlspecialchars($activity['status']); ?>
-                </span>
-            </div>
-
-            <div class="action-buttons">
-                <a href="school_diary.php?pdf=1&id=<?php echo $activity['id']; ?>" class="btn-pdf" target="_blank">
-                    <i class="fas fa-download"></i>
-                    Download PDF Report
-                </a>
-            </div>
-        </div>
-
-        <!-- Stats Section (only for completed activities) -->
-        <?php if ($activity['status'] === 'Completed' && ($activity['participant_count'] || $activity['winners_list'])): ?>
-        <div class="stats-section">
-            <div class="stats-grid">
-                <?php if ($activity['participant_count']): ?>
-                <div class="stat-item">
-                    <div class="stat-number"><?php echo $activity['participant_count']; ?></div>
-                    <div class="stat-label">Participants</div>
-                </div>
-                <?php endif; ?>
-                <?php if ($activity['winners_list'] && strpos($activity['winners_list'], ',') !== false): ?>
-                <div class="stat-item">
-                    <div class="stat-number"><?php echo count(explode(',', $activity['winners_list'])); ?></div>
-                    <div class="stat-label">Winners</div>
-                </div>
-                <?php endif; ?>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <!-- Content Grid -->
-        <div class="content-grid">
-            <!-- Basic Information -->
-            <div class="content-card">
-                <div class="content-header">
-                    <h3 class="content-title">
-                        <i class="fas fa-info-circle"></i>
-                        Basic Information
-                    </h3>
-                </div>
-                <div class="content-body">
-                    <div class="info-list">
-                        <div class="info-item">
-                            <div class="info-icon">
-                                <i class="fas fa-calendar"></i>
-                            </div>
-                            <div class="info-content">
-                                <div class="info-label">Date</div>
-                                <div class="info-value"><?php echo date('l, F j, Y', strtotime($activity['activity_date'])); ?></div>
-                            </div>
-                        </div>
-
-                        <?php if ($activity['start_time'] && $activity['end_time']): ?>
-                        <div class="info-item">
-                            <div class="info-icon">
-                                <i class="fas fa-clock"></i>
-                            </div>
-                            <div class="info-content">
-                                <div class="info-label">Time</div>
-                                <div class="info-value"><?php echo date('h:i A', strtotime($activity['start_time'])); ?> - <?php echo date('h:i A', strtotime($activity['end_time'])); ?></div>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-
-                        <div class="info-item">
-                            <div class="info-icon">
-                                <i class="fas fa-map-marker-alt"></i>
-                            </div>
-                            <div class="info-content">
-                                <div class="info-label">Venue</div>
-                                <div class="info-value"><?php echo htmlspecialchars($activity['venue'] ?: 'Not specified'); ?></div>
-                            </div>
-                        </div>
-
-                        <div class="info-item">
-                            <div class="info-icon">
-                                <i class="fas fa-user"></i>
-                            </div>
-                            <div class="info-content">
-                                <div class="info-label">Coordinator</div>
-                                <div class="info-value"><?php echo htmlspecialchars($activity['coordinator_name'] ?: 'Not assigned'); ?></div>
-                            </div>
-                        </div>
-
-                        <?php if ($activity['organizing_dept']): ?>
-                        <div class="info-item">
-                            <div class="info-icon">
-                                <i class="fas fa-building"></i>
-                            </div>
-                            <div class="info-content">
-                                <div class="info-label">Organizing Department</div>
-                                <div class="info-value"><?php echo htmlspecialchars($activity['organizing_dept']); ?></div>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-
-                        <?php if ($activity['target_audience']): ?>
-                        <div class="info-item">
-                            <div class="info-icon">
-                                <i class="fas fa-users"></i>
-                            </div>
-                            <div class="info-content">
-                                <div class="info-label">Target Audience</div>
-                                <div class="info-value"><?php echo htmlspecialchars($activity['target_audience']); ?>
-                                <?php if ($activity['target_classes']): ?>
-                                    <br><small><?php echo htmlspecialchars($activity['target_classes']); ?></small>
-                                <?php endif; ?>
-                                </div>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Description and Details -->
-            <div class="content-card">
-                <div class="content-header">
-                    <h3 class="content-title">
-                        <i class="fas fa-align-left"></i>
-                        Description & Details
-                    </h3>
-                </div>
-                <div class="content-body">
-                    <?php if ($activity['description']): ?>
-                    <div class="mb-4">
-                        <h5 class="text-dark mb-3">Description</h5>
-                        <div class="text-content">
-                            <?php echo nl2br(htmlspecialchars($activity['description'])); ?>
-                        </div>
-                    </div>
-                    <?php endif; ?>
-
-                    <?php if ($activity['objectives']): ?>
-                    <div class="mb-4">
-                        <h5 class="text-dark mb-3">
-                            <i class="fas fa-bullseye text-primary me-2"></i>
-                            Objectives
-                        </h5>
-                        <div class="text-content">
-                            <?php echo nl2br(htmlspecialchars($activity['objectives'])); ?>
-                        </div>
-                    </div>
-                    <?php endif; ?>
-
-                    <?php if ($activity['resources']): ?>
-                    <div class="mb-4">
-                        <h5 class="text-dark mb-3">
-                            <i class="fas fa-tools text-warning me-2"></i>
-                            Resources Required
-                        </h5>
-                        <div class="text-content">
-                            <?php echo nl2br(htmlspecialchars($activity['resources'])); ?>
-                        </div>
-                    </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-
-        <!-- Completion Details (only for completed activities) -->
-        <?php if ($activity['status'] === 'Completed' && ($activity['achievements'] || $activity['winners_list'] || $activity['feedback_summary'])): ?>
-        <div class="content-card">
-            <div class="content-header">
-                <h3 class="content-title">
-                    <i class="fas fa-trophy"></i>
-                    Completion Details
-                </h3>
-            </div>
-            <div class="content-body">
-                <?php if ($activity['winners_list']): ?>
-                <div class="mb-4">
-                    <h5 class="text-dark mb-3">
-                        <i class="fas fa-medal text-warning me-2"></i>
-                        Winners & Awards
-                    </h5>
-                    <div class="text-content">
-                        <?php echo nl2br(htmlspecialchars($activity['winners_list'])); ?>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <?php if ($activity['achievements']): ?>
-                <div class="mb-4">
-                    <h5 class="text-dark mb-3">
-                        <i class="fas fa-star text-success me-2"></i>
-                        Achievements
-                    </h5>
-                    <div class="text-content">
-                        <?php echo nl2br(htmlspecialchars($activity['achievements'])); ?>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <?php if ($activity['feedback_summary']): ?>
-                <div class="mb-4">
-                    <h5 class="text-dark mb-3">
-                        <i class="fas fa-comments text-info me-2"></i>
-                        Feedback Summary
-                    </h5>
-                    <div class="text-content">
-                        <?php echo nl2br(htmlspecialchars($activity['feedback_summary'])); ?>
-                    </div>
-                </div>
-                <?php endif; ?>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <!-- Attachments Section -->
-        <?php if (!empty($attachments)): ?>
-        <div class="attachments-section">
-            <div class="content-card">
-                <div class="content-header">
-                    <h3 class="content-title">
-                        <i class="fas fa-paperclip"></i>
-                        Attachments (<?php echo count($attachments); ?>)
-                    </h3>
-                </div>
-                <div class="content-body">
-                    <div class="attachments-grid">
-                        <?php foreach ($attachments as $attachment): ?>
-                        <div class="attachment-card" onclick="openAttachment('<?php echo htmlspecialchars($attachment['file_path']); ?>', '<?php echo $attachment['file_type']; ?>')">
-                            <div class="attachment-preview">
-                                <?php if ($attachment['file_type'] === 'image'): ?>
-                                    <img src="<?php echo htmlspecialchars($attachment['file_path']); ?>" alt="<?php echo htmlspecialchars($attachment['file_name']); ?>">
-                                <?php elseif ($attachment['file_type'] === 'video'): ?>
-                                    <div class="file-icon">
-                                        <i class="fas fa-play-circle"></i>
-                                    </div>
-                                <?php else: ?>
-                                    <div class="file-icon">
-                                        <i class="fas fa-file"></i>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                            <div class="attachment-info">
-                                <div class="attachment-name">
-                                    <?php echo htmlspecialchars($attachment['file_name']); ?>
-                                </div>
-                                <div class="attachment-meta">
-                                    <i class="fas fa-tag"></i>
-                                    <?php echo strtoupper($attachment['file_type']); ?>
-                                </div>
-                            </div>
-                        </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <!-- Metadata Footer -->
-        <div class="content-card">
-            <div class="content-body">
-                <div class="row text-center">
-                    <div class="col-md-4">
-                        <div class="info-icon mx-auto mb-2" style="background: var(--gradient-info);">
-                            <i class="fas fa-eye"></i>
-                        </div>
-                        <div class="info-label">Views</div>
-                        <div class="info-value fw-bold"><?php echo intval($activity['view_count']); ?></div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="info-icon mx-auto mb-2" style="background: var(--gradient-success);">
-                            <i class="fas fa-calendar-plus"></i>
-                        </div>
-                        <div class="info-label">Created</div>
-                        <div class="info-value fw-bold"><?php echo date('M j, Y', strtotime($activity['created_at'])); ?></div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="info-icon mx-auto mb-2" style="background: var(--gradient-warning);">
-                            <i class="fas fa-edit"></i>
-                        </div>
-                        <div class="info-label">Last Updated</div>
-                        <div class="info-value fw-bold"><?php echo date('M j, Y', strtotime($activity['updated_at'] ?: $activity['created_at'])); ?></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Image Modal -->
-    <div class="modal fade image-modal" id="imageModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-body p-0">
-                    <img id="modalImage" src="" alt="" class="w-100">
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        function openAttachment(filePath, fileType) {
-            if (fileType === 'image') {
-                document.getElementById('modalImage').src = filePath;
-                new bootstrap.Modal(document.getElementById('imageModal')).show();
-            } else {
-                window.open(filePath, '_blank');
-            }
-        }
-
-        // Add smooth animations
-        document.addEventListener('DOMContentLoaded', function() {
-            const cards = document.querySelectorAll('.content-card');
-            cards.forEach((card, index) => {
-                card.style.opacity = '0';
-                card.style.transform = 'translateY(20px)';
-                card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-
-                setTimeout(() => {
-                    card.style.opacity = '1';
-                    card.style.transform = 'translateY(0)';
-                }, index * 100);
-            });
-        });
-    </script>
-</body>
-</html>
-<?php
+    // Redirect to main page for activity details display
+    header("Location: school_diary.php?id=" . $activity_id . "&view=details");
     exit;
 }
 
@@ -1060,6 +277,7 @@ if (isset($_GET['pdf']) && isset($_GET['id'])) {
         exit;
     }
 }
+$teacher_name = $_SESSION['full_name'] ?? 'Teacher';
 ?>
 
 <!DOCTYPE html>
@@ -1067,987 +285,1979 @@ if (isset($_GET['pdf']) && isset($_GET['id'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>School Diary - Teacher Portal</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>School Diary - Teacher Portal | SahabFormMaster</title>
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #4f46e5;
-            --primary-dark: #3730a3;
-            --secondary-color: #06b6d4;
-            --accent-color: #f59e0b;
-            --success-color: #10b981;
-            --warning-color: #f59e0b;
-            --error-color: #ef4444;
-            --info-color: #3b82f6;
-            --light-color: #f9fafb;
-            --dark-color: #1f2937;
-            --gray-color: #6b7280;
-            --card-bg: #ffffff;
-            --shadow: 0 20px 40px rgba(79, 70, 229, 0.15);
-            --shadow-hover: 0 30px 60px rgba(79, 70, 229, 0.25);
-            --radius: 20px;
-            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            --gradient-accent: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            --gradient-success: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-            --gradient-warning: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-            --gradient-info: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh;
-            color: var(--dark-color);
-            line-height: 1.6;
-        }
-
-        .page-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        .page-header {
-            background: var(--card-bg);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            padding: 2rem;
-            margin-bottom: 2rem;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .page-header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--gradient-primary);
-        }
-
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        .header-left {
-            flex: 1;
-        }
-
-        .header-right {
-            flex-shrink: 0;
-        }
-
-        .btn-dashboard {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1.5rem;
-            background: var(--gradient-secondary);
-            color: white;
-            text-decoration: none;
-            border-radius: 12px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(240, 159, 251, 0.3);
-        }
-
-        .btn-dashboard:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(240, 159, 251, 0.4);
-        }
-
-        .page-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--dark-color);
-            margin-bottom: 0.5rem;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .page-subtitle {
-            color: var(--gray-color);
-            font-size: 1.1rem;
-            margin-bottom: 2rem;
-        }
-
-        .stats-overview {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: var(--card-bg);
-            border-radius: var(--radius);
-            padding: 1.5rem;
-            box-shadow: var(--shadow);
-            border: 1px solid rgba(79, 70, 229, 0.1);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--gradient-primary);
-        }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--shadow-hover);
-        }
-
-        .stat-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: var(--gradient-primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.25rem;
-            margin-bottom: 1rem;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--primary-color);
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-label {
-            color: var(--gray-color);
-            font-weight: 500;
-        }
-
-        .filters-section {
-            background: var(--card-bg);
-            border-radius: var(--radius);
-            padding: 2rem;
-            box-shadow: var(--shadow);
-            margin-bottom: 2rem;
-            border: 1px solid rgba(79, 70, 229, 0.1);
-        }
-
-        .filters-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            align-items: end;
-        }
-
-        .form-group {
-            margin-bottom: 0;
-        }
-
-        .form-label {
-            font-weight: 600;
-            color: var(--dark-color);
-            margin-bottom: 0.5rem;
-            display: block;
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            font-size: 0.95rem;
-            transition: all 0.3s ease;
-            background: #f9fafb;
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            background: white;
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-        }
-
-        .form-select {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            font-size: 0.95rem;
-            transition: all 0.3s ease;
-            background: #f9fafb;
-            cursor: pointer;
-        }
-
-        .form-select:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            background: white;
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-        }
-
-        .btn-filter {
-            padding: 0.75rem 2rem;
-            background: var(--gradient-primary);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            justify-content: center;
-        }
-
-        .btn-filter:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
-        }
-
-        .view-toggle {
-            display: flex;
-            background: #f1f5f9;
-            border-radius: 12px;
-            padding: 0.25rem;
-            margin-bottom: 2rem;
-        }
-
-        .view-btn {
-            flex: 1;
-            padding: 0.75rem 1.5rem;
-            border: none;
-            background: transparent;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
-
-        .view-btn.active {
-            background: var(--gradient-primary);
-            color: white;
-            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
-        }
-
-        .activities-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-            gap: 2rem;
-        }
-
-        .activity-card {
-            background: var(--card-bg);
-            border-radius: var(--radius);
-            overflow: hidden;
-            box-shadow: var(--shadow);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 1px solid rgba(79, 70, 229, 0.08);
-            position: relative;
-        }
-
-        .activity-card:hover {
-            transform: translateY(-8px);
-            box-shadow: var(--shadow-hover);
-        }
-
-        .activity-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid #e5e7eb;
-            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        }
-
-        .activity-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--dark-color);
-            margin-bottom: 0.5rem;
-            line-height: 1.3;
-        }
-
-        .activity-meta {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            flex-wrap: wrap;
-            margin-bottom: 1rem;
-        }
-
-        .meta-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.9rem;
-            color: var(--gray-color);
-        }
-
-        .activity-type {
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .type-academics {
-            background: var(--gradient-success);
-            color: white;
-        }
-
-        .type-sports {
-            background: var(--gradient-accent);
-            color: var(--dark-color);
-        }
-
-        .type-cultural {
-            background: var(--gradient-secondary);
-            color: white;
-        }
-
-        .type-competition {
-            background: var(--gradient-warning);
-            color: var(--dark-color);
-        }
-
-        .activity-content {
-            padding: 1.5rem;
-        }
-
-        .activity-description {
-            color: var(--gray-color);
-            line-height: 1.6;
-            margin-bottom: 1.5rem;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .activity-actions {
-            display: flex;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-        }
-
-        .btn-details {
-            padding: 0.75rem 1.5rem;
-            background: var(--gradient-primary);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            text-decoration: none;
-        }
-
-        .btn-details:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.3);
-        }
-
-        .btn-pdf {
-            padding: 0.75rem 1.5rem;
-            background: var(--gradient-accent);
-            color: var(--dark-color);
-            border: none;
-            border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            text-decoration: none;
-        }
-
-        .btn-pdf:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.2);
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 4rem 2rem;
-            background: var(--card-bg);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            border: 1px solid rgba(79, 70, 229, 0.1);
-        }
-
-        .empty-icon {
-            font-size: 4rem;
-            color: var(--gray-color);
-            margin-bottom: 1.5rem;
-            opacity: 0.5;
-        }
-
-        .empty-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--dark-color);
-            margin-bottom: 0.5rem;
-        }
-
-        .empty-text {
-            color: var(--gray-color);
-            font-size: 1rem;
-        }
-
-        /* Calendar View */
-        .calendar-container {
-            background: var(--card-bg);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            padding: 2rem;
-            border: 1px solid rgba(79, 70, 229, 0.1);
-        }
-
-        .calendar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-        }
-
-        .calendar-title {
-            font-size: 1.75rem;
-            font-weight: 700;
-            color: var(--dark-color);
-        }
-
-        .calendar-nav {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .calendar-btn {
-            padding: 0.5rem 1rem;
-            background: #f1f5f9;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .calendar-btn:hover {
-            background: var(--primary-color);
-            color: white;
-        }
-
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 1px;
-            background: #e5e7eb;
-            border-radius: 12px;
-            overflow: hidden;
-        }
-
-        .calendar-day-header {
-            background: var(--gradient-primary);
-            color: white;
-            padding: 1rem;
-            text-align: center;
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-
-        .calendar-day {
-            background: var(--card-bg);
-            min-height: 120px;
-            padding: 0.75rem;
-            position: relative;
-            transition: all 0.3s ease;
-        }
-
-        .calendar-day:hover {
-            background: #f8fafc;
-        }
-
-        .calendar-day.today {
-            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-        }
-
-        .calendar-day.today::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: var(--accent-color);
-        }
-
-        .day-number {
-            font-weight: 600;
-            color: var(--dark-color);
-            margin-bottom: 0.5rem;
-        }
-
-        .activity-item {
-            background: var(--gradient-success);
-            color: white;
-            padding: 0.25rem 0.5rem;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            margin-bottom: 0.25rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: 500;
-        }
-
-        .activity-item:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-        }
-
-        .activity-sports {
-            background: var(--gradient-accent);
-            color: var(--dark-color);
-        }
-
-        .activity-cultural {
-            background: var(--gradient-secondary);
-        }
-
-        .activity-competition {
-            background: var(--gradient-warning);
-            color: var(--dark-color);
-        }
-
-        .calendar-legend {
-            margin-top: 2rem;
-            padding-top: 2rem;
-            border-top: 1px solid #e5e7eb;
-        }
-
-        .legend-title {
-            font-weight: 600;
-            color: var(--dark-color);
-            margin-bottom: 1rem;
-        }
-
-        .legend-items {
-            display: flex;
-            gap: 1.5rem;
-            flex-wrap: wrap;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.9rem;
-            color: var(--gray-color);
-        }
-
-        .legend-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 1024px) {
-            .page-container {
-                padding: 1.5rem;
-            }
-
-            .activities-grid {
-                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            }
-        }
-
-        @media (max-width: 768px) {
-            .page-header {
-                padding: 1.5rem;
-            }
-
-            .header-content {
-                flex-direction: column;
-                gap: 1rem;
-                text-align: center;
-            }
-
-            .header-left, .header-right {
-                flex: none;
-            }
-
-            .page-title {
-                font-size: 2rem;
-            }
-
-            .stats-overview {
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            }
-
-            .filters-grid {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-
-            .activities-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .calendar-header {
-                flex-direction: column;
-                gap: 1rem;
-                text-align: center;
-            }
-
-            .legend-items {
-                justify-content: center;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .page-container {
-                padding: 1rem;
-            }
-
-            .page-header {
-                padding: 1rem;
-            }
-
-            .page-title {
-                font-size: 1.75rem;
-            }
-
-            .activity-actions {
-                flex-direction: column;
-            }
-
-            .btn-details, .btn-pdf {
-                width: 100%;
-                justify-content: center;
-            }
-
-            .calendar-grid {
-                font-size: 0.9rem;
-            }
-
-            .calendar-day {
-                min-height: 100px;
-                padding: 0.5rem;
-            }
-        }
-
-        /* Animations */
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes slideInLeft {
-            from {
-                opacity: 0;
-                transform: translateX(-30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        .activity-card {
-            animation: fadeInUp 0.6s ease-out both;
-        }
-
-        .activity-card:nth-child(odd) {
-            animation-delay: 0.1s;
-        }
-
-        .activity-card:nth-child(even) {
-            animation-delay: 0.2s;
-        }
-
-        .stat-card {
-            animation: slideInLeft 0.6s ease-out both;
-        }
-
-        .stat-card:nth-child(1) { animation-delay: 0.1s; }
-        .stat-card:nth-child(2) { animation-delay: 0.2s; }
-        .stat-card:nth-child(3) { animation-delay: 0.3s; }
-        .stat-card:nth-child(4) { animation-delay: 0.4s; }
-    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <div class="page-container">
-        <!-- Page Header -->
-        <div class="page-header">
-            <div class="header-content">
-                <div class="header-left">
-                    <h1 class="page-title">
-                        <i class="fas fa-book"></i>
-                        School Diary
-                    </h1>
-                    <p class="page-subtitle">Comprehensive view of all school activities and events</p>
-                </div>
-                <div class="header-right">
-                    <a href="index.php" class="btn-dashboard">
-                        <i class="fas fa-tachometer-alt"></i>
-                        Dashboard
-                    </a>
-                </div>
-            </div>
 
-            <!-- Stats Overview -->
-            <div class="stats-overview">
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="fas fa-calendar-alt"></i>
-                    </div>
-                    <div class="stat-value"><?php echo count($activities); ?></div>
-                    <div class="stat-label">Total Activities</div>
-                </div>
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+        <i class="fas fa-bars"></i>
+    </button>
 
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="fas fa-graduation-cap"></i>
-                    </div>
-                    <div class="stat-value">
-                        <?php echo count(array_filter($activities, fn($a) => $a['activity_type'] === 'Academics')); ?>
-                    </div>
-                    <div class="stat-label">Academic Events</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="fas fa-trophy"></i>
-                    </div>
-                    <div class="stat-value">
-                        <?php echo count(array_filter($activities, fn($a) => $a['activity_type'] === 'Sports')); ?>
-                    </div>
-                    <div class="stat-label">Sports Events</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="fas fa-palette"></i>
-                    </div>
-                    <div class="stat-value">
-                        <?php echo count(array_filter($activities, fn($a) => $a['activity_type'] === 'Cultural')); ?>
-                    </div>
-                    <div class="stat-label">Cultural Events</div>
-                </div>
-            </div>
+    <!-- Mobile Navigation Dropdown -->
+    <div class="mobile-nav-dropdown" id="mobileNavDropdown">
+        <div class="mobile-nav-header">
+            <h3>Navigation</h3>
+            <button class="mobile-nav-close" id="mobileNavClose">&times;</button>
         </div>
-
-        <!-- Filters Section -->
-        <div class="filters-section">
-            <form method="GET" class="filters-grid">
-                <div class="form-group">
-                    <label class="form-label">
-                        <i class="fas fa-search"></i> Search Activities
-                    </label>
-                    <input type="text" class="form-input" name="search" placeholder="Search by title or description..." value="<?= htmlspecialchars($search) ?>">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">
-                        <i class="fas fa-tag"></i> Activity Type
-                    </label>
-                    <select class="form-select" name="type">
-                        <option value="">All Types</option>
-                        <option value="Academics" <?= $type_filter == 'Academics' ? 'selected' : '' ?>>Academics</option>
-                        <option value="Sports" <?= $type_filter == 'Sports' ? 'selected' : '' ?>>Sports</option>
-                        <option value="Cultural" <?= $type_filter == 'Cultural' ? 'selected' : '' ?>>Cultural</option>
-                        <option value="Competition" <?= $type_filter == 'Competition' ? 'selected' : '' ?>>Competition</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">
-                        <i class="fas fa-calendar"></i> From Date
-                    </label>
-                    <input type="date" class="form-input" name="date_from" value="<?= htmlspecialchars($date_from) ?>">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">
-                        <i class="fas fa-calendar"></i> To Date
-                    </label>
-                    <input type="date" class="form-input" name="date_to" value="<?= htmlspecialchars($date_to) ?>">
-                </div>
-
-                <div class="form-group">
-                    <button type="submit" class="btn-filter">
-                        <i class="fas fa-filter"></i>
-                        Apply Filters
-                    </button>
-                </div>
-            </form>
-        </div>
-
-        <!-- View Toggle -->
-        <div class="view-toggle">
-            <button class="view-btn active" id="listViewBtn">
-                <i class="fas fa-list"></i>
-                List View
-            </button>
-            <button class="view-btn" id="calendarViewBtn">
-                <i class="fas fa-calendar-alt"></i>
-                Calendar View
-            </button>
-        </div>
-
-        <!-- List View -->
-        <div id="listView" class="activities-grid">
-            <?php if (empty($activities)): ?>
-                <div class="empty-state">
-                    <div class="empty-icon">
-                        <i class="fas fa-calendar-times"></i>
-                    </div>
-                    <h3 class="empty-title">No Activities Found</h3>
-                    <p class="empty-text">Try adjusting your search filters or check back later for new activities.</p>
-                </div>
-            <?php else: ?>
-                <?php foreach ($activities as $index => $activity): ?>
-                    <div class="activity-card" style="--index: <?php echo $index; ?>">
-                        <div class="activity-header">
-                            <h3 class="activity-title">
-                                <?php echo htmlspecialchars($activity['activity_title']); ?>
-                            </h3>
-                            <div class="activity-meta">
-                                <span class="activity-type type-<?php echo strtolower($activity['activity_type']); ?>">
-                                    <?php echo htmlspecialchars($activity['activity_type']); ?>
-                                </span>
-                                <span class="meta-item">
-                                    <i class="fas fa-calendar"></i>
-                                    <?php echo date('M j, Y', strtotime($activity['activity_date'])); ?>
-                                </span>
-                                <span class="meta-item">
-                                    <i class="fas fa-map-marker-alt"></i>
-                                    <?php echo htmlspecialchars($activity['venue'] ?: 'TBD'); ?>
-                                </span>
-                            </div>
-                        </div>
-
-                        <div class="activity-content">
-                            <p class="activity-description">
-                                <?php echo htmlspecialchars($activity['description']); ?>
-                            </p>
-
-                            <div class="activity-meta">
-                                <span class="meta-item">
-                                    <i class="fas fa-user"></i>
-                                    Coordinator: <?php echo htmlspecialchars($activity['coordinator_name'] ?: 'Not assigned'); ?>
-                                </span>
-                                <span class="meta-item">
-                                    <i class="fas fa-clock"></i>
-                                    <?php echo $activity['start_time'] ? $activity['start_time'] . ' - ' . $activity['end_time'] : 'All day'; ?>
-                                </span>
-                            </div>
-
-                            <div class="activity-actions">
-                                <a href="school_diary.php?id=<?php echo $activity['id']; ?>" class="btn-details">
-                                    <i class="fas fa-eye"></i>
-                                    View Details
-                                </a>
-                                <a href="school_diary.php?pdf=1&id=<?php echo $activity['id']; ?>" class="btn-pdf" target="_blank">
-                                    <i class="fas fa-download"></i>
-                                    Download PDF
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </div>
-
-        <!-- Calendar View -->
-        <div id="calendarView" class="calendar-container" style="display: none;">
-            <div class="calendar-header">
-                <h2 class="calendar-title" id="currentMonth">December 2025</h2>
-                <div class="calendar-nav">
-                    <button class="calendar-btn" id="prevMonth">
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    <button class="calendar-btn" id="todayBtn">Today</button>
-                    <button class="calendar-btn" id="nextMonth">
-                        <i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="calendar-grid">
-                <div class="calendar-day-header">Sun</div>
-                <div class="calendar-day-header">Mon</div>
-                <div class="calendar-day-header">Tue</div>
-                <div class="calendar-day-header">Wed</div>
-                <div class="calendar-day-header">Thu</div>
-                <div class="calendar-day-header">Fri</div>
-                <div class="calendar-day-header">Sat</div>
-
-                <div id="calendarBody">
-                    <!-- Calendar days will be populated by JavaScript -->
-                </div>
-            </div>
-
-            <div class="calendar-legend">
-                <h4 class="legend-title">Activity Types</h4>
-                <div class="legend-items">
-                    <div class="legend-item">
-                        <div class="legend-dot" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);"></div>
-                        <span>Academics</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-dot" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);"></div>
-                        <span>Sports</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-dot" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);"></div>
-                        <span>Cultural</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-dot" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);"></div>
-                        <span>Competition</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <nav class="mobile-nav-menu">
+            <a href="index.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'index.php' ? 'active' : ''; ?>">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="schoolfeed.php" class="mobile-nav-link">
+                <i class="fas fa-newspaper"></i>
+                <span>School Feeds</span>
+            </a>
+            <a href="school_diary.php" class="mobile-nav-link active">
+                <i class="fas fa-book"></i>
+                <span>School Diary</span>
+            </a>
+            <a href="students.php" class="mobile-nav-link">
+                <i class="fas fa-users"></i>
+                <span>Students</span>
+            </a>
+            <a href="results.php" class="mobile-nav-link">
+                <i class="fas fa-chart-line"></i>
+                <span>Results</span>
+            </a>
+            <a href="subjects.php" class="mobile-nav-link">
+                <i class="fas fa-book-open"></i>
+                <span>Subjects</span>
+            </a>
+            <a href="questions.php" class="mobile-nav-link">
+                <i class="fas fa-question-circle"></i>
+                <span>Questions</span>
+            </a>
+            <a href="lesson-plan.php" class="mobile-nav-link">
+                <i class="fas fa-clipboard-list"></i>
+                <span>Lesson Plans</span>
+            </a>
+            <a href="curricullum.php" class="mobile-nav-link">
+                <i class="fas fa-graduation-cap"></i>
+                <span>Curriculum</span>
+            </a>
+            <a href="teacher_class_activities.php" class="mobile-nav-link">
+                <i class="fas fa-tasks"></i>
+                <span>Class Activities</span>
+            </a>
+            <a href="student-evaluation.php" class="mobile-nav-link">
+                <i class="fas fa-star"></i>
+                <span>Evaluations</span>
+            </a>
+            <a href="class_attendance.php" class="mobile-nav-link">
+                <i class="fas fa-calendar-check"></i>
+                <span>Attendance</span>
+            </a>
+            <a href="timebook.php" class="mobile-nav-link">
+                <i class="fas fa-clock"></i>
+                <span>Time Book</span>
+            </a>
+            <a href="permissions.php" class="mobile-nav-link">
+                <i class="fas fa-key"></i>
+                <span>Permissions</span>
+            </a>
+            <a href="payments.php" class="mobile-nav-link">
+                <i class="fas fa-money-bill-wave"></i>
+                <span>Payments</span>
+            </a>
+        </nav>
     </div>
+
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <!-- Logo and School Name -->
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Teacher Portal</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Teacher Info and Logout -->
+            <div class="header-right">
+                <div class="teacher-info">
+                    <p class="teacher-label">Teacher</p>
+                    <span class="teacher-name"><?php echo htmlspecialchars($teacher_name); ?></span>
+                </div>
+                <a href="logout.php" class="btn-logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3>Navigation</h3>
+                <button class="sidebar-close" id="sidebarClose">✕</button>
+            </div>
+            <nav class="sidebar-nav">
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="index.php" class="nav-link">
+                            <i class="fas fa-tachometer-alt nav-icon"></i>
+                            <span class="nav-text">Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="schoolfeed.php" class="nav-link">
+                            <i class="fas fa-newspaper nav-icon"></i>
+                            <span class="nav-text">School Feeds</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="school_diary.php" class="nav-link active">
+                            <i class="fas fa-book nav-icon"></i>
+                            <span class="nav-text">School Diary</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="students.php" class="nav-link">
+                            <i class="fas fa-users nav-icon"></i>
+                            <span class="nav-text">Students</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="results.php" class="nav-link">
+                            <i class="fas fa-chart-line nav-icon"></i>
+                            <span class="nav-text">Results</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="subjects.php" class="nav-link">
+                            <i class="fas fa-book-open nav-icon"></i>
+                            <span class="nav-text">Subjects</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="questions.php" class="nav-link">
+                            <i class="fas fa-question-circle nav-icon"></i>
+                            <span class="nav-text">Questions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="lesson-plan.php" class="nav-link">
+                            <i class="fas fa-clipboard-list nav-icon"></i>
+                            <span class="nav-text">Lesson Plans</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="curricullum.php" class="nav-link">
+                            <i class="fas fa-graduation-cap nav-icon"></i>
+                            <span class="nav-text">Curriculum</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="teacher_class_activities.php" class="nav-link">
+                            <i class="fas fa-tasks nav-icon"></i>
+                            <span class="nav-text">Class Activities</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="student-evaluation.php" class="nav-link">
+                            <i class="fas fa-star nav-icon"></i>
+                            <span class="nav-text">Evaluations</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="class_attendance.php" class="nav-link">
+                            <i class="fas fa-calendar-check nav-icon"></i>
+                            <span class="nav-text">Attendance</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="timebook.php" class="nav-link">
+                            <i class="fas fa-clock nav-icon"></i>
+                            <span class="nav-text">Time Book</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="permissions.php" class="nav-link">
+                            <i class="fas fa-key nav-icon"></i>
+                            <span class="nav-text">Permissions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="payments.php" class="nav-link">
+                            <i class="fas fa-money-bill-wave nav-icon"></i>
+                            <span class="nav-text">Payments</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-header">
+                <div class="welcome-section">
+                    <h2>School Diary 📚</h2>
+                    <p>Comprehensive view of all school activities and events</p>
+                </div>
+            </div>
+
+            <!-- Activity Details View (when view=details) -->
+            <?php if (isset($_GET['view']) && $_GET['view'] === 'details' && isset($_GET['id'])): ?>
+                <div class="page-container">
+                    <a href="school_diary.php" class="back-button">
+                        <i class="fas fa-arrow-left"></i>
+                        Back to School Diary
+                    </a>
+
+                    <!-- Activity Header -->
+                    <div class="activity-header">
+                        <h1 class="activity-title">
+                            <i class="fas fa-calendar-alt"></i>
+                            <?php echo htmlspecialchars($activity['activity_title']); ?>
+                        </h1>
+
+                        <div class="activity-meta">
+                            <span class="activity-type-badge type-<?php echo strtolower($activity['activity_type']); ?>">
+                                <i class="fas fa-tag"></i>
+                                <?php echo htmlspecialchars($activity['activity_type']); ?>
+                            </span>
+                            <span class="status-badge status-<?php echo strtolower($activity['status']); ?>">
+                                <?php echo htmlspecialchars($activity['status']); ?>
+                            </span>
+                        </div>
+
+                        <div class="action-buttons">
+                            <a href="school_diary.php?pdf=1&id=<?php echo $activity['id']; ?>" class="btn-pdf" target="_blank">
+                                <i class="fas fa-download"></i>
+                                Download PDF Report
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Stats Section (only for completed activities) -->
+                    <?php if ($activity['status'] === 'Completed' && ($activity['participant_count'] || $activity['winners_list'])): ?>
+                    <div class="stats-section">
+                        <div class="stats-grid">
+                            <?php if ($activity['participant_count']): ?>
+                            <div class="stat-item">
+                                <div class="stat-number"><?php echo $activity['participant_count']; ?></div>
+                                <div class="stat-label">Participants</div>
+                            </div>
+                            <?php endif; ?>
+                            <?php if ($activity['winners_list'] && strpos($activity['winners_list'], ',') !== false): ?>
+                            <div class="stat-item">
+                                <div class="stat-number"><?php echo count(explode(',', $activity['winners_list'])); ?></div>
+                                <div class="stat-label">Winners</div>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
+                    <!-- Content Grid -->
+                    <div class="content-grid">
+                        <!-- Basic Information -->
+                        <div class="content-card">
+                            <div class="content-header">
+                                <h3 class="content-title">
+                                    <i class="fas fa-info-circle"></i>
+                                    Basic Information
+                                </h3>
+                            </div>
+                            <div class="content-body">
+                                <div class="info-list">
+                                    <div class="info-item">
+                                        <div class="info-icon">
+                                            <i class="fas fa-calendar"></i>
+                                        </div>
+                                        <div class="info-content">
+                                            <div class="info-label">Date</div>
+                                            <div class="info-value"><?php echo date('l, F j, Y', strtotime($activity['activity_date'])); ?></div>
+                                        </div>
+                                    </div>
+
+                                    <?php if ($activity['start_time'] && $activity['end_time']): ?>
+                                    <div class="info-item">
+                                        <div class="info-icon">
+                                            <i class="fas fa-clock"></i>
+                                        </div>
+                                        <div class="info-content">
+                                            <div class="info-label">Time</div>
+                                            <div class="info-value"><?php echo date('h:i A', strtotime($activity['start_time'])); ?> - <?php echo date('h:i A', strtotime($activity['end_time'])); ?></div>
+                                        </div>
+                                    </div>
+                                    <?php endif; ?>
+
+                                    <div class="info-item">
+                                        <div class="info-icon">
+                                            <i class="fas fa-map-marker-alt"></i>
+                                        </div>
+                                        <div class="info-content">
+                                            <div class="info-label">Venue</div>
+                                            <div class="info-value"><?php echo htmlspecialchars($activity['venue'] ?: 'Not specified'); ?></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="info-item">
+                                        <div class="info-icon">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                        <div class="info-content">
+                                            <div class="info-label">Coordinator</div>
+                                            <div class="info-value"><?php echo htmlspecialchars($activity['coordinator_name'] ?: 'Not assigned'); ?></div>
+                                        </div>
+                                    </div>
+
+                                    <?php if ($activity['organizing_dept']): ?>
+                                    <div class="info-item">
+                                        <div class="info-icon">
+                                            <i class="fas fa-building"></i>
+                                        </div>
+                                        <div class="info-content">
+                                            <div class="info-label">Organizing Department</div>
+                                            <div class="info-value"><?php echo htmlspecialchars($activity['organizing_dept']); ?></div>
+                                        </div>
+                                    </div>
+                                    <?php endif; ?>
+
+                                    <?php if ($activity['target_audience']): ?>
+                                    <div class="info-item">
+                                        <div class="info-icon">
+                                            <i class="fas fa-users"></i>
+                                        </div>
+                                        <div class="info-content">
+                                            <div class="info-label">Target Audience</div>
+                                            <div class="info-value"><?php echo htmlspecialchars($activity['target_audience']); ?>
+                                            <?php if ($activity['target_classes']): ?>
+                                                <br><small><?php echo htmlspecialchars($activity['target_classes']); ?></small>
+                                            <?php endif; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Description and Details -->
+                        <div class="content-card">
+                            <div class="content-header">
+                                <h3 class="content-title">
+                                    <i class="fas fa-align-left"></i>
+                                    Description & Details
+                                </h3>
+                            </div>
+                            <div class="content-body">
+                                <?php if ($activity['description']): ?>
+                                <div class="mb-4">
+                                    <h5 class="text-dark mb-3">Description</h5>
+                                    <div class="text-content">
+                                        <?php echo nl2br(htmlspecialchars($activity['description'])); ?>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+
+                                <?php if ($activity['objectives']): ?>
+                                <div class="mb-4">
+                                    <h5 class="text-dark mb-3">
+                                        <i class="fas fa-bullseye text-primary me-2"></i>
+                                        Objectives
+                                    </h5>
+                                    <div class="text-content">
+                                        <?php echo nl2br(htmlspecialchars($activity['objectives'])); ?>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+
+                                <?php if ($activity['resources']): ?>
+                                <div class="mb-4">
+                                    <h5 class="text-dark mb-3">
+                                        <i class="fas fa-tools text-warning me-2"></i>
+                                        Resources Required
+                                    </h5>
+                                    <div class="text-content">
+                                        <?php echo nl2br(htmlspecialchars($activity['resources'])); ?>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Completion Details (only for completed activities) -->
+                    <?php if ($activity['status'] === 'Completed' && ($activity['achievements'] || $activity['winners_list'] || $activity['feedback_summary'])): ?>
+                    <div class="content-card">
+                        <div class="content-header">
+                            <h3 class="content-title">
+                                <i class="fas fa-trophy"></i>
+                                Completion Details
+                            </h3>
+                        </div>
+                        <div class="content-body">
+                            <?php if ($activity['winners_list']): ?>
+                            <div class="mb-4">
+                                <h5 class="text-dark mb-3">
+                                    <i class="fas fa-medal text-warning me-2"></i>
+                                    Winners & Awards
+                                </h5>
+                                <div class="text-content">
+                                    <?php echo nl2br(htmlspecialchars($activity['winners_list'])); ?>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php if ($activity['achievements']): ?>
+                            <div class="mb-4">
+                                <h5 class="text-dark mb-3">
+                                    <i class="fas fa-star text-success me-2"></i>
+                                    Achievements
+                                </h5>
+                                <div class="text-content">
+                                    <?php echo nl2br(htmlspecialchars($activity['achievements'])); ?>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php if ($activity['feedback_summary']): ?>
+                            <div class="mb-4">
+                                <h5 class="text-dark mb-3">
+                                    <i class="fas fa-comments text-info me-2"></i>
+                                    Feedback Summary
+                                </h5>
+                                <div class="text-content">
+                                    <?php echo nl2br(htmlspecialchars($activity['feedback_summary'])); ?>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
+                    <!-- Attachments Section -->
+                    <?php if (!empty($attachments)): ?>
+                    <div class="attachments-section">
+                        <div class="content-card">
+                            <div class="content-header">
+                                <h3 class="content-title">
+                                    <i class="fas fa-paperclip"></i>
+                                    Attachments (<?php echo count($attachments); ?>)
+                                </h3>
+                            </div>
+                            <div class="content-body">
+                                <div class="attachments-grid">
+                                    <?php foreach ($attachments as $attachment): ?>
+                                    <div class="attachment-card" onclick="openAttachment('<?php echo htmlspecialchars($attachment['file_path']); ?>', '<?php echo $attachment['file_type']; ?>')">
+                                        <div class="attachment-preview">
+                                            <?php if ($attachment['file_type'] === 'image'): ?>
+                                                <img src="<?php echo htmlspecialchars($attachment['file_path']); ?>" alt="<?php echo htmlspecialchars($attachment['file_name']); ?>">
+                                            <?php elseif ($attachment['file_type'] === 'video'): ?>
+                                                <div class="file-icon">
+                                                    <i class="fas fa-play-circle"></i>
+                                                </div>
+                                            <?php else: ?>
+                                                <div class="file-icon">
+                                                    <i class="fas fa-file"></i>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="attachment-info">
+                                            <div class="attachment-name">
+                                                <?php echo htmlspecialchars($attachment['file_name']); ?>
+                                            </div>
+                                            <div class="attachment-meta">
+                                                <i class="fas fa-tag"></i>
+                                                <?php echo strtoupper($attachment['file_type']); ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
+                    <!-- Metadata Footer -->
+                    <div class="content-card">
+                        <div class="content-body">
+                            <div class="row text-center">
+                                <div class="col-md-4">
+                                    <div class="info-icon mx-auto mb-2" style="background: var(--gradient-info);">
+                                        <i class="fas fa-eye"></i>
+                                    </div>
+                                    <div class="info-label">Views</div>
+                                    <div class="info-value fw-bold"><?php echo intval($activity['view_count']); ?></div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="info-icon mx-auto mb-2" style="background: var(--gradient-success);">
+                                        <i class="fas fa-calendar-plus"></i>
+                                    </div>
+                                    <div class="info-label">Created</div>
+                                    <div class="info-value fw-bold"><?php echo date('M j, Y', strtotime($activity['created_at'])); ?></div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="info-icon mx-auto mb-2" style="background: var(--gradient-warning);">
+                                        <i class="fas fa-edit"></i>
+                                    </div>
+                                    <div class="info-label">Last Updated</div>
+                                    <div class="info-value fw-bold"><?php echo date('M j, Y', strtotime($activity['updated_at'] ?: $activity['created_at'])); ?></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <style>
+                    :root {
+                        --primary-color: #4f46e5;
+                        --primary-dark: #3730a3;
+                        --secondary-color: #06b6d4;
+                        --accent-color: #f59e0b;
+                        --success-color: #10b981;
+                        --warning-color: #f59e0b;
+                        --error-color: #ef4444;
+                        --info-color: #3b82f6;
+                        --light-color: #f9fafb;
+                        --dark-color: #1f2937;
+                        --gray-color: #6b7280;
+                        --card-bg: #ffffff;
+                        --shadow: 0 20px 40px rgba(79, 70, 229, 0.15);
+                        --shadow-hover: 0 30px 60px rgba(79, 70, 229, 0.25);
+                        --radius: 20px;
+                        --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                        --gradient-accent: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                        --gradient-success: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+                        --gradient-warning: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+                        --gradient-info: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+                    }
+
+                    * {
+                        margin: 0;
+                        padding: 0;
+                        box-sizing: border-box;
+                    }
+
+                    body {
+                        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                        min-height: 100vh;
+                        color: var(--dark-color);
+                        line-height: 1.6;
+                    }
+
+                    .page-container {
+                        max-width: 1200px;
+                        margin: 0 auto;
+                        padding: 2rem;
+                    }
+
+                    .back-button {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 0.5rem;
+                        padding: 0.75rem 1.5rem;
+                        background: var(--gradient-primary);
+                        color: white;
+                        text-decoration: none;
+                        border-radius: 12px;
+                        font-weight: 600;
+                        transition: all 0.3s ease;
+                        margin-bottom: 2rem;
+                    }
+
+                    .back-button:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
+                    }
+
+                    .activity-header {
+                        background: var(--card-bg);
+                        border-radius: var(--radius);
+                        box-shadow: var(--shadow);
+                        padding: 3rem;
+                        margin-bottom: 2rem;
+                        position: relative;
+                        overflow: hidden;
+                    }
+
+                    .activity-header::before {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        height: 4px;
+                        background: var(--gradient-primary);
+                    }
+
+                    .activity-title {
+                        font-family: 'Poppins', sans-serif;
+                        font-size: 2.5rem;
+                        font-weight: 700;
+                        color: var(--dark-color);
+                        margin-bottom: 1rem;
+                        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+                        -webkit-background-clip: text;
+                        -webkit-text-fill-color: transparent;
+                        background-clip: text;
+                    }
+
+                    .activity-meta {
+                        display: flex;
+                        flex-wrap: wrap;
+                        gap: 1rem;
+                        margin-bottom: 2rem;
+                    }
+
+                    .meta-item {
+                        display: flex;
+                        align-items: center;
+                        gap: 0.5rem;
+                        padding: 0.75rem 1rem;
+                        background: var(--light-color);
+                        border-radius: 12px;
+                        font-size: 0.9rem;
+                        color: var(--gray-color);
+                        border: 1px solid rgba(79, 70, 229, 0.1);
+                    }
+
+                    .meta-item i {
+                        color: var(--primary-color);
+                    }
+
+                    .activity-type-badge {
+                        padding: 0.5rem 1rem;
+                        border-radius: 20px;
+                        font-size: 0.85rem;
+                        font-weight: 600;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                    }
+
+                    .type-academics {
+                        background: var(--gradient-success);
+                        color: white;
+                    }
+
+                    .type-sports {
+                        background: var(--gradient-accent);
+                        color: var(--dark-color);
+                    }
+
+                    .type-cultural {
+                        background: var(--gradient-secondary);
+                        color: white;
+                    }
+
+                    .type-competition {
+                        background: var(--gradient-warning);
+                        color: var(--dark-color);
+                    }
+
+                    .status-badge {
+                        padding: 0.5rem 1rem;
+                        border-radius: 20px;
+                        font-size: 0.85rem;
+                        font-weight: 600;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                    }
+
+                    .status-upcoming { background: var(--gradient-info); color: white; }
+                    .status-ongoing { background: var(--gradient-accent); color: var(--dark-color); }
+                    .status-completed { background: var(--gradient-success); color: white; }
+                    .status-cancelled { background: var(--gradient-secondary); color: white; }
+
+                    .action-buttons {
+                        display: flex;
+                        gap: 1rem;
+                        flex-wrap: wrap;
+                    }
+
+                    .btn-pdf {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 0.5rem;
+                        padding: 0.75rem 1.5rem;
+                        background: var(--gradient-accent);
+                        color: var(--dark-color);
+                        text-decoration: none;
+                        border-radius: 12px;
+                        font-weight: 600;
+                        transition: all 0.3s ease;
+                        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+                    }
+
+                    .btn-pdf:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+                    }
+
+                    .content-grid {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 2rem;
+                        margin-bottom: 2rem;
+                    }
+
+                    .content-card {
+                        background: var(--card-bg);
+                        border-radius: var(--radius);
+                        box-shadow: var(--shadow);
+                        overflow: hidden;
+                        border: 1px solid rgba(79, 70, 229, 0.08);
+                    }
+
+                    .content-header {
+                        padding: 1.5rem;
+                        border-bottom: 1px solid #e5e7eb;
+                        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+                    }
+
+                    .content-title {
+                        font-size: 1.25rem;
+                        font-weight: 700;
+                        color: var(--dark-color);
+                        margin-bottom: 0.5rem;
+                        display: flex;
+                        align-items: center;
+                        gap: 0.5rem;
+                    }
+
+                    .content-title i {
+                        color: var(--primary-color);
+                    }
+
+                    .content-body {
+                        padding: 1.5rem;
+                    }
+
+                    .info-list {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 1rem;
+                    }
+
+                    .info-item {
+                        display: flex;
+                        align-items: flex-start;
+                        gap: 1rem;
+                    }
+
+                    .info-icon {
+                        width: 40px;
+                        height: 40px;
+                        border-radius: 50%;
+                        background: var(--gradient-primary);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        color: white;
+                        flex-shrink: 0;
+                        margin-top: 0.25rem;
+                    }
+
+                    .info-content {
+                        flex: 1;
+                    }
+
+                    .info-label {
+                        font-weight: 600;
+                        color: var(--dark-color);
+                        margin-bottom: 0.25rem;
+                    }
+
+                    .info-value {
+                        color: var(--gray-color);
+                        line-height: 1.5;
+                    }
+
+                    .text-content {
+                        color: var(--gray-color);
+                        line-height: 1.7;
+                        margin-bottom: 1rem;
+                    }
+
+                    .attachments-section {
+                        margin-bottom: 2rem;
+                    }
+
+                    .attachments-grid {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                        gap: 1rem;
+                    }
+
+                    .attachment-card {
+                        background: var(--card-bg);
+                        border: 2px solid #e5e7eb;
+                        border-radius: 12px;
+                        overflow: hidden;
+                        transition: all 0.3s ease;
+                        cursor: pointer;
+                    }
+
+                    .attachment-card:hover {
+                        border-color: var(--primary-color);
+                        transform: translateY(-3px);
+                        box-shadow: 0 8px 25px rgba(79, 70, 229, 0.2);
+                    }
+
+                    .attachment-preview {
+                        height: 120px;
+                        background: #f8fafc;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        border-bottom: 1px solid #e5e7eb;
+                    }
+
+                    .attachment-preview img {
+                        max-width: 100%;
+                        max-height: 100%;
+                        object-fit: cover;
+                    }
+
+                    .attachment-preview .file-icon {
+                        font-size: 2.5rem;
+                        color: var(--gray-color);
+                    }
+
+                    .attachment-info {
+                        padding: 1rem;
+                    }
+
+                    .attachment-name {
+                        font-weight: 600;
+                        color: var(--dark-color);
+                        margin-bottom: 0.5rem;
+                        font-size: 0.9rem;
+                        word-break: break-word;
+                    }
+
+                    .attachment-meta {
+                        font-size: 0.8rem;
+                        color: var(--gray-color);
+                        display: flex;
+                        align-items: center;
+                        gap: 0.5rem;
+                    }
+
+                    .stats-section {
+                        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+                        border-radius: var(--radius);
+                        padding: 2rem;
+                        margin-bottom: 2rem;
+                        border: 2px solid rgba(59, 130, 246, 0.1);
+                    }
+
+                    .stats-grid {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                        gap: 1.5rem;
+                    }
+
+                    .stat-item {
+                        text-align: center;
+                    }
+
+                    .stat-number {
+                        font-size: 2rem;
+                        font-weight: 800;
+                        color: #0369a1;
+                        line-height: 1;
+                        margin-bottom: 0.5rem;
+                    }
+
+                    .stat-label {
+                        color: #64748b;
+                        font-size: 0.9rem;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                        font-weight: 600;
+                    }
+
+                    @media (max-width: 768px) {
+                        .page-container {
+                            padding: 1rem;
+                        }
+
+                        .activity-title {
+                            font-size: 2rem;
+                        }
+
+                        .content-grid {
+                            grid-template-columns: 1fr;
+                        }
+
+                        .activity-meta {
+                            flex-direction: column;
+                        }
+
+                        .action-buttons {
+                            flex-direction: column;
+                        }
+
+                        .stats-grid {
+                            grid-template-columns: repeat(2, 1fr);
+                        }
+                    }
+
+                    @media (max-width: 480px) {
+                        .activity-header {
+                            padding: 2rem 1.5rem;
+                        }
+
+                        .activity-title {
+                            font-size: 1.75rem;
+                        }
+
+                        .stats-grid {
+                            grid-template-columns: 1fr;
+                        }
+
+                        .attachments-grid {
+                            grid-template-columns: 1fr;
+                        }
+                    }
+
+                    /* Modal for image preview */
+                    .image-modal .modal-dialog {
+                        max-width: 90vw;
+                        max-height: 90vh;
+                    }
+
+                    .image-modal img {
+                        width: 100%;
+                        height: auto;
+                        max-height: 80vh;
+                        object-fit: contain;
+                    }
+                </style>
+            <?php else: ?>
+
+            <!-- List View (Default) -->
+            <div class="page-container">
+                <!-- Page Header -->
+                <div class="page-header">
+                    <div class="header-content">
+                        <div class="header-left">
+                            <h1 class="page-title">
+                                <i class="fas fa-book"></i>
+                                School Diary
+                            </h1>
+                            <p class="page-subtitle">Comprehensive view of all school activities and events</p>
+                        </div>
+                        <div class="header-right">
+                            <a href="index.php" class="btn-dashboard">
+                                <i class="fas fa-tachometer-alt"></i>
+                                Dashboard
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Stats Overview -->
+                    <div class="stats-overview">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-calendar-alt"></i>
+                            </div>
+                            <div class="stat-value"><?php echo count($activities); ?></div>
+                            <div class="stat-label">Total Activities</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-graduation-cap"></i>
+                            </div>
+                            <div class="stat-value">
+                                <?php echo count(array_filter($activities, fn($a) => $a['activity_type'] === 'Academics')); ?>
+                            </div>
+                            <div class="stat-label">Academic Events</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-trophy"></i>
+                            </div>
+                            <div class="stat-value">
+                                <?php echo count(array_filter($activities, fn($a) => $a['activity_type'] === 'Sports')); ?>
+                            </div>
+                            <div class="stat-label">Sports Events</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-palette"></i>
+                            </div>
+                            <div class="stat-value">
+                                <?php echo count(array_filter($activities, fn($a) => $a['activity_type'] === 'Cultural')); ?>
+                            </div>
+                            <div class="stat-label">Cultural Events</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters Section -->
+                <div class="filters-section">
+                    <form method="GET" class="filters-grid">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-search"></i> Search Activities
+                            </label>
+                            <input type="text" class="form-input" name="search" placeholder="Search by title or description..." value="<?= htmlspecialchars($search) ?>">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-tag"></i> Activity Type
+                            </label>
+                            <select class="form-select" name="type">
+                                <option value="">All Types</option>
+                                <option value="Academics" <?= $type_filter == 'Academics' ? 'selected' : '' ?>>Academics</option>
+                                <option value="Sports" <?= $type_filter == 'Sports' ? 'selected' : '' ?>>Sports</option>
+                                <option value="Cultural" <?= $type_filter == 'Cultural' ? 'selected' : '' ?>>Cultural</option>
+                                <option value="Competition" <?= $type_filter == 'Competition' ? 'selected' : '' ?>>Competition</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-calendar"></i> From Date
+                            </label>
+                            <input type="date" class="form-input" name="date_from" value="<?= htmlspecialchars($date_from) ?>">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-calendar"></i> To Date
+                            </label>
+                            <input type="date" class="form-input" name="date_to" value="<?= htmlspecialchars($date_to) ?>">
+                        </div>
+
+                        <div class="form-group">
+                            <button type="submit" class="btn-filter">
+                                <i class="fas fa-filter"></i>
+                                Apply Filters
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- View Toggle -->
+                <div class="view-toggle">
+                    <button class="view-btn active" id="listViewBtn">
+                        <i class="fas fa-list"></i>
+                        List View
+                    </button>
+                    <button class="view-btn" id="calendarViewBtn">
+                        <i class="fas fa-calendar-alt"></i>
+                        Calendar View
+                    </button>
+                </div>
+
+                <!-- List View -->
+                <div id="listView" class="activities-grid">
+                    <?php if (empty($activities)): ?>
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <i class="fas fa-calendar-times"></i>
+                            </div>
+                            <h3 class="empty-title">No Activities Found</h3>
+                            <p class="empty-text">Try adjusting your search filters or check back later for new activities.</p>
+                        </div>
+                    <?php else: ?>
+                        <?php foreach ($activities as $index => $activity): ?>
+                            <div class="activity-card" style="--index: <?php echo $index; ?>">
+                                <div class="activity-header">
+                                    <h3 class="activity-title">
+                                        <?php echo htmlspecialchars($activity['activity_title']); ?>
+                                    </h3>
+                                    <div class="activity-meta">
+                                        <span class="activity-type type-<?php echo strtolower($activity['activity_type']); ?>">
+                                            <?php echo htmlspecialchars($activity['activity_type']); ?>
+                                        </span>
+                                        <span class="meta-item">
+                                            <i class="fas fa-calendar"></i>
+                                            <?php echo date('M j, Y', strtotime($activity['activity_date'])); ?>
+                                        </span>
+                                        <span class="meta-item">
+                                            <i class="fas fa-map-marker-alt"></i>
+                                            <?php echo htmlspecialchars($activity['venue'] ?: 'TBD'); ?>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="activity-content">
+                                    <p class="activity-description">
+                                        <?php echo htmlspecialchars($activity['description']); ?>
+                                    </p>
+
+                                    <div class="activity-meta">
+                                        <span class="meta-item">
+                                            <i class="fas fa-user"></i>
+                                            Coordinator: <?php echo htmlspecialchars($activity['coordinator_name'] ?: 'Not assigned'); ?>
+                                        </span>
+                                        <span class="meta-item">
+                                            <i class="fas fa-clock"></i>
+                                            <?php echo $activity['start_time'] ? $activity['start_time'] . ' - ' . $activity['end_time'] : 'All day'; ?>
+                                        </span>
+                                    </div>
+
+                                    <div class="activity-actions">
+                                        <a href="school_diary.php?id=<?php echo $activity['id']; ?>" class="btn-details">
+                                            <i class="fas fa-eye"></i>
+                                            View Details
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Calendar View -->
+                <div id="calendarView" class="calendar-container" style="display: none;">
+                    <div class="calendar-header">
+                        <h2 class="calendar-title" id="currentMonth">December 2025</h2>
+                        <div class="calendar-nav">
+                            <button class="calendar-btn" id="prevMonth">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button class="calendar-btn" id="todayBtn">Today</button>
+                            <button class="calendar-btn" id="nextMonth">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="calendar-grid">
+                        <div class="calendar-day-header">Sun</div>
+                        <div class="calendar-day-header">Mon</div>
+                        <div class="calendar-day-header">Tue</div>
+                        <div class="calendar-day-header">Wed</div>
+                        <div class="calendar-day-header">Thu</div>
+                        <div class="calendar-day-header">Fri</div>
+                        <div class="calendar-day-header">Sat</div>
+
+                        <div id="calendarBody">
+                            <!-- Calendar days will be populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="calendar-legend">
+                        <h4 class="legend-title">Activity Types</h4>
+                        <div class="legend-items">
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);"></div>
+                                <span>Academics</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);"></div>
+                                <span>Sports</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);"></div>
+                                <span>Cultural</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);"></div>
+                                <span>Competition</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <style>
+                :root {
+                    --primary-color: #4f46e5;
+                    --primary-dark: #3730a3;
+                    --secondary-color: #06b6d4;
+                    --accent-color: #f59e0b;
+                    --success-color: #10b981;
+                    --warning-color: #f59e0b;
+                    --error-color: #ef4444;
+                    --info-color: #3b82f6;
+                    --light-color: #f9fafb;
+                    --dark-color: #1f2937;
+                    --gray-color: #6b7280;
+                    --card-bg: #ffffff;
+                    --shadow: 0 20px 40px rgba(79, 70, 229, 0.15);
+                    --shadow-hover: 0 30px 60px rgba(79, 70, 229, 0.25);
+                    --radius: 20px;
+                    --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                    --gradient-accent: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                    --gradient-success: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+                    --gradient-warning: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+                    --gradient-info: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+                }
+
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+
+                body {
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                    min-height: 100vh;
+                    color: var(--dark-color);
+                    line-height: 1.6;
+                }
+
+                .page-container {
+                    max-width: 1400px;
+                    margin: 0 auto;
+                    padding: 2rem;
+                }
+
+                .page-header {
+                    background: var(--card-bg);
+                    border-radius: var(--radius);
+                    box-shadow: var(--shadow);
+                    padding: 2rem;
+                    margin-bottom: 2rem;
+                    position: relative;
+                    overflow: hidden;
+                }
+
+                .page-header::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    height: 4px;
+                    background: var(--gradient-primary);
+                }
+
+                .header-content {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    gap: 2rem;
+                    margin-bottom: 2rem;
+                }
+
+                .header-left {
+                    flex: 1;
+                }
+
+                .header-right {
+                    flex-shrink: 0;
+                }
+
+                .btn-dashboard {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    padding: 0.75rem 1.5rem;
+                    background: var(--gradient-secondary);
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 12px;
+                    font-weight: 600;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 12px rgba(240, 159, 251, 0.3);
+                }
+
+                .btn-dashboard:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 8px 25px rgba(240, 159, 251, 0.4);
+                }
+
+                .page-title {
+                    font-family: 'Poppins', sans-serif;
+                    font-size: 2.5rem;
+                    font-weight: 700;
+                    color: var(--dark-color);
+                    margin-bottom: 0.5rem;
+                    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                }
+
+                .page-subtitle {
+                    color: var(--gray-color);
+                    font-size: 1.1rem;
+                    margin-bottom: 2rem;
+                }
+
+                .stats-overview {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                    gap: 1.5rem;
+                    margin-bottom: 2rem;
+                }
+
+                .stat-card {
+                    background: var(--card-bg);
+                    border-radius: var(--radius);
+                    padding: 1.5rem;
+                    box-shadow: var(--shadow);
+                    border: 1px solid rgba(79, 70, 229, 0.1);
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    position: relative;
+                    overflow: hidden;
+                }
+
+                .stat-card::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    height: 4px;
+                    background: var(--gradient-primary);
+                }
+
+                .stat-card:hover {
+                    transform: translateY(-5px);
+                    box-shadow: var(--shadow-hover);
+                }
+
+                .stat-icon {
+                    width: 50px;
+                    height: 50px;
+                    border-radius: 50%;
+                    background: var(--gradient-primary);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-size: 1.25rem;
+                    margin-bottom: 1rem;
+                }
+
+                .stat-value {
+                    font-size: 2rem;
+                    font-weight: 700;
+                    color: var(--primary-color);
+                    margin-bottom: 0.5rem;
+                }
+
+                .stat-label {
+                    color: var(--gray-color);
+                    font-weight: 500;
+                }
+
+                .filters-section {
+                    background: var(--card-bg);
+                    border-radius: var(--radius);
+                    padding: 2rem;
+                    box-shadow: var(--shadow);
+                    margin-bottom: 2rem;
+                    border: 1px solid rgba(79, 70, 229, 0.1);
+                }
+
+                .filters-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 1.5rem;
+                    align-items: end;
+                }
+
+                .form-group {
+                    margin-bottom: 0;
+                }
+
+                .form-label {
+                    font-weight: 600;
+                    color: var(--dark-color);
+                    margin-bottom: 0.5rem;
+                    display: block;
+                }
+
+                .form-input {
+                    width: 100%;
+                    padding: 0.75rem 1rem;
+                    border: 2px solid #e5e7eb;
+                    border-radius: 12px;
+                    font-size: 0.95rem;
+                    transition: all 0.3s ease;
+                    background: #f9fafb;
+                }
+
+                .form-input:focus {
+                    outline: none;
+                    border-color: var(--primary-color);
+                    background: white;
+                    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+                }
+
+                .form-select {
+                    width: 100%;
+                    padding: 0.75rem 1rem;
+                    border: 2px solid #e5e7eb;
+                    border-radius: 12px;
+                    font-size: 0.95rem;
+                    transition: all 0.3s ease;
+                    background: #f9fafb;
+                    cursor: pointer;
+                }
+
+                .form-select:focus {
+                    outline: none;
+                    border-color: var(--primary-color);
+                    background: white;
+                    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+                }
+
+                .btn-filter {
+                    padding: 0.75rem 2rem;
+                    background: var(--gradient-primary);
+                    color: white;
+                    border: none;
+                    border-radius: 12px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    justify-content: center;
+                }
+
+                .btn-filter:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
+                }
+
+                .view-toggle {
+                    display: flex;
+                    background: #f1f5f9;
+                    border-radius: 12px;
+                    padding: 0.25rem;
+                    margin-bottom: 2rem;
+                }
+
+                .view-btn {
+                    flex: 1;
+                    padding: 0.75rem 1.5rem;
+                    border: none;
+                    background: transparent;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 0.5rem;
+                }
+
+                .view-btn.active {
+                    background: var(--gradient-primary);
+                    color: white;
+                    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+                }
+
+                .activities-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+                    gap: 2rem;
+                }
+
+                .activity-card {
+                    background: var(--card-bg);
+                    border-radius: var(--radius);
+                    overflow: hidden;
+                    box-shadow: var(--shadow);
+                    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                    border: 1px solid rgba(79, 70, 229, 0.08);
+                    position: relative;
+                }
+
+                .activity-card:hover {
+                    transform: translateY(-8px);
+                    box-shadow: var(--shadow-hover);
+                }
+
+                .activity-header {
+                    padding: 1.5rem;
+                    border-bottom: 1px solid #e5e7eb;
+                    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+                }
+
+                .activity-title {
+                    font-size: 1.25rem;
+                    font-weight: 700;
+                    color: var(--dark-color);
+                    margin-bottom: 0.5rem;
+                    line-height: 1.3;
+                }
+
+                .activity-meta {
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
+                    flex-wrap: wrap;
+                    margin-bottom: 1rem;
+                }
+
+                .meta-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    font-size: 0.9rem;
+                    color: var(--gray-color);
+                }
+
+                .activity-type {
+                    padding: 0.25rem 0.75rem;
+                    border-radius: 20px;
+                    font-size: 0.8rem;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+
+                .type-academics {
+                    background: var(--gradient-success);
+                    color: white;
+                }
+
+                .type-sports {
+                    background: var(--gradient-accent);
+                    color: var(--dark-color);
+                }
+
+                .type-cultural {
+                    background: var(--gradient-secondary);
+                    color: white;
+                }
+
+                .type-competition {
+                    background: var(--gradient-warning);
+                    color: var(--dark-color);
+                }
+
+                .activity-content {
+                    padding: 1.5rem;
+                }
+
+                .activity-description {
+                    color: var(--gray-color);
+                    line-height: 1.6;
+                    margin-bottom: 1.5rem;
+                    display: -webkit-box;
+                    -webkit-line-clamp: 3;
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;
+                }
+
+                .activity-actions {
+                    display: flex;
+                    gap: 0.75rem;
+                    flex-wrap: wrap;
+                }
+
+                .btn-details {
+                    padding: 0.75rem 1.5rem;
+                    background: var(--gradient-primary);
+                    color: white;
+                    border: none;
+                    border-radius: 12px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    text-decoration: none;
+                }
+
+                .btn-details:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.3);
+                }
+
+                .btn-pdf {
+                    padding: 0.75rem 1.5rem;
+                    background: var(--gradient-accent);
+                    color: var(--dark-color);
+                    border: none;
+                    border-radius: 12px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    text-decoration: none;
+                }
+
+                .btn-pdf:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.2);
+                }
+
+                .empty-state {
+                    text-align: center;
+                    padding: 4rem 2rem;
+                    background: var(--card-bg);
+                    border-radius: var(--radius);
+                    box-shadow: var(--shadow);
+                    border: 1px solid rgba(79, 70, 229, 0.1);
+                }
+
+                .empty-icon {
+                    font-size: 4rem;
+                    color: var(--gray-color);
+                    margin-bottom: 1.5rem;
+                    opacity: 0.5;
+                }
+
+                .empty-title {
+                    font-size: 1.5rem;
+                    font-weight: 600;
+                    color: var(--dark-color);
+                    margin-bottom: 0.5rem;
+                }
+
+                .empty-text {
+                    color: var(--gray-color);
+                    font-size: 1rem;
+                }
+
+                /* Calendar View */
+                .calendar-container {
+                    background: var(--card-bg);
+                    border-radius: var(--radius);
+                    box-shadow: var(--shadow);
+                    padding: 2rem;
+                    border: 1px solid rgba(79, 70, 229, 0.1);
+                }
+
+                .calendar-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 2rem;
+                }
+
+                .calendar-title {
+                    font-size: 1.75rem;
+                    font-weight: 700;
+                    color: var(--dark-color);
+                }
+
+                .calendar-nav {
+                    display: flex;
+                    gap: 0.5rem;
+                }
+
+                .calendar-btn {
+                    padding: 0.5rem 1rem;
+                    background: #f1f5f9;
+                    border: none;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                }
+
+                .calendar-btn:hover {
+                    background: var(--primary-color);
+                    color: white;
+                }
+
+                .calendar-grid {
+                    display: grid;
+                    grid-template-columns: repeat(7, 1fr);
+                    gap: 1px;
+                    background: #e5e7eb;
+                    border-radius: 12px;
+                    overflow: hidden;
+                }
+
+                .calendar-day-header {
+                    background: var(--gradient-primary);
+                    color: white;
+                    padding: 1rem;
+                    text-align: center;
+                    font-weight: 600;
+                    font-size: 0.9rem;
+                }
+
+                .calendar-day {
+                    background: var(--card-bg);
+                    min-height: 120px;
+                    padding: 0.75rem;
+                    position: relative;
+                    transition: all 0.3s ease;
+                }
+
+                .calendar-day:hover {
+                    background: #f8fafc;
+                }
+
+                .calendar-day.today {
+                    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+                }
+
+                .calendar-day.today::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    height: 3px;
+                    background: var(--accent-color);
+                }
+
+                .day-number {
+                    font-weight: 600;
+                    color: var(--dark-color);
+                    margin-bottom: 0.5rem;
+                }
+
+                .activity-item {
+                    background: var(--gradient-success);
+                    color: white;
+                    padding: 0.25rem 0.5rem;
+                    border-radius: 6px;
+                    font-size: 0.75rem;
+                    margin-bottom: 0.25rem;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    font-weight: 500;
+                }
+
+                .activity-item:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+                }
+
+                .activity-sports {
+                    background: var(--gradient-accent);
+                    color: var(--dark-color);
+                }
+
+                .activity-cultural {
+                    background: var(--gradient-secondary);
+                }
+
+                .activity-competition {
+                    background: var(--gradient-warning);
+                    color: var(--dark-color);
+                }
+
+                .calendar-legend {
+                    margin-top: 2rem;
+                    padding-top: 2rem;
+                    border-top: 1px solid #e5e7eb;
+                }
+
+                .legend-title {
+                    font-weight: 600;
+                    color: var(--dark-color);
+                    margin-bottom: 1rem;
+                }
+
+                .legend-items {
+                    display: flex;
+                    gap: 1.5rem;
+                    flex-wrap: wrap;
+                }
+
+                .legend-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    font-size: 0.9rem;
+                    color: var(--gray-color);
+                }
+
+                .legend-dot {
+                    width: 12px;
+                    height: 12px;
+                    border-radius: 50%;
+                }
+
+                /* Responsive Design */
+                @media (max-width: 1024px) {
+                    .page-container {
+                        padding: 1.5rem;
+                    }
+
+                    .activities-grid {
+                        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+                    }
+                }
+
+                @media (max-width: 768px) {
+                    .page-header {
+                        padding: 1.5rem;
+                    }
+
+                    .header-content {
+                        flex-direction: column;
+                        gap: 1rem;
+                        text-align: center;
+                    }
+
+                    .header-left, .header-right {
+                        flex: none;
+                    }
+
+                    .page-title {
+                        font-size: 2rem;
+                    }
+
+                    .stats-overview {
+                        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    }
+
+                    .filters-grid {
+                        grid-template-columns: 1fr;
+                        gap: 1rem;
+                    }
+
+                    .activities-grid {
+                        grid-template-columns: 1fr;
+                    }
+
+                    .calendar-header {
+                        flex-direction: column;
+                        gap: 1rem;
+                        text-align: center;
+                    }
+
+                    .legend-items {
+                        justify-content: center;
+                    }
+                }
+
+                @media (max-width: 480px) {
+                    .page-container {
+                        padding: 1rem;
+                    }
+
+                    .page-header {
+                        padding: 1rem;
+                    }
+
+                    .page-title {
+                        font-size: 1.75rem;
+                    }
+
+                    .activity-actions {
+                        flex-direction: column;
+                    }
+
+                    .btn-details, .btn-pdf {
+                        width: 100%;
+                        justify-content: center;
+                    }
+
+                    .calendar-grid {
+                        font-size: 0.9rem;
+                    }
+
+                    .calendar-day {
+                        min-height: 100px;
+                        padding: 0.5rem;
+                    }
+                }
+
+                /* Animations */
+                @keyframes fadeInUp {
+                    from {
+                        opacity: 0;
+                        transform: translateY(30px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+
+                @keyframes slideInLeft {
+                    from {
+                        opacity: 0;
+                        transform: translateX(-30px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateX(0);
+                    }
+                }
+
+                .activity-card {
+                    animation: fadeInUp 0.6s ease-out both;
+                }
+
+                .activity-card:nth-child(odd) {
+                    animation-delay: 0.1s;
+                }
+
+                .activity-card:nth-child(even) {
+                    animation-delay: 0.2s;
+                }
+
+                .stat-card {
+                    animation: slideInLeft 0.6s ease-out both;
+                }
+
+                .stat-card:nth-child(1) { animation-delay: 0.1s; }
+                .stat-card:nth-child(2) { animation-delay: 0.2s; }
+                .stat-card:nth-child(3) { animation-delay: 0.3s; }
+                .stat-card:nth-child(4) { animation-delay: 0.4s; }
+            </style>
+            <?php endif; ?>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About SahabFormMaster</h4>
+                    <p>A comprehensive school management system designed for effective teaching and learning.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="lesson-plan.php">Lesson Plans</a></li>
+                        <li><a href="students.php">Students</a></li>
+                        <li><a href="results.php">Results</a></li>
+                        <li><a href="#">Support</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact Information</h4>
+                    <p>📧 teacher.support@sahabformmaster.com</p>
+                    <p>📱 +234 808 683 5607</p>
+                    <p>🌐 www.sahabformmaster.com</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="#">Privacy Policy</a>
+                    <span>•</span>
+                    <a href="#">Terms of Service</a>
+                    <span>•</span>
+                    <span>Version 2.0</span>
+                </div>
+            </div>
+        </div>
+    </footer>
 
     <!-- Activity Details Modal (for calendar view) -->
     <div class="modal fade" id="activityModal" tabindex="-1">
@@ -2219,5 +2429,124 @@ if (isset($_GET['pdf']) && isset($_GET['id'])) {
             block: 'nearest'
         });
     </script>
+
+    <?php include '../includes/floating-button.php'; ?>
+
+    <script>
+        // Mobile Menu Toggle - Dropdown Navigation
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const mobileNavDropdown = document.getElementById('mobileNavDropdown');
+        const mobileNavClose = document.getElementById('mobileNavClose');
+
+        // Toggle dropdown menu
+        mobileMenuToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            mobileNavDropdown.classList.toggle('active');
+            mobileMenuToggle.classList.toggle('active');
+        });
+
+        // Close dropdown when clicking close button
+        mobileNavClose.addEventListener('click', () => {
+            mobileNavDropdown.classList.remove('active');
+            mobileMenuToggle.classList.remove('active');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!mobileNavDropdown.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+                mobileNavDropdown.classList.remove('active');
+                mobileMenuToggle.classList.remove('active');
+            }
+        });
+
+        // Close dropdown when clicking on a navigation link
+        document.querySelectorAll('.mobile-nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                mobileNavDropdown.classList.remove('active');
+                mobileMenuToggle.classList.remove('active');
+            });
+        });
+
+        // Smooth scroll for internal links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Add active class on scroll for header
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('.dashboard-header');
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+
+        // Animate cards on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Observe dashboard cards
+        document.querySelectorAll('.card').forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(card);
+        });
+
+        // Observe quick action cards
+        document.querySelectorAll('.quick-action-card').forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(card);
+        });
+
+        // Add hover effects for cards
+        document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-5px)';
+            });
+
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+            });
+        });
+
+        // Quick action cards hover effect
+        document.querySelectorAll('.quick-action-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'scale(1.05)';
+            });
+
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'scale(1)';
+            });
+        });
+
+        // Auto-refresh dashboard data every 5 minutes
+        setInterval(() => {
+            // You can add AJAX calls here to refresh dynamic data
+            console.log('Dashboard data refresh check...');
+        }, 300000);
+    </script>
+
 </body>
 </html>

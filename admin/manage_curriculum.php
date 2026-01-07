@@ -254,334 +254,15 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Manage Curriculum | SahabFormMaster</title>
-    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin_dashboard.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --primary-color: #4a6fa5;
-            --secondary-color: #166088;
-            --accent-color: #4fc3a1;
-            --danger-color: #e74c3c;
-            --warning-color: #f39c12;
-            --light-color: #f8f9fa;
-            --dark-color: #343a40;
-            --border-radius: 8px;
-            --box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-
-        .curriculum-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        @media (max-width: 1024px) {
-            .curriculum-container {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .curriculum-card {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 1.5rem;
-            box-shadow: var(--box-shadow);
-            transition: transform 0.3s ease;
-        }
-
-        .curriculum-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .curriculum-card h3 {
-            margin-top: 0;
-            color: var(--secondary-color);
-            padding-bottom: 1rem;
-            border-bottom: 2px solid var(--light-color);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .curriculum-form .form-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: var(--dark-color);
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #ddd;
-            border-radius: var(--border-radius);
-            font-size: 1rem;
-            transition: border-color 0.3s ease;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.1);
-        }
-
-        .form-actions {
-            display: flex;
-            gap: 1rem;
-            margin-top: 1.5rem;
-            padding-top: 1rem;
-            border-top: 1px solid #eee;
-        }
-
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: var(--border-radius);
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .btn-gold {
-            background: linear-gradient(135deg, #ffd700, #ffed4e);
-            color: #000;
-        }
-
-        .btn-gold:hover {
-            background: linear-gradient(135deg, #ffed4e, #ffd700);
-            transform: translateY(-2px);
-        }
-
-        .btn-primary {
-            background: var(--primary-color);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: var(--secondary-color);
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #5a6268;
-        }
-
-        .btn-danger {
-            background: var(--danger-color);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #c0392b;
-        }
-
-        .search-filter {
-            background: white;
-            padding: 1.5rem;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            margin-bottom: 2rem;
-        }
-
-        .search-form {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 1rem;
-            align-items: end;
-        }
-
-        .table-wrapper {
-            background: white;
-            border-radius: var(--border-radius);
-            overflow: hidden;
-            box-shadow: var(--box-shadow);
-        }
-
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .table th {
-            background: var(--primary-color);
-            color: white;
-            padding: 1rem;
-            text-align: left;
-            font-weight: 600;
-        }
-
-        .table td {
-            padding: 1rem;
-            border-bottom: 1px solid #eee;
-        }
-
-        .table tr:hover {
-            background: #f8f9fa;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: 600;
-        }
-
-        .badge-primary {
-            background: #e3f2fd;
-            color: var(--primary-color);
-        }
-
-        .badge-success {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .badge-warning {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: 600;
-        }
-
-        .status-active {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .status-inactive {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .btn-small {
-            padding: 0.375rem 0.75rem;
-            font-size: 0.875rem;
-            border-radius: 4px;
-        }
-
-        .curriculum-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--primary-color);
-            margin: 0.5rem 0;
-        }
-
-        .stat-label {
-            color: #6c757d;
-            font-size: 0.875rem;
-        }
-
-        .alert {
-            padding: 1rem;
-            border-radius: var(--border-radius);
-            margin-bottom: 1.5rem;
-        }
-
-        .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .alert-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .topic-list {
-            max-height: 200px;
-            overflow-y: auto;
-            background: #f8f9fa;
-            padding: 1rem;
-            border-radius: var(--border-radius);
-            border: 1px solid #dee2e6;
-        }
-
-        .topic-item {
-            padding: 0.5rem;
-            border-bottom: 1px solid #dee2e6;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .topic-item:last-child {
-            border-bottom: none;
-        }
-
-        .topic-item i {
-            color: var(--accent-color);
-        }
-
-        .bulk-actions {
-            background: #f8f9fa;
-            padding: 1rem;
-            border-radius: var(--border-radius);
-            margin-bottom: 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .select-all {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .export-buttons {
-            display: flex;
-            gap: 0.5rem;
-        }
-    </style>
 </head>
 <body>
+
+<!-- Mobile Menu Toggle -->
+<button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+    <i class="fas fa-bars"></i>
+</button>
 
 <header class="dashboard-header">
     <div class="header-container">
@@ -605,19 +286,8 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
 </header>
 
 <div class="dashboard-container">
-    <aside class="sidebar">
-        <nav class="sidebar-nav">
-            <ul class="nav-list">
-                <li class="nav-item">
-                    <a href="index.php" class="nav-link">
-                        <span class="nav-icon">📊</span>
-                        <span class="nav-text">Dashboard</span>
-                    </a>
-                </li>
-                
-            </ul>
-        </nav>
-    </aside>
+    <!-- Sidebar Navigation -->
+    <?php include '../includes/admin_sidebar.php'; ?>
 
     <main class="main-content">
         <div class="content-header">
@@ -640,35 +310,68 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
         <?php endif; ?>
 
         <!-- Curriculum Statistics -->
-        <div class="curriculum-stats">
+        <div class="dashboard-cards">
             <?php
             $total_curriculum = count($curriculums);
             $active_curriculum = array_filter($curriculums, fn($c) => $c['status'] === 'active');
             $inactive_curriculum = array_filter($curriculums, fn($c) => $c['status'] === 'inactive');
             $unique_subjects = count(array_unique(array_column($curriculums, 'subject_name')));
             ?>
-            <div class="stat-card">
-                <div class="stat-value"><?php echo $total_curriculum; ?></div>
-                <div class="stat-label">Total Curriculum</div>
+            <div class="card card-gradient-1">
+                <div class="card-icon-wrapper">
+                    <div class="card-icon">📚</div>
+                </div>
+                <div class="card-content">
+                    <h3>Total Curriculum</h3>
+                    <p class="card-value"><?php echo $total_curriculum; ?></p>
+                    <div class="card-footer">
+                        <span class="card-badge">All Items</span>
+                    </div>
+                </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-value"><?php echo count($active_curriculum); ?></div>
-                <div class="stat-label">Active</div>
+            <div class="card card-gradient-2">
+                <div class="card-icon-wrapper">
+                    <div class="card-icon">✅</div>
+                </div>
+                <div class="card-content">
+                    <h3>Active</h3>
+                    <p class="card-value"><?php echo count($active_curriculum); ?></p>
+                    <div class="card-footer">
+                        <span class="card-badge">Published</span>
+                    </div>
+                </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-value"><?php echo count($inactive_curriculum); ?></div>
-                <div class="stat-label">Inactive</div>
+            <div class="card card-gradient-3">
+                <div class="card-icon-wrapper">
+                    <div class="card-icon">⏸️</div>
+                </div>
+                <div class="card-content">
+                    <h3>Inactive</h3>
+                    <p class="card-value"><?php echo count($inactive_curriculum); ?></p>
+                    <div class="card-footer">
+                        <span class="card-badge">Draft</span>
+                    </div>
+                </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-value"><?php echo $unique_subjects; ?></div>
-                <div class="stat-label">Subjects</div>
+            <div class="card card-gradient-4">
+                <div class="card-icon-wrapper">
+                    <div class="card-icon">📖</div>
+                </div>
+                <div class="card-content">
+                    <h3>Subjects</h3>
+                    <p class="card-value"><?php echo $unique_subjects; ?></p>
+                    <div class="card-footer">
+                        <span class="card-badge">Unique</span>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Create / Edit form -->
-        <section class="curriculum-section">
-            <div class="curriculum-card">
-                <h3><i class="fas fa-plus-circle"></i> <?php echo $edit_curriculum ? 'Edit Curriculum' : 'Create New Curriculum'; ?></h3>
+        <section>
+            <div class="card">
+                <div class="card-content">
+                    <h3><i class="fas fa-plus-circle"></i> <?php echo $edit_curriculum ? 'Edit Curriculum' : 'Create New Curriculum'; ?></h3>
 
                 <form method="POST" class="curriculum-form">
                     <input type="hidden" name="action" value="<?php echo $edit_curriculum ? 'edit' : 'add'; ?>">
@@ -820,13 +523,16 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
                         <?php endif; ?>
                     </div>
                 </form>
+                </div>
             </div>
         </section>
 
         <!-- Search and Filter -->
-        <section class="curriculum-section">
-            <div class="search-filter">
-                <form method="GET" class="search-form">
+        <section>
+            <div class="card">
+                <div class="card-content">
+                    <h3><i class="fas fa-filter"></i> Search & Filter Curriculum</h3>
+                    <form method="GET">
                     <div class="form-group">
                         <label>Search</label>
                         <input type="text" name="search" class="form-control" 
@@ -889,123 +595,133 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
                         </a>
                     </div>
                 </form>
+                </div>
             </div>
         </section>
 
         <!-- Bulk Actions -->
-        <form method="POST" id="bulkForm" onsubmit="return confirm('Are you sure you want to delete selected curriculum items?');">
-            <input type="hidden" name="action" value="bulk_delete">
-            <div class="bulk-actions">
-                <div class="select-all">
-                    <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
-                    <label for="selectAll">Select All</label>
-                    <button type="button" class="btn btn-danger btn-small" onclick="deleteSelected()">
-                        <i class="fas fa-trash"></i> Delete Selected
-                    </button>
-                </div>
-                <div class="export-buttons">
-                    <button type="button" class="btn btn-primary btn-small" onclick="exportToPDF()">
-                        <i class="fas fa-file-pdf"></i> Export PDF
-                    </button>
-                    <button type="button" class="btn btn-success btn-small" onclick="exportToExcel()">
-                        <i class="fas fa-file-excel"></i> Export Excel
-                    </button>
+        <section>
+            <div class="card">
+                <div class="card-content">
+                    <h3><i class="fas fa-tasks"></i> Bulk Actions</h3>
+                    <form method="POST" id="bulkForm" onsubmit="return confirm('Are you sure you want to delete selected curriculum items?');">
+                        <input type="hidden" name="action" value="bulk_delete">
+                        <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+                            <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
+                            <label for="selectAll" style="font-weight: 600;">Select All</label>
+                            <button type="button" class="btn btn-danger btn-small" onclick="deleteSelected()">
+                                <i class="fas fa-trash"></i> Delete Selected
+                            </button>
+                            <button type="button" class="btn btn-primary btn-small" onclick="exportToPDF()">
+                                <i class="fas fa-file-pdf"></i> Export PDF
+                            </button>
+                            <button type="button" class="btn btn-success btn-small" onclick="exportToExcel()">
+                                <i class="fas fa-file-excel"></i> Export Excel
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
+        </section>
 
             <!-- Curriculum Table -->
-            <section class="curriculum-section">
-                <div class="table-wrapper">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th style="width: 40px;">
-                                    <input type="checkbox" id="selectAllHeader" onchange="toggleSelectAll(this)">
-                                </th>
-                                <th>#</th>
-                                <th>Subject</th>
-                                <th>Grade</th>
-                                <th>Term</th>
-                                <th>Week</th>
-                                <th>Teacher</th>
-                                <th>Class</th>
-                                <th>Topics</th>
-                                <th>Duration</th>
-                                <th>Status</th>
-                                <th style="width: 160px;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (count($curriculums) === 0): ?>
-                                <tr>
-                                    <td colspan="12" class="text-center small-muted">
-                                        <i class="fas fa-info-circle"></i> No curriculum found.
-                                    </td>
-                                </tr>
-                            <?php else: ?>
-                                <?php foreach ($curriculums as $c): ?>
+            <section>
+                <div class="card">
+                    <div class="card-content">
+                        <h3><i class="fas fa-table"></i> Curriculum List</h3>
+                        <div class="table-wrapper">
+                            <table class="table">
+                                <thead>
                                     <tr>
-                                        <td>
-                                            <input type="checkbox" name="selected_ids[]" value="<?php echo intval($c['id']); ?>" class="select-checkbox">
-                                        </td>
-                                        <td><?php echo intval($c['id']); ?></td>
-                                        <td>
-                                            <strong><?php echo htmlspecialchars($c['subject_name']); ?></strong>
-                                            <?php if ($c['description']): ?>
-                                                <br><small class="small-muted"><?php echo substr(htmlspecialchars($c['description']), 0, 50); ?>...</small>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-primary"><?php echo htmlspecialchars($c['grade_level']); ?></span>
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-warning"><?php echo ucfirst($c['term'] ?? 'N/A'); ?></span>
-                                        </td>
-                                        <td>
-                                            <?php if ($c['week'] > 0): ?>
-                                                <span class="badge">Week <?php echo intval($c['week']); ?></span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td class="small-muted">
-                                            <?php echo htmlspecialchars($c['teacher_name'] ?? 'Unassigned'); ?>
-                                        </td>
-                                        <td class="small-muted">
-                                            <?php echo htmlspecialchars($c['class_name'] ?? '-'); ?>
-                                        </td>
-                                        <td class="text-center">
-                                            <?php
-                                            $topicCount = !empty($c['topics']) ? count(array_filter(explode("\n", $c['topics']))) : 0;
-                                            ?>
-                                            <span class="badge badge-success"><?php echo $topicCount; ?> topics</span>
-                                        </td>
-                                        <td class="small-muted"><?php echo htmlspecialchars($c['duration'] ?: '-'); ?></td>
-                                        <td>
-                                            <span class="status-badge status-<?php echo htmlspecialchars($c['status']); ?>">
-                                                <?php echo ucfirst($c['status']); ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="action-buttons">
-                                                <a class="btn btn-primary btn-small" href="manage_curriculum.php?edit=<?php echo intval($c['id']); ?>">
-                                                    <i class="fas fa-edit"></i> Edit
-                                                </a>
-                                                <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this curriculum?');">
-                                                    <input type="hidden" name="action" value="delete">
-                                                    <input type="hidden" name="id" value="<?php echo intval($c['id']); ?>">
-                                                    <button type="submit" class="btn btn-danger btn-small">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </form>
-                                                <button type="button" class="btn btn-secondary btn-small" onclick="viewTopics(<?php echo intval($c['id']); ?>)">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                            </div>
-                                        </td>
+                                        <th style="width: 40px;">
+                                            <input type="checkbox" id="selectAllHeader" onchange="toggleSelectAll(this)">
+                                        </th>
+                                        <th>#</th>
+                                        <th>Subject</th>
+                                        <th>Grade</th>
+                                        <th>Term</th>
+                                        <th>Week</th>
+                                        <th>Teacher</th>
+                                        <th>Class</th>
+                                        <th>Topics</th>
+                                        <th>Duration</th>
+                                        <th>Status</th>
+                                        <th style="width: 160px;">Actions</th>
                                     </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+                                </thead>
+                                <tbody>
+                                    <?php if (count($curriculums) === 0): ?>
+                                        <tr>
+                                            <td colspan="12" class="text-center small-muted">
+                                                <i class="fas fa-info-circle"></i> No curriculum found.
+                                            </td>
+                                        </tr>
+                                    <?php else: ?>
+                                        <?php foreach ($curriculums as $c): ?>
+                                            <tr>
+                                                <td>
+                                                    <input type="checkbox" name="selected_ids[]" value="<?php echo intval($c['id']); ?>" class="select-checkbox">
+                                                </td>
+                                                <td><?php echo intval($c['id']); ?></td>
+                                                <td>
+                                                    <strong><?php echo htmlspecialchars($c['subject_name']); ?></strong>
+                                                    <?php if ($c['description']): ?>
+                                                        <br><small class="small-muted"><?php echo substr(htmlspecialchars($c['description']), 0, 50); ?>...</small>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td>
+                                                    <span class="badge badge-primary"><?php echo htmlspecialchars($c['grade_level']); ?></span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge badge-warning"><?php echo ucfirst($c['term'] ?? 'N/A'); ?></span>
+                                                </td>
+                                                <td>
+                                                    <?php if ($c['week'] > 0): ?>
+                                                        <span class="badge">Week <?php echo intval($c['week']); ?></span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td class="small-muted">
+                                                    <?php echo htmlspecialchars($c['teacher_name'] ?? 'Unassigned'); ?>
+                                                </td>
+                                                <td class="small-muted">
+                                                    <?php echo htmlspecialchars($c['class_name'] ?? '-'); ?>
+                                                </td>
+                                                <td class="text-center">
+                                                    <?php
+                                                    $topicCount = !empty($c['topics']) ? count(array_filter(explode("\n", $c['topics']))) : 0;
+                                                    ?>
+                                                    <span class="badge badge-success"><?php echo $topicCount; ?> topics</span>
+                                                </td>
+                                                <td class="small-muted"><?php echo htmlspecialchars($c['duration'] ?: '-'); ?></td>
+                                                <td>
+                                                    <span class="badge <?php echo $c['status'] === 'active' ? 'badge-success' : 'badge-secondary'; ?>">
+                                                        <?php echo ucfirst($c['status']); ?>
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div style="display: flex; gap: 0.5rem;">
+                                                        <a class="btn btn-primary btn-small" href="manage_curriculum.php?edit=<?php echo intval($c['id']); ?>">
+                                                            <i class="fas fa-edit"></i> Edit
+                                                        </a>
+                                                        <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this curriculum?');">
+                                                            <input type="hidden" name="action" value="delete">
+                                                            <input type="hidden" name="id" value="<?php echo intval($c['id']); ?>">
+                                                            <button type="submit" class="btn btn-danger btn-small">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        </form>
+                                                        <button type="button" class="btn btn-secondary btn-small" onclick="viewTopics(<?php echo intval($c['id']); ?>)">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </section>
         </form>
@@ -1054,6 +770,23 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
 </footer>
 
 <script>
+// Mobile Menu Toggle
+const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+const sidebar = document.querySelector('.sidebar');
+
+mobileMenuToggle.addEventListener('click', () => {
+    sidebar.classList.toggle('active');
+});
+
+// Close sidebar when clicking outside on mobile
+document.addEventListener('click', (e) => {
+    if (window.innerWidth <= 768) {
+        if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+            sidebar.classList.remove('active');
+        }
+    }
+});
+
 // Bulk selection
 function toggleSelectAll(source) {
     const checkboxes = document.querySelectorAll('.select-checkbox');
@@ -1121,7 +854,5 @@ window.onclick = function(event) {
         closeModal();
     }
 }
-</script>
-
-</body>
+</script><?php include '../includes/floating-button.php'; ?></body>
 </html>

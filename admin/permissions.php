@@ -12,39 +12,77 @@ $user_id = $_SESSION['user_id'];
 $message = '';
 $error = '';
 
-// Handle approval/rejection
+$principal_name = $_SESSION['full_name'];
+
+// Handle approval/rejection/cancellation/edit/delete
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $permission_id = $_POST['permission_id'] ?? '';
     $action = $_POST['action'] ?? '';
     $rejection_reason = $_POST['rejection_reason'] ?? '';
-    
+
     try {
         if ($action === 'approve') {
             $stmt = $pdo->prepare("
-                UPDATE permissions 
-                SET status = 'approved', 
-                    approved_by = ?, 
-                    approved_at = NOW() 
+                UPDATE permissions
+                SET status = 'approved',
+                    approved_by = ?,
+                    approved_at = NOW()
                 WHERE id = ?
             ");
             $stmt->execute([$user_id, $permission_id]);
             $message = "Request approved successfully!";
-            
+
         } elseif ($action === 'reject') {
             if (empty($rejection_reason)) {
                 $error = "Please provide a reason for rejection.";
             } else {
                 $stmt = $pdo->prepare("
-                    UPDATE permissions 
-                    SET status = 'rejected', 
+                    UPDATE permissions
+                    SET status = 'rejected',
                         rejection_reason = ?,
                         approved_by = ?,
-                        approved_at = NOW() 
+                        approved_at = NOW()
                     WHERE id = ?
                 ");
                 $stmt->execute([$rejection_reason, $user_id, $permission_id]);
                 $message = "Request rejected successfully!";
             }
+        } elseif ($action === 'cancel') {
+            $stmt = $pdo->prepare("
+                UPDATE permissions
+                SET status = 'cancelled',
+                    approved_by = ?,
+                    approved_at = NOW()
+                WHERE id = ?
+            ");
+            $stmt->execute([$user_id, $permission_id]);
+            $message = "Request cancelled successfully!";
+
+        } elseif ($action === 'edit') {
+            $title = $_POST['title'] ?? '';
+            $description = $_POST['description'] ?? '';
+            $request_type = $_POST['request_type'] ?? '';
+            $start_date = $_POST['start_date'] ?? '';
+            $end_date = $_POST['end_date'] ?? '';
+            $priority = $_POST['priority'] ?? 'medium';
+
+            if (empty($title) || empty($request_type) || empty($start_date)) {
+                $error = "Please fill in all required fields.";
+            } else {
+                $stmt = $pdo->prepare("
+                    UPDATE permissions
+                    SET title = ?, description = ?, request_type = ?,
+                        start_date = ?, end_date = ?, priority = ?
+                    WHERE id = ?
+                ");
+                $stmt->execute([$title, $description, $request_type, $start_date, $end_date, $priority, $permission_id]);
+                $message = "Request updated successfully!";
+            }
+
+        } elseif ($action === 'delete') {
+            $stmt = $pdo->prepare("DELETE FROM permissions WHERE id = ?");
+            $stmt->execute([$permission_id]);
+            $message = "Request deleted successfully!";
         }
     } catch (PDOException $e) {
         $error = "Error processing request: " . $e->getMessage();
@@ -126,188 +164,60 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Permissions - Sahab Form Master</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #2c3e50;
-            --secondary-color: #3498db;
-            --success-color: #27ae60;
-            --warning-color: #f39c12;
-            --danger-color: #e74c3c;
-        }
-        
-        body {
-            background-color: #f5f7fa;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        .navbar-custom {
-            background: linear-gradient(135deg, var(--primary-color) 0%, #34495e 100%);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .stat-card {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            transition: transform 0.3s;
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .stat-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-        }
-        
-        .stat-total { background-color: #e3f2fd; color: #1976d2; }
-        .stat-pending { background-color: #fff3e0; color: #f57c00; }
-        .stat-approved { background-color: #e8f5e9; color: #388e3c; }
-        .stat-rejected { background-color: #ffebee; color: #d32f2f; }
-        .stat-urgent { background-color: #fce4ec; color: #c2185b; }
-        
-        .filter-card {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
-        }
-        
-        .table-responsive {
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-        
-        .status-badge {
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-        
-        .status-pending { background-color: #fff3cd; color: #856404; }
-        .status-approved { background-color: #d4edda; color: #155724; }
-        .status-rejected { background-color: #f8d7da; color: #721c24; }
-        
-        .priority-badge {
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 0.7rem;
-        }
-        
-        .priority-low { background-color: #d1ecf1; color: #0c5460; }
-        .priority-medium { background-color: #fff3cd; color: #856404; }
-        .priority-high { background-color: #f8d7da; color: #721c24; }
-        .priority-urgent { 
-            background-color: #f5c6cb; 
-            color: #721c24; 
-            font-weight: bold;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
-        }
-        
-        .action-btn {
-            padding: 5px 15px;
-            border: none;
-            border-radius: 5px;
-            font-size: 0.85rem;
-            transition: all 0.3s;
-        }
-        
-        .btn-approve {
-            background-color: var(--success-color);
-            color: white;
-        }
-        
-        .btn-approve:hover {
-            background-color: #219a52;
-        }
-        
-        .btn-reject {
-            background-color: var(--danger-color);
-            color: white;
-        }
-        
-        .btn-reject:hover {
-            background-color: #c0392b;
-        }
-        
-        .modal-header {
-            background: linear-gradient(135deg, var(--primary-color) 0%, #34495e 100%);
-            color: white;
-        }
-        
-        .form-control:focus, .form-select:focus {
-            border-color: var(--secondary-color);
-            box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.25);
-        }
-        
-        @media (max-width: 768px) {
-            .stat-card {
-                margin-bottom: 15px;
-            }
-            
-            .table th, .table td {
-                font-size: 0.85rem;
-                padding: 0.5rem;
-            }
-            
-            .action-btn {
-                padding: 3px 10px;
-                font-size: 0.75rem;
-                margin-bottom: 5px;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">
-                <i class="fas fa-school me-2"></i>Sahab Form Master
-            </a>
-            <!-- <div class="d-flex align-items-center">
-                <span class="text-light me-3"><?php echo $_SESSION['full_name'] ?? 'Principal'; ?></span>
-                <div class="dropdown">
-                    <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" 
-                            data-bs-toggle="dropdown">
-                        <i class="fas fa-user"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="principal_dashboard.php">
-                            <i class="fas fa-tachometer-alt me-2"></i>Dashboard</a></li>
-                        <li><a class="dropdown-item" href="principal_permissions.php">
-                            <i class="fas fa-clipboard-check me-2"></i>Permissions</a></li>
-                        <li><a class="dropdown-item" href="principal_profile.php">
-                            <i class="fas fa-user me-2"></i>Profile</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="logout.php">
-                            <i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
-                    </ul>
-                </div>
-            </div> -->
-        </div>
-    </nav>
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+        <i class="fas fa-bars"></i>
+    </button>
 
-    <div class="container-fluid mt-4">
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <!-- Logo and School Name -->
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Principal Portal</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Principal Info and Logout -->
+            <div class="header-right">
+                <div class="principal-info">
+                    <p class="principal-label">Principal</p>
+                    <span class="principal-name"><?php echo htmlspecialchars($principal_name); ?></span>
+                </div>
+                <a href="logout.php" class="btn-logout">
+                    <span class="logout-icon">🚪</span>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <?php include '../includes/admin_sidebar.php'; ?>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-header">
+                <div class="welcome-section">
+                    <h2>Manage Permissions 👥</h2>
+                    <p>Review and manage staff permission requests</p>
+                </div>
+            </div>
         <!-- Messages -->
         <?php if ($message): ?>
             <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -324,112 +234,119 @@ try {
         <?php endif; ?>
 
         <!-- Statistics -->
-        <div class="row mb-4">
-            <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
-                <div class="stat-card">
-                    <div class="d-flex align-items-center">
-                        <div class="stat-icon stat-total me-3">
-                            <i class="fas fa-clipboard-list"></i>
-                        </div>
-                        <div>
-                            <h4 class="mb-0"><?php echo $stats['total']; ?></h4>
-                            <small class="text-muted">Total Requests</small>
-                        </div>
+        <div class="stats-section">
+            <div class="section-header">
+                <h3>📊 Permission Statistics</h3>
+                <span class="section-badge">Overview</span>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-icon">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value"><?php echo $stats['total']; ?></span>
+                        <span class="stat-label">Total Requests</span>
+                    </div>
+                    <div class="stat-progress">
+                        <div class="progress-bar" style="width: <?php echo $stats['total'] > 0 ? min(100, ($stats['total'] / 50) * 100) : 0; ?>%;"></div>
                     </div>
                 </div>
-            </div>
-            <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
-                <div class="stat-card">
-                    <div class="d-flex align-items-center">
-                        <div class="stat-icon stat-pending me-3">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <div>
-                            <h4 class="mb-0"><?php echo $stats['pending']; ?></h4>
-                            <small class="text-muted">Pending</small>
-                        </div>
+                <div class="stat-box">
+                    <div class="stat-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value"><?php echo $stats['pending']; ?></span>
+                        <span class="stat-label">Pending</span>
+                    </div>
+                    <div class="stat-progress">
+                        <div class="progress-bar progress-warning" style="width: <?php echo $stats['total'] > 0 ? ($stats['pending'] / $stats['total']) * 100 : 0; ?>%;"></div>
                     </div>
                 </div>
-            </div>
-            <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
-                <div class="stat-card">
-                    <div class="d-flex align-items-center">
-                        <div class="stat-icon stat-approved me-3">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
-                        <div>
-                            <h4 class="mb-0"><?php echo $stats['approved']; ?></h4>
-                            <small class="text-muted">Approved</small>
-                        </div>
+                <div class="stat-box">
+                    <div class="stat-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value"><?php echo $stats['approved']; ?></span>
+                        <span class="stat-label">Approved</span>
+                    </div>
+                    <div class="stat-progress">
+                        <div class="progress-bar" style="width: <?php echo $stats['total'] > 0 ? ($stats['approved'] / $stats['total']) * 100 : 0; ?>%;"></div>
                     </div>
                 </div>
-            </div>
-            <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
-                <div class="stat-card">
-                    <div class="d-flex align-items-center">
-                        <div class="stat-icon stat-rejected me-3">
-                            <i class="fas fa-times-circle"></i>
-                        </div>
-                        <div>
-                            <h4 class="mb-0"><?php echo $stats['rejected']; ?></h4>
-                            <small class="text-muted">Rejected</small>
-                        </div>
+                <div class="stat-box">
+                    <div class="stat-icon">
+                        <i class="fas fa-times-circle"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value"><?php echo $stats['rejected']; ?></span>
+                        <span class="stat-label">Rejected</span>
+                    </div>
+                    <div class="stat-progress">
+                        <div class="progress-bar progress-warning" style="width: <?php echo $stats['total'] > 0 ? ($stats['rejected'] / $stats['total']) * 100 : 0; ?>%;"></div>
                     </div>
                 </div>
-            </div>
-            <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
-                <div class="stat-card">
-                    <div class="d-flex align-items-center">
-                        <div class="stat-icon stat-urgent me-3">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </div>
-                        <div>
-                            <h4 class="mb-0"><?php echo $stats['urgent_pending']; ?></h4>
-                            <small class="text-muted">Urgent Pending</small>
-                        </div>
+                <div class="stat-box">
+                    <div class="stat-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value"><?php echo $stats['urgent_pending']; ?></span>
+                        <span class="stat-label">Urgent Pending</span>
+                    </div>
+                    <div class="stat-progress">
+                        <div class="progress-bar progress-warning" style="width: <?php echo $stats['pending'] > 0 ? ($stats['urgent_pending'] / $stats['pending']) * 100 : 0; ?>%;"></div>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Filters -->
-        <div class="filter-card">
-            <form method="GET" class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label">Status</label>
-                    <select class="form-select" name="status">
-                        <option value="all" <?php echo $filter_status === 'all' ? 'selected' : ''; ?>>All Status</option>
-                        <option value="pending" <?php echo $filter_status === 'pending' ? 'selected' : ''; ?>>Pending</option>
-                        <option value="approved" <?php echo $filter_status === 'approved' ? 'selected' : ''; ?>>Approved</option>
-                        <option value="rejected" <?php echo $filter_status === 'rejected' ? 'selected' : ''; ?>>Rejected</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Request Type</label>
-                    <select class="form-select" name="type">
-                        <option value="all" <?php echo $filter_type === 'all' ? 'selected' : ''; ?>>All Types</option>
-                        <option value="leave" <?php echo $filter_type === 'leave' ? 'selected' : ''; ?>>Leave</option>
-                        <option value="early_departure" <?php echo $filter_type === 'early_departure' ? 'selected' : ''; ?>>Early Departure</option>
-                        <option value="late_arrival" <?php echo $filter_type === 'late_arrival' ? 'selected' : ''; ?>>Late Arrival</option>
-                        <option value="training" <?php echo $filter_type === 'training' ? 'selected' : ''; ?>>Training</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Date</label>
-                    <input type="date" class="form-control" name="date" value="<?php echo $filter_date; ?>">
-                </div>
-                <div class="col-md-3 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-filter me-2"></i>Apply Filters
-                    </button>
+        <div class="stats-section">
+            <div class="section-header">
+                <h3>🔍 Filter Requests</h3>
+                <span class="section-badge">Search</span>
+            </div>
+            <form method="GET">
+                <div class="stats-grid">
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select class="form-control" name="status">
+                            <option value="all" <?php echo $filter_status === 'all' ? 'selected' : ''; ?>>All Status</option>
+                            <option value="pending" <?php echo $filter_status === 'pending' ? 'selected' : ''; ?>>Pending</option>
+                            <option value="approved" <?php echo $filter_status === 'approved' ? 'selected' : ''; ?>>Approved</option>
+                            <option value="rejected" <?php echo $filter_status === 'rejected' ? 'selected' : ''; ?>>Rejected</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Request Type</label>
+                        <select class="form-control" name="type">
+                            <option value="all" <?php echo $filter_type === 'all' ? 'selected' : ''; ?>>All Types</option>
+                            <option value="leave" <?php echo $filter_type === 'leave' ? 'selected' : ''; ?>>Leave</option>
+                            <option value="early_departure" <?php echo $filter_type === 'early_departure' ? 'selected' : ''; ?>>Early Departure</option>
+                            <option value="late_arrival" <?php echo $filter_type === 'late_arrival' ? 'selected' : ''; ?>>Late Arrival</option>
+                            <option value="training" <?php echo $filter_type === 'training' ? 'selected' : ''; ?>>Training</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Date</label>
+                        <input type="date" class="form-control" name="date" value="<?php echo $filter_date; ?>">
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-filter me-2"></i>Apply Filters
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
 
         <!-- Requests Table -->
         <div class="table-responsive">
-            <table class="table table-hover">
-                <thead class="table-light">
+            <table class="students-table">
+                <thead>
                     <tr>
                         <th>ID</th>
                         <th>Staff</th>
@@ -465,12 +382,12 @@ try {
                                     <br><small><?php echo date('h:i A', strtotime($request['start_date'])); ?></small>
                                 </td>
                                 <td>
-                                    <span class="priority-badge priority-<?php echo $request['priority']; ?>">
+                                    <span class="badge badge-<?php echo $request['priority'] === 'urgent' ? 'danger' : ($request['priority'] === 'high' ? 'warning' : ($request['priority'] === 'medium' ? 'info' : 'secondary')); ?>">
                                         <?php echo ucfirst($request['priority']); ?>
                                     </span>
                                 </td>
                                 <td>
-                                    <span class="status-badge status-<?php echo $request['status']; ?>">
+                                    <span class="badge badge-<?php echo $request['status'] === 'approved' ? 'success' : ($request['status'] === 'rejected' ? 'danger' : ($request['status'] === 'pending' ? 'warning' : 'secondary')); ?>">
                                         <?php echo ucfirst($request['status']); ?>
                                     </span>
                                 </td>
@@ -479,26 +396,51 @@ try {
                                     <br><small><?php echo date('h:i A', strtotime($request['created_at'])); ?></small>
                                 </td>
                                 <td>
-                                    <button class="btn btn-sm btn-outline-info mb-1 view-details" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#detailsModal"
-                                            data-request='<?php echo htmlspecialchars(json_encode($request), ENT_QUOTES, 'UTF-8'); ?>'>
-                                        <i class="fas fa-eye me-1"></i>View
-                                    </button>
-                                    
-                                    <?php if ($request['status'] === 'pending'): ?>
-                                        <button class="btn btn-sm btn-approve mb-1 approve-btn"
-                                                data-id="<?php echo $request['id']; ?>">
-                                            <i class="fas fa-check me-1"></i>Approve
+                                    <div class="action-buttons">
+                                        <button class="btn btn-small btn-primary view-details me-1"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#detailsModal"
+                                                data-request='<?php echo htmlspecialchars(json_encode($request), ENT_QUOTES, 'UTF-8'); ?>'>
+                                            <i class="fas fa-eye"></i>
                                         </button>
-                                        
-                                        <button class="btn btn-sm btn-reject mb-1 reject-btn"
-                                                data-id="<?php echo $request['id']; ?>"
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#rejectModal">
-                                            <i class="fas fa-times me-1"></i>Reject
+
+                                        <button class="btn btn-small btn-success edit-btn me-1"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#editModal"
+                                                data-request='<?php echo htmlspecialchars(json_encode($request), ENT_QUOTES, 'UTF-8'); ?>'>
+                                            <i class="fas fa-edit"></i>
                                         </button>
-                                    <?php endif; ?>
+
+                                        <button class="btn btn-small btn-danger delete-btn"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteModal"
+                                                data-request='<?php echo htmlspecialchars(json_encode($request), ENT_QUOTES, 'UTF-8'); ?>'>
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+
+                                        <?php if ($request['status'] === 'pending'): ?>
+                                            <div class="action-buttons mt-2">
+                                                <button class="btn btn-small btn-success approve-btn d-block mb-1"
+                                                        data-id="<?php echo $request['id']; ?>">
+                                                    <i class="fas fa-check me-1"></i>Approve
+                                                </button>
+
+                                                <button class="btn btn-small btn-danger reject-btn d-block"
+                                                        data-id="<?php echo $request['id']; ?>"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#rejectModal">
+                                                    <i class="fas fa-times me-1"></i>Reject
+                                                </button>
+                                            </div>
+                                        <?php elseif ($request['status'] === 'approved'): ?>
+                                            <div class="action-buttons mt-2">
+                                                <button class="btn btn-small btn-warning cancel-btn d-block"
+                                                        data-id="<?php echo $request['id']; ?>">
+                                                    <i class="fas fa-ban me-1"></i>Cancel
+                                                </button>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -506,7 +448,93 @@ try {
                 </tbody>
             </table>
         </div>
+        </main>
     </div>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About SahabFormMaster</h4>
+                    <p>A comprehensive school management system designed for academic excellence and efficient administration.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="manage-school.php">School Settings</a></li>
+                        <li><a href="manage_user.php">User Management</a></li>
+                        <li><a href="#">Support & Help</a></li>
+                        <li><a href="#">Documentation</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact Information</h4>
+                    <p>📧 admin@sahabformmaster.com</p>
+                    <p>📱 +234 808 683 5607</p>
+                    <p>🌐 www.sahabformmaster.com</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="#">Privacy Policy</a>
+                    <span>•</span>
+                    <a href="#">Terms of Service</a>
+                    <span>•</span>
+                    <span>Version 2.0</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile Menu Toggle
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarClose = document.getElementById('sidebarClose');
+
+        mobileMenuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+            mobileMenuToggle.classList.toggle('active');
+        });
+
+        sidebarClose.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            mobileMenuToggle.classList.remove('active');
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+                    sidebar.classList.remove('active');
+                    mobileMenuToggle.classList.remove('active');
+                }
+            }
+        });
+
+        // Smooth scroll for internal links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Add active class on scroll
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('.dashboard-header');
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+    </script>
 
     <!-- Details Modal -->
     <div class="modal fade" id="detailsModal" tabindex="-1">
@@ -561,7 +589,116 @@ try {
         <input type="hidden" name="action" value="approve">
     </form>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Cancel Form (hidden) -->
+    <form id="cancelForm" method="POST" style="display: none;">
+        <input type="hidden" id="cancelPermissionId" name="permission_id">
+        <input type="hidden" name="action" value="cancel">
+    </form>
+
+    <!-- Edit Modal -->
+    <div class="modal fade" id="editModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Permission Request</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST">
+                    <div class="modal-body">
+                        <input type="hidden" id="editPermissionId" name="permission_id">
+                        <input type="hidden" name="action" value="edit">
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Title *</label>
+                                    <input type="text" class="form-control" id="editTitle" name="title" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                            <label class="form-label">Request Type *</label>
+                            <select class="form-control" id="editRequestType" name="request_type" required>
+                                        <option value="leave">Leave</option>
+                                        <option value="early_departure">Early Departure</option>
+                                        <option value="late_arrival">Late Arrival</option>
+                                        <option value="training">Training</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Start Date & Time *</label>
+                                    <input type="datetime-local" class="form-control" id="editStartDate" name="start_date" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">End Date & Time</label>
+                                    <input type="datetime-local" class="form-control" id="editEndDate" name="end_date">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Priority</label>
+                            <select class="form-select" id="editPriority" name="priority">
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" id="editDescription" name="description" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Update Request</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Delete Permission Request</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST">
+                    <div class="modal-body">
+                        <input type="hidden" id="deletePermissionId" name="permission_id">
+                        <input type="hidden" name="action" value="delete">
+
+                        <div class="text-center mb-4">
+                            <div class="mb-3" style="font-size: 4rem; color: #dc3545;">
+                                <i class="fas fa-trash-alt"></i>
+                            </div>
+                            <h5>Are you sure?</h5>
+                            <p class="mb-0">You are about to delete this permission request:</p>
+                            <h6 class="mt-2 text-danger" id="deleteRequestTitle"></h6>
+                            <p class="text-muted mt-3"><i class="fas fa-info-circle me-1"></i> This action cannot be undone.</p>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger">Delete Request</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
         // View details
         document.querySelectorAll('.view-details').forEach(button => {
@@ -587,9 +724,9 @@ try {
                             ${request.approved_at ? `<p><strong>Approved At:</strong> ${new Date(request.approved_at).toLocaleString()}</p>` : ''}
                         </div>
                     </div>
-                    
+
                     <hr>
-                    
+
                     <div class="row mt-3">
                         <div class="col-12">
                             <h6>Description</h6>
@@ -598,7 +735,7 @@ try {
                             </div>
                         </div>
                     </div>
-                    
+
                     ${request.rejection_reason ? `
                     <div class="row mt-3">
                         <div class="col-12">
@@ -608,7 +745,7 @@ try {
                             </div>
                         </div>
                     </div>` : ''}
-                    
+
                     ${request.attachment_path ? `
                     <div class="row mt-3">
                         <div class="col-12">
@@ -642,6 +779,40 @@ try {
             });
         });
 
+        // Cancel request
+        document.querySelectorAll('.cancel-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                if (confirm('Are you sure you want to cancel this approved request?')) {
+                    const permissionId = this.getAttribute('data-id');
+                    document.getElementById('cancelPermissionId').value = permissionId;
+                    document.getElementById('cancelForm').submit();
+                }
+            });
+        });
+
+        // Edit request
+        document.querySelectorAll('.edit-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const request = JSON.parse(this.getAttribute('data-request'));
+                document.getElementById('editPermissionId').value = request.id;
+                document.getElementById('editTitle').value = request.title;
+                document.getElementById('editRequestType').value = request.request_type;
+                document.getElementById('editStartDate').value = request.start_date.slice(0, 16); // Remove seconds
+                document.getElementById('editEndDate').value = request.end_date ? request.end_date.slice(0, 16) : '';
+                document.getElementById('editPriority').value = request.priority;
+                document.getElementById('editDescription').value = request.description || '';
+            });
+        });
+
+        // Delete request
+        document.querySelectorAll('.delete-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const request = JSON.parse(this.getAttribute('data-request'));
+                document.getElementById('deletePermissionId').value = request.id;
+                document.getElementById('deleteRequestTitle').textContent = request.title;
+            });
+        });
+
         // Auto-refresh for urgent requests
         setInterval(() => {
             const urgentBadges = document.querySelectorAll('.priority-urgent');
@@ -653,5 +824,8 @@ try {
             });
         }, 2000);
     </script>
+
+    <?php include '../includes/floating-button.php'; ?>
+
 </body>
 </html>

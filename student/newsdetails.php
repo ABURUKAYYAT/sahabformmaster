@@ -12,7 +12,8 @@ if (!isset($_SESSION['student_id'])) {
 
 $user_id = $_SESSION['student_name'];
 $user_name = $_SESSION['student_name'] ?? 'Student';
-$student_class = $_SESSION['admission_no'] ?? '';
+$student_name = $_SESSION['student_name'];
+$admission_number = $_SESSION['admission_no'];
 
 // Get news ID from URL
 $news_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -29,10 +30,10 @@ $stmt->execute(['id' => $news_id]);
 $news_item = $stmt->fetch(PDO::FETCH_ASSOC);
 
 // Check if student can view this news (target audience check)
-if (!$news_item || 
-    ($news_item['target_audience'] !== 'All' && 
-     $news_item['target_audience'] !== 'Students' && 
-     strpos($news_item['target_audience'], $student_class) === false)) {
+if (!$news_item ||
+    ($news_item['target_audience'] !== 'All' &&
+     $news_item['target_audience'] !== 'Students' &&
+     strpos($news_item['target_audience'], $admission_number) === false)) {
     header("Location: schoolfeed.php");
     exit;
 }
@@ -44,9 +45,9 @@ $stmt->execute(['id' => $news_id]);
 // Handle comment submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'comment') {
     $comment = trim($_POST['comment'] ?? '');
-    
+
     if (!empty($comment)) {
-        $stmt = $pdo->prepare("INSERT INTO school_news_comments (news_id, user_id, name, comment) 
+        $stmt = $pdo->prepare("INSERT INTO school_news_comments (news_id, user_id, name, comment)
                                VALUES (:news_id, :user_id, :name, :comment)");
         $stmt->execute([
             'news_id' => $news_id,
@@ -54,11 +55,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             'name' => $user_name,
             'comment' => $comment
         ]);
-        
+
         // Update comment count
         $stmt = $pdo->prepare("UPDATE school_news SET comment_count = comment_count + 1 WHERE id = :id");
         $stmt->execute(['id' => $news_id]);
-        
+
         // Redirect to avoid form resubmission
         header("Location: newsdetails.php?id=" . $news_id);
         exit;
@@ -70,327 +71,295 @@ $stmt = $pdo->prepare("SELECT * FROM school_news_comments WHERE news_id = :news_
 $stmt->execute(['news_id' => $news_id]);
 $comments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($news_item['title']); ?> | SahabFormMaster</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/student-dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
     <style>
         :root {
-            --primary-color: #4361ee;
-            --secondary-color: #3a0ca3;
-            --accent-color: #4cc9f0;
-            --success-color: #4CAF50;
-            --warning-color: #FF9800;
-            --danger-color: #f44336;
-            --light-color: #f8f9fa;
-            --dark-color: #212529;
-            --gray-color: #6c757d;
-            --card-bg: #ffffff;
-            --shadow: 0 8px 30px rgba(0,0,0,0.08);
-            --hover-shadow: 0 15px 35px rgba(0,0,0,0.15);
-            --radius: 15px;
+            --primary-color: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary-color: #06b6d4;
+            --accent-color: #8b5cf6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --info-color: #3b82f6;
+            --white: #ffffff;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --border-radius-sm: 0.375rem;
+            --border-radius-md: 0.5rem;
+            --border-radius-lg: 0.75rem;
+            --border-radius-xl: 1rem;
+            --transition-fast: 0.15s ease-in-out;
+            --transition-normal: 0.3s ease-in-out;
+            --transition-slow: 0.5s ease-in-out;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        .news-details-container {
+            min-height: calc(100vh - 80px);
         }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh;
-            color: var(--dark-color);
-            line-height: 1.6;
-        }
-
-        .header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 1rem 2rem;
-            box-shadow: var(--shadow);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-
-        .header-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .logo-container {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .logo {
-            height: 50px;
-            width: 50px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid var(--primary-color);
-        }
-
-        .school-name {
-            font-size: 1.8rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-        }
-
-        .user-avatar {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .news-header-card {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
             color: white;
-            font-weight: bold;
-            font-size: 1.3rem;
+            border-radius: var(--border-radius-xl);
+            box-shadow: var(--shadow-xl);
+            overflow: hidden;
+            margin-bottom: 2rem;
+            transition: var(--transition-normal);
         }
 
-        .user-details {
-            display: flex;
-            flex-direction: column;
+        .news-header-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
         }
 
-        .user-name {
-            font-weight: 600;
-            font-size: 1.1rem;
-        }
-
-        .user-role {
-            font-size: 0.9rem;
-            color: var(--gray-color);
-            background: #f0f2f5;
-            padding: 0.2rem 0.8rem;
-            border-radius: 50px;
-            margin-top: 0.2rem;
-        }
-
-        .btn-back {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 0.7rem 1.8rem;
-            border-radius: 50px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            display: flex;
+        .back-to-feed-btn {
+            display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-        }
-
-        .btn-back:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-
-        .main-container {
-            max-width: 900px;
-            margin: 2rem auto;
-            padding: 0 1.5rem;
-        }
-
-        .article-header {
-            background: var(--card-bg);
-            border-radius: var(--radius);
-            padding: 2.5rem;
-            margin-bottom: 2rem;
-            box-shadow: var(--shadow);
-            text-align: center;
-        }
-
-        .article-category {
-            display: inline-block;
-            background: linear-gradient(135deg, var(--accent-color), var(--primary-color));
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.2);
             color: white;
-            padding: 0.5rem 1.5rem;
-            border-radius: 50px;
+            text-decoration: none;
+            border-radius: var(--border-radius-lg);
             font-size: 0.9rem;
-            font-weight: 600;
-            margin-bottom: 1.5rem;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: var(--transition-fast);
+            margin-bottom: 1rem;
         }
 
-        .article-title {
+        .back-to-feed-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .news-category-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .news-title {
+            margin: 0;
             font-size: 2.5rem;
             font-weight: 700;
-            margin-bottom: 1rem;
-            color: var(--dark-color);
-            line-height: 1.3;
-        }
-
-        .article-meta {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin-top: 1.5rem;
-            color: var(--gray-color);
-            font-size: 0.95rem;
-        }
-
-        .meta-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .article-featured-image {
-            margin: 2rem 0;
-            border-radius: var(--radius);
-            overflow: hidden;
-            box-shadow: var(--shadow);
-            max-height: 500px;
-        }
-
-        .article-featured-image img {
-            width: 100%;
-            height: auto;
-            display: block;
-            transition: transform 0.6s ease;
-        }
-
-        .article-featured-image:hover img {
-            transform: scale(1.03);
-        }
-
-        .article-content {
-            background: var(--card-bg);
-            border-radius: var(--radius);
-            padding: 2.5rem;
-            margin-bottom: 2rem;
-            box-shadow: var(--shadow);
-            font-size: 1.1rem;
-            line-height: 1.8;
-        }
-
-        .article-content h2 {
-            color: var(--primary-color);
-            margin: 2rem 0 1rem;
-            font-size: 1.8rem;
-        }
-
-        .article-content h3 {
-            color: var(--secondary-color);
-            margin: 1.5rem 0 1rem;
-            font-size: 1.5rem;
-        }
-
-        .article-content p {
-            margin-bottom: 1.5rem;
-        }
-
-        .article-content ul, .article-content ol {
-            margin: 1rem 0 1.5rem 2rem;
-        }
-
-        .article-content li {
+            line-height: 1.2;
             margin-bottom: 0.5rem;
         }
 
-        .article-content blockquote {
-            border-left: 4px solid var(--accent-color);
-            padding: 1rem 2rem;
-            margin: 2rem 0;
-            background: #f8f9fa;
-            border-radius: 0 var(--radius) var(--radius) 0;
-            font-style: italic;
-            color: var(--gray-color);
+        .news-excerpt {
+            margin: 0.5rem 0 0;
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .news-meta {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1.5rem;
+            color: rgba(255,255,255,0.9);
+            flex-wrap: wrap;
+        }
+
+        .news-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .news-content-card {
+            background: var(--white);
+            border-radius: var(--border-radius-xl);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            margin-bottom: 2rem;
+            transition: var(--transition-normal);
+        }
+
+        .news-content-card:hover {
+            box-shadow: var(--shadow-xl);
+        }
+
+        .news-featured-image {
+            width: 100%;
+            max-height: 500px;
+            object-fit: cover;
+            border-radius: var(--border-radius-lg);
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-md);
+        }
+
+        .news-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--gray-700);
+            margin-bottom: 2rem;
+        }
+
+        .news-tags {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid var(--gray-100);
+        }
+
+        .news-tags strong {
+            color: var(--gray-800);
+            margin-bottom: 1rem;
+            display: block;
+            font-weight: 600;
+        }
+
+        .tag-item {
+            display: inline-block;
+            background: var(--gray-100);
+            color: var(--gray-700);
+            padding: 0.4rem 0.9rem;
+            border-radius: 20px;
+            margin: 0.3rem;
+            font-size: 0.9rem;
+            border: 1px solid var(--gray-200);
+            transition: var(--transition-fast);
+        }
+
+        .tag-item:hover {
+            background: var(--primary-color);
+            color: white;
+            transform: translateY(-1px);
         }
 
         .comments-section {
-            background: var(--card-bg);
-            border-radius: var(--radius);
-            padding: 2.5rem;
+            background: var(--white);
+            border-radius: var(--border-radius-xl);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
             margin-bottom: 2rem;
-            box-shadow: var(--shadow);
         }
 
         .comments-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 2px solid #f0f2f5;
-        }
-
-        .comments-title {
-            font-size: 1.8rem;
-            color: var(--dark-color);
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-        }
-
-        .comment-count {
-            background: var(--accent-color);
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
             color: white;
-            padding: 0.3rem 0.8rem;
-            border-radius: 50px;
-            font-size: 0.9rem;
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .comments-header h4 {
+            margin: 0;
+            font-size: 1.25rem;
             font-weight: 600;
+        }
+
+        .comments-body {
+            padding: 2rem;
         }
 
         .comment-form {
-            margin-bottom: 3rem;
+            margin-bottom: 2rem;
+            background: var(--gray-50);
+            padding: 1.5rem;
+            border-radius: var(--border-radius-lg);
+            border: 1px solid var(--gray-200);
         }
 
-        .comment-form textarea {
-            width: 100%;
-            padding: 1.2rem;
-            border: 2px solid #e0e0e0;
-            border-radius: var(--radius);
-            font-size: 1rem;
-            font-family: inherit;
-            resize: vertical;
-            min-height: 120px;
+        .comment-form-group {
             margin-bottom: 1rem;
-            transition: all 0.3s ease;
         }
 
-        .comment-form textarea:focus {
+        .comment-form label {
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .comment-textarea {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--border-radius-lg);
+            background: var(--white);
+            color: var(--gray-700);
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+            transition: var(--transition-fast);
+            resize: vertical;
+        }
+
+        .comment-textarea:focus {
             outline: none;
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
         }
 
-        .comment-form button {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 0.9rem 2.5rem;
-            border: none;
-            border-radius: 50px;
-            font-weight: 600;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
+        .btn-submit-comment {
+            display: inline-flex;
             align-items: center;
-            gap: 0.8rem;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius-lg);
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            font-size: 0.95rem;
         }
 
-        .comment-form button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+        .btn-submit-comment:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .no-comments {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: var(--gray-500);
+        }
+
+        .no-comments i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--gray-300);
+        }
+
+        .no-comments h5 {
+            margin-bottom: 0.5rem;
+            color: var(--gray-600);
         }
 
         .comments-list {
@@ -400,397 +369,354 @@ $comments = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
         .comment-item {
-            background: #f8f9fa;
-            border-radius: var(--radius);
+            background: var(--gray-50);
             padding: 1.5rem;
+            border-radius: var(--border-radius-lg);
             border-left: 4px solid var(--primary-color);
-            transition: all 0.3s ease;
+            transition: var(--transition-normal);
         }
 
         .comment-item:hover {
-            transform: translateX(5px);
-            box-shadow: var(--shadow);
+            background: var(--gray-100);
+            box-shadow: var(--shadow-sm);
         }
 
         .comment-header {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .comment-author {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
         }
 
         .comment-avatar {
             width: 40px;
             height: 40px;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             font-weight: bold;
-            font-size: 1.1rem;
+            flex-shrink: 0;
         }
 
-        .comment-author-info {
-            display: flex;
-            flex-direction: column;
+        .comment-info {
+            flex: 1;
         }
 
-        .comment-author-name {
+        .comment-author {
             font-weight: 600;
-            color: var(--dark-color);
+            color: var(--gray-900);
+            margin-bottom: 0.25rem;
         }
 
-        .comment-time {
+        .comment-date {
+            color: var(--gray-500);
             font-size: 0.85rem;
-            color: var(--gray-color);
-            margin-top: 0.2rem;
         }
 
         .comment-text {
-            line-height: 1.7;
-            color: var(--dark-color);
-            font-size: 1.05rem;
+            color: var(--gray-700);
+            line-height: 1.6;
         }
 
-        .no-comments {
+        .comments-disabled {
             text-align: center;
-            padding: 3rem;
-            color: var(--gray-color);
-            font-size: 1.1rem;
-            background: #f8f9fa;
-            border-radius: var(--radius);
+            padding: 3rem 2rem;
         }
 
-        .no-comments i {
+        .comments-disabled i {
             font-size: 3rem;
+            color: var(--gray-300);
             margin-bottom: 1rem;
-            color: var(--primary-color);
-            opacity: 0.5;
         }
 
-        .footer {
-            background: linear-gradient(135deg, var(--dark-color), #343a40);
-            color: white;
-            padding: 2rem;
-            text-align: center;
-            margin-top: 3rem;
-        }
-
-        .footer p {
+        .comments-disabled h5 {
             margin-bottom: 0.5rem;
+            color: var(--gray-600);
         }
 
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin-top: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .footer-links a {
-            color: var(--accent-color);
-            text-decoration: none;
-            transition: color 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .footer-links a:hover {
-            color: white;
+        .comments-disabled p {
+            color: var(--gray-500);
+            margin: 0;
         }
 
         /* Responsive Design */
-        @media (max-width: 768px) {
-            .header-container {
-                flex-direction: column;
-                gap: 1.2rem;
-                text-align: center;
-            }
-            
-            .user-info {
-                flex-direction: column;
-                gap: 1rem;
-            }
-            
-            .article-title {
+        @media (max-width: 1024px) {
+            .news-title {
                 font-size: 2rem;
             }
-            
-            .article-meta {
+
+            .news-meta {
+                gap: 1.5rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .news-title {
+                font-size: 1.75rem;
+            }
+
+            .news-excerpt {
+                font-size: 1rem;
+            }
+
+            .news-meta {
                 flex-direction: column;
                 gap: 1rem;
             }
-            
-            .article-content {
+
+            .news-featured-image {
+                max-height: 300px;
+            }
+
+            .comments-body {
                 padding: 1.5rem;
             }
-            
-            .comments-section {
-                padding: 1.5rem;
-            }
-            
-            .comments-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 1rem;
-            }
-            
-            .footer-links {
-                flex-direction: column;
-                gap: 1rem;
+
+            .comment-item {
+                padding: 1rem;
             }
         }
 
         @media (max-width: 480px) {
-            .main-container {
-                padding: 0 1rem;
+            .news-title {
+                font-size: 1.5rem;
             }
-            
-            .article-header {
-                padding: 1.5rem;
+
+            .news-category-badge {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.8rem;
             }
-            
-            .article-title {
-                font-size: 1.7rem;
+
+            .news-meta-item {
+                font-size: 0.9rem;
             }
-            
-            .comment-form button {
-                width: 100%;
-                justify-content: center;
+
+            .news-content {
+                font-size: 1rem;
+            }
+
+            .comments-header {
+                padding: 1rem;
+            }
+
+            .comments-header h4 {
+                font-size: 1.1rem;
+            }
+
+            .comment-form {
+                padding: 1rem;
             }
         }
-
-        /* Animations */
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .article-header, .article-content, .comments-section {
-            animation: fadeIn 0.6s ease forwards;
-        }
-
-        .comment-item {
-            animation: fadeIn 0.5s ease forwards;
-            opacity: 0;
-        }
-
-        .comment-item:nth-child(1) { animation-delay: 0.1s; }
-        .comment-item:nth-child(2) { animation-delay: 0.2s; }
-        .comment-item:nth-child(3) { animation-delay: 0.3s; }
-        .comment-item:nth-child(4) { animation-delay: 0.4s; }
-        .comment-item:nth-child(5) { animation-delay: 0.5s; }
     </style>
 </head>
 <body>
-    <!-- <header class="header">
+    <!-- Header -->
+    <header class="dashboard-header">
         <div class="header-container">
-            <div class="logo-container">
-                <img src="../assets/images/nysc.jpg" alt="School Logo" class="logo">
-                <h1 class="school-name">SahabFormMaster</h1>
-            </div>
-            
-            <div class="user-info">
-                <div class="user-avatar">
-                    <?php echo strtoupper(substr($user_name, 0, 1)); ?>
-                </div>
-                <div class="user-details">
-                    <span class="user-name"><?php echo htmlspecialchars($user_name); ?></span>
-                    <span class="user-role"><?php echo htmlspecialchars($student_class); ?> Student</span>
-                </div>
-                <a href="schoolfeed.php" class="btn-back">
-                    <i class="fas fa-arrow-left"></i> Back to Feed
-                </a>
-            </div>
-        </div>
-    </header> -->
-    <div class="user-info">
-                <!-- <div class="user-avatar">
-                    <?php echo strtoupper(substr($user_name, 0, 1)); ?>
-                </div>
-                <div class="user-details">
-                    <span class="user-name"><?php echo htmlspecialchars($user_name); ?></span>
-                    <span class="user-role"><?php echo htmlspecialchars($student_class); ?> Student</span>
-                </div>-->
-                <a href="schoolfeed.php" class="btn-back"> 
-                    <i class="fas fa-arrow-left"></i> Back to Feed
-                </a>
-            </div>
-
-    <main class="main-container">
-        <div class="article-header">
-            <span class="article-category"><?php echo htmlspecialchars($news_item['category']); ?></span>
-            <h1 class="article-title"><?php echo htmlspecialchars($news_item['title']); ?></h1>
-            <p class="article-excerpt"><?php echo htmlspecialchars($news_item['excerpt']); ?></p>
-            
-            <div class="article-meta">
-                <div class="meta-item">
-                    <i class="far fa-calendar"></i>
-                    Published: <?php echo date('F j, Y', strtotime($news_item['published_date'])); ?>
-                </div>
-                <div class="meta-item">
-                    <i class="far fa-eye"></i>
-                    <?php echo intval($news_item['view_count']); ?> views
-                </div>
-                <?php if ($news_item['allow_comments']): ?>
-                    <div class="meta-item">
-                        <i class="far fa-comment"></i>
-                        <?php echo count($comments); ?> comments
+            <!-- Logo and School Name -->
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Student Portal</p>
                     </div>
-                <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Student Info and Logout -->
+            <div class="header-right">
+                <div class="student-info">
+                    <p class="student-label">Student</p>
+                    <span class="student-name"><?php echo htmlspecialchars($student_name); ?></span>
+                    <span class="admission-number"><?php echo htmlspecialchars($admission_number); ?></span>
+                </div>
+                <a href="logout.php" class="btn-logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
             </div>
         </div>
+    </header>
 
-        <?php if ($news_item['featured_image']): ?>
-            <div class="article-featured-image">
-                <img src="../<?php echo htmlspecialchars($news_item['featured_image']); ?>" 
-                     alt="<?php echo htmlspecialchars($news_item['title']); ?>">
-            </div>
-        <?php endif; ?>
+    <!-- Main Container -->
+    <div class="dashboard-container">
+        <?php include '../includes/student_sidebar.php'; ?>
 
-        <div class="article-content">
-            <?php echo nl2br(htmlspecialchars($news_item['content'])); ?>
-            
-            <?php if (!empty($news_item['tags'])): ?>
-                <div class="article-tags" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #eee;">
-                    <strong>Tags:</strong>
-                    <?php 
-                    $tags = explode(',', $news_item['tags']);
-                    foreach ($tags as $tag): 
-                        $trimmed_tag = trim($tag);
-                        if (!empty($trimmed_tag)):
-                    ?>
-                        <span style="display: inline-block; background: #f0f2f5; color: #666; padding: 0.3rem 0.8rem; border-radius: 50px; margin: 0.3rem; font-size: 0.9rem;">
-                            #<?php echo htmlspecialchars($trimmed_tag); ?>
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- News Header Card -->
+            <div class="news-header-card">
+                <div style="padding: 2rem;">
+                    <a href="schoolfeed.php" class="back-to-feed-btn">
+                        <i class="fas fa-arrow-left"></i>
+                        Back to School Feed
+                    </a>
+                    <span class="news-category-badge">
+                        <?php echo htmlspecialchars($news_item['category']); ?>
+                    </span>
+                    <h1 class="news-title"><?php echo htmlspecialchars($news_item['title']); ?></h1>
+                    <p class="news-excerpt"><?php echo htmlspecialchars($news_item['excerpt']); ?></p>
+
+                    <div class="news-meta">
+                        <span class="news-meta-item">
+                            <i class="fas fa-calendar"></i>
+                            <?php echo date('F j, Y', strtotime($news_item['published_date'])); ?>
                         </span>
-                    <?php 
-                        endif;
-                    endforeach; 
-                    ?>
-                </div>
-            <?php endif; ?>
-        </div>
-
-        <?php if ($news_item['allow_comments']): ?>
-            <div class="comments-section">
-                <div class="comments-header">
-                    <h2 class="comments-title">
-                        <i class="fas fa-comments"></i> Comments
-                        <span class="comment-count"><?php echo count($comments); ?></span>
-                    </h2>
-                </div>
-
-                <form method="POST" class="comment-form">
-                    <input type="hidden" name="action" value="comment">
-                    <textarea name="comment" placeholder="Share your thoughts about this news article..." required></textarea>
-                    <button type="submit">
-                        <i class="fas fa-paper-plane"></i> Post Comment
-                    </button>
-                </form>
-
-                <?php if (empty($comments)): ?>
-                    <div class="no-comments">
-                        <i class="far fa-comment"></i>
-                        <h3>No comments yet</h3>
-                        <p>Be the first to share your thoughts!</p>
+                        <span class="news-meta-item">
+                            <i class="fas fa-eye"></i>
+                            <?php echo intval($news_item['view_count']); ?> views
+                        </span>
+                        <?php if ($news_item['allow_comments']): ?>
+                            <span class="news-meta-item">
+                                <i class="fas fa-comment"></i>
+                                <?php echo count($comments); ?> comments
+                            </span>
+                        <?php endif; ?>
                     </div>
-                <?php else: ?>
-                    <div class="comments-list">
-                        <?php foreach ($comments as $comment): ?>
-                            <div class="comment-item">
-                                <div class="comment-header">
-                                    <div class="comment-author">
-                                        <div class="comment-avatar">
-                                            <?php echo strtoupper(substr($comment['name'], 0, 1)); ?>
+                </div>
+            </div>
+
+            <!-- News Content Card -->
+            <div class="news-content-card">
+                <div style="padding: 2rem;">
+                    <?php if ($news_item['featured_image']): ?>
+                        <img src="../<?php echo htmlspecialchars($news_item['featured_image']); ?>"
+                             alt="<?php echo htmlspecialchars($news_item['title']); ?>"
+                             class="news-featured-image">
+                    <?php endif; ?>
+
+                    <div class="news-content">
+                        <?php echo nl2br(htmlspecialchars($news_item['content'])); ?>
+                    </div>
+
+                    <?php if (!empty($news_item['tags'])): ?>
+                        <div class="news-tags">
+                            <strong>Tags:</strong>
+                            <?php
+                            $tags = explode(',', $news_item['tags']);
+                            foreach ($tags as $tag):
+                                $trimmed_tag = trim($tag);
+                                if (!empty($trimmed_tag)):
+                            ?>
+                                <span class="tag-item">#<?php echo htmlspecialchars($trimmed_tag); ?></span>
+                            <?php
+                                endif;
+                            endforeach;
+                            ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <?php if ($news_item['allow_comments']): ?>
+                <!-- Comments Section -->
+                <div class="comments-section">
+                    <div class="comments-header">
+                        <i class="fas fa-comments"></i>
+                        <h4>Comments (<?php echo count($comments); ?>)</h4>
+                    </div>
+                    <div class="comments-body">
+                        <form method="POST" class="comment-form">
+                            <input type="hidden" name="action" value="comment">
+                            <div class="comment-form-group">
+                                <label for="comment">Share your thoughts:</label>
+                                <textarea name="comment" id="comment" rows="4" class="comment-textarea"
+                                          placeholder="Write your comment here..." required></textarea>
+                            </div>
+                            <button type="submit" class="btn-submit-comment">
+                                <i class="fas fa-paper-plane"></i>
+                                Post Comment
+                            </button>
+                        </form>
+
+                        <?php if (empty($comments)): ?>
+                            <div class="no-comments">
+                                <i class="fas fa-comment"></i>
+                                <h5>No comments yet</h5>
+                                <p>Be the first to share your thoughts!</p>
+                            </div>
+                        <?php else: ?>
+                            <div class="comments-list">
+                                <?php foreach ($comments as $comment): ?>
+                                    <div class="comment-item">
+                                        <div class="comment-header">
+                                            <div class="comment-avatar">
+                                                <?php echo strtoupper(substr($comment['name'], 0, 1)); ?>
+                                            </div>
+                                            <div class="comment-info">
+                                                <div class="comment-author"><?php echo htmlspecialchars($comment['name']); ?></div>
+                                                <div class="comment-date">
+                                                    <?php echo date('M j, Y \a\t g:i A', strtotime($comment['created_at'])); ?>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="comment-author-info">
-                                            <div class="comment-author-name">
-                                                <?php echo htmlspecialchars($comment['name']); ?>
-                                            </div>
-                                            <div class="comment-time">
-                                                <i class="far fa-clock"></i>
-                                                <?php echo date('M j, Y \a\t g:i A', strtotime($comment['created_at'])); ?>
-                                            </div>
+                                        <div class="comment-text">
+                                            <?php echo nl2br(htmlspecialchars($comment['comment'])); ?>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="comment-text">
-                                    <?php echo nl2br(htmlspecialchars($comment['comment'])); ?>
-                                </div>
+                                <?php endforeach; ?>
                             </div>
-                        <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
-                <?php endif; ?>
-            </div>
-        <?php else: ?>
-            <div class="comments-section" style="text-align: center; padding: 3rem;">
-                <i class="fas fa-comment-slash" style="font-size: 3rem; color: var(--gray-color); margin-bottom: 1rem;"></i>
-                <h3>Comments are disabled</h3>
-                <p>Comments are not allowed for this news article.</p>
-            </div>
-        <?php endif; ?>
-    </main>
+                </div>
+            <?php else: ?>
+                <!-- Comments Disabled Section -->
+                <div class="comments-section">
+                    <div class="comments-disabled">
+                        <i class="fas fa-comment-slash"></i>
+                        <h5>Comments are disabled</h5>
+                        <p>Comments are not allowed for this news article.</p>
+                    </div>
+                </div>
+            <?php endif; ?>
+        </main>
+    </div>
 
-    <footer class="footer">
-        <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
-        <p>Student News Portal</p>
-        <!-- <div class="footer-links">
-            <a href="schoolfeed.php"><i class="fas fa-newspaper"></i> News Feed</a>
-            <a href="student-dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-            <a href="../logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
-        </div> -->
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About SahabFormMaster</h4>
+                    <p>A comprehensive educational management system designed to help students track their academic progress and performance.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="myresults.php">My Results</a></li>
+                        <li><a href="mysubjects.php">My Subjects</a></li>
+                        <li><a href="attendance.php">Attendance</a></li>
+                        <li><a href="#">Support</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact Information</h4>
+                    <p>📧 student.support@sahabformmaster.com</p>
+                    <p>📱 +234 808 683 5607</p>
+                    <p>🌐 www.sahabformmaster.com</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="#">Privacy Policy</a>
+                    <span>•</span>
+                    <a href="#">Terms of Service</a>
+                    <span>•</span>
+                    <span>Version 2.0</span>
+                </div>
+            </div>
+        </div>
     </footer>
 
-    <script>
-        // Smooth scroll to comments section if URL has #comments hash
-        if (window.location.hash === '#comments') {
-            const commentsSection = document.querySelector('.comments-section');
-            if (commentsSection) {
-                setTimeout(() => {
-                    commentsSection.scrollIntoView({ behavior: 'smooth' });
-                }, 300);
-            }
-        }
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-        // Auto-expand textarea as user types
-        const textarea = document.querySelector('textarea');
-        if (textarea) {
-            textarea.addEventListener('input', function() {
-                this.style.height = 'auto';
-                this.style.height = (this.scrollHeight) + 'px';
-            });
-        }
+    <?php include '../includes/floating-button.php'; ?>
 
-        // Show confirmation when leaving page with unsaved comment
-        let commentChanged = false;
-        if (textarea) {
-            textarea.addEventListener('input', () => {
-                commentChanged = textarea.value.trim().length > 0;
-            });
-            
-            window.addEventListener('beforeunload', (e) => {
-                if (commentChanged) {
-                    e.preventDefault();
-                    e.returnValue = 'You have an unsaved comment. Are you sure you want to leave?';
-                }
-            });
-        }
-    </script>
 </body>
 </html>

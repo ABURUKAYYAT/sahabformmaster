@@ -9,8 +9,8 @@ if (!isset($_SESSION['student_id'])) {
     exit;
 }
 
-
 $student_id = $_SESSION['student_id'];
+$student_name = $_SESSION['student_name'];
 $message = '';
 $subjects = [];
 $class_name = '';
@@ -68,45 +68,6 @@ try {
     $message = "Error fetching data: " . $e->getMessage();
     error_log("Error in mysubjects.php: " . $e->getMessage());
 }
-
-// Alternative approach: If you want to show ALL subjects available for the class (not just assigned ones)
-// Uncomment the code below if you want to show all subjects
-
-/*
-try {
-    // Get all subjects (without teacher assignment check)
-    $query = "
-        SELECT 
-            s.id AS subject_id,
-            s.subject_name,
-            s.subject_code,
-            s.description AS subject_description,
-            sa.teacher_id,
-            u.full_name AS teacher_name,
-            u.email AS teacher_email,
-            sa.assigned_at
-        FROM subjects s
-        LEFT JOIN subject_assignments sa ON s.id = sa.subject_id AND sa.class_id = :class_id
-        LEFT JOIN users u ON sa.teacher_id = u.id
-        WHERE EXISTS (
-            SELECT 1 FROM subject_assignments sa2 
-            WHERE sa2.subject_id = s.id AND sa2.class_id = :class_id
-        )
-        ORDER BY s.subject_name
-    ";
-    
-    $stmt = $pdo->prepare($query);
-    $stmt->execute([':class_id' => $class_id]);
-    
-    if ($stmt->rowCount() > 0) {
-        $subjects = $stmt->fetchAll();
-    } else {
-        $message = "No subjects available for your class.";
-    }
-} catch (PDOException $e) {
-    $message = "Error fetching data: " . $e->getMessage();
-}
-*/
 ?>
 
 <!DOCTYPE html>
@@ -115,369 +76,208 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Subjects - Student Portal</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        body {
-            background-color: #f5f7fa;
-            color: #333;
-            line-height: 1.6;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        header {
-            background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
-            color: white;
-            padding: 25px 0;
-            margin-bottom: 30px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 20px;
-        }
-        
-        h1 {
-            font-size: 28px;
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-        
-        .class-info {
-            font-size: 18px;
-            opacity: 0.9;
-            margin-bottom: 15px;
-        }
-        
-        .subjects-container {
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-            overflow: hidden;
-            margin-bottom: 30px;
-        }
-        
-        .subjects-header {
-            background: #f8f9fa;
-            padding: 20px;
-            border-bottom: 2px solid #e9ecef;
-        }
-        
-        .subjects-header h2 {
-            color: #2c3e50;
-            font-size: 22px;
-            margin-bottom: 5px;
-        }
-        
-        .subjects-count {
-            color: #6c757d;
-            font-size: 16px;
-        }
-        
-        .message {
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 8px;
-            background-color: #e7f3ff;
-            border-left: 4px solid #4b6cb7;
-            color: #2c3e50;
-        }
-        
-        .message.error {
-            background-color: #ffeaea;
-            border-left-color: #e74c3c;
-            color: #c0392b;
-        }
-        
-        .message.success {
-            background-color: #e8f6ef;
-            border-left-color: #27ae60;
-            color: #1e8449;
-        }
-        
-        .subjects-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 25px;
-            padding: 30px;
-        }
-        
-        .subject-card {
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
-            transition: all 0.3s ease;
-            border: 1px solid #e9ecef;
-        }
-        
-        .subject-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
-        }
-        
-        .subject-header {
-            background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%);
-            color: white;
-            padding: 20px;
-        }
-        
-        .subject-code {
-            font-size: 14px;
-            opacity: 0.8;
-            margin-bottom: 5px;
-            font-weight: 500;
-        }
-        
-        .subject-name {
-            font-size: 22px;
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
-        
-        .subject-description {
-            font-size: 14px;
-            opacity: 0.9;
-            line-height: 1.5;
-        }
-        
-        .subject-body {
-            padding: 20px;
-        }
-        
-        .teacher-info {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #f1f1f1;
-        }
-        
-        .teacher-icon {
-            width: 50px;
-            height: 50px;
-            background: #f8f9fa;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 15px;
-            color: #4b6cb7;
-            font-size: 20px;
-            font-weight: bold;
-        }
-        
-        .teacher-details h4 {
-            color: #2c3e50;
-            font-size: 18px;
-            margin-bottom: 5px;
-        }
-        
-        .teacher-email {
-            color: #6c757d;
-            font-size: 14px;
-        }
-        
-        .subject-meta {
-            display: flex;
-            justify-content: space-between;
-            color: #6c757d;
-            font-size: 14px;
-            margin-top: 10px;
-        }
-        
-        .no-teacher {
-            color: #e74c3c;
-            font-style: italic;
-            padding: 10px;
-            background: #fff5f5;
-            border-radius: 5px;
-            margin-top: 10px;
-        }
-        
-        .no-subjects {
-            text-align: center;
-            padding: 50px 20px;
-            color: #6c757d;
-            font-size: 18px;
-        }
-        
-        .no-subjects i {
-            font-size: 48px;
-            margin-bottom: 20px;
-            color: #bdc3c7;
-        }
-        
-        footer {
-            text-align: center;
-            margin-top: 40px;
-            padding: 20px;
-            color: #6c757d;
-            font-size: 14px;
-            border-top: 1px solid #e9ecef;
-        }
-        
-        .back-btn {
-            display: inline-block;
-            padding: 10px 20px;
-            background: #4b6cb7;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            margin-top: 20px;
-            transition: background 0.3s;
-        }
-        
-        .back-btn:hover {
-            background: #3a5699;
-        }
-        
-        @media (max-width: 768px) {
-            .subjects-grid {
-                grid-template-columns: 1fr;
-                padding: 20px;
-            }
-            
-            .header-content {
-                flex-direction: column;
-                text-align: center;
-            }
-            
-            h1 {
-                font-size: 24px;
-            }
-            
-            .class-info {
-                font-size: 16px;
-            }
-        }
-    </style>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/student-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/mobile-navigation.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div class="header-content">
-                <div>
-                    <h1><i class="fas fa-book-open"></i> My Subjects</h1>
-                    <p class="class-info">Class: <strong><?php echo htmlspecialchars($class_name); ?></strong></p>
-                </div>
-                <div>
-                    <a href="dashboard.php" class="back-btn">
-                        <i class="fas fa-arrow-left"></i> Back to Dashboard
-                    </a>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <!-- Logo and School Name -->
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Student Portal</p>
+                    </div>
                 </div>
             </div>
-        </header>
-        
-        <div class="subjects-container">
-            <div class="subjects-header">
-                <h2><i class="fas fa-list-alt"></i> Subjects List</h2>
-                <p class="subjects-count">Total Subjects: <strong><?php echo count($subjects); ?></strong></p>
+
+            <!-- Student Info and Logout -->
+            <div class="header-right">
+                <div class="student-info">
+                    <p class="student-label">Student</p>
+                    <span class="student-name"><?php echo htmlspecialchars($student_name); ?></span>
+                    <span class="admission-number"><?php echo htmlspecialchars($_SESSION['admission_no']); ?></span>
+                </div>
+                <a href="logout.php" class="btn-logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
             </div>
-            
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="dashboard-container">
+        <?php include '../includes/student_sidebar.php'; ?>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Content Header -->
+            <div class="content-header">
+                <div class="welcome-section">
+                    <h2><i class="fas fa-book-open"></i> My Subjects Overview</h2>
+                    <p>View and manage your enrolled subjects for <?php echo htmlspecialchars($class_name); ?></p>
+                </div>
+            </div>
+
+            <!-- Statistics -->
+            <div class="dashboard-cards">
+                <div class="card card-gradient-1">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Total Subjects</h3>
+                        <div class="card-value"><?php echo count($subjects); ?></div>
+                    </div>
+                </div>
+                <div class="card card-gradient-4">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Assigned Teachers</h3>
+                        <div class="card-value"><?php echo count(array_filter($subjects, function($s) { return !empty($s['teacher_name']); })); ?></div>
+                    </div>
+                </div>
+                <div class="card card-gradient-3">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Current Class</h3>
+                        <div class="card-value"><?php echo htmlspecialchars($class_name); ?></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerts -->
             <?php if (!empty($message)): ?>
-                <div class="message <?php echo strpos($message, 'Error') !== false ? 'error' : ''; ?>">
-                    <i class="fas fa-info-circle"></i> <?php echo htmlspecialchars($message); ?>
+                <div class="alert alert-info mb-4">
+                    <i class="fas fa-info-circle"></i>
+                    <span><?php echo htmlspecialchars($message); ?></span>
                 </div>
             <?php endif; ?>
-            
+
+            <!-- Subject Cards Grid -->
             <?php if (empty($subjects)): ?>
-                <div class="no-subjects">
-                    <i class="fas fa-book"></i>
-                    <h3>No Subjects Found</h3>
-                    <p>There are currently no subjects assigned to your class.</p>
-                    <p>Please check back later or contact your class teacher.</p>
+                <div class="card text-center">
+                    <div class="card-body p-5">
+                        <div class="text-muted mb-3" style="font-size: 3rem;">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <h4 class="text-muted mb-3">No Subjects Found</h4>
+                        <p class="text-muted mb-0">There are currently no subjects assigned to your class.</p>
+                        <p class="text-muted">Please check back later or contact your class teacher.</p>
+                    </div>
                 </div>
             <?php else: ?>
-                <div class="subjects-grid">
-                    <?php foreach ($subjects as $subject): ?>
-                        <div class="subject-card">
-                            <div class="subject-header">
-                                <div class="subject-code"><?php echo htmlspecialchars($subject['subject_code'] ?? 'No Code'); ?></div>
-                                <h3 class="subject-name"><?php echo htmlspecialchars($subject['subject_name']); ?></h3>
-                                <?php if (!empty($subject['subject_description'])): ?>
-                                    <p class="subject-description"><?php echo htmlspecialchars($subject['subject_description']); ?></p>
-                                <?php endif; ?>
+                <div class="dashboard-cards">
+                    <?php
+                    $gradients = ['card-gradient-1', 'card-gradient-2', 'card-gradient-3', 'card-gradient-4', 'card-gradient-5', 'card-gradient-6'];
+                    foreach ($subjects as $index => $subject):
+                        $gradient_class = $gradients[$index % count($gradients)];
+                    ?>
+                        <div class="card <?php echo $gradient_class; ?>">
+                            <div class="card-icon-wrapper">
+                                <div class="card-icon">
+                                    <i class="fas fa-book"></i>
+                                </div>
                             </div>
-                            
-                            <div class="subject-body">
-                                <?php if (!empty($subject['teacher_name'])): ?>
-                                    <div class="teacher-info">
-                                        <div class="teacher-icon">
-                                            <i class="fas fa-chalkboard-teacher"></i>
-                                        </div>
-                                        <div class="teacher-details">
-                                            <h4><?php echo htmlspecialchars($subject['teacher_name']); ?></h4>
-                                            <p class="teacher-email">
-                                                <i class="fas fa-envelope"></i> 
-                                                <?php echo htmlspecialchars($subject['teacher_email'] ?? 'No email'); ?>
-                                            </p>
-                                        </div>
-                                    </div>
-                                <?php else: ?>
-                                    <div class="no-teacher">
-                                        <i class="fas fa-exclamation-triangle"></i> 
-                                        No teacher assigned to this subject yet
-                                    </div>
+                            <div class="card-content">
+                                <h3><?php echo htmlspecialchars($subject['subject_name']); ?></h3>
+                                <p class="card-value"><?php echo htmlspecialchars($subject['subject_code'] ?? 'No Code'); ?></p>
+
+                                <?php if (!empty($subject['subject_description'])): ?>
+                                    <p class="text-muted small mb-3"><?php echo htmlspecialchars($subject['subject_description']); ?></p>
                                 <?php endif; ?>
-                                
-                                <div class="subject-meta">
-                                    <div>
-                                        <i class="fas fa-calendar-alt"></i> 
-                                        Assigned: <?php echo !empty($subject['assigned_at']) ? date('M d, Y', strtotime($subject['assigned_at'])) : 'Not available'; ?>
-                                    </div>
-                                    <div>
-                                        Subject ID: #<?php echo htmlspecialchars($subject['subject_id']); ?>
-                                    </div>
+
+                                <div class="card-footer">
+                                    <?php if (!empty($subject['teacher_name'])): ?>
+                                        <div class="teacher-info mb-3">
+                                            <div class="d-flex align-items-center gap-2 mb-2">
+                                                <div class="teacher-avatar">
+                                                    <i class="fas fa-user-tie"></i>
+                                                </div>
+                                                <div>
+                                                    <strong class="text-sm"><?php echo htmlspecialchars($subject['teacher_name']); ?></strong>
+                                                    <br>
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-envelope"></i>
+                                                        <?php echo htmlspecialchars($subject['teacher_email'] ?? 'No email'); ?>
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <span class="card-badge">Active</span>
+                                        <a href="mailto:<?php echo htmlspecialchars($subject['teacher_email'] ?? ''); ?>" class="card-link">Contact Teacher →</a>
+                                    <?php else: ?>
+                                        <span class="card-badge warning">Pending</span>
+                                        <span class="text-muted small">No teacher assigned</span>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
-        </div>
-        
-        <footer>
-            <p>Sahab Academy &copy; <?php echo date('Y'); ?> | Student Portal - My Subjects</p>
-            <p>If you notice any discrepancies, please contact the administration.</p>
-        </footer>
+        </main>
     </div>
-    
-    <script>
-        // Add some interactive functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            // Add click animation to subject cards
-            const subjectCards = document.querySelectorAll('.subject-card');
-            subjectCards.forEach(card => {
-                card.addEventListener('click', function() {
-                    this.style.transform = 'scale(0.98)';
-                    setTimeout(() => {
-                        this.style.transform = '';
-                    }, 200);
-                });
-            });
-            
-            // Show notification if there are subjects without teachers
-            const noTeacherDivs = document.querySelectorAll('.no-teacher');
-            if (noTeacherDivs.length > 0) {
-                console.log(`${noTeacherDivs.length} subject(s) do not have assigned teachers.`);
-            }
-        });
-    </script>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About SahabFormMaster</h4>
+                    <p>A comprehensive educational management system designed to help students track their academic progress and performance.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="myresults.php">My Results</a></li>
+                        <li><a href="mysubjects.php">My Subjects</a></li>
+                        <li><a href="attendance.php">Attendance</a></li>
+                        <li><a href="#">Support</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact Information</h4>
+                    <p>📧 student.support@sahabformmaster.com</p>
+                    <p>📱 +234 808 683 5607</p>
+                    <p>🌐 www.sahabformmaster.com</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="#">Privacy Policy</a>
+                    <span>•</span>
+                    <a href="#">Terms of Service</a>
+                    <span>•</span>
+                    <span>Version 2.0</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <?php include '../includes/floating-button.php'; ?>
+
 </body>
 </html>

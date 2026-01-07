@@ -814,6 +814,5 @@ $recent_news = $recent_stmt->fetchAll(PDO::FETCH_ASSOC);
                 e.returnValue = 'You have unsaved comment. Are you sure you want to leave?';
             }
         });
-    </script>
-</body>
+    </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>

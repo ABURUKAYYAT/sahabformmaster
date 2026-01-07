@@ -66,101 +66,224 @@ $stmt = $pdo->prepare("SELECT rc.*, sub.subject_name, r.term FROM results_compla
 $stmt->execute(['sid'=>$student['id']]);
 $complaints = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Student — My Profile</title>
-<link rel="stylesheet" href="../assets/css/student-students.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Portal — My Profile</title>
+    <link rel="stylesheet" href="../assets/css/student-students.css">
+     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-<header class="topbar">
-    <h1>Student Portal</h1>
-    <div class="user"><?php echo htmlspecialchars($student['full_name']); ?></div>
-</header>
-<main class="container">
-    <?php if($errors): ?><div class="alert alert-error"><?php foreach($errors as $e) echo htmlspecialchars($e).'<br>'; ?></div><?php endif; ?>
-    <?php if($success): ?><div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div><?php endif; ?>
+    <header class="topbar">
+        <h1><i class="fas fa-user-graduate"></i> Student Portal</h1>
+        <div class="user">
+            <i class="fas fa-user-circle"></i>
+            <?php echo htmlspecialchars($student['full_name']); ?>
+        </div>
+    </header>
 
-    <section class="panel">
-        <h2>Profile</h2>
-        <p>Class: <?php echo htmlspecialchars($pdo->query("SELECT class_name FROM classes WHERE id=".intval($student['class_id']))->fetchColumn() ?: 'N/A'); ?></p>
-        <form method="POST" class="form-inline">
-            <input type="hidden" name="action" value="update_contact">
-            <input name="phone" placeholder="Phone" value="<?php echo htmlspecialchars($student['phone'] ?? ''); ?>">
-            <input name="address" placeholder="Address" value="<?php echo htmlspecialchars($student['address'] ?? ''); ?>">
-            <button class="btn">Save</button>
-        </form>
-    </section>
-
-    <section class="panel">
-        <h2>My Results</h2>
-        <?php if(empty($results)): ?>
-            <p class="small">No results available.</p>
-        <?php else: ?>
-            <div class="table-wrap">
-                <table class="table">
-                    <thead><tr><th>#</th><th>Subject</th><th>1st CA</th><th>2nd CA</th><th>Exam</th><th>Total</th><th>Grade</th><th>Actions</th></tr></thead>
-                    <tbody>
-                    <?php foreach($results as $i=>$r): 
-                        $ca = $r['first_ca']+$r['second_ca'];
-                        $total = $ca + $r['exam'];
-                        $grade = $total>=90?'A':($total>=80?'B':($total>=70?'C':($total>=60?'D':($total>=50?'E':'F'))));
-                    ?>
-                        <tr>
-                            <td><?php echo $i+1; ?></td>
-                            <td><?php echo htmlspecialchars($r['subject_name']); ?></td>
-                            <td><?php echo htmlspecialchars($r['first_ca']); ?></td>
-                            <td><?php echo htmlspecialchars($r['second_ca']); ?></td>
-                            <td><?php echo htmlspecialchars($r['exam']); ?></td>
-                            <td><?php echo $total; ?></td>
-                            <td><?php echo $grade; ?></td>
-                            <td>
-                                <button onclick="toggleComplaint(<?php echo intval($r['id']); ?>)" class="btn small">Complain</button>
-                                <form method="POST" action="../teacher/generate-result-pdf.php" style="display:inline;">
-                                    <input type="hidden" name="student_id" value="<?php echo intval($student['id']); ?>">
-                                    <input type="hidden" name="class_id" value="<?php echo intval($student['class_id']); ?>">
-                                    <input type="hidden" name="term" value="<?php echo htmlspecialchars($r['term']); ?>">
-                                    <button class="btn small">PDF</button>
-                                </form>
-                                <div id="complaint-<?php echo intval($r['id']); ?>" class="complaint-box hidden">
-                                    <form method="POST">
-                                        <input type="hidden" name="action" value="submit_complaint">
-                                        <input type="hidden" name="result_id" value="<?php echo intval($r['id']); ?>">
-                                        <textarea name="complaint_text" rows="3" placeholder="Explain your complaint" required></textarea>
-                                        <button class="btn">Submit</button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                    </tbody>
-                </table>
+    <main class="container">
+        <?php if($errors): ?>
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-triangle"></i>
+                <?php foreach($errors as $e) echo htmlspecialchars($e).'<br>'; ?>
             </div>
         <?php endif; ?>
-    </section>
 
-    <section class="panel">
-        <h2>My Complaints</h2>
-        <?php if(empty($complaints)): ?><p class="small">No complaints.</p>
-        <?php else: ?>
-            <table class="table">
-                <thead><tr><th>#</th><th>Subject</th><th>Complaint</th><th>Status</th><th>Response</th></tr></thead>
-                <tbody>
-                <?php foreach($complaints as $i=>$c): ?>
-                    <tr>
-                        <td><?php echo $i+1; ?></td>
-                        <td><?php echo htmlspecialchars($c['subject_name']); ?></td>
-                        <td><?php echo htmlspecialchars($c['complaint_text']); ?></td>
-                        <td><?php echo htmlspecialchars(ucfirst($c['status'])); ?></td>
-                        <td><?php echo nl2br(htmlspecialchars($c['teacher_response'] ?? '')); ?></td>
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
+        <?php if($success): ?>
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle"></i>
+                <?php echo htmlspecialchars($success); ?>
+            </div>
         <?php endif; ?>
-    </section>
-</main>
+
+        <!-- Profile Section -->
+        <section class="panel">
+            <h2><i class="fas fa-id-card"></i> My Profile</h2>
+            <div class="content">
+                <div class="profile-card">
+                    <div class="profile-info">
+                        <h3><?php echo htmlspecialchars($student['full_name']); ?></h3>
+                        <p><?php echo htmlspecialchars($pdo->query("SELECT class_name FROM classes WHERE id=".intval($student['class_id']))->fetchColumn() ?: 'N/A'); ?></p>
+                        <span class="class-badge">
+                            <i class="fas fa-graduation-cap"></i>
+                            Student ID: <?php echo htmlspecialchars($student['id']); ?>
+                        </span>
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: var(--gray-700);">
+                    <i class="fas fa-address-book"></i> Contact Information
+                </h3>
+                <form method="POST" class="form-inline">
+                    <input type="hidden" name="action" value="update_contact">
+                    <input name="phone" placeholder="Phone Number" value="<?php echo htmlspecialchars($student['phone'] ?? ''); ?>" required>
+                    <input name="address" placeholder="Address" value="<?php echo htmlspecialchars($student['address'] ?? ''); ?>" required>
+                    <button class="btn success" type="submit">
+                        <i class="fas fa-save"></i> Update Contact Info
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section class="panel">
+            <h2><i class="fas fa-chart-bar"></i> My Results</h2>
+            <div class="content">
+                <?php if(empty($results)): ?>
+                    <div style="text-align: center; padding: 3rem; color: var(--gray-500);">
+                        <i class="fas fa-chart-line fa-3x" style="margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <p>No results available yet.</p>
+                        <p class="small">Your academic results will appear here once they are published.</p>
+                    </div>
+                <?php else: ?>
+                    <div class="table-wrap">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-hashtag"></i> #</th>
+                                    <th><i class="fas fa-book"></i> Subject</th>
+                                    <th><i class="fas fa-calculator"></i> 1st CA</th>
+                                    <th><i class="fas fa-calculator"></i> 2nd CA</th>
+                                    <th><i class="fas fa-file-alt"></i> Exam</th>
+                                    <th><i class="fas fa-plus-circle"></i> Total</th>
+                                    <th><i class="fas fa-graduation-cap"></i> Grade</th>
+                                    <th><i class="fas fa-cogs"></i> Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            <?php foreach($results as $i=>$r):
+                                $ca = $r['first_ca']+$r['second_ca'];
+                                $total = $ca + $r['exam'];
+                                $grade = $total>=90?'A':($total>=80?'B':($total>=70?'C':($total>=60?'D':($total>=50?'E':'F'))));
+                                $gradeClass = 'grade-' . strtolower($grade);
+                            ?>
+                                <tr>
+                                    <td><?php echo $i+1; ?></td>
+                                    <td>
+                                        <strong><?php echo htmlspecialchars($r['subject_name']); ?></strong>
+                                        <div class="small">Term: <?php echo htmlspecialchars($r['term']); ?></div>
+                                    </td>
+                                    <td><?php echo htmlspecialchars($r['first_ca']); ?>/20</td>
+                                    <td><?php echo htmlspecialchars($r['second_ca']); ?>/20</td>
+                                    <td><?php echo htmlspecialchars($r['exam']); ?>/60</td>
+                                    <td><strong><?php echo $total; ?>/100</strong></td>
+                                    <td><span class="<?php echo $gradeClass; ?>"><?php echo $grade; ?></span></td>
+                                    <td>
+                                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                            <button onclick="toggleComplaint(<?php echo intval($r['id']); ?>)" class="btn small">
+                                                <i class="fas fa-exclamation-triangle"></i> Complain
+                                            </button>
+                                            <form method="POST" action="../teacher/generate-result-pdf.php" style="display:inline;">
+                                                <input type="hidden" name="student_id" value="<?php echo intval($student['id']); ?>">
+                                                <input type="hidden" name="class_id" value="<?php echo intval($student['class_id']); ?>">
+                                                <input type="hidden" name="term" value="<?php echo htmlspecialchars($r['term']); ?>">
+                                                <button class="btn small success" type="submit">
+                                                    <i class="fas fa-download"></i> PDF
+                                                </button>
+                                            </form>
+                                        </div>
+                                        <div id="complaint-<?php echo intval($r['id']); ?>" class="complaint-box hidden">
+                                            <h4 style="margin-bottom: 1rem; color: var(--gray-700);">
+                                                <i class="fas fa-comment-dots"></i> Submit Complaint
+                                            </h4>
+                                            <form method="POST">
+                                                <input type="hidden" name="action" value="submit_complaint">
+                                                <input type="hidden" name="result_id" value="<?php echo intval($r['id']); ?>">
+                                                <textarea name="complaint_text" rows="4" placeholder="Please explain your complaint about this result..." required></textarea>
+                                                <button class="btn" type="submit">
+                                                    <i class="fas fa-paper-plane"></i> Submit Complaint
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </section>
+
+        <!-- Complaints Section -->
+        <section class="panel">
+            <h2><i class="fas fa-comments"></i> My Complaints</h2>
+            <div class="content">
+                <?php if(empty($complaints)): ?>
+                    <div style="text-align: center; padding: 3rem; color: var(--gray-500);">
+                        <i class="fas fa-comment-slash fa-3x" style="margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <p>No complaints submitted yet.</p>
+                        <p class="small">You can submit complaints about your results using the "Complain" button above.</p>
+                    </div>
+                <?php else: ?>
+                    <div class="table-wrap">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-hashtag"></i> #</th>
+                                    <th><i class="fas fa-book"></i> Subject</th>
+                                    <th><i class="fas fa-comment-dots"></i> Complaint</th>
+                                    <th><i class="fas fa-info-circle"></i> Status</th>
+                                    <th><i class="fas fa-reply"></i> Teacher Response</th>
+                                    <th><i class="fas fa-calendar"></i> Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            <?php foreach($complaints as $i=>$c):
+                                $statusClass = $c['status'] === 'pending' ? 'text-warning' :
+                                             ($c['status'] === 'resolved' ? 'text-success' : 'text-info');
+                                $statusIcon = $c['status'] === 'pending' ? 'fas fa-clock' :
+                                            ($c['status'] === 'resolved' ? 'fas fa-check-circle' : 'fas fa-spinner');
+                            ?>
+                                <tr>
+                                    <td><?php echo $i+1; ?></td>
+                                    <td>
+                                        <strong><?php echo htmlspecialchars($c['subject_name']); ?></strong>
+                                        <div class="small">Term: <?php echo htmlspecialchars($c['term']); ?></div>
+                                    </td>
+                                    <td><?php echo htmlspecialchars(substr($c['complaint_text'], 0, 50)) . (strlen($c['complaint_text']) > 50 ? '...' : ''); ?></td>
+                                    <td>
+                                        <span class="<?php echo $statusClass; ?>">
+                                            <i class="<?php echo $statusIcon; ?>"></i>
+                                            <?php echo htmlspecialchars(ucfirst($c['status'])); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <?php if(!empty($c['teacher_response'])): ?>
+                                            <?php echo nl2br(htmlspecialchars(substr($c['teacher_response'], 0, 100))) . (strlen($c['teacher_response']) > 100 ? '...' : ''); ?>
+                                        <?php else: ?>
+                                            <span class="small text-muted">No response yet</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php echo date('M d, Y', strtotime($c['created_at'])); ?>
+                                        <div class="small text-muted"><?php echo date('H:i', strtotime($c['created_at'])); ?></div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer style="background: var(--gray-900); color: var(--gray-300); padding: 2rem 0; margin-top: 3rem;">
+        <div class="container" style="text-align: center;">
+            <p style="margin: 0; font-size: 0.9rem;">
+                <i class="fas fa-graduation-cap"></i>
+                Student Portal — Academic Management System
+            </p>
+            <p style="margin: 0.5rem 0 0 0; font-size: 0.8rem; opacity: 0.7;">
+                © <?php echo date('Y'); ?> All Rights Reserved
+            </p>
+        </div>
+    </footer>
 
 <script>
 function toggleComplaint(id){

@@ -1,0 +1,208 @@
+/* ===================================================
+   Mobile Navigation - Hamburger Menu Styles
+   Centralized CSS for consistent mobile experience
+   =================================================== */
+
+/* ===================================================
+   Mobile Menu Toggle Button
+   =================================================== */
+
+.mobile-menu-toggle {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 9999;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: white;
+    border: none;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+}
+
+.mobile-menu-toggle:hover {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    transform: scale(1.1) rotate(90deg);
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+}
+
+.mobile-menu-toggle.active {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    transform: scale(1.1);
+}
+
+/* ===================================================
+   Responsive Breakpoints - Mobile First
+   =================================================== */
+
+/* Tablet and Mobile - Show hamburger menu */
+@media (max-width: 1024px) {
+    .mobile-menu-toggle {
+        display: flex;
+    }
+
+    .sidebar {
+        transform: translateX(-100%);
+        z-index: 999;
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
+    }
+
+    .main-content {
+        margin-left: 0;
+        padding: 1.5rem;
+        width: 100%;
+        max-width: 100%;
+    }
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+    .mobile-menu-toggle {
+        top: 15px;
+        left: 15px;
+        width: 45px;
+        height: 45px;
+        font-size: 1.1rem;
+    }
+
+    .main-content {
+        padding: 1rem;
+    }
+
+    .sidebar {
+        top: 80px;
+        height: calc(100vh - 80px);
+    }
+}
+
+/* Small mobile devices */
+@media (max-width: 480px) {
+    .mobile-menu-toggle {
+        top: 10px;
+        left: 10px;
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+
+    .sidebar {
+        top: 70px;
+        height: calc(100vh - 70px);
+    }
+}
+
+/* ===================================================
+   Sidebar Animations and States
+   =================================================== */
+
+.sidebar {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Overlay for mobile sidebar */
+@media (max-width: 1024px) {
+    .sidebar::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.5);
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+        z-index: -1;
+    }
+
+    .sidebar.active::before {
+        opacity: 1;
+        visibility: visible;
+    }
+}
+
+/* ===================================================
+   Touch and Interaction Improvements
+   =================================================== */
+
+/* Prevent body scroll when sidebar is open */
+body.sidebar-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+}
+
+/* Improved touch targets for mobile */
+@media (max-width: 768px) {
+    .nav-link {
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+    }
+
+    .sidebar-close {
+        width: 44px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+/* ===================================================
+   Accessibility Enhancements
+   =================================================== */
+
+.mobile-menu-toggle {
+    -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-menu-toggle:focus {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .mobile-menu-toggle {
+        border: 2px solid white;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .mobile-menu-toggle,
+    .sidebar {
+        transition: none;
+    }
+
+    .mobile-menu-toggle:hover {
+        transform: none;
+    }
+}
+
+/* ===================================================
+   Print Styles - Hide mobile navigation when printing
+   =================================================== */
+
+@media print {
+    .mobile-menu-toggle,
+    .sidebar {
+        display: none !important;
+    }
+
+    .main-content {
+        margin-left: 0 !important;
+    }
+}

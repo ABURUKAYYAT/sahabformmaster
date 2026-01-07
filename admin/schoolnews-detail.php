@@ -191,6 +191,190 @@ $user_role = $_SESSION['role'] ?? 'guest';
     <link rel="stylesheet" href="../assets/css/admin-unified.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* ===================================================
+           Sidebar and Layout Styles - Matching Schoolnews Page
+           =================================================== */
+
+        /* Mobile Menu Toggle */
+        .mobile-menu-toggle {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 999;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+        }
+
+        .mobile-menu-toggle:hover {
+            background: #3730a3;
+            transform: scale(1.1);
+        }
+
+        .mobile-menu-toggle.active {
+            background: #ef4444;
+        }
+
+        /* Dashboard Layout */
+        .dashboard-container {
+            display: flex;
+            min-height: calc(100vh - 80px);
+            max-width: 1400px;
+            margin: 2rem auto;
+            gap: 2rem;
+            padding: 0 1rem;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            position: fixed;
+            left: 0;
+            top: 80px;
+            height: calc(100vh - 80px);
+            overflow-y: auto;
+            z-index: 999;
+            transition: transform 0.3s ease;
+            border-radius: 0 1rem 1rem 0;
+        }
+
+        .sidebar.active {
+            transform: translateX(0);
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-header h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .sidebar-close {
+            background: none;
+            border: none;
+            font-size: 1.25rem;
+            color: #9ca3af;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-close:hover {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .sidebar-nav {
+            padding: 1rem 0;
+        }
+
+        .nav-list {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin-bottom: 0.25rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.5rem;
+            color: #4b5563;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-link:hover {
+            background: #f9fafb;
+            color: #4f46e5;
+            border-left-color: #4f46e5;
+        }
+
+        .nav-link.active {
+            background: #4f46e5;
+            color: white;
+            border-left-color: #4f46e5;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-icon {
+            width: 20px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+
+        .nav-text {
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            max-width: calc(100vw - 280px);
+        }
+
+        /* Responsive Design for Sidebar */
+        @media (max-width: 1200px) {
+            .sidebar {
+                transform: translateX(-100%);
+                z-index: 999;
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .mobile-menu-toggle {
+                display: flex;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                padding: 0 0.5rem;
+                gap: 1rem;
+            }
+        }
+
+        /* ===================================================
+           Updated Main Content Layout
+           =================================================== */
+
+        .detail-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            min-height: calc(100vh - 80px);
+        }
         :root {
             /* Color Palette - Matching Teacher Dashboard */
             --primary-color: #4f46e5;
@@ -355,9 +539,7 @@ $user_role = $_SESSION['role'] ?? 'guest';
         .school-name {
             font-size: 1.8rem;
             font-weight: 700;
-            background: linear-gradient(to right, #FFD700, #FFA500);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: white;
         }
 
         .header-left {
@@ -962,10 +1144,13 @@ $user_role = $_SESSION['role'] ?? 'guest';
         }
 
         .dashboard-footer {
-            background: linear-gradient(135deg, var(--dark-color), #343a40);
+            background: #1a202c;
+            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
             color: white;
             padding: 3rem 2rem 1.5rem;
             margin-top: 3rem;
+            border-top: 4px solid #4f46e5;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
         }
 
         .footer-container {
@@ -1130,13 +1315,19 @@ $user_role = $_SESSION['role'] ?? 'guest';
     </div>
 </header>
 
-<div class="detail-container">
+<!-- Mobile Menu Toggle -->
+<button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+    <span class="icon icon-menu"></span>
+</button>
+
+<div class="dashboard-container">
+    <!-- Sidebar Navigation -->
+    <?php include '../includes/admin_sidebar.php'; ?>
+
+    <main class="main-content">
+        <div class="detail-container">
     <div class="page-header">
         <div class="page-header-content">
-            <a href="index.php" class="btn-dashboard-back">
-                <i class="fas fa-arrow-left"></i>
-                <span>Back to Dashboard</span>
-            </a>
             <div class="page-title">
                 <h1><i class="fas fa-newspaper"></i> News Article</h1>
                 <p><?php echo htmlspecialchars($news['title']); ?></p>
@@ -1363,9 +1554,8 @@ $user_role = $_SESSION['role'] ?? 'guest';
             </div>
         </section>
         <?php endif; ?>
+        </div>
     </main>
-
-
 </div>
 
 <footer class="dashboard-footer">
@@ -1405,6 +1595,44 @@ if (commentTextarea) {
         charCurrent.textContent = this.value.length;
     });
 }
+
+// Mobile sidebar toggle functionality
+const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+const sidebar = document.querySelector('.sidebar');
+
+if (mobileMenuToggle && sidebar) {
+    mobileMenuToggle.addEventListener('click', function() {
+        sidebar.classList.toggle('active');
+        this.classList.toggle('active');
+    });
+
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', function(e) {
+        if (window.innerWidth <= 1200) {
+            if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+                sidebar.classList.remove('active');
+                mobileMenuToggle.classList.remove('active');
+            }
+        }
+    });
+}
+
+// Handle responsive layout on window resize
+function handleResponsiveLayout() {
+    const isMobile = window.innerWidth <= 1200;
+    if (mobileMenuToggle) {
+        mobileMenuToggle.style.display = isMobile ? 'flex' : 'none';
+    }
+    if (!isMobile && sidebar) {
+        sidebar.classList.remove('active');
+    }
+    if (mobileMenuToggle) {
+        mobileMenuToggle.classList.remove('active');
+    }
+}
+
+window.addEventListener('resize', handleResponsiveLayout);
+handleResponsiveLayout(); // Initial call
 </script>
 
 </body>

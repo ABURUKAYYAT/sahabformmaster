@@ -54,6 +54,7 @@ $pending_activities = $activities_stmt->fetch()['pending_activities'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Dashboard | SahabFormMaster</title>
     <link rel="stylesheet" href="../assets/css/student-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/mobile-navigation.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -157,6 +158,12 @@ $pending_activities = $activities_stmt->fetch()['pending_activities'];
                         <a href="school_diary.php" class="nav-link">
                             <i class="fas fa-book nav-icon"></i>
                             <span class="nav-text">School Diary</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="photo_album.php" class="nav-link">
+                            <i class="fas fa-images nav-icon"></i>
+                            <span class="nav-text">Photo Album</span>
                         </a>
                     </li>
                 </ul>
@@ -271,6 +278,20 @@ $pending_activities = $activities_stmt->fetch()['pending_activities'];
                         </div>
                     </div>
                 </div>
+
+                <div class="card card-gradient-7">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon"><i class="fas fa-mobile-alt"></i></div>
+                    </div>
+                    <div class="card-content">
+                        <h3>VTU Services</h3>
+                        <p class="card-value">Available</p>
+                        <div class="card-footer">
+                            <span class="card-badge">Buy Now</span>
+                            <a href="https://www.sahabdata.com.ng" target="_blank" class="card-link">Shop VTU →</a>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Quick Actions Section -->
@@ -303,6 +324,14 @@ $pending_activities = $activities_stmt->fetch()['pending_activities'];
                     <a href="school_diary.php" class="quick-action-card">
                         <i class="fas fa-book"></i>
                         <span>School Events</span>
+                    </a>
+                    <a href="photo_album.php" class="quick-action-card">
+                        <i class="fas fa-images"></i>
+                        <span>Class Photos</span>
+                    </a>
+                    <a href="https://www.sahabdata.com.ng" target="_blank" class="quick-action-card">
+                        <i class="fas fa-mobile-alt"></i>
+                        <span>Buy VTU Services</span>
                     </a>
                 </div>
             </div>
@@ -515,6 +544,8 @@ $pending_activities = $activities_stmt->fetch()['pending_activities'];
             });
         });
     </script>
+
+    <?php include '../includes/floating-button.php'; ?>
 
 </body>
 </html>

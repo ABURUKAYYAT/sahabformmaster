@@ -1,4 +1,9 @@
 <?php
+// Enable error reporting for debugging
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 session_start();
 require_once '../config/db.php';
 
@@ -12,6 +17,16 @@ $user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['role'];
 $user_name = $_SESSION['full_name'] ?? 'User';
 $is_principal = ($user_role === 'principal');
+
+// Get user's school_id
+$user_school_id = $_SESSION['school_id'] ?? null;
+if (!$user_school_id) {
+    // Fetch from database if not in session
+    $stmt = $pdo->prepare("SELECT school_id FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $user_school_id = $stmt->fetchColumn();
+    $_SESSION['school_id'] = $user_school_id;
+}
 
 $errors = [];
 $success = '';
@@ -213,6 +228,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Fetch analytics data for charts
+$monthly_submissions = [];
+$status_distribution = [];
+$approval_rates = [];
+$teacher_performance = [];
+
+// Monthly submissions for last 6 months
+for ($i = 5; $i >= 0; $i--) {
+    $month = date('Y-m', strtotime("-$i months"));
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM lesson_plans WHERE DATE_FORMAT(created_at, '%Y-%m') = ? AND school_id = ?");
+    $stmt->execute([$month, $user_school_id]);
+    $monthly_submissions[] = $stmt->fetch()['count'];
+}
+
+// Status distribution
+$statuses = ['draft', 'submitted', 'scheduled', 'completed'];
+foreach ($statuses as $status) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM lesson_plans WHERE status = ? AND school_id = ?");
+    $stmt->execute([$status, $user_school_id]);
+    $status_distribution[] = $stmt->fetch()['count'];
+}
+
+// Approval rates
+$approval_statuses = ['approved', 'rejected', 'pending'];
+foreach ($approval_statuses as $status) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM lesson_plans WHERE approval_status = ? AND school_id = ?");
+    $stmt->execute([$status, $user_school_id]);
+    $approval_rates[] = $stmt->fetch()['count'];
+}
+
+// Top teachers by lesson plans
+$teacher_performance = $pdo->query("
+    SELECT u.full_name, COUNT(lp.id) as plan_count 
+    FROM users u 
+    LEFT JOIN lesson_plans lp ON u.id = lp.teacher_id 
+    WHERE u.role = 'teacher' 
+    GROUP BY u.id, u.full_name 
+    ORDER BY plan_count DESC 
+    LIMIT 5
+")->fetchAll(PDO::FETCH_ASSOC);
+
 // Fetch data for dropdowns
 $subjects = $pdo->query("SELECT id, subject_name FROM subjects ORDER BY subject_name ASC")->fetchAll(PDO::FETCH_ASSOC);
 $classes = $pdo->query("SELECT id, class_name FROM classes ORDER BY class_name ASC")->fetchAll(PDO::FETCH_ASSOC);
@@ -224,18 +280,18 @@ $filter_status = $_GET['filter_status'] ?? '';
 $filter_teacher = $_GET['filter_teacher'] ?? '';
 $filter_class = $_GET['filter_class'] ?? '';
 
-$query = "SELECT lp.*, s.subject_name as subject_name, c.class_name, u.full_name as teacher_name 
-          FROM lesson_plans lp 
-          JOIN subjects s ON lp.subject_id = s.id 
-          JOIN classes c ON lp.class_id = c.id 
-          JOIN users u ON lp.teacher_id = u.id 
-          WHERE 1=1";
-$params = [];
+$query = "SELECT lp.*, s.subject_name as subject_name, c.class_name, u.full_name as teacher_name
+          FROM lesson_plans lp
+          JOIN subjects s ON lp.subject_id = s.id
+          JOIN classes c ON lp.class_id = c.id
+          JOIN users u ON lp.teacher_id = u.id
+          WHERE lp.school_id = ?";
+$params = [$user_school_id];
 
 // Teachers see only their own plans
 if ($user_role === 'teacher') {
-    $query .= " AND lp.teacher_id = :teacher_id";
-    $params['teacher_id'] = $user_id;
+    $query .= " AND lp.teacher_id = ?";
+    $params[] = $user_id;
 }
 
 if ($search !== '') {
@@ -301,11 +357,15 @@ function getStatusBadge($status) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lesson Plans Management | SahabFormMaster</title>
-    <link rel="stylesheet" href="../assets/css/dashboard.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary-color: #4361ee;
@@ -735,52 +795,258 @@ function getStatusBadge($status) {
             font-size: 1.2rem;
             color: var(--primary-color);
         }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--gray-200);
+            transition: var(--transition-normal);
+        }
+
+        .chart-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--hover-shadow);
+        }
+
+        .chart-card h4 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 1rem;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .chart-card h4 i {
+            color: var(--primary-color);
+        }
+
+        .chart-card canvas {
+            width: 100% !important;
+            height: 250px !important;
+            max-width: 100%;
+        }
+
+        /* Charts responsive */
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .chart-card {
+                padding: 1rem;
+            }
+
+            .chart-card canvas {
+                height: 200px !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .chart-card h4 {
+                font-size: 1rem;
+            }
+
+            .chart-card canvas {
+                height: 180px !important;
+            }
+        }
     </style>
 </head>
 <body>
 
-<header class="dashboard-header">
-    <div class="header-container">
-        <div class="header-right">
-            <div class="school-logo-container">
-                <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
-                <h1 class="school-name">SahabFormMaster</h1>
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <!-- Logo and School Name -->
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Admin Portal</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Info and Logout -->
+            <div class="header-right">
+                <div class="teacher-info">
+                    <p class="teacher-label"><?php echo ucfirst($user_role); ?></p>
+                    <span class="teacher-name"><?php echo htmlspecialchars($user_name); ?></span>
+                </div>
+                <a href="logout.php" class="btn-logout">
+                    <span class="logout-icon">🚪</span>
+                    <span>Logout</span>
+                </a>
             </div>
         </div>
+    </header>
 
-        <div class="header-left">
-            <div class="teacher-info">
-                <span class="teacher-name"><?php echo htmlspecialchars($user_name); ?></span>
-                <span class="teacher-role"><?php echo ucfirst($user_role); ?></span>
+    <!-- Main Container -->
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3>Navigation</h3>
+                <button class="sidebar-close" id="sidebarClose">✕</button>
             </div>
-            <a href="../index.php" class="btn-logout">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </a>
-        </div>
-    </div>
-</header>
-
-<div class="dashboard-container">
-    <aside class="sidebar">
-        <!-- Sidebar content remains the same -->
-             <nav class="sidebar-nav">
+            <nav class="sidebar-nav">
                 <ul class="nav-list">
                     <li class="nav-item">
-                        <a href="index.php" class="nav-link active">
+                        <a href="index.php" class="nav-link">
                             <span class="nav-icon">📊</span>
                             <span class="nav-text">Dashboard</span>
                         </a>
                     </li>
-                    
-                                    
+
+                    <li class="nav-item">
+                        <a href="schoolnews.php" class="nav-link">
+                            <span class="nav-icon">📰</span>
+                            <span class="nav-text">School News</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="school_diary.php" class="nav-link">
+                            <span class="nav-icon">📔</span>
+                            <span class="nav-text">School Diary</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="students.php" class="nav-link">
+                            <span class="nav-icon">👥</span>
+                            <span class="nav-text">Students Registration</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="students-evaluations.php" class="nav-link">
+                            <span class="nav-icon">⭐</span>
+                            <span class="nav-text">Students Evaluations</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_class.php" class="nav-link">
+                            <span class="nav-icon">🎓</span>
+                            <span class="nav-text">Manage Classes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_results.php" class="nav-link">
+                            <span class="nav-icon">📈</span>
+                            <span class="nav-text">Manage Results</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="lesson-plans.php" class="nav-link active">
+                            <span class="nav-icon">📝</span>
+                            <span class="nav-text">Lesson Plans</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_curriculum.php" class="nav-link">
+                            <span class="nav-icon">📚</span>
+                            <span class="nav-text">Curriculum</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage-school.php" class="nav-link">
+                            <span class="nav-icon">🏫</span>
+                            <span class="nav-text">Manage School</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="subjects.php" class="nav-link">
+                            <span class="nav-icon">📖</span>
+                            <span class="nav-text">Subjects</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_user.php" class="nav-link">
+                            <span class="nav-icon">👤</span>
+                            <span class="nav-text">Manage Users</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="visitors.php" class="nav-link">
+                            <span class="nav-icon">🚶</span>
+                            <span class="nav-text">Visitors</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_timebook.php" class="nav-link">
+                            <span class="nav-icon">⏰</span>
+                            <span class="nav-text">Teachers Time Book</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="permissions.php" class="nav-link">
+                            <span class="nav-icon">🔐</span>
+                            <span class="nav-text">Permissions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_attendance.php" class="nav-link">
+                            <span class="nav-icon">📋</span>
+                            <span class="nav-text">Attendance Register</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="payments_dashboard.php" class="nav-link">
+                            <span class="nav-icon">💰</span>
+                            <span class="nav-text">School Fees</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="sessions.php" class="nav-link">
+                            <span class="nav-icon">📅</span>
+                            <span class="nav-text">School Sessions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="school_calendar.php" class="nav-link">
+                            <span class="nav-icon">🗓️</span>
+                            <span class="nav-text">School Calendar</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="applicants.php" class="nav-link">
+                            <span class="nav-icon">📄</span>
+                            <span class="nav-text">Applicants</span>
+                        </a>
+                    </li>
                 </ul>
             </nav>
-    </aside>
+        </aside>
 
-    <main class="main-content">
+        <!-- Main Content -->
+        <main class="main-content">
         <div class="content-header">
-            <h2><i class="fas fa-clipboard-list"></i> Lesson Plans Management</h2>
-            <p class="small-muted"><?php echo $is_principal ? 'Review, approve, and manage all lesson plans' : 'Create and manage your lesson plans'; ?></p>
+            <div>
+                <h2><i class="fas fa-clipboard-list"></i> Lesson Plans Management</h2>
+                <p class="small-muted"><?php echo $is_principal ? 'Review, approve, and manage all lesson plans' : 'Create and manage your lesson plans'; ?></p>
+            </div>
+            <a href="index.php" class="btn-secondary" style="background: var(--primary-color); color: white;">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
         </div>
 
         <!-- Quick Stats -->
@@ -838,6 +1104,33 @@ function getStatusBadge($status) {
                 <span>Refresh View</span>
             </a>
         </div>
+        <?php endif; ?>
+
+        <!-- Analytics Section -->
+        <?php if ($is_principal): ?>
+        <section class="lesson-section">
+            <div class="lesson-card">
+                <h3><i class="fas fa-chart-bar"></i> Lesson Plans Analytics</h3>
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h4><i class="fas fa-calendar-alt"></i> Monthly Submissions</h4>
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h4><i class="fas fa-chart-pie"></i> Status Distribution</h4>
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h4><i class="fas fa-thumbs-up"></i> Approval Rates</h4>
+                        <canvas id="approvalChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h4><i class="fas fa-users"></i> Top Teachers</h4>
+                        <canvas id="teacherChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
         <?php endif; ?>
 
         <?php if ($errors): ?>
@@ -1283,7 +1576,108 @@ function getStatusBadge($status) {
                 row.style.borderLeft = '3px solid #ffc107';
             }
         });
+
+        // Initialize Charts
+        <?php if ($is_principal): ?>
+        const monthlyData = <?php echo json_encode($monthly_submissions); ?>;
+        const statusData = <?php echo json_encode($status_distribution); ?>;
+        const approvalData = <?php echo json_encode($approval_rates); ?>;
+        const teacherLabels = <?php echo json_encode(array_column($teacher_performance, 'full_name')); ?>;
+        const teacherData = <?php echo json_encode(array_column($teacher_performance, 'plan_count')); ?>;
+
+        // Monthly Submissions Chart
+        new Chart(document.getElementById('monthlyChart'), {
+            type: 'line',
+            data: {
+                labels: [
+                    '<?php echo date('M Y', strtotime('-5 months')); ?>',
+                    '<?php echo date('M Y', strtotime('-4 months')); ?>',
+                    '<?php echo date('M Y', strtotime('-3 months')); ?>',
+                    '<?php echo date('M Y', strtotime('-2 months')); ?>',
+                    '<?php echo date('M Y', strtotime('-1 month')); ?>',
+                    '<?php echo date('M Y'); ?>'
+                ],
+                datasets: [{
+                    label: 'Lesson Plans Submitted',
+                    data: monthlyData,
+                    borderColor: '#4361ee',
+                    backgroundColor: 'rgba(67, 97, 238, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+
+        // Status Distribution Chart
+        new Chart(document.getElementById('statusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Draft', 'Submitted', 'Scheduled', 'Completed'],
+                datasets: [{
+                    data: statusData,
+                    backgroundColor: ['#6c757d', '#ffc107', '#17a2b8', '#28a745'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+
+        // Approval Rates Chart
+        new Chart(document.getElementById('approvalChart'), {
+            type: 'pie',
+            data: {
+                labels: ['Approved', 'Rejected', 'Pending'],
+                datasets: [{
+                    data: approvalData,
+                    backgroundColor: ['#28a745', '#dc3545', '#ffc107'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+
+        // Top Teachers Chart
+        new Chart(document.getElementById('teacherChart'), {
+            type: 'bar',
+            data: {
+                labels: teacherLabels,
+                datasets: [{
+                    label: 'Lesson Plans Created',
+                    data: teacherData,
+                    backgroundColor: '#4361ee',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+        <?php endif; ?>
     });
-</script>
-</body>
+</script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>

@@ -1,10 +1,9 @@
 <?php
-// filepath: c:\xampp\htdocs\sahabformmaster\admin\manage-school.php
 session_start();
 require_once '../config/db.php';
 
-// Only allow principal (admin) to access this page
-if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'principal') {
+// Check if principal is logged in
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'principal') {
     header("Location: ../index.php");
     exit;
 }
@@ -59,13 +58,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (empty($errors)) {
             // Update school profile in the database
-            $stmt = $pdo->prepare("UPDATE school_profile SET 
-                school_name = :school_name, 
-                school_address = :school_address, 
-                school_phone = :school_phone, 
-                school_email = :school_email, 
-                school_website = :school_website, 
-                school_motto = :school_motto, 
+            $stmt = $pdo->prepare("UPDATE school_profile SET
+                school_name = :school_name,
+                school_address = :school_address,
+                school_phone = :school_phone,
+                school_email = :school_email,
+                school_website = :school_website,
+                school_motto = :school_motto,
                 school_logo = COALESCE(:school_logo, school_logo)
                 WHERE id = 1");
             $stmt->execute([
@@ -103,19 +102,28 @@ if (!$school) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage School | SahabFormMaster</title>
-    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
     <link rel="stylesheet" href="../assets/css/manage-school.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
 
-<!-- Header -->
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Header -->
     <header class="dashboard-header">
         <div class="header-container">
-            <!-- Logo and School Name (Right) -->
-            <div class="header-right">
+            <!-- Logo and School Name -->
+            <div class="header-left">
                 <div class="school-logo-container">
                     <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
                     <div class="school-info">
@@ -125,44 +133,69 @@ if (!$school) {
                 </div>
             </div>
 
-            <!-- Principal Info and Logout (Left) -->
-            <div class="header-left">
+            <!-- Principal Info and Logout -->
+            <div class="header-right">
                 <div class="principal-info">
                     <p class="principal-label">Principal</p>
                     <span class="principal-name"><?php echo htmlspecialchars($principal_name); ?></span>
                 </div>
-                <a href="logout.php" class="btn-logout">Logout</a>
+                <a href="logout.php" class="btn-logout">
+                    <span class="logout-icon">🚪</span>
+                    <span>Logout</span>
+                </a>
             </div>
         </div>
     </header>
 
     <!-- Main Container -->
     <div class="dashboard-container">
-        <!-- Sidebar Navigation (1/3 width) -->
-        <aside class="sidebar">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3>Navigation</h3>
+                <button class="sidebar-close" id="sidebarClose">✕</button>
+            </div>
             <nav class="sidebar-nav">
                 <ul class="nav-list">
                     <li class="nav-item">
-                        <a href="index.php" class="nav-link active">
+                        <a href="index.php" class="nav-link">
                             <span class="nav-icon">📊</span>
                             <span class="nav-text">Dashboard</span>
                         </a>
                     </li>
-                    
+
                     <li class="nav-item">
                         <a href="schoolnews.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
+                            <span class="nav-icon">📰</span>
                             <span class="nav-text">School News</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="school_diary.php" class="nav-link">
+                            <span class="nav-icon">📔</span>
+                            <span class="nav-text">School Diary</span>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a href="students.php" class="nav-link">
                             <span class="nav-icon">👥</span>
-                            <span class="nav-text">Manage Students</span>
+                            <span class="nav-text">Students Registration</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="results.php" class="nav-link">
+                        <a href="students-evaluations.php" class="nav-link">
+                            <span class="nav-icon">⭐</span>
+                            <span class="nav-text">Students Evaluations</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_class.php" class="nav-link">
+                            <span class="nav-icon">🎓</span>
+                            <span class="nav-text">Manage Classes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_results.php" class="nav-link">
                             <span class="nav-icon">📈</span>
                             <span class="nav-text">Manage Results</span>
                         </a>
@@ -170,184 +203,260 @@ if (!$school) {
                     <li class="nav-item">
                         <a href="lesson-plans.php" class="nav-link">
                             <span class="nav-icon">📝</span>
-                            <span class="nav-text">Manage Lesson Plans</span>
+                            <span class="nav-text">Lesson Plans</span>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a href="manage_curriculum.php" class="nav-link">
                             <span class="nav-icon">📚</span>
-                            <span class="nav-text">Manage Curriculum</span>
+                            <span class="nav-text">Curriculum</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="manage-school.php" class="nav-link">
+                        <a href="manage-school.php" class="nav-link active">
                             <span class="nav-icon">🏫</span>
                             <span class="nav-text">Manage School</span>
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a href="subjects.php" class="nav-link">
+                            <span class="nav-icon">📖</span>
+                            <span class="nav-text">Subjects</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a href="manage_user.php" class="nav-link">
-                            <span class="nav-icon">🔐</span>
+                            <span class="nav-icon">👤</span>
                             <span class="nav-text">Manage Users</span>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a href="visitors.php" class="nav-link">
+                            <span class="nav-icon">🚶</span>
+                            <span class="nav-text">Visitors</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_timebook.php" class="nav-link">
+                            <span class="nav-icon">⏰</span>
+                            <span class="nav-text">Teachers Time Book</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="permissions.php" class="nav-link">
                             <span class="nav-icon">🔐</span>
-                            <span class="nav-text">Manage Visitors</span>
+                            <span class="nav-text">Permissions</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="timebook.php" class="nav-link">
-                            <span class="nav-icon">🔐</span>
-                            <span class="nav-text">Manage Teachers Time Book</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="travelling.php" class="nav-link">
-                            <span class="nav-icon">🔐</span>
-                            <span class="nav-text">Manage Travelling</span>
-                        </a>
-                    </li>
-                                        
-                    <li class="nav-item">
-                        <a href="classwork.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
-                            <span class="nav-text">Class Work</span>
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a href="assignment.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
-                            <span class="nav-text">Assignment</span>
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a href="attendance.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
+                        <a href="manage_attendance.php" class="nav-link">
+                            <span class="nav-icon">📋</span>
                             <span class="nav-text">Attendance Register</span>
                         </a>
                     </li>
-                    
                     <li class="nav-item">
-                        <a href="schoolfees.php" class="nav-link">
-                            <span class="nav-icon">📚</span>
-                            <span class="nav-text">School Fees Payments</span>
+                        <a href="payments_dashboard.php" class="nav-link">
+                            <span class="nav-icon">💰</span>
+                            <span class="nav-text">School Fees</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="sessions.php" class="nav-link">
+                            <span class="nav-icon">📅</span>
+                            <span class="nav-text">School Sessions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="school_calendar.php" class="nav-link">
+                            <span class="nav-icon">🗓️</span>
+                            <span class="nav-text">School Calendar</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="applicants.php" class="nav-link">
+                            <span class="nav-icon">📄</span>
+                            <span class="nav-text">Applicants</span>
                         </a>
                     </li>
                 </ul>
             </nav>
         </aside>
 
-    <main class="main-content">
-        <div class="content-header">
-            <h2>Manage School</h2>
-            <p class="small-muted">Update school profile and settings</p>
-        </div>
-
-        <?php if ($errors): ?>
-            <div class="alert alert-error">
-                <?php foreach ($errors as $e) echo htmlspecialchars($e) . '<br>'; ?>
-            </div>
-        <?php endif; ?>
-
-        <?php if ($success): ?>
-            <div class="alert alert-success">
-                <?php echo htmlspecialchars($success); ?>
-            </div>
-        <?php endif; ?>
-
-        <!-- School Profile Form -->
-        <section class="school-profile-section">
-            <div class="profile-card">
-                <h3>🏫 School Profile</h3>
-                <form method="POST" enctype="multipart/form-data" class="profile-form">
-                    <input type="hidden" name="action" value="update_school_profile">
-
-                    <div class="form-group">
-                        <label for="school_name">School Name *</label>
-                        <input type="text" id="school_name" name="school_name" class="form-control" 
-                               value="<?php echo htmlspecialchars($school['school_name']); ?>" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="school_address">Address *</label>
-                        <textarea id="school_address" name="school_address" class="form-control" rows="3" required><?php echo htmlspecialchars($school['school_address']); ?></textarea>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="school_phone">Phone *</label>
-                                <input type="text" id="school_phone" name="school_phone" class="form-control" 
-                                       value="<?php echo htmlspecialchars($school['school_phone']); ?>" required>
-                            </div>
-                        </div>
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="school_email">Email</label>
-                                <input type="email" id="school_email" name="school_email" class="form-control" 
-                                       value="<?php echo htmlspecialchars($school['school_email']); ?>">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="school_website">Website</label>
-                        <input type="url" id="school_website" name="school_website" class="form-control" 
-                               value="<?php echo htmlspecialchars($school['school_website']); ?>">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="school_motto">Motto</label>
-                        <textarea id="school_motto" name="school_motto" class="form-control" rows="2"><?php echo htmlspecialchars($school['school_motto']); ?></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="school_logo">School Logo</label>
-                        <input type="file" id="school_logo" name="school_logo" class="form-control" accept="image/jpeg,image/png,image/webp">
-                        <?php if ($school['school_logo']): ?>
-                            <div class="image-preview">
-                                <img src="../<?php echo htmlspecialchars($school['school_logo']); ?>" alt="School Logo">
-                            </div>
-                        <?php endif; ?>
-                    </div>
-
-                    <button type="submit" class="btn-gold">Update Profile</button>
-                </form>
-            </div>
-        </section>
-    </main>
-</div>
-
-<footer class="dashboard-footer">
-    <div class="footer-container">
-        <div class="footer-content">
-            <div class="footer-section">
-                <h4>About SahabFormMaster</h4>
-                <p>Professional school management system.</p>
-            </div>
-            <div class="footer-section">
-                <h4>Quick Links</h4>
-                <div class="footer-links">
-                    <a href="index.php">Dashboard</a>
-                    <a href="schoolnews.php">News Management</a>
-                    <a href="manage_user.php">Users</a>
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-header">
+                <div class="welcome-section">
+                    <h2>🏫 Manage School Settings</h2>
+                    <p>Update your school profile and configuration</p>
                 </div>
             </div>
-            <div class="footer-section">
-                <h4>Support</h4>
-                <p>Email: <a href="mailto:support@sahabformmaster.com">support@sahabformmaster.com</a></p>
+
+            <?php if ($errors): ?>
+                <div class="alert alert-error">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <?php foreach ($errors as $e) echo htmlspecialchars($e) . '<br>'; ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($success): ?>
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    <?php echo htmlspecialchars($success); ?>
+                </div>
+            <?php endif; ?>
+
+            <!-- School Profile Form -->
+            <div class="school-profile-section">
+                <div class="profile-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-school"></i> School Profile</h3>
+                        <p>Basic information about your school</p>
+                    </div>
+                    <form method="POST" enctype="multipart/form-data" class="profile-form">
+                        <input type="hidden" name="action" value="update_school_profile">
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="school_name"><i class="fas fa-building"></i> School Name *</label>
+                                <input type="text" id="school_name" name="school_name" class="form-control"
+                                       value="<?php echo htmlspecialchars($school['school_name']); ?>" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="school_phone"><i class="fas fa-phone"></i> Phone *</label>
+                                <input type="text" id="school_phone" name="school_phone" class="form-control"
+                                       value="<?php echo htmlspecialchars($school['school_phone']); ?>" required>
+                            </div>
+
+                            <div class="form-group form-group-full">
+                                <label for="school_address"><i class="fas fa-map-marker-alt"></i> Address *</label>
+                                <textarea id="school_address" name="school_address" class="form-control" rows="3" required><?php echo htmlspecialchars($school['school_address']); ?></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="school_email"><i class="fas fa-envelope"></i> Email</label>
+                                <input type="email" id="school_email" name="school_email" class="form-control"
+                                       value="<?php echo htmlspecialchars($school['school_email']); ?>">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="school_website"><i class="fas fa-globe"></i> Website</label>
+                                <input type="url" id="school_website" name="school_website" class="form-control"
+                                       value="<?php echo htmlspecialchars($school['school_website']); ?>">
+                            </div>
+
+                            <div class="form-group form-group-full">
+                                <label for="school_motto"><i class="fas fa-quote-left"></i> Motto</label>
+                                <textarea id="school_motto" name="school_motto" class="form-control" rows="2"><?php echo htmlspecialchars($school['school_motto']); ?></textarea>
+                            </div>
+
+                            <div class="form-group form-group-full">
+                                <label for="school_logo"><i class="fas fa-image"></i> School Logo</label>
+                                <input type="file" id="school_logo" name="school_logo" class="form-control" accept="image/jpeg,image/png,image/webp">
+                                <?php if ($school['school_logo']): ?>
+                                    <div class="image-preview">
+                                        <img src="../<?php echo htmlspecialchars($school['school_logo']); ?>" alt="School Logo">
+                                        <p class="image-caption">Current logo</p>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">
+                                <i class="fas fa-save"></i>
+                                Update Profile
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About SahabFormMaster</h4>
+                    <p>A comprehensive school management system designed for academic excellence and efficient administration.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="manage-school.php">School Settings</a></li>
+                        <li><a href="manage_user.php">User Management</a></li>
+                        <li><a href="#">Support & Help</a></li>
+                        <li><a href="#">Documentation</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact Information</h4>
+                    <p>📧 admin@sahabformmaster.com</p>
+                    <p>📱 +234 808 683 5607</p>
+                    <p>🌐 www.sahabformmaster.com</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="#">Privacy Policy</a>
+                    <span>•</span>
+                    <a href="#">Terms of Service</a>
+                    <span>•</span>
+                    <span>Version 2.0</span>
+                </div>
             </div>
         </div>
-        <div class="footer-bottom">
-            <p class="footer-copyright">&copy; 2025 SahabFormMaster. All rights reserved.</p>
-            <p class="footer-version">Version 1.0</p>
-        </div>
-    </div>
-</footer>
+    </footer>
 
-</body>
+    <script>
+        // Mobile Menu Toggle
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarClose = document.getElementById('sidebarClose');
+
+        mobileMenuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+            mobileMenuToggle.classList.toggle('active');
+        });
+
+        sidebarClose.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            mobileMenuToggle.classList.remove('active');
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+                    sidebar.classList.remove('active');
+                    mobileMenuToggle.classList.remove('active');
+                }
+            }
+        });
+
+        // Smooth scroll for internal links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Add active class on scroll
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('.dashboard-header');
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+    </script><?php include '../includes/floating-button.php'; ?></body>
 </html>
+

@@ -8,6 +8,8 @@ if (!isset($_SESSION['user_id']) || strtolower($_SESSION['role'] ?? '') !== 'pri
     exit;
 }
 
+$principal_name = $_SESSION['full_name'];
+
 // Helpers
 function flash($k, $v = null) {
     if ($v === null) {
@@ -143,808 +145,470 @@ try {
 
 $success = flash('success');
 ?>
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Manage Classes — School Admin System</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<style>
-  :root {
-    --primary: #4f46e5;
-    --primary-dark: #4338ca;
-    --secondary: #10b981;
-    --danger: #ef4444;
-    --warning: #f59e0b;
-    --light: #f8fafc;
-    --dark: #1e293b;
-    --gray: #64748b;
-    --gray-light: #e2e8f0;
-    --border: #cbd5e1;
-    --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    --radius: 12px;
-    --radius-sm: 8px;
-  }
-
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-
-  body {
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
-    color: var(--dark);
-    line-height: 1.6;
-    min-height: 100vh;
-  }
-
-  .container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 20px;
-  }
-
-  header {
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    color: white;
-    padding: 1.5rem 0;
-    box-shadow: var(--shadow);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-
-  .header-content {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 0 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .logo i {
-    font-size: 1.8rem;
-  }
-
-  .logo h1 {
-    font-size: 1.5rem;
-    font-weight: 700;
-  }
-
-  .user-info {
-    font-size: 0.9rem;
-    opacity: 0.9;
-  }
-
-  .alert {
-    padding: 1rem;
-    border-radius: var(--radius-sm);
-    margin-bottom: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    animation: fadeIn 0.5s ease;
-  }
-
-  .alert-success {
-    background-color: #d1fae5;
-    color: #065f46;
-    border-left: 4px solid var(--secondary);
-  }
-
-  .alert-error {
-    background-color: #fee2e2;
-    color: #991b1b;
-    border-left: 4px solid var(--danger);
-  }
-
-  .alert i {
-    font-size: 1.2rem;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .dashboard-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
-    margin-top: 1rem;
-  }
-
-  @media (max-width: 1024px) {
-    .dashboard-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .card {
-    background: white;
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    padding: 1.75rem;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-  }
-
-  .card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  }
-
-  .card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--gray-light);
-  }
-
-  .card-title {
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: var(--dark);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .card-title i {
-    color: var(--primary);
-  }
-
-  .form-group {
-    margin-bottom: 1.25rem;
-  }
-
-  .form-label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-    color: var(--dark);
-    font-size: 0.95rem;
-  }
-
-  .form-input, .form-textarea, .form-select {
-    width: 100%;
-    padding: 0.875rem 1rem;
-    border: 2px solid var(--border);
-    border-radius: var(--radius-sm);
-    font-size: 1rem;
-    transition: all 0.3s;
-    background-color: white;
-  }
-
-  .form-input:focus, .form-textarea:focus, .form-select:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-  }
-
-  .form-textarea {
-    min-height: 100px;
-    resize: vertical;
-  }
-
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 0.875rem 1.5rem;
-    border: none;
-    border-radius: var(--radius-sm);
-    font-weight: 600;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: all 0.3s;
-    text-decoration: none;
-  }
-
-  .btn-primary {
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    color: white;
-  }
-
-  .btn-primary:hover {
-    background: linear-gradient(135deg, var(--primary-dark), #3730a3);
-    transform: translateY(-2px);
-  }
-
-  .btn-secondary {
-    background: var(--gray-light);
-    color: var(--dark);
-  }
-
-  .btn-secondary:hover {
-    background: #d1d5db;
-  }
-
-  .btn-danger {
-    background: var(--danger);
-    color: white;
-  }
-
-  .btn-danger:hover {
-    background: #dc2626;
-  }
-
-  .btn-small {
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-  }
-
-  .btn-icon {
-    padding: 0.5rem;
-    border-radius: 50%;
-    width: 36px;
-    height: 36px;
-  }
-
-  .action-buttons {
-    display: flex;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-  }
-
-  .classes-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    margin-top: 1rem;
-  }
-
-  .classes-table th {
-    background-color: #f1f5f9;
-    padding: 1rem;
-    text-align: left;
-    font-weight: 700;
-    color: var(--dark);
-    border-bottom: 2px solid var(--border);
-  }
-
-  .classes-table td {
-    padding: 1.25rem 1rem;
-    border-bottom: 1px solid var(--gray-light);
-    vertical-align: top;
-  }
-
-  .classes-table tr:hover {
-    background-color: #f8fafc;
-  }
-
-  .class-name {
-    font-weight: 700;
-    font-size: 1.1rem;
-    color: var(--primary-dark);
-    margin-bottom: 0.25rem;
-  }
-
-  .class-description {
-    color: var(--gray);
-    font-size: 0.9rem;
-    margin-top: 0.25rem;
-  }
-
-  .teachers-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-top: 0.5rem;
-  }
-
-  .teacher-tag {
-    background: #e0e7ff;
-    color: var(--primary-dark);
-    padding: 0.5rem 0.875rem;
-    border-radius: 50px;
-    font-size: 0.875rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: 500;
-  }
-
-  .teacher-tag .remove-btn {
-    background: none;
-    border: none;
-    color: var(--danger);
-    cursor: pointer;
-    padding: 0;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s;
-  }
-
-  .teacher-tag .remove-btn:hover {
-    background: rgba(239, 68, 68, 0.1);
-  }
-
-  .no-teachers {
-    color: var(--gray);
-    font-style: italic;
-    font-size: 0.9rem;
-  }
-
-  .stats-card {
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    color: white;
-    border-radius: var(--radius);
-    padding: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 1.5rem;
-  }
-
-  .stats-content h3 {
-    font-size: 1.1rem;
-    margin-bottom: 0.5rem;
-    opacity: 0.9;
-  }
-
-  .stats-number {
-    font-size: 2.5rem;
-    font-weight: 800;
-    line-height: 1;
-  }
-
-  .stats-icon {
-    font-size: 3rem;
-    opacity: 0.2;
-  }
-
-  .empty-state {
-    text-align: center;
-    padding: 3rem 1rem;
-    color: var(--gray);
-  }
-
-  .empty-state i {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-    opacity: 0.3;
-  }
-
-  .empty-state h3 {
-    font-size: 1.3rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 1000;
-    align-items: center;
-    justify-content: center;
-    animation: fadeIn 0.3s ease;
-  }
-
-  .modal-content {
-    background: white;
-    border-radius: var(--radius);
-    padding: 2rem;
-    width: 90%;
-    max-width: 500px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    animation: slideUp 0.4s ease;
-  }
-
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(30px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--gray-light);
-  }
-
-  .modal-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--dark);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .close-modal {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    color: var(--gray);
-    cursor: pointer;
-    padding: 0.25rem;
-    border-radius: 4px;
-  }
-
-  .close-modal:hover {
-    background-color: var(--gray-light);
-    color: var(--dark);
-  }
-
-  @media (max-width: 768px) {
-    .container {
-      padding: 15px;
-    }
-    
-    .header-content {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 10px;
-    }
-    
-    .card {
-      padding: 1.25rem;
-    }
-    
-    .card-title {
-      font-size: 1.2rem;
-    }
-    
-    .classes-table {
-      display: block;
-      overflow-x: auto;
-    }
-    
-    .classes-table th,
-    .classes-table td {
-      padding: 0.75rem;
-    }
-    
-    .action-buttons {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-    
-    .btn {
-      width: 100%;
-      justify-content: center;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .dashboard-grid {
-      gap: 1rem;
-    }
-    
-    .card {
-      padding: 1rem;
-    }
-    
-    .stats-card {
-      flex-direction: column;
-      text-align: center;
-      gap: 1rem;
-    }
-    
-    .teachers-list {
-      flex-direction: column;
-    }
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Classes | SahabFormMaster</title>
+    <link rel="stylesheet" href="../assets/css/admin_dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-<header>
-  <div class="header-content">
-    <div class="logo">
-      <i class="fas fa-chalkboard-teacher"></i>
-      <h1>School Admin System</h1>
-    </div>
-    <div class="user-info">
-      <a href="index.php" style="color: white;"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
-    </div>
-  </div>
-</header>
 
-<div class="container">
-  <?php if (!empty($success)): ?>
-    <div class="alert alert-success">
-      <i class="fas fa-check-circle"></i>
-      <div><?php echo htmlspecialchars($success); ?></div>
-    </div>
-  <?php endif; ?>
-  
-  <?php if (!empty($errors)): ?>
-    <div class="alert alert-error">
-      <i class="fas fa-exclamation-circle"></i>
-      <div>
-        <?php foreach ($errors as $e): ?>
-          <div><?php echo htmlspecialchars($e); ?></div>
-        <?php endforeach; ?>
-      </div>
-    </div>
-  <?php endif; ?>
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+        <i class="fas fa-bars"></i>
+    </button>
 
-  <div class="stats-card">
-    <div class="stats-content">
-      <h3>Total Classes</h3>
-      <div class="stats-number"><?php echo count($classes); ?></div>
-    </div>
-    <div class="stats-icon">
-      <i class="fas fa-school"></i>
-    </div>
-  </div>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <!-- Logo and School Name -->
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Principal Portal</p>
+                    </div>
+                </div>
+            </div>
 
-  <div class="dashboard-grid">
-    <!-- Left Column: Forms -->
-    <div>
-      <!-- Create Class Card -->
-      <div class="card">
-        <div class="card-header">
-          <h2 class="card-title"><i class="fas fa-plus-circle"></i> Create New Class</h2>
+            <!-- Principal Info and Logout -->
+            <div class="header-right">
+                <div class="principal-info">
+                    <p class="principal-label">Principal</p>
+                    <span class="principal-name"><?php echo htmlspecialchars($principal_name); ?></span>
+                </div>
+                <a href="logout.php" class="btn-logout">
+                    <span class="logout-icon">🚪</span>
+                    <span>Logout</span>
+                </a>
+            </div>
         </div>
-        <form method="POST" id="createForm">
-          <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
-          <input type="hidden" name="action" value="create_class">
-          
-          <div class="form-group">
-            <label class="form-label" for="class_name">Class Name *</label>
-            <input type="text" class="form-input" name="class_name" id="class_name" required placeholder="e.g., Grade 10 Science">
-          </div>
-          
-          <!-- <div class="form-group">
-            <label class="form-label" for="description">Description</label>
-            <textarea class="form-textarea" name="description" id="description" rows="3" placeholder="Optional description for this class"></textarea>
-          </div>
-           -->
-          <button type="submit" class="btn btn-primary">
-            <i class="fas fa-save"></i> Create Class
-          </button>
-        </form>
-      </div>
+    </header>
 
-      <!-- Assign Teacher Card -->
-      <div class="card" style="margin-top: 2rem;">
-        <div class="card-header">
-          <h2 class="card-title"><i class="fas fa-user-plus"></i> Assign Teacher to Class</h2>
-        </div>
-        <form method="POST" id="assignForm">
-          <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
-          <input type="hidden" name="action" value="assign_teacher">
-          
-          <div class="form-group">
-            <label class="form-label" for="assign_class_id">Select Class *</label>
-            <select class="form-select" name="class_id" id="assign_class_id" required>
-              <option value="">-- Choose a class --</option>
-              <?php foreach ($classes as $c): ?>
-                <option value="<?php echo intval($c['id']); ?>">
-                  <?php echo htmlspecialchars($c['class_name']); ?>
-                </option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label" for="assign_teacher_id">Select Teacher *</label>
-            <select class="form-select" name="teacher_id" id="assign_teacher_id" required>
-              <option value="">-- Choose a teacher --</option>
-              <?php foreach ($teachers as $t): ?>
-                <option value="<?php echo intval($t['id']); ?>">
-                  <?php echo htmlspecialchars($t['full_name']); ?>
-                  <?php if (!empty($t['email'])): ?>
-                    (<?php echo htmlspecialchars($t['email']); ?>)
-                  <?php endif; ?>
-                </option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          
-          <button type="submit" class="btn btn-primary">
-            <i class="fas fa-link"></i> Assign Teacher
-          </button>
-        </form>
-      </div>
-    </div>
+    <!-- Main Container -->
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <?php include '../includes/admin_sidebar.php'; ?>
 
-    <!-- Right Column: Classes List -->
-    <div>
-      <div class="card">
-        <div class="card-header">
-          <h2 class="card-title"><i class="fas fa-list-alt"></i> Class List</h2>
-          <div class="action-buttons">
-            <button class="btn btn-secondary btn-small" onclick="refreshPage()">
-              <i class="fas fa-sync-alt"></i> Refresh
-            </button>
-          </div>
-        </div>
-        
-        <?php if (empty($classes)): ?>
-          <div class="empty-state">
-            <i class="fas fa-chalkboard"></i>
-            <h3>No Classes Found</h3>
-            <p>Create your first class using the form on the left.</p>
-          </div>
-        <?php else: ?>
-          <div style="overflow-x: auto;">
-            <table class="classes-table">
-              <thead>
-                <tr>
-                  <th>Class Details</th>
-                  <th>Assigned Teachers</th>
-                  <th style="width: 180px;">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php foreach ($classes as $c): ?>
-                  <tr>
-                    <td>
-                      <div class="class-name"><?php echo htmlspecialchars($c['class_name']); ?></div>
-                      <?php if (!empty($c['description'])): ?>
-                        <div class="class-description"><?php echo htmlspecialchars($c['description']); ?></div>
-                      <?php endif; ?>
-                      <div class="small" style="color: var(--gray); font-size: 0.85rem; margin-top: 0.5rem;">
-                        ID: <?php echo $c['id']; ?> | Created: <?php echo date('M j, Y', strtotime($c['created_at'])); ?>
-                      </div>
-                    </td>
-                    <td>
-                      <div class="teachers-list">
-                        <?php if (!empty($assignments[$c['id']])): ?>
-                          <?php foreach ($assignments[$c['id']] as $a): ?>
-                            <div class="teacher-tag">
-                              <i class="fas fa-user-graduate"></i>
-                              <?php echo htmlspecialchars($a['full_name']); ?>
-                              <form method="POST" style="display: inline;" onsubmit="return confirm('Unassign this teacher from the class?')">
-                                <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
-                                <input type="hidden" name="action" value="unassign_teacher">
-                                <input type="hidden" name="class_id" value="<?php echo intval($c['id']); ?>">
-                                <input type="hidden" name="teacher_id" value="<?php echo intval($a['teacher_id']); ?>">
-                                <button type="submit" class="remove-btn" title="Unassign teacher">
-                                  <i class="fas fa-times"></i>
-                                </button>
-                              </form>
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-header">
+                <div class="welcome-section">
+                    <h2><i class="fas fa-chalkboard-teacher"></i> Manage Classes</h2>
+                    <p>Create, edit, and assign teachers to classes</p>
+                </div>
+                <div class="header-stats">
+                    <div class="quick-stat">
+                        <span class="quick-stat-value"><?php echo count($classes); ?></span>
+                        <span class="quick-stat-label">Classes</span>
+                    </div>
+                    <div class="quick-stat">
+                        <span class="quick-stat-value"><?php echo count($teachers); ?></span>
+                        <span class="quick-stat-label">Teachers</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerts -->
+            <?php if (!empty($success)): ?>
+                <div class="alert alert-success" style="padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 12px; background-color: #d1fae5; color: #065f46; border-left: 4px solid #10b981;">
+                    <i class="fas fa-check-circle"></i>
+                    <div><?php echo htmlspecialchars($success); ?></div>
+                </div>
+            <?php endif; ?>
+
+            <?php if (!empty($errors)): ?>
+                <div class="alert alert-error" style="padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 12px; background-color: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444;">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <div>
+                        <?php foreach ($errors as $e): ?>
+                            <div><?php echo htmlspecialchars($e); ?></div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <!-- Dashboard Cards -->
+            <div class="dashboard-cards">
+                <div class="card card-gradient-1">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon">🎓</div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Total Classes</h3>
+                        <p class="card-value"><?php echo count($classes); ?></p>
+                        <div class="card-footer">
+                            <span class="card-badge">Active Classes</span>
+                            <a href="#class-list" class="card-link">View All →</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-gradient-2">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon">👨‍🏫</div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Available Teachers</h3>
+                        <p class="card-value"><?php echo count($teachers); ?></p>
+                        <div class="card-footer">
+                            <span class="card-badge">For Assignment</span>
+                            <a href="manage_user.php" class="card-link">Manage →</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-gradient-3">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon">📊</div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Assignments</h3>
+                        <p class="card-value">
+                            <?php
+                            $total_assignments = 0;
+                            foreach ($assignments as $class_assignments) {
+                                $total_assignments += count($class_assignments);
+                            }
+                            echo $total_assignments;
+                            ?>
+                        </p>
+                        <div class="card-footer">
+                            <span class="card-badge">Teacher-Class Links</span>
+                            <a href="#assignments" class="card-link">Review →</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Forms and Class List Grid -->
+            <div class="stats-section" style="padding: 30px;">
+                <div class="section-header">
+                    <h3>📝 Class Management</h3>
+                    <span class="section-badge">Forms & List</span>
+                </div>
+                <div class="dashboard-grid" style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; margin-top: 1rem;">
+                    <!-- Left Column: Forms -->
+                    <div>
+                        <!-- Create Class Card -->
+                        <div class="card" style="margin-bottom: 2rem;">
+                            <div class="card-header">
+                                <h2 class="card-title" style="font-size: 1.4rem; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 10px;">
+                                    <i class="fas fa-plus-circle" style="color: #FFD700;"></i> Create New Class
+                                </h2>
                             </div>
-                          <?php endforeach; ?>
-                        <?php else: ?>
-                          <div class="no-teachers">No teachers assigned yet</div>
-                        <?php endif; ?>
-                      </div>
-                    </td>
-                    <td>
-                      <div class="action-buttons">
-                        <button class="btn btn-secondary btn-small" onclick="openEditModal(<?php echo intval($c['id']); ?>, '<?php echo addslashes(htmlspecialchars($c['class_name'])); ?>', '<?php echo addslashes(htmlspecialchars($c['description'] ?? '')); ?>')">
-                          <i class="fas fa-edit"></i> Edit
-                        </button>
-                        
-                        <form method="POST" onsubmit="return confirmDeleteClass()" style="display: inline;">
-                          <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
-                          <input type="hidden" name="action" value="delete_class">
-                          <input type="hidden" name="class_id" value="<?php echo intval($c['id']); ?>">
-                          <button type="submit" class="btn btn-danger btn-small">
-                            <i class="fas fa-trash-alt"></i> Delete
-                          </button>
-                        </form>
-                      </div>
-                    </td>
-                  </tr>
-                <?php endforeach; ?>
-              </tbody>
-            </table>
-          </div>
-        <?php endif; ?>
-      </div>
+                            <form method="POST" id="createForm" style="padding: 0;">
+                                <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
+                                <input type="hidden" name="action" value="create_class">
+
+                                <div class="form-group" style="margin-bottom: 1.25rem;">
+                                    <label class="form-label" for="class_name" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b; font-size: 0.95rem;">Class Name *</label>
+                                    <input type="text" class="form-input" name="class_name" id="class_name" required placeholder="e.g., Grade 10 Science" style="width: 100%; padding: 0.875rem 1rem; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 1rem; transition: all 0.3s; background-color: white;">
+                                </div>
+
+                                <button type="submit" class="btn btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0.875rem 1.5rem; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.3s; background: linear-gradient(135deg, #FFD700, #B8860B); color: white;">
+                                    <i class="fas fa-save"></i> Create Class
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Assign Teacher Card -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-title" style="font-size: 1.4rem; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 10px;">
+                                    <i class="fas fa-user-plus" style="color: #FFD700;"></i> Assign Teacher to Class
+                                </h2>
+                            </div>
+                            <form method="POST" id="assignForm" style="padding: 0;">
+                                <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
+                                <input type="hidden" name="action" value="assign_teacher">
+
+                                <div class="form-group" style="margin-bottom: 1.25rem;">
+                                    <label class="form-label" for="assign_class_id" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b; font-size: 0.95rem;">Select Class *</label>
+                                    <select class="form-select" name="class_id" id="assign_class_id" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 1rem; transition: all 0.3s; background-color: white;">
+                                        <option value="">-- Choose a class --</option>
+                                        <?php foreach ($classes as $c): ?>
+                                            <option value="<?php echo intval($c['id']); ?>">
+                                                <?php echo htmlspecialchars($c['class_name']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 1.25rem;">
+                                    <label class="form-label" for="assign_teacher_id" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b; font-size: 0.95rem;">Select Teacher *</label>
+                                    <select class="form-select" name="teacher_id" id="assign_teacher_id" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 1rem; transition: all 0.3s; background-color: white;">
+                                        <option value="">-- Choose a teacher --</option>
+                                        <?php foreach ($teachers as $t): ?>
+                                            <option value="<?php echo intval($t['id']); ?>">
+                                                <?php echo htmlspecialchars($t['full_name']); ?>
+                                                <?php if (!empty($t['email'])): ?>
+                                                    (<?php echo htmlspecialchars($t['email']); ?>)
+                                                <?php endif; ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0.875rem 1.5rem; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.3s; background: linear-gradient(135deg, #FFD700, #B8860B); color: white;">
+                                    <i class="fas fa-link"></i> Assign Teacher
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Classes List -->
+                    <div id="class-list">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-title" style="font-size: 1.4rem; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 10px;">
+                                    <i class="fas fa-list-alt" style="color: #FFD700;"></i> Class List
+                                </h2>
+                                <div class="action-buttons" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                    <button class="btn btn-secondary btn-small" onclick="refreshPage()" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0.5rem 1rem; border: none; border-radius: 8px; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: all 0.3s; background: #e2e8f0; color: #1e293b;">
+                                        <i class="fas fa-sync-alt"></i> Refresh
+                                    </button>
+                                </div>
+                            </div>
+
+                            <?php if (empty($classes)): ?>
+                                <div class="empty-state" style="text-align: center; padding: 3rem 1rem; color: #64748b;">
+                                    <i class="fas fa-chalkboard" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                                    <h3 style="font-size: 1.3rem; margin-bottom: 0.5rem;">No Classes Found</h3>
+                                    <p>Create your first class using the form on the left.</p>
+                                </div>
+                            <?php else: ?>
+                                <div style="overflow-x: auto;">
+                                    <table class="classes-table" style="width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 1rem;">
+                                        <thead>
+                                            <tr>
+                                                <th style="background-color: #f1f5f9; padding: 1rem; text-align: left; font-weight: 700; color: #1e293b; border-bottom: 2px solid #cbd5e1;">Class Details</th>
+                                                <th style="background-color: #f1f5f9; padding: 1rem; text-align: left; font-weight: 700; color: #1e293b; border-bottom: 2px solid #cbd5e1;">Assigned Teachers</th>
+                                                <th style="background-color: #f1f5f9; padding: 1rem; text-align: left; font-weight: 700; color: #1e293b; border-bottom: 2px solid #cbd5e1; width: 180px;">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($classes as $c): ?>
+                                                <tr style="transition: background-color 0.2s;">
+                                                    <td style="padding: 1.25rem 1rem; border-bottom: 1px solid #e2e8f0; vertical-align: top;">
+                                                        <div class="class-name" style="font-weight: 700; font-size: 1.1rem; color: #FFD700; margin-bottom: 0.25rem;"><?php echo htmlspecialchars($c['class_name']); ?></div>
+                                                        <div class="small" style="color: #64748b; font-size: 0.85rem; margin-top: 0.5rem;">
+                                                            ID: <?php echo $c['id']; ?> | Created: <?php echo date('M j, Y', strtotime($c['created_at'])); ?>
+                                                        </div>
+                                                    </td>
+                                                    <td style="padding: 1.25rem 1rem; border-bottom: 1px solid #e2e8f0; vertical-align: top;">
+                                                        <div class="teachers-list" style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem;">
+                                                            <?php if (!empty($assignments[$c['id']])): ?>
+                                                                <?php foreach ($assignments[$c['id']] as $a): ?>
+                                                                    <div class="teacher-tag" style="background: #e0e7ff; color: #4338ca; padding: 0.5rem 0.875rem; border-radius: 50px; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 6px; font-weight: 500;">
+                                                                        <i class="fas fa-user-graduate"></i>
+                                                                        <?php echo htmlspecialchars($a['full_name']); ?>
+                                                                        <form method="POST" style="display: inline;" onsubmit="return confirm('Unassign this teacher from the class?')">
+                                                                            <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
+                                                                            <input type="hidden" name="action" value="unassign_teacher">
+                                                                            <input type="hidden" name="class_id" value="<?php echo intval($c['id']); ?>">
+                                                                            <input type="hidden" name="teacher_id" value="<?php echo intval($a['teacher_id']); ?>">
+                                                                            <button type="submit" class="remove-btn" title="Unassign teacher" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 0; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
+                                                                                <i class="fas fa-times"></i>
+                                                                            </button>
+                                                                        </form>
+                                                                    </div>
+                                                                <?php endforeach; ?>
+                                                            <?php else: ?>
+                                                                <div class="no-teachers" style="color: #64748b; font-style: italic; font-size: 0.9rem;">No teachers assigned yet</div>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    </td>
+                                                    <td style="padding: 1.25rem 1rem; border-bottom: 1px solid #e2e8f0; vertical-align: top;">
+                                                        <div class="action-buttons" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                                            <button class="btn btn-secondary btn-small" onclick="openEditModal(<?php echo intval($c['id']); ?>, '<?php echo addslashes(htmlspecialchars($c['class_name'])); ?>', '<?php echo addslashes(htmlspecialchars($c['description'] ?? '')); ?>')" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0.5rem 1rem; border: none; border-radius: 8px; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: all 0.3s; background: #e2e8f0; color: #1e293b;">
+                                                                <i class="fas fa-edit"></i> Edit
+                                                            </button>
+
+                                                            <form method="POST" onsubmit="return confirmDeleteClass()" style="display: inline;">
+                                                                <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
+                                                                <input type="hidden" name="action" value="delete_class">
+                                                                <input type="hidden" name="class_id" value="<?php echo intval($c['id']); ?>">
+                                                                <button type="submit" class="btn btn-danger btn-small" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0.5rem 1rem; border: none; border-radius: 8px; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: all 0.3s; background: #ef4444; color: white;">
+                                                                    <i class="fas fa-trash-alt"></i> Delete
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
-  </div>
-</div>
 
-<!-- Edit Class Modal -->
-<div class="modal" id="editModal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h2 class="modal-title"><i class="fas fa-edit"></i> Edit Class</h2>
-      <button class="close-modal" onclick="closeEditModal()">&times;</button>
+    <!-- Edit Class Modal -->
+    <div class="modal" id="editModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="modal-content" style="background: white; border-radius: 12px; padding: 2rem; width: 90%; max-width: 500px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+            <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0;">
+                <h2 class="modal-title" style="font-size: 1.5rem; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-edit" style="color: #FFD700;"></i> Edit Class
+                </h2>
+                <button class="close-modal" onclick="closeEditModal()" style="background: none; border: none; font-size: 1.5rem; color: #64748b; cursor: pointer; padding: 0.25rem; border-radius: 4px;">&times;</button>
+            </div>
+            <form method="POST" id="editForm">
+                <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
+                <input type="hidden" name="action" value="update_class">
+                <input type="hidden" name="class_id" id="edit_class_id">
+
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label class="form-label" for="edit_class_name" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b; font-size: 0.95rem;">Class Name *</label>
+                    <input type="text" class="form-input" name="class_name" id="edit_class_name" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 1rem; transition: all 0.3s; background-color: white;">
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button type="submit" class="btn btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0.875rem 1.5rem; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.3s; background: linear-gradient(135deg, #FFD700, #B8860B); color: white;">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0.875rem 1.5rem; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.3s; background: #e2e8f0; color: #1e293b;">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
-    <form method="POST" id="editForm">
-      <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
-      <input type="hidden" name="action" value="update_class">
-      <input type="hidden" name="class_id" id="edit_class_id">
-      
-      <div class="form-group">
-        <label class="form-label" for="edit_class_name">Class Name *</label>
-        <input type="text" class="form-input" name="class_name" id="edit_class_name" required>
-      </div>
-      
-      <!-- <div class="form-group">
-        <label class="form-label" for="edit_description">Description</label>
-        <textarea class="form-textarea" name="description" id="edit_description" rows="3"></textarea>
-      </div>
-       -->
-      <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
-        <button type="submit" class="btn btn-primary">
-          <i class="fas fa-save"></i> Save Changes
-        </button>
-        <button type="button" class="btn btn-secondary" onclick="closeEditModal()">
-          <i class="fas fa-times"></i> Cancel
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
 
-<script>
-function openEditModal(id, name, desc) {
-  document.getElementById('edit_class_id').value = id;
-  document.getElementById('edit_class_name').value = name;
-  // document.getElementById('edit_description').value = desc;
-  document.getElementById('editModal').style.display = 'flex';
-}
+    <script>
+        // Mobile Menu Toggle
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarClose = document.getElementById('sidebarClose');
 
-function closeEditModal() {
-  document.getElementById('editModal').style.display = 'none';
-}
+        mobileMenuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+            mobileMenuToggle.classList.toggle('active');
+        });
 
-function confirmDeleteClass() {
-  return confirm("Are you sure you want to delete this class?\n\nThis action cannot be undone and will remove all teacher assignments for this class.");
-}
+        sidebarClose.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            mobileMenuToggle.classList.remove('active');
+        });
 
-function refreshPage() {
-  window.location.reload();
-}
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+                    sidebar.classList.remove('active');
+                    mobileMenuToggle.classList.remove('active');
+                }
+            }
+        });
 
-// Close modal when clicking outside
-window.onclick = function(event) {
-  const modal = document.getElementById('editModal');
-  if (event.target === modal) {
-    closeEditModal();
-  }
-}
+        // Edit Modal Functions
+        function openEditModal(id, name, desc) {
+            document.getElementById('edit_class_id').value = id;
+            document.getElementById('edit_class_name').value = name;
+            document.getElementById('editModal').style.display = 'flex';
+        }
 
-// Auto-hide success messages after 5 seconds
-setTimeout(() => {
-  const alerts = document.querySelectorAll('.alert');
-  alerts.forEach(alert => {
-    alert.style.transition = 'opacity 0.5s ease';
-    alert.style.opacity = '0';
-    setTimeout(() => {
-      if (alert.parentNode) alert.parentNode.removeChild(alert);
-    }, 500);
-  });
-}, 5000);
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
 
-// Form validation
-document.getElementById('createForm')?.addEventListener('submit', function(e) {
-  const className = document.getElementById('class_name').value.trim();
-  if (className.length < 2) {
-    e.preventDefault();
-    alert('Class name must be at least 2 characters long.');
-  }
-});
+        function confirmDeleteClass() {
+            return confirm("Are you sure you want to delete this class?\n\nThis action cannot be undone and will remove all teacher assignments for this class.");
+        }
 
-document.getElementById('assignForm')?.addEventListener('submit', function(e) {
-  const classId = document.getElementById('assign_class_id').value;
-  const teacherId = document.getElementById('assign_teacher_id').value;
-  
-  if (!classId || !teacherId) {
-    e.preventDefault();
-    alert('Please select both a class and a teacher.');
-  }
-});
-</script>
+        function refreshPage() {
+            window.location.reload();
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('editModal');
+            if (event.target === modal) {
+                closeEditModal();
+            }
+        }
+
+        // Auto-hide success messages after 5 seconds
+        setTimeout(() => {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                alert.style.transition = 'opacity 0.5s ease';
+                alert.style.opacity = '0';
+                setTimeout(() => {
+                    if (alert.parentNode) alert.parentNode.removeChild(alert);
+                }, 500);
+            });
+        }, 5000);
+
+        // Form validation
+        document.getElementById('createForm')?.addEventListener('submit', function(e) {
+            const className = document.getElementById('class_name').value.trim();
+            if (className.length < 2) {
+                e.preventDefault();
+                alert('Class name must be at least 2 characters long.');
+            }
+        });
+
+        document.getElementById('assignForm')?.addEventListener('submit', function(e) {
+            const classId = document.getElementById('assign_class_id').value;
+            const teacherId = document.getElementById('assign_teacher_id').value;
+
+            if (!classId || !teacherId) {
+                e.preventDefault();
+                alert('Please select both a class and a teacher.');
+            }
+        });
+    </script>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About SahabFormMaster</h4>
+                    <p>A comprehensive school management system designed for academic excellence and efficient administration.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="manage-school.php">School Settings</a></li>
+                        <li><a href="manage_user.php">User Management</a></li>
+                        <li><a href="#">Support & Help</a></li>
+                        <li><a href="#">Documentation</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact Information</h4>
+                    <p>📧 admin@sahabformmaster.com</p>
+                    <p>📱 +234 808 683 5607</p>
+                    <p>🌐 www.sahabformmaster.com</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="#">Privacy Policy</a>
+                    <span>•</span>
+                    <a href="#">Terms of Service</a>
+                    <span>•</span>
+                    <span>Version 2.0</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <?php include '../includes/floating-button.php'; ?>
+
 </body>
 </html>

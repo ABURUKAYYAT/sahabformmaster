@@ -8,6 +8,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'principal') {
     exit;
 }
 
+$principal_name = $_SESSION['full_name'];
 $principal_id = $_SESSION['user_id'];
 
 // Handle CRUD operations
@@ -181,230 +182,863 @@ $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>School Diary - Principal Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <title>School Diary | SahabFormMaster</title>
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        .diary-card {
-            transition: transform 0.2s;
-            border: 1px solid #e0e0e0;
-        }
-        .diary-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-        }
-        .status-upcoming { border-left: 4px solid #28a745; }
-        .status-ongoing { border-left: 4px solid #17a2b8; }
-        .status-completed { border-left: 4px solid #007bff; }
-        .status-cancelled { border-left: 4px solid #dc3545; }
-        .attachment-thumb {
-            width: 80px;
-            height: 80px;
-            object-fit: cover;
-            border-radius: 5px;
-            margin: 2px;
-        }
-        .video-thumb {
+        /* Custom styles for School Diary page */
+
+        /* Welcome Section Enhancement */
+        .welcome-section {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: #ffffff;
+            padding: 2rem;
+            border-radius: var(--border-radius-xl);
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-lg);
             position: relative;
+            overflow: hidden;
         }
-        .video-thumb::after {
-            content: '▶';
+
+        .welcome-section::before {
+            content: '';
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            font-size: 20px;
-            text-shadow: 0 0 5px rgba(0,0,0,0.7);
+            top: 0;
+            right: 0;
+            width: 200px;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            transform: translate(50%, -50%);
         }
+
+        .welcome-section h2 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 2;
+            color: #ffffff;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .welcome-section p {
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.95);
+            position: relative;
+            z-index: 2;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Header Actions Enhancement */
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        /* Filter Section */
+        .filter-section {
+            background: var(--white);
+            border-radius: var(--border-radius-xl);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 3rem;
+            overflow: hidden;
+            border: 1px solid var(--gray-200);
+        }
+
+        .filter-form-container {
+            padding: 2rem;
+        }
+
+        /* Enhanced Form Controls */
+        .form-control {
+            border: 2px solid var(--gray-200);
+            border-radius: 10px;
+            padding: 0.875rem 1rem;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            background: var(--gray-50);
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+            background: var(--white);
+            outline: none;
+        }
+
+        .form-control:hover {
+            border-color: var(--primary-color);
+        }
+
+        /* Form Row Layout */
+        .form-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1fr 120px;
+            gap: 1rem;
+            align-items: end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-actions {
+            display: flex;
+            align-items: center;
+        }
+
+        /* Button Enhancements */
+        .btn-gold {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: var(--gray-900);
+            border: none;
+            padding: 0.875rem 1.5rem;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .btn-gold:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.3);
+            color: var(--gray-900);
+        }
+
+        .btn-small {
+            padding: 0.625rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            text-decoration: none;
+            border: none;
+        }
+
+        .btn-small.btn-view {
+            background: #06b6d4;
+            color: white;
+        }
+
+        .btn-small.btn-view:hover {
+            background: #0891b2;
+            transform: translateY(-2px);
+        }
+
+        .btn-small.btn-edit {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-small.btn-edit:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .btn-small.btn-delete {
+            background: var(--error-color);
+            color: white;
+        }
+
+        .btn-small.btn-delete:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+        }
+
+        /* Activities Section */
+        .activities-section {
+            background: var(--white);
+            border-radius: var(--border-radius-xl);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            margin-bottom: 3rem;
+        }
+
+        .activities-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            padding: 2rem;
+        }
+
+        /* Activity Cards */
+        .activity-card {
+            background: var(--white);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            transition: var(--transition-normal);
+            border: 2px solid var(--gray-200);
+        }
+
+        .activity-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-xl);
+            border-color: var(--primary-color);
+        }
+
+        /* Activity Images */
+        .activity-images {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            overflow: hidden;
+        }
+
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, 100px);
+            gap: 2px;
+            height: 100%;
+        }
+
+        .image-item {
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .image-item:hover {
+            transform: scale(1.05);
+        }
+
+        .activity-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: var(--transition-fast);
+        }
+
+        .image-item.more-images {
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        /* Activity Content */
+        .activity-content {
+            padding: 1.5rem;
+        }
+
+        .activity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+            gap: 1rem;
+        }
+
+        .activity-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin: 0;
+            line-height: 1.3;
+        }
+
+        .activity-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.9rem;
+            color: var(--gray-600);
+        }
+
+        .meta-item i {
+            color: var(--primary-color);
+            width: 16px;
+            text-align: center;
+        }
+
+        .activity-description {
+            color: var(--gray-700);
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 1.5rem;
+        }
+
+        .activity-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--gray-600);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            color: var(--gray-400);
+            margin-bottom: 1.5rem;
+        }
+
+        .empty-state h4 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state p {
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .form-row {
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 1rem;
+            }
+
+            .activities-grid {
+                grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+                gap: 1.5rem;
+                padding: 1.5rem;
+            }
+        }
+
         @media (max-width: 768px) {
-            .filter-form .row > div {
-                margin-bottom: 10px;
+            .welcome-section {
+                padding: 1.5rem;
+            }
+
+            .welcome-section h2 {
+                font-size: 1.8rem;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .filter-form-container {
+                padding: 1.5rem;
+            }
+
+            .activities-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+                padding: 1.5rem;
+            }
+
+            .activity-card {
+                margin-bottom: 1rem;
+            }
+
+            .activity-images {
+                height: 180px;
+            }
+
+            .image-grid {
+                grid-template-rows: repeat(2, 90px);
+            }
+
+            .activity-content {
+                padding: 1.25rem;
+            }
+
+            .activity-title {
+                font-size: 1.1rem;
+            }
+
+            .activity-actions {
+                gap: 0.5rem;
+            }
+
+            .btn-small {
+                padding: 0.5rem 0.75rem !important;
+                font-size: 0.8rem !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .welcome-section::before {
+                width: 150px;
+                height: 150px;
+            }
+
+            .welcome-section h2 {
+                font-size: 1.5rem;
+            }
+
+            .form-row {
+                gap: 0.75rem;
+            }
+
+            .activities-grid {
+                padding: 1rem;
+                gap: 1rem;
+            }
+
+            .activity-images {
+                height: 160px;
+            }
+
+            .image-grid {
+                grid-template-rows: repeat(2, 80px);
+            }
+
+            .activity-content {
+                padding: 1rem;
+            }
+
+            .activity-title {
+                font-size: 1rem;
+            }
+
+            .activity-description {
+                font-size: 0.9rem;
+            }
+
+            .empty-state {
+                padding: 3rem 1rem;
+            }
+
+            .empty-state-icon {
+                font-size: 3rem;
+            }
+
+            .empty-state h4 {
+                font-size: 1.25rem;
             }
         }
     </style>
 </head>
 <body>
-    
-    <div class="container-fluid mt-4">
-        <!-- Success Message -->
-        <?php if (isset($_SESSION['success'])): ?>
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <?= $_SESSION['success'] ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-            <?php unset($_SESSION['success']); ?>
-        <?php endif; ?>
-        
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h4 class="mb-0"><i class="bi bi-journal-text"></i> School Diary Management</h4>
-                        <a href="add_activity.php" class="btn btn-primary">
-                            <i class="bi bi-plus-circle"></i> Add New Activity
-                        </a>
-                    </div>
-                    
-                    <!-- Search and Filter Form -->
-                    <div class="card-body border-bottom">
-                        <form method="GET" class="filter-form">
-                            <div class="row g-3">
-                                <div class="col-md-3">
-                                    <input type="text" class="form-control" name="search" placeholder="Search activities..." value="<?= htmlspecialchars($search) ?>">
-                                </div>
-                                <div class="col-md-2">
-                                    <select class="form-select" name="type">
-                                        <option value="">All Types</option>
-                                        <option value="Academics" <?= $type_filter == 'Academics' ? 'selected' : '' ?>>Academics</option>
-                                        <option value="Sports" <?= $type_filter == 'Sports' ? 'selected' : '' ?>>Sports</option>
-                                        <option value="Cultural" <?= $type_filter == 'Cultural' ? 'selected' : '' ?>>Cultural</option>
-                                        <option value="Competition" <?= $type_filter == 'Competition' ? 'selected' : '' ?>>Competition</option>
-                                        <option value="Workshop" <?= $type_filter == 'Workshop' ? 'selected' : '' ?>>Workshop</option>
-                                        <option value="Celebration" <?= $type_filter == 'Celebration' ? 'selected' : '' ?>>Celebration</option>
-                                        <option value="Assembly" <?= $type_filter == 'Assembly' ? 'selected' : '' ?>>Assembly</option>
-                                        <option value="Examination" <?= $type_filter == 'Examination' ? 'selected' : '' ?>>Examination</option>
-                                        <option value="Holiday" <?= $type_filter == 'Holiday' ? 'selected' : '' ?>>Holiday</option>
-                                        <option value="Other" <?= $type_filter == 'Other' ? 'selected' : '' ?>>Other</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-2">
-                                    <select class="form-select" name="status">
-                                        <option value="">All Status</option>
-                                        <option value="Upcoming" <?= $status_filter == 'Upcoming' ? 'selected' : '' ?>>Upcoming</option>
-                                        <option value="Ongoing" <?= $status_filter == 'Ongoing' ? 'selected' : '' ?>>Ongoing</option>
-                                        <option value="Completed" <?= $status_filter == 'Completed' ? 'selected' : '' ?>>Completed</option>
-                                        <option value="Cancelled" <?= $status_filter == 'Cancelled' ? 'selected' : '' ?>>Cancelled</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-2">
-                                    <input type="date" class="form-control" name="date_from" value="<?= htmlspecialchars($date_from) ?>" placeholder="From Date">
-                                </div>
-                                <div class="col-md-2">
-                                    <input type="date" class="form-control" name="date_to" value="<?= htmlspecialchars($date_to) ?>" placeholder="To Date">
-                                </div>
-                                <div class="col-md-1">
-                                    <button type="submit" class="btn btn-primary w-100">
-                                        <i class="bi bi-filter"></i> Filter
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                    
-                    <!-- Activities List -->
-                    <div class="card-body">
-                        <?php if (empty($activities)): ?>
-                            <div class="text-center py-5">
-                                <i class="bi bi-journal-x" style="font-size: 48px; color: #ccc;"></i>
-                                <p class="text-muted mt-3">No activities found. Add your first activity!</p>
-                            </div>
-                        <?php else: ?>
-                            <div class="row">
-                                <?php foreach ($activities as $activity): ?>
-                                    <?php 
-                                    // Get attachments for this activity
-                                    $attachments_stmt = $pdo->prepare("SELECT * FROM school_diary_attachments WHERE diary_id = ?");
-                                    $attachments_stmt->execute([$activity['id']]);
-                                    $attachments = $attachments_stmt->fetchAll(PDO::FETCH_ASSOC);
-                                    
-                                    // Get images for preview
-                                    $images = array_filter($attachments, fn($a) => $a['file_type'] == 'image');
-                                    ?>
-                                    
-                                    <div class="col-md-6 col-lg-4 mb-4">
-                                        <div class="card h-100 diary-card status-<?= strtolower($activity['status']) ?>">
-                                            <div class="card-body">
-                                                <!-- Activity Images Preview -->
-                                                <?php if (!empty($images)): ?>
-                                                    <div class="mb-3">
-                                                        <div class="row g-1">
-                                                            <?php foreach (array_slice($images, 0, 3) as $img): ?>
-                                                                <div class="col-4">
-                                                                    <img src="<?= $img['file_path'] ?>" alt="<?= htmlspecialchars($img['file_name']) ?>" 
-                                                                         class="img-fluid attachment-thumb" 
-                                                                         data-bs-toggle="modal" 
-                                                                         data-bs-target="#imageModal"
-                                                                         data-src="<?= $img['file_path'] ?>"
-                                                                         style="cursor: pointer;">
-                                                                </div>
-                                                            <?php endforeach; ?>
-                                                            <?php if (count($images) > 3): ?>
-                                                                <div class="col-4">
-                                                                    <div class="attachment-thumb bg-light d-flex align-items-center justify-content-center">
-                                                                        <span class="text-muted">+<?= count($images) - 3 ?></span>
-                                                                    </div>
-                                                                </div>
-                                                            <?php endif; ?>
-                                                        </div>
-                                                    </div>
-                                                <?php endif; ?>
-                                                
-                                                <!-- Activity Details -->
-                                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                                    <h5 class="card-title mb-0"><?= htmlspecialchars($activity['activity_title']) ?></h5>
-                                                    <span class="badge bg-<?= 
-                                                        $activity['status'] == 'Upcoming' ? 'success' : 
-                                                        ($activity['status'] == 'Ongoing' ? 'info' : 
-                                                        ($activity['status'] == 'Completed' ? 'primary' : 'danger')) 
-                                                    ?>">
-                                                        <?= $activity['status'] ?>
-                                                    </span>
-                                                </div>
-                                                
-                                                <p class="text-muted mb-2">
-                                                    <i class="bi bi-calendar-date"></i> 
-                                                    <?= date('F j, Y', strtotime($activity['activity_date'])) ?>
-                                                    <?php if ($activity['start_time']): ?>
-                                                        <i class="bi bi-clock ms-2"></i> <?= date('h:i A', strtotime($activity['start_time'])) ?>
-                                                    <?php endif; ?>
-                                                </p>
-                                                
-                                                <p class="mb-2">
-                                                    <i class="bi bi-geo-alt"></i> 
-                                                    <small><?= htmlspecialchars($activity['venue'] ?: 'Venue not specified') ?></small>
-                                                </p>
-                                                
-                                                <p class="mb-2">
-                                                    <i class="bi bi-person"></i> 
-                                                    <small>Coordinator: <?= htmlspecialchars($activity['coordinator_name'] ?: 'Not assigned') ?></small>
-                                                </p>
-                                                
-                                                <p class="card-text mb-3">
-                                                    <?= strlen($activity['description']) > 100 ? 
-                                                        substr(htmlspecialchars($activity['description']), 0, 100) . '...' : 
-                                                        htmlspecialchars($activity['description']) ?>
-                                                </p>
-                                                
-                                                <!-- Action Buttons -->
-                                                <div class="d-flex justify-content-between">
-                                                    <a href="get_activity_details.php?id=<?= $activity['id'] ?>" class="btn btn-sm btn-outline-info">
-                                                        <i class="bi bi-info-circle"></i> Details
-                                                    </a>
-                                                    <div>
-                                                        <a href="edit_activity.php?id=<?= $activity['id'] ?>" class="btn btn-sm btn-outline-warning">
-                                                            <i class="bi bi-pencil-square"></i> Edit
-                                                        </a>
-                                                        <form method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this activity?')">
-                                                            <input type="hidden" name="activity_id" value="<?= $activity['id'] ?>">
-                                                            <button type="submit" name="delete_activity" class="btn btn-sm btn-outline-danger">
-                                                                <i class="bi bi-trash"></i> Delete
-                                                            </button>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
+
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <!-- Logo and School Name -->
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Principal Portal</p>
                     </div>
                 </div>
             </div>
+
+            <!-- Principal Info and Logout -->
+            <div class="header-right">
+                <div class="principal-info">
+                    <p class="principal-label">Principal</p>
+                    <span class="principal-name"><?php echo htmlspecialchars($principal_name); ?></span>
+                </div>
+                <a href="logout.php" class="btn-logout">
+                    <span class="logout-icon">🚪</span>
+                    <span>Logout</span>
+                </a>
+            </div>
         </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3>Navigation</h3>
+                <button class="sidebar-close" id="sidebarClose">✕</button>
+            </div>
+            <nav class="sidebar-nav">
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="index.php" class="nav-link">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Dashboard</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a href="schoolnews.php" class="nav-link">
+                            <span class="nav-icon">📰</span>
+                            <span class="nav-text">School News</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="school_diary.php" class="nav-link active">
+                            <span class="nav-icon">📔</span>
+                            <span class="nav-text">School Diary</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="students.php" class="nav-link">
+                            <span class="nav-icon">👥</span>
+                            <span class="nav-text">Students Registration</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="students-evaluations.php" class="nav-link">
+                            <span class="nav-icon">⭐</span>
+                            <span class="nav-text">Students Evaluations</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_class.php" class="nav-link">
+                            <span class="nav-icon">🎓</span>
+                            <span class="nav-text">Manage Classes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_results.php" class="nav-link">
+                            <span class="nav-icon">📈</span>
+                            <span class="nav-text">Manage Results</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="lesson-plans.php" class="nav-link">
+                            <span class="nav-icon">📝</span>
+                            <span class="nav-text">Lesson Plans</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_curriculum.php" class="nav-link">
+                            <span class="nav-icon">📚</span>
+                            <span class="nav-text">Curriculum</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="content_coverage.php" class="nav-link">
+                            <span class="nav-icon">✅</span>
+                            <span class="nav-text">Content Coverage</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage-school.php" class="nav-link">
+                            <span class="nav-icon">🏫</span>
+                            <span class="nav-text">Manage School</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="subjects.php" class="nav-link">
+                            <span class="nav-icon">📖</span>
+                            <span class="nav-text">Subjects</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_user.php" class="nav-link">
+                            <span class="nav-icon">👤</span>
+                            <span class="nav-text">Manage Users</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="visitors.php" class="nav-link">
+                            <span class="nav-icon">🚶</span>
+                            <span class="nav-text">Visitors</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_timebook.php" class="nav-link">
+                            <span class="nav-icon">⏰</span>
+                            <span class="nav-text">Teachers Time Book</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="permissions.php" class="nav-link">
+                            <span class="nav-icon">🔐</span>
+                            <span class="nav-text">Permissions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_attendance.php" class="nav-link">
+                            <span class="nav-icon">📋</span>
+                            <span class="nav-text">Attendance Register</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="payments_dashboard.php" class="nav-link">
+                            <span class="nav-icon">💰</span>
+                            <span class="nav-text">School Fees</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="sessions.php" class="nav-link">
+                            <span class="nav-icon">📅</span>
+                            <span class="nav-text">School Sessions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="school_calendar.php" class="nav-link">
+                            <span class="nav-icon">🗓️</span>
+                            <span class="nav-text">School Calendar</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="applicants.php" class="nav-link">
+                            <span class="nav-icon">📄</span>
+                            <span class="nav-text">Applicants</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-header">
+                <div class="welcome-section">
+                    <h2>📔 School Diary Management</h2>
+                    <p>Manage and track all school activities, events, and programs</p>
+                </div>
+                <div class="header-actions">
+                    <a href="add_activity.php" class="btn-gold">
+                        <i class="fas fa-plus-circle"></i> Add New Activity
+                    </a>
+                </div>
+            </div>
+
+            <!-- Success Message -->
+            <?php if (isset($_SESSION['success'])): ?>
+                <div class="alert alert-success" role="alert">
+                    <i class="fas fa-check-circle"></i>
+                    <?= $_SESSION['success'] ?>
+                </div>
+                <?php unset($_SESSION['success']); ?>
+            <?php endif; ?>
+
+            <!-- Search and Filter Section -->
+            <div class="filter-section">
+                <div class="section-header">
+                    <h3>🔍 Search & Filter</h3>
+                </div>
+                <div class="filter-form-container">
+                    <form method="GET" class="form-row">
+                        <div class="form-group">
+                            <input type="text" class="form-control" name="search" placeholder="Search activities..." value="<?= htmlspecialchars($search) ?>">
+                        </div>
+                        <div class="form-group">
+                            <select class="form-control" name="type">
+                                <option value="">All Types</option>
+                                <option value="Academics" <?= $type_filter == 'Academics' ? 'selected' : '' ?>>Academics</option>
+                                <option value="Sports" <?= $type_filter == 'Sports' ? 'selected' : '' ?>>Sports</option>
+                                <option value="Cultural" <?= $type_filter == 'Cultural' ? 'selected' : '' ?>>Cultural</option>
+                                <option value="Competition" <?= $type_filter == 'Competition' ? 'selected' : '' ?>>Competition</option>
+                                <option value="Workshop" <?= $type_filter == 'Workshop' ? 'selected' : '' ?>>Workshop</option>
+                                <option value="Celebration" <?= $type_filter == 'Celebration' ? 'selected' : '' ?>>Celebration</option>
+                                <option value="Assembly" <?= $type_filter == 'Assembly' ? 'selected' : '' ?>>Assembly</option>
+                                <option value="Examination" <?= $type_filter == 'Examination' ? 'selected' : '' ?>>Examination</option>
+                                <option value="Holiday" <?= $type_filter == 'Holiday' ? 'selected' : '' ?>>Holiday</option>
+                                <option value="Other" <?= $type_filter == 'Other' ? 'selected' : '' ?>>Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <select class="form-control" name="status">
+                                <option value="">All Status</option>
+                                <option value="Upcoming" <?= $status_filter == 'Upcoming' ? 'selected' : '' ?>>Upcoming</option>
+                                <option value="Ongoing" <?= $status_filter == 'Ongoing' ? 'selected' : '' ?>>Ongoing</option>
+                                <option value="Completed" <?= $status_filter == 'Completed' ? 'selected' : '' ?>>Completed</option>
+                                <option value="Cancelled" <?= $status_filter == 'Cancelled' ? 'selected' : '' ?>>Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <input type="date" class="form-control" name="date_from" value="<?= htmlspecialchars($date_from) ?>">
+                        </div>
+                        <div class="form-group">
+                            <input type="date" class="form-control" name="date_to" value="<?= htmlspecialchars($date_to) ?>">
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-gold">
+                                <i class="fas fa-filter"></i> Filter
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Activities Grid -->
+            <div class="activities-section">
+                <div class="section-header">
+                    <h3>📅 Activities</h3>
+                    <span class="section-badge"><?= count($activities) ?> activities</span>
+                </div>
+
+                <?php if (empty($activities)): ?>
+                    <div class="empty-state">
+                        <div class="empty-state-icon">
+                            <i class="fas fa-journal-whills"></i>
+                        </div>
+                        <h4>No activities found</h4>
+                        <p>Start by adding your first school activity to the diary.</p>
+                        <a href="add_activity.php" class="btn-gold">
+                            <i class="fas fa-plus-circle"></i> Add First Activity
+                        </a>
+                    </div>
+                <?php else: ?>
+                    <div class="activities-grid">
+                        <?php foreach ($activities as $activity): ?>
+                            <?php
+                            // Get attachments for this activity
+                            $attachments_stmt = $pdo->prepare("SELECT * FROM school_diary_attachments WHERE diary_id = ?");
+                            $attachments_stmt->execute([$activity['id']]);
+                            $attachments = $attachments_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                            // Get images for preview
+                            $images = array_filter($attachments, fn($a) => $a['file_type'] == 'image');
+
+                            // Status badge class
+                            $status_class = '';
+                            switch($activity['status']) {
+                                case 'Upcoming': $status_class = 'badge-success'; break;
+                                case 'Ongoing': $status_class = 'badge-info'; break;
+                                case 'Completed': $status_class = 'badge-primary'; break;
+                                case 'Cancelled': $status_class = 'badge-danger'; break;
+                            }
+                            ?>
+
+                            <div class="activity-card">
+                                <?php if (!empty($images)): ?>
+                                    <div class="activity-images">
+                                        <div class="image-grid">
+                                            <?php foreach (array_slice($images, 0, 3) as $img): ?>
+                                                <div class="image-item">
+                                                    <img src="../<?= $img['file_path'] ?>" alt="<?= htmlspecialchars($img['file_name']) ?>"
+                                                         class="activity-image"
+                                                         onclick="openImageModal('../<?= $img['file_path'] ?>')">
+                                                </div>
+                                            <?php endforeach; ?>
+                                            <?php if (count($images) > 3): ?>
+                                                <div class="image-item more-images">
+                                                    <span>+<?= count($images) - 3 ?></span>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
+                                <div class="activity-content">
+                                    <div class="activity-header">
+                                        <h4 class="activity-title"><?= htmlspecialchars($activity['activity_title']) ?></h4>
+                                        <span class="badge <?= $status_class ?>"><?= $activity['status'] ?></span>
+                                    </div>
+
+                                    <div class="activity-meta">
+                                        <div class="meta-item">
+                                            <i class="fas fa-calendar-alt"></i>
+                                            <span><?= date('F j, Y', strtotime($activity['activity_date'])) ?></span>
+                                        </div>
+                                        <?php if ($activity['start_time']): ?>
+                                            <div class="meta-item">
+                                                <i class="fas fa-clock"></i>
+                                                <span><?= date('h:i A', strtotime($activity['start_time'])) ?></span>
+                                            </div>
+                                        <?php endif; ?>
+                                        <div class="meta-item">
+                                            <i class="fas fa-map-marker-alt"></i>
+                                            <span><?= htmlspecialchars($activity['venue'] ?: 'Venue not specified') ?></span>
+                                        </div>
+                                        <div class="meta-item">
+                                            <i class="fas fa-user-tie"></i>
+                                            <span>Coordinator: <?= htmlspecialchars($activity['coordinator_name'] ?: 'Not assigned') ?></span>
+                                        </div>
+                                    </div>
+
+                                    <p class="activity-description">
+                                        <?= strlen($activity['description']) > 120 ?
+                                            substr(htmlspecialchars($activity['description']), 0, 120) . '...' :
+                                            htmlspecialchars($activity['description']) ?>
+                                    </p>
+
+                                    <div class="activity-actions">
+                                        <a href="get_activity_details.php?id=<?= $activity['id'] ?>" class="btn-small btn-view">
+                                            <i class="fas fa-info-circle"></i> Details
+                                        </a>
+                                        <a href="edit_activity.php?id=<?= $activity['id'] ?>" class="btn-small btn-edit">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </a>
+                                        <form method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this activity?')">
+                                            <input type="hidden" name="activity_id" value="<?= $activity['id'] ?>">
+                                            <button type="submit" name="delete_activity" class="btn-small btn-delete">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </main>
     </div>
-    
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About SahabFormMaster</h4>
+                    <p>A comprehensive school management system designed for academic excellence and efficient administration.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="manage-school.php">School Settings</a></li>
+                        <li><a href="manage_user.php">User Management</a></li>
+                        <li><a href="#">Support & Help</a></li>
+                        <li><a href="#">Documentation</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact Information</h4>
+                    <p>📧 admin@sahabformmaster.com</p>
+                    <p>📱 +234 808 683 5607</p>
+                    <p>🌐 www.sahabformmaster.com</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="#">Privacy Policy</a>
+                    <span>•</span>
+                    <a href="#">Terms of Service</a>
+                    <span>•</span>
+                    <span>Version 2.0</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
     <!-- Image Preview Modal -->
     <div class="modal fade" id="imageModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
@@ -416,18 +1050,62 @@ $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Image preview in modal
-        document.addEventListener('DOMContentLoaded', function() {
-            const imageModal = document.getElementById('imageModal');
-            imageModal.addEventListener('show.bs.modal', function(event) {
-                const button = event.relatedTarget;
-                const imageSrc = button.getAttribute('data-src');
-                const modalImage = document.getElementById('modalImage');
-                modalImage.src = imageSrc;
+        // Mobile Menu Toggle
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarClose = document.getElementById('sidebarClose');
+
+        mobileMenuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+            mobileMenuToggle.classList.toggle('active');
+        });
+
+        sidebarClose.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            mobileMenuToggle.classList.remove('active');
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+                    sidebar.classList.remove('active');
+                    mobileMenuToggle.classList.remove('active');
+                }
+            }
+        });
+
+        // Image preview function
+        function openImageModal(imageSrc) {
+            const modalImage = document.getElementById('modalImage');
+            modalImage.src = imageSrc;
+            const modal = new bootstrap.Modal(document.getElementById('imageModal'));
+            modal.show();
+        }
+
+        // Smooth scroll for internal links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
             });
         });
+
+        // Add active class on scroll
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('.dashboard-header');
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
     </script>
+
+    <?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

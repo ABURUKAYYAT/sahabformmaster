@@ -92,487 +92,447 @@ $classes = $classesStmt->fetchAll(PDO::FETCH_COLUMN);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Applicants - Principal Dashboard</title>
-    
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
-    
+
     <!-- Select2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/css/select2.min.css" rel="stylesheet">
-    
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <style>
-        :root {
-            --primary-color: #2c3e50;
-            --secondary-color: #3498db;
-            --success-color: #27ae60;
-            --warning-color: #f39c12;
-            --danger-color: #e74c3c;
-            --info-color: #17a2b8;
-        }
-        
-        body {
-            background-color: #f5f7fb;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        .sidebar {
-            background: linear-gradient(180deg, var(--primary-color) 0%, #1a2530 100%);
-            color: white;
-            min-height: 100vh;
-            position: fixed;
-            width: 260px;
-            z-index: 1000;
-        }
-        
-        .main-content {
-            margin-left: 260px;
-            padding: 20px;
-        }
-        
-        @media (max-width: 992px) {
-            .sidebar {
-                width: 70px;
-            }
-            
-            .main-content {
-                margin-left: 70px;
-            }
-            
-            .sidebar-text {
-                display: none;
-            }
-        }
-        
-        .stat-card {
-            border-radius: 10px;
-            border: none;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: transform 0.3s;
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .status-badge {
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        
-        .status-pending { background-color: #fff3cd; color: #856404; }
-        .status-under_review { background-color: #cce5ff; color: #004085; }
-        .status-accepted { background-color: #d4edda; color: #155724; }
-        .status-rejected { background-color: #f8d7da; color: #721c24; }
-        .status-waitlisted { background-color: #e2e3e5; color: #383d41; }
-        .status-enrolled { background-color: #d1ecf1; color: #0c5460; }
-        
-        .action-dropdown .dropdown-menu {
-            min-width: 200px;
-        }
-        
-        .applicant-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-            background: #e9ecef;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            color: var(--primary-color);
-        }
-        
-        .filter-card {
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        
-        .timeline {
-            position: relative;
-            padding-left: 30px;
-        }
-        
-        .timeline::before {
-            content: '';
-            position: absolute;
-            left: 10px;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background: #e0e0e0;
-        }
-        
-        .timeline-item {
-            position: relative;
-            margin-bottom: 20px;
-        }
-        
-        .timeline-item::before {
-            content: '';
-            position: absolute;
-            left: -24px;
-            top: 5px;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: var(--secondary-color);
-        }
-        
-        .modal-xl-custom {
-            max-width: 1200px;
-        }
-        
-        .table-container {
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        
-        .dataTables_wrapper {
-            padding: 20px;
-        }
-        
-        .action-btn-group .btn {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.875rem;
-        }
-    </style>
 </head>
 <body>
-    <!-- Sidebar -->
-    <div class="sidebar d-flex flex-column">
-        <div class="p-3">
-            <h4 class="text-center sidebar-text">Principal Dashboard</h4>
-            <div class="text-center">
-                <div class="applicant-avatar mx-auto">
-                    <i class="fas fa-user-tie"></i>
+
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <!-- Logo and School Name -->
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Principal Portal</p>
+                    </div>
                 </div>
-                <small class="sidebar-text"><?php echo $_SESSION['full_name']; ?></small>
+            </div>
+
+            <!-- Principal Info and Logout -->
+            <div class="header-right">
+                <div class="principal-info">
+                    <p class="principal-label">Principal</p>
+                    <span class="principal-name"><?php echo htmlspecialchars($_SESSION['full_name']); ?></span>
+                </div>
+                <a href="logout.php" class="btn-logout">
+                    <span class="logout-icon">🚪</span>
+                    <span>Logout</span>
+                </a>
             </div>
         </div>
-        
-        <nav class="flex-grow-1">
-            <ul class="nav flex-column">
-                <li class="nav-item">
-                    <a class="nav-link text-white active" href="applicants.php">
-                        <i class="fas fa-users me-2"></i>
-                        <span class="sidebar-text">Applicants</span>
-                        <span class="badge bg-danger float-end sidebar-text"><?php echo count($applicants); ?></span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link text-white" href="index.php">
-                        <i class="fas fa-home me-2"></i>
-                        <span class="sidebar-text">Dashboard</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link text-white" href="students.php">
-                        <i class="fas fa-user-graduate me-2"></i>
-                        <span class="sidebar-text">Students</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link text-white" href="export.php">
-                        <i class="fas fa-file-export me-2"></i>
-                        <span class="sidebar-text">Export Students</span>
-                    </a>
-                </li>
-<!--                 
-                <button class="btn btn-outline-secondary" onclick="exportToExcel()">
-                    <i class="fas fa-file-export me-2"></i>Export
-                </button> -->
-            </ul>
-        </nav>
+    </header>
+
+    <!-- Main Container -->
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <?php include '../includes/admin_sidebar.php'; ?>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-header">
+                <div class="welcome-section">
+                    <h2>📄 Applicant Management</h2>
+                    <p>Manage and review school applications efficiently</p>
+                </div>
+                <div class="header-stats">
+                    <div class="quick-stat">
+                        <span class="quick-stat-value"><?php echo count($applicants); ?></span>
+                        <span class="quick-stat-label">Total Applications</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="dashboard-cards">
+                <?php foreach ($stats as $stat): ?>
+                <div class="card card-gradient-<?php
+                    $status = $stat['application_status'];
+                    echo match($status) {
+                        'pending' => '5',
+                        'under_review' => '3',
+                        'accepted' => '4',
+                        'rejected' => '2',
+                        'waitlisted' => '6',
+                        'enrolled' => '1',
+                        default => '1'
+                    };
+                ?>">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon">
+                            <?php
+                            echo match($status) {
+                                'pending' => '⏳',
+                                'under_review' => '🔍',
+                                'accepted' => '✅',
+                                'rejected' => '❌',
+                                'waitlisted' => '📋',
+                                'enrolled' => '🎓',
+                                default => '📄'
+                            };
+                            ?>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <h3><?php echo ucfirst(str_replace('_', ' ', $stat['application_status'])); ?></h3>
+                        <p class="card-value"><?php echo $stat['count']; ?></p>
+                        <div class="card-footer">
+                            <span class="card-badge"><?php echo $stat['percentage']; ?>%</span>
+                        </div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+
+                <div class="card card-gradient-1">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon">📊</div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Total Applications</h3>
+                        <p class="card-value"><?php echo count($applicants); ?></p>
+                        <div class="card-footer">
+                            <span class="card-badge">All Time</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters Section -->
+            <div class="section-container">
+                <div class="section-header">
+                    <h3>🔍 Filter Applications</h3>
+                    <span class="section-badge">Search & Filter</span>
+                </div>
+                <form method="GET" class="filters-form">
+                    <div class="stats-grid">
+                        <div class="form-group">
+                            <label class="form-label">Application Status</label>
+                            <select name="status" class="form-control">
+                                <option value="all" <?php echo $status === 'all' ? 'selected' : ''; ?>>All Status</option>
+                                <option value="pending" <?php echo $status === 'pending' ? 'selected' : ''; ?>>Pending</option>
+                                <option value="under_review" <?php echo $status === 'under_review' ? 'selected' : ''; ?>>Under Review</option>
+                                <option value="accepted" <?php echo $status === 'accepted' ? 'selected' : ''; ?>>Accepted</option>
+                                <option value="rejected" <?php echo $status === 'rejected' ? 'selected' : ''; ?>>Rejected</option>
+                                <option value="waitlisted" <?php echo $status === 'waitlisted' ? 'selected' : ''; ?>>Waitlisted</option>
+                                <option value="enrolled" <?php echo $status === 'enrolled' ? 'selected' : ''; ?>>Enrolled</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Class Applied</label>
+                            <select name="class_filter" class="form-control">
+                                <option value="">All Classes</option>
+                                <?php foreach ($classes as $class): ?>
+                                <option value="<?php echo $class; ?>" <?php echo (!empty($_GET['class_filter']) && $_GET['class_filter'] === $class) ? 'selected' : ''; ?>>
+                                    <?php echo $class; ?>
+                                </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">From Date</label>
+                            <input type="date" name="start_date" class="form-control" value="<?php echo $_GET['start_date'] ?? ''; ?>">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">To Date</label>
+                            <input type="date" name="end_date" class="form-control" value="<?php echo $_GET['end_date'] ?? ''; ?>">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Search Applications</label>
+                            <div class="input-group">
+                                <span class="input-icon"><i class="fas fa-search"></i></span>
+                                <input type="text" name="search" class="form-control" placeholder="Name, email, or application number..." value="<?php echo $_GET['search'] ?? ''; ?>">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">&nbsp;</label>
+                            <div style="display: flex; gap: 1rem; align-items: flex-end;">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-filter me-2"></i>Apply Filters
+                                </button>
+                                <a href="applicants.php" class="btn btn-secondary">
+                                    <i class="fas fa-redo me-2"></i>Reset
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Bulk Actions Section -->
+            <div class="section-container">
+                <div class="section-header">
+                    <h3>⚡ Bulk Actions</h3>
+                    <span class="section-badge">Batch Operations</span>
+                </div>
+                <form method="POST" class="filters-form">
+                    <div class="stats-grid">
+                        <div class="form-group">
+                            <label class="form-label">Bulk Status Change</label>
+                            <select name="bulk_status" class="form-control" required>
+                                <option value="">Select Action</option>
+                                <option value="under_review">Mark as Under Review</option>
+                                <option value="accepted">Mark as Accepted</option>
+                                <option value="rejected">Mark as Rejected</option>
+                                <option value="waitlisted">Mark as Waitlisted</option>
+                                <option value="enrolled">Mark as Enrolled</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Action Notes</label>
+                            <input type="text" class="form-control" placeholder="Add notes for this batch action..." name="bulk_notes">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" name="bulk_action" class="btn btn-warning">
+                                <i class="fas fa-cogs me-2"></i>Apply to Selected
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Applicants Table Section -->
+            <div class="section-container">
+                <div class="section-header">
+                    <h3>📋 Applications List</h3>
+                    <span class="section-badge"><?php echo count($applicants); ?> Records</span>
+                </div>
+                <div class="table-responsive">
+                    <table id="applicantsTable" class="students-table">
+                        <thead>
+                            <tr>
+                                <th width="40">
+                                    <input type="checkbox" id="selectAll" style="margin: 0;">
+                                </th>
+                                <th>Application #</th>
+                                <th>Applicant</th>
+                                <th>Class</th>
+                                <th>Contact</th>
+                                <th>Guardian</th>
+                                <th>Application Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($applicants as $applicant): ?>
+                            <tr>
+                                <td>
+                                    <input type="checkbox" class="applicant-checkbox" name="applicant_ids[]" value="<?php echo $applicant['id']; ?>" style="margin: 0;">
+                                </td>
+                                <td>
+                                    <strong><?php echo $applicant['application_number']; ?></strong>
+                                </td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                        <div style="width: 35px; height: 35px; border-radius: 50%; background: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.9rem;">
+                                            <?php echo strtoupper(substr($applicant['full_name'], 0, 1)); ?>
+                                        </div>
+                                        <div>
+                                            <div style="font-weight: 600; color: var(--gray-900);"><?php echo $applicant['full_name']; ?></div>
+                                            <div style="font-size: 0.8rem; color: var(--gray-500);">DOB: <?php echo date('d/m/Y', strtotime($applicant['date_of_birth'])); ?></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><?php echo $applicant['class_applied']; ?></td>
+                                <td>
+                                    <div style="font-weight: 500; color: var(--gray-900);"><?php echo $applicant['email']; ?></div>
+                                    <div style="font-size: 0.8rem; color: var(--gray-500);"><?php echo $applicant['phone']; ?></div>
+                                </td>
+                                <td>
+                                    <div style="font-weight: 500; color: var(--gray-900);"><?php echo $applicant['guardian_name']; ?></div>
+                                    <div style="font-size: 0.8rem; color: var(--gray-500);"><?php echo $applicant['guardian_phone']; ?></div>
+                                </td>
+                                <td>
+                                    <?php echo date('d/m/Y', strtotime($applicant['application_date'])); ?>
+                                </td>
+                                <td>
+                                    <span class="badge badge-<?php echo $applicant['application_status']; ?>">
+                                        <?php echo ucfirst(str_replace('_', ' ', $applicant['application_status'])); ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn btn-small btn-primary view-applicant"
+                                                data-id="<?php echo $applicant['id']; ?>"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#viewApplicantModal">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+
+                                        <div class="dropdown">
+                                            <button class="btn btn-small btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                <i class="fas fa-cog"></i>
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <li>
+                                                    <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#statusModal"
+                                                       data-applicant-id="<?php echo $applicant['id']; ?>"
+                                                       data-current-status="<?php echo $applicant['application_status']; ?>">
+                                                        <i class="fas fa-edit me-2"></i>Change Status
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item" href="mailto:<?php echo $applicant['email']; ?>">
+                                                        <i class="fas fa-envelope me-2"></i>Send Email
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item" href="tel:<?php echo $applicant['phone']; ?>">
+                                                        <i class="fas fa-phone me-2"></i>Call
+                                                    </a>
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <a class="dropdown-item text-danger" href="#" onclick="confirmDelete(<?php echo $applicant['id']; ?>)">
+                                                        <i class="fas fa-trash me-2"></i>Delete
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+
+                                        <?php if ($applicant['application_status'] === 'accepted'): ?>
+                                        <button class="btn btn-small btn-success" onclick="enrollApplicant(<?php echo $applicant['id']; ?>)">
+                                            <i class="fas fa-user-plus"></i>
+                                        </button>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Analytics Section -->
+            <div class="charts-section">
+                <div class="section-header">
+                    <h3>📊 Application Analytics</h3>
+                    <span class="section-badge">Visual Insights</span>
+                </div>
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h4>📈 Applications by Class</h4>
+                        <canvas id="classChart" width="300" height="200"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h4>📅 Application Timeline</h4>
+                        <canvas id="timelineChart" width="300" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
 
-    <!-- Main Content -->
-    <div class="main-content">
-        <!-- Header -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h2 class="h3 mb-0">
-                    <i class="fas fa-users text-primary me-2"></i>Applicant Management
-                </h2>
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="index.php">Dashboard</a></li>
-                        <li class="breadcrumb-item active">Applicants</li>
-                    </ol>
-                </nav>
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About SahabFormMaster</h4>
+                    <p>A comprehensive school management system designed for academic excellence and efficient administration.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="manage-school.php">School Settings</a></li>
+                        <li><a href="manage_user.php">User Management</a></li>
+                        <li><a href="#">Support & Help</a></li>
+                        <li><a href="#">Documentation</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact Information</h4>
+                    <p>📧 admin@sahabformmaster.com</p>
+                    <p>📱 +234 808 683 5607</p>
+                    <p>🌐 www.sahabformmaster.com</p>
+                </div>
             </div>
-            <!-- <div>
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addApplicantModal">
-                    <i class="fas fa-plus me-2"></i>Add Applicant
-                </button>
-                <button class="btn btn-outline-secondary" onclick="exportToExcel()">
-                    <i class="fas fa-file-export me-2"></i>Export
-                </button>
-            </div> -->
+            <div class="footer-bottom">
+                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="#">Privacy Policy</a>
+                    <span>•</span>
+                    <a href="#">Terms of Service</a>
+                    <span>•</span>
+                    <span>Version 2.0</span>
+                </div>
+            </div>
         </div>
+    </footer>
 
-        <!-- Statistics Cards -->
-        <div class="row mb-4">
-            <?php foreach ($stats as $stat): ?>
-            <div class="col-md-2 col-sm-6 mb-3">
-                <div class="stat-card h-100">
-                    <div class="card-body text-center">
-                        <h1 class="display-6 fw-bold mb-2"><?php echo $stat['count']; ?></h1>
-                        <span class="status-badge status-<?php echo $stat['application_status']; ?> mb-2">
-                            <?php echo ucfirst(str_replace('_', ' ', $stat['application_status'])); ?>
-                        </span>
-                        <div class="small text-muted"><?php echo $stat['percentage']; ?>%</div>
-                    </div>
-                </div>
-            </div>
-            <?php endforeach; ?>
-            
-            <div class="col-md-2 col-sm-6 mb-3">
-                <div class="stat-card h-100 bg-primary text-white">
-                    <div class="card-body text-center">
-                        <h1 class="display-6 fw-bold mb-2"><?php echo count($applicants); ?></h1>
-                        <div class="mb-2">Total</div>
-                        <div class="small">Applications</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <script>
+        // Mobile Menu Toggle
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarClose = document.getElementById('sidebarClose');
 
-        <!-- Filters -->
-        <div class="filter-card">
-            <form method="GET" class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label">Status</label>
-                    <select name="status" class="form-select">
-                        <option value="all" <?php echo $status === 'all' ? 'selected' : ''; ?>>All Status</option>
-                        <option value="pending" <?php echo $status === 'pending' ? 'selected' : ''; ?>>Pending</option>
-                        <option value="under_review" <?php echo $status === 'under_review' ? 'selected' : ''; ?>>Under Review</option>
-                        <option value="accepted" <?php echo $status === 'accepted' ? 'selected' : ''; ?>>Accepted</option>
-                        <option value="rejected" <?php echo $status === 'rejected' ? 'selected' : ''; ?>>Rejected</option>
-                        <option value="waitlisted" <?php echo $status === 'waitlisted' ? 'selected' : ''; ?>>Waitlisted</option>
-                        <option value="enrolled" <?php echo $status === 'enrolled' ? 'selected' : ''; ?>>Enrolled</option>
-                    </select>
-                </div>
-                
-                <div class="col-md-3">
-                    <label class="form-label">Class</label>
-                    <select name="class_filter" class="form-select">
-                        <option value="">All Classes</option>
-                        <?php foreach ($classes as $class): ?>
-                        <option value="<?php echo $class; ?>" <?php echo (!empty($_GET['class_filter']) && $_GET['class_filter'] === $class) ? 'selected' : ''; ?>>
-                            <?php echo $class; ?>
-                        </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                
-                <div class="col-md-3">
-                    <label class="form-label">From Date</label>
-                    <input type="date" name="start_date" class="form-control" value="<?php echo $_GET['start_date'] ?? ''; ?>">
-                </div> 
-                
-                <div class="col-md-3">
-                    <label class="form-label">To Date</label>
-                    <input type="date" name="end_date" class="form-control" value="<?php echo $_GET['end_date'] ?? ''; ?>">
-                </div>
-                
-                <div class="col-md-6">
-                    <label class="form-label">Search</label>
-                    <input type="text" name="search" class="form-control" placeholder="Search by name, email, or application number..." value="<?php echo $_GET['search'] ?? ''; ?>">
-                </div>
-                
-                <div class="col-md-6 d-flex align-items-end">
-                    <div class="d-grid gap-2 d-md-flex">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-filter me-2"></i>Apply Filters
-                        </button>
-                        <a href="applicants.php" class="btn btn-outline-secondary">
-                            <i class="fas fa-redo me-2"></i>Reset
-                        </a>
-                    </div>
-                </div>
-            </form>
-        </div>
+        mobileMenuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+            mobileMenuToggle.classList.toggle('active');
+        });
 
-        <!-- Bulk Actions -->
-        <div class="row mb-3">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-body">
-                        <form method="POST" class="row align-items-center">
-                            <div class="col-md-4 mb-2 mb-md-0">
-                                <select name="bulk_status" class="form-select" required>
-                                    <option value="">Bulk Action</option>
-                                    <option value="under_review">Mark as Under Review</option>
-                                    <option value="accepted">Mark as Accepted</option>
-                                    <option value="rejected">Mark as Rejected</option>
-                                    <option value="waitlisted">Mark as Waitlisted</option>
-                                    <option value="enrolled">Mark as Enrolled</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4 mb-2 mb-md-0">
-                                <input type="text" class="form-control" placeholder="Action notes..." name="bulk_notes">
-                            </div>
-                            <div class="col-md-4">
-                                <div class="d-grid">
-                                    <button type="submit" name="bulk_action" class="btn btn-warning">
-                                        <i class="fas fa-cogs me-2"></i>Apply to Selected
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
+        sidebarClose.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            mobileMenuToggle.classList.remove('active');
+        });
 
-        <!-- Applicants Table -->
-        <div class="table-container">
-            <table id="applicantsTable" class="table table-hover">
-                <thead>
-                    <tr>
-                        <th width="30">
-                            <input type="checkbox" id="selectAll">
-                        </th>
-                        <th>Application #</th>
-                        <th>Name</th>
-                        <th>Class</th>
-                        <th>Contact</th>
-                        <th>Guardian</th>
-                        <th>Date</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($applicants as $applicant): ?>
-                    <tr>
-                        <td>
-                            <input type="checkbox" class="applicant-checkbox" name="applicant_ids[]" value="<?php echo $applicant['id']; ?>">
-                        </td>
-                        <td>
-                            <strong><?php echo $applicant['application_number']; ?></strong>
-                        </td>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <div class="applicant-avatar me-2">
-                                    <?php echo strtoupper(substr($applicant['full_name'], 0, 1)); ?>
-                                </div>
-                                <div>
-                                    <div class="fw-bold"><?php echo $applicant['full_name']; ?></div>
-                                    <small class="text-muted">DOB: <?php echo date('d/m/Y', strtotime($applicant['date_of_birth'])); ?></small>
-                                </div>
-                            </div>
-                        </td>
-                        <td><?php echo $applicant['class_applied']; ?></td>
-                        <td>
-                            <div><?php echo $applicant['email']; ?></div>
-                            <small class="text-muted"><?php echo $applicant['phone']; ?></small>
-                        </td>
-                        <td>
-                            <div><?php echo $applicant['guardian_name']; ?></div>
-                            <small class="text-muted"><?php echo $applicant['guardian_phone']; ?></small>
-                        </td>
-                        <td>
-                            <?php echo date('d/m/Y', strtotime($applicant['application_date'])); ?>
-                        </td>
-                        <td>
-                            <span class="status-badge status-<?php echo $applicant['application_status']; ?>">
-                                <?php echo ucfirst(str_replace('_', ' ', $applicant['application_status'])); ?>
-                            </span>
-                        </td>
-                        <td>
-                            <div class="action-btn-group d-flex gap-1">
-                                <button class="btn btn-sm btn-outline-primary view-applicant" 
-                                        data-id="<?php echo $applicant['id']; ?>"
-                                        data-bs-toggle="modal" 
-                                        data-bs-target="#viewApplicantModal">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                
-                                <div class="dropdown">
-                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                        <i class="fas fa-cog"></i>
-                                    </button>
-                                    <ul class="dropdown-menu">
-                                        <li>
-                                            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#statusModal" 
-                                               data-applicant-id="<?php echo $applicant['id']; ?>"
-                                               data-current-status="<?php echo $applicant['application_status']; ?>">
-                                                <i class="fas fa-edit me-2"></i>Change Status
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <a class="dropdown-item" href="mailto:<?php echo $applicant['email']; ?>">
-                                                <i class="fas fa-envelope me-2"></i>Send Email
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <a class="dropdown-item" href="tel:<?php echo $applicant['phone']; ?>">
-                                                <i class="fas fa-phone me-2"></i>Call
-                                            </a>
-                                        </li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li>
-                                            <a class="dropdown-item text-danger" href="#" onclick="confirmDelete(<?php echo $applicant['id']; ?>)">
-                                                <i class="fas fa-trash me-2"></i>Delete
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </div>
-                                
-                                <?php if ($applicant['application_status'] === 'accepted'): ?>
-                                <button class="btn btn-sm btn-success" onclick="enrollApplicant(<?php echo $applicant['id']; ?>)">
-                                    <i class="fas fa-user-plus"></i>
-                                </button>
-                                <?php endif; ?>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+                    sidebar.classList.remove('active');
+                    mobileMenuToggle.classList.remove('active');
+                }
+            }
+        });
 
-        <!-- Chart Section -->
-        <div class="row mt-4">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">Applications by Class</h5>
-                    </div>
-                    <div class="card-body">
-                        <canvas id="classChart"></canvas>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">Applications Timeline</h5>
-                    </div>
-                    <div class="card-body">
-                        <canvas id="timelineChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+        // Smooth scroll for internal links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Add active class on scroll
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('.dashboard-header');
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+    </script>
 
     <!-- View Applicant Modal -->
     <div class="modal fade modal-xl-custom" id="viewApplicantModal" tabindex="-1">
@@ -678,14 +638,24 @@ $classes = $classesStmt->fetchAll(PDO::FETCH_COLUMN);
     
     <script>
         $(document).ready(function() {
-            // Initialize DataTable
+            // Initialize DataTable for client-side processing
             $('#applicantsTable').DataTable({
                 pageLength: 25,
                 responsive: true,
                 order: [[6, 'desc']],
+                processing: false,
+                serverSide: false,
                 language: {
                     search: "_INPUT_",
                     searchPlaceholder: "Search..."
+                },
+                columnDefs: [
+                    { orderable: false, targets: [0, 8] }, // Disable sorting on checkbox and actions columns
+                    { searchable: false, targets: [0, 8] }  // Disable searching on checkbox and actions columns
+                ],
+                initComplete: function() {
+                    // Add search input styling
+                    $('.dataTables_filter input').addClass('form-control');
                 }
             });
             
@@ -807,5 +777,8 @@ $classes = $classesStmt->fetchAll(PDO::FETCH_COLUMN);
             $('#applicantsTable').DataTable().ajax.reload(null, false);
         }, 30000);
     </script>
+
+    <?php include '../includes/floating-button.php'; ?>
+
 </body>
 </html>

@@ -117,485 +117,67 @@ $stats = $pdo->query("SELECT
     (SELECT COUNT(DISTINCT teacher_id) FROM subject_assignments) as teachers_with_assignments
     ")->fetch(PDO::FETCH_ASSOC);
 
+$principal_name = $_SESSION['full_name'] ?? 'Principal';
+
+// Get school settings for header
+$school_name = 'SahabFormMaster'; // Default, could be fetched from DB
+$school_tagline = 'Principal Portal'; // Default
 ?>
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Subjects - Admin Dashboard</title>
-    <link rel="stylesheet" href="../assets/css/dashboard.css">
-    <link rel="stylesheet" href="../assets/css/subjects.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --primary-color: #4a6fa5;
-            --secondary-color: #166088;
-            --accent-color: #ff6b6b;
-            --success-color: #28a745;
-            --warning-color: #ffc107;
-            --danger-color: #dc3545;
-            --light-color: #f8f9fa;
-            --dark-color: #343a40;
-            --border-radius: 8px;
-            --box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            --transition: all 0.3s ease;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh;
-        }
-
-        .main-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-
-        .page-title {
-            color: var(--secondary-color);
-            font-size: 2.2rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .page-title i {
-            color: var(--primary-color);
-            font-size: 2rem;
-        }
-
-        .stats-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 25px;
-            box-shadow: var(--box-shadow);
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            transition: var(--transition);
-            border-left: 5px solid var(--primary-color);
-        }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
-        }
-
-        .stat-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            color: white;
-        }
-
-        .stat-icon.subjects { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        .stat-icon.assignments { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-        .stat-icon.teachers { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-
-        .stat-info h3 {
-            font-size: 2.5rem;
-            margin: 0;
-            color: var(--dark-color);
-            font-weight: 700;
-        }
-
-        .stat-info p {
-            margin: 5px 0 0;
-            color: #6c757d;
-            font-size: 0.9rem;
-        }
-
-        .section-container {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: var(--box-shadow);
-        }
-
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        .section-title {
-            font-size: 1.5rem;
-            color: var(--secondary-color);
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .section-title i {
-            color: var(--primary-color);
-        }
-
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-primary {
-            background: var(--primary-color);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: var(--secondary-color);
-            transform: translateY(-2px);
-        }
-
-        .btn-success {
-            background: var(--success-color);
-            color: white;
-        }
-
-        .btn-danger {
-            background: var(--danger-color);
-            color: white;
-        }
-
-        .btn-outline {
-            background: transparent;
-            border: 2px solid var(--primary-color);
-            color: var(--primary-color);
-        }
-
-        .btn-outline:hover {
-            background: var(--primary-color);
-            color: white;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: var(--dark-color);
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 6px;
-            font-size: 1rem;
-            transition: var(--transition);
-        }
-
-        .form-control:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.1);
-            outline: none;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-        }
-
-        .alert {
-            padding: 15px 20px;
-            border-radius: 6px;
-            margin-bottom: 25px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .alert-error {
-            background: #fee;
-            border-left: 5px solid var(--danger-color);
-            color: #721c24;
-        }
-
-        .alert-success {
-            background: #e8f7ef;
-            border-left: 5px solid var(--success-color);
-            color: #155724;
-        }
-
-        .alert i {
-            font-size: 1.2rem;
-        }
-
-        .table-container {
-            overflow-x: auto;
-            border-radius: var(--border-radius);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        .results-table {
-            width: 100%;
-            border-collapse: collapse;
-            min-width: 800px;
-        }
-
-        .results-table thead {
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-            color: white;
-        }
-
-        .results-table th {
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .results-table tbody tr {
-            border-bottom: 1px solid #e0e0e0;
-            transition: var(--transition);
-        }
-
-        .results-table tbody tr:hover {
-            background-color: #f8f9fa;
-        }
-
-        .results-table td {
-            padding: 15px;
-            vertical-align: middle;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .btn-small {
-            padding: 6px 12px;
-            font-size: 0.85rem;
-            border-radius: 4px;
-            border: none;
-            cursor: pointer;
-            transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .btn-edit {
-            background: #17a2b8;
-            color: white;
-        }
-
-        .btn-delete {
-            background: var(--danger-color);
-            color: white;
-        }
-
-        .btn-view {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-small:hover {
-            opacity: 0.9;
-            transform: translateY(-2px);
-        }
-
-        .subject-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: #e9ecef;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            margin: 2px;
-        }
-
-        .subject-badge i {
-            font-size: 0.8rem;
-        }
-
-        .no-data {
-            text-align: center;
-            padding: 40px;
-            color: #6c757d;
-        }
-
-        .no-data i {
-            font-size: 3rem;
-            margin-bottom: 15px;
-            color: #dee2e6;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 30px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .modal-title {
-            font-size: 1.5rem;
-            color: var(--secondary-color);
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #6c757d;
-        }
-
-        .search-container {
-            position: relative;
-            margin-bottom: 20px;
-        }
-
-        .search-input {
-            padding: 12px 45px 12px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 6px;
-            width: 100%;
-            font-size: 1rem;
-        }
-
-        .search-btn {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: #6c757d;
-            cursor: pointer;
-        }
-
-        .filter-container {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .filter-select {
-            padding: 10px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 6px;
-            background: white;
-            font-size: 0.9rem;
-        }
-
-        @media (max-width: 768px) {
-            .main-content {
-                padding: 15px;
-            }
-
-            .page-title {
-                font-size: 1.8rem;
-            }
-
-            .section-container {
-                padding: 20px;
-            }
-
-            .stats-container {
-                grid-template-columns: 1fr;
-            }
-
-            .action-buttons {
-                flex-direction: column;
-                width: 100%;
-            }
-
-            .action-buttons .btn-small {
-                width: 100%;
-                justify-content: center;
-            }
-
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .page-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .section-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-        }
-    </style>
+    <title>Subject Management | <?php echo htmlspecialchars($school_name); ?></title>
+    <link rel="stylesheet" href="../assets/css/admin_dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body> 
-    <main class="main-content">
-        <button class="btn btn-primary">
-               <a href='index.php' style="text-decoration: none; color: white"> </i> Dashboard </a>
-            </button>
+<body>
+
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <!-- Logo and School Name -->
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name"><?php echo htmlspecialchars($school_name); ?></h1>
+                        <p class="school-tagline"><?php echo htmlspecialchars($school_tagline); ?></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Principal Info and Logout -->
+            <div class="header-right">
+                <div class="principal-info">
+                    <p class="principal-label">Principal</p>
+                    <span class="principal-name"><?php echo htmlspecialchars($principal_name); ?></span>
+                </div>
+                <a href="logout.php" class="btn-logout">
+                    <span class="logout-icon">🚪</span>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <?php include '../includes/admin_sidebar.php'; ?>
+
+        <!-- Main Content -->
+        <main class="main-content">
         <div class="page-header">
             <div>
                 <h1 class="page-title">
@@ -626,32 +208,41 @@ $stats = $pdo->query("SELECT
         <?php endif; ?>
 
         <!-- Statistics Cards -->
-        <div class="stats-container">
-            <div class="stat-card">
-                <div class="stat-icon subjects">
-                    <i class="fas fa-book"></i>
+        <div class="dashboard-cards">
+            <div class="card">
+                <div class="card-icon-wrapper">
+                    <div class="card-icon">📚</div>
                 </div>
-                <div class="stat-info">
-                    <h3><?php echo $stats['total_subjects']; ?></h3>
-                    <p>Total Subjects</p>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon assignments">
-                    <i class="fas fa-tasks"></i>
-                </div>
-                <div class="stat-info">
-                    <h3><?php echo $stats['total_assignments']; ?></h3>
-                    <p>Active Assignments</p>
+                <div class="card-content">
+                    <h3>Total Subjects</h3>
+                    <p class="card-value"><?php echo number_format($stats['total_subjects']); ?></p>
+                    <div class="card-footer">
+                        <span class="card-badge">Active Subjects</span>
+                    </div>
                 </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-icon teachers">
-                    <i class="fas fa-chalkboard-teacher"></i>
+            <div class="card">
+                <div class="card-icon-wrapper">
+                    <div class="card-icon">🔗</div>
                 </div>
-                <div class="stat-info">
-                    <h3><?php echo $stats['teachers_with_assignments']; ?></h3>
-                    <p>Teachers Assigned</p>
+                <div class="card-content">
+                    <h3>Active Assignments</h3>
+                    <p class="card-value"><?php echo number_format($stats['total_assignments']); ?></p>
+                    <div class="card-footer">
+                        <span class="card-badge">Subject-Class Links</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon-wrapper">
+                    <div class="card-icon">👨‍🏫</div>
+                </div>
+                <div class="card-content">
+                    <h3>Teachers Assigned</h3>
+                    <p class="card-value"><?php echo number_format($stats['teachers_with_assignments']); ?></p>
+                    <div class="card-footer">
+                        <span class="card-badge">Teaching Staff</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -946,9 +537,71 @@ $stats = $pdo->query("SELECT
             </div>
             <?php endif; ?>
         </section>
-    </main>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About SahabFormMaster</h4>
+                    <p>A comprehensive school management system designed for academic excellence and efficient administration.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="manage-school.php">School Settings</a></li>
+                        <li><a href="manage_user.php">User Management</a></li>
+                        <li><a href="#">Support & Help</a></li>
+                        <li><a href="#">Documentation</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact Information</h4>
+                    <p>📧 admin@sahabformmaster.com</p>
+                    <p>📱 +234 808 683 5607</p>
+                    <p>🌐 www.sahabformmaster.com</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="#">Privacy Policy</a>
+                    <span>•</span>
+                    <a href="#">Terms of Service</a>
+                    <span>•</span>
+                    <span>Version 2.0</span>
+                </div>
+            </div>
+        </div>
+    </footer>
 
     <script>
+        // Mobile Menu Toggle
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarClose = document.getElementById('sidebarClose');
+
+        mobileMenuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+            mobileMenuToggle.classList.toggle('active');
+        });
+
+        sidebarClose.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            mobileMenuToggle.classList.remove('active');
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+                    sidebar.classList.remove('active');
+                    mobileMenuToggle.classList.remove('active');
+                }
+            }
+        });
         // Modal functions
         function openModal(modalId) {
             document.getElementById(modalId).style.display = 'flex';
@@ -1026,5 +679,8 @@ $stats = $pdo->query("SELECT
             });
         });
     </script>
+
+    <?php include '../includes/floating-button.php'; ?>
+
 </body>
 </html>

@@ -293,160 +293,192 @@ $transfer_students = $pdo->query("SELECT COUNT(*) as total FROM students WHERE s
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Management System</title>
-    <link rel="stylesheet" href="../assets/css/admin-students.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        /* Additional styles for enhanced features */
-        :root {
-            --primary: #3498db;
-            --secondary: #2c3e50;
-            --success: #27ae60;
-            --danger: #e74c3c;
-            --warning: #f39c12;
-            --light: #ecf0f1;
-            --dark: #2c3e50;
-        }
-        
-        .hidden {
-            display: none !important;
-        }
-        
-        .dashboard-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            background: var(--secondary);
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            margin: 10px 0;
-            transition: all 0.3s;
-        }
-        
-        .dashboard-link:hover {
-            background: var(--dark);
-            transform: translateY(-2px);
-        }
-        
-        .stats-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .stat-card {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            text-align: center;
-            border-left: 5px solid var(--primary);
-        }
-        
-        .stat-card i {
-            font-size: 2.5rem;
-            color: var(--primary);
-            margin-bottom: 10px;
-        }
-        
-        .stat-card h3 {
-            margin: 0;
-            color: var(--dark);
-            font-size: 0.9rem;
-            text-transform: uppercase;
-        }
-        
-        .stat-card .count {
-            font-size: 2rem;
-            font-weight: bold;
-            color: var(--secondary);
-            margin: 10px 0;
-        }
-        
-        .toggle-form-btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 10px 0;
-            font-size: 1rem;
-        }
-        
-        .file-upload-group {
-            margin: 15px 0;
-        }
-        
-        .file-upload-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-        }
-        
-        .file-upload-group .file-input {
-            display: block;
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        
-        .file-preview {
-            margin-top: 5px;
-            font-size: 0.9rem;
-            color: #666;
-        }
-        
-        .additional-docs-container {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 15px 0;
-        }
-        
-        .additional-doc-item {
-            margin-bottom: 10px;
-            padding: 10px;
-            background: white;
-            border-radius: 4px;
-            border-left: 3px solid var(--primary);
-        }
-        
-        @media (max-width: 768px) {
-            .stats-container {
-                grid-template-columns: 1fr;
-            }
-            
-            .form-inline {
-                flex-direction: column;
-            }
-            
-            .form-inline input,
-            .form-inline select,
-            .form-inline button {
-                width: 100%;
-                margin-bottom: 10px;
-            }
-        }
-    </style>
+    <title>Students Management | SahabFormMaster</title>
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <header class="topbar">
-        <div class="header-content">
-            <h1><i class="fas fa-user-graduate"></i> Student Management System</h1>
-            <div class="user-info">
-                <i class="fas fa-user-circle"></i>
-                <span><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Admin'); ?></span>
-                <span class="badge">Principal</span>
+
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <!-- Logo and School Name -->
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Principal Portal</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Principal Info and Logout -->
+            <div class="header-right">
+                <div class="principal-info">
+                    <p class="principal-label">Principal</p>
+                    <span class="principal-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Admin'); ?></span>
+                </div>
+                <a href="logout.php" class="btn-logout">
+                    <span class="logout-icon">🚪</span>
+                    <span>Logout</span>
+                </a>
             </div>
         </div>
     </header>
 
-    <main class="container">
+    <!-- Main Container -->
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3>Navigation</h3>
+                <button class="sidebar-close" id="sidebarClose">✕</button>
+            </div>
+            <nav class="sidebar-nav">
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="index.php" class="nav-link">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Dashboard</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a href="schoolnews.php" class="nav-link">
+                            <span class="nav-icon">📰</span>
+                            <span class="nav-text">School News</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="school_diary.php" class="nav-link">
+                            <span class="nav-icon">📔</span>
+                            <span class="nav-text">School Diary</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="students.php" class="nav-link active">
+                            <span class="nav-icon">👥</span>
+                            <span class="nav-text">Students Registration</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="students-evaluations.php" class="nav-link">
+                            <span class="nav-icon">⭐</span>
+                            <span class="nav-text">Students Evaluations</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_class.php" class="nav-link">
+                            <span class="nav-icon">🎓</span>
+                            <span class="nav-text">Manage Classes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_results.php" class="nav-link">
+                            <span class="nav-icon">📈</span>
+                            <span class="nav-text">Manage Results</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="lesson-plans.php" class="nav-link">
+                            <span class="nav-icon">📝</span>
+                            <span class="nav-text">Lesson Plans</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_curriculum.php" class="nav-link">
+                            <span class="nav-icon">📚</span>
+                            <span class="nav-text">Curriculum</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage-school.php" class="nav-link">
+                            <span class="nav-icon">🏫</span>
+                            <span class="nav-text">Manage School</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="subjects.php" class="nav-link">
+                            <span class="nav-icon">📖</span>
+                            <span class="nav-text">Subjects</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_user.php" class="nav-link">
+                            <span class="nav-icon">👤</span>
+                            <span class="nav-text">Manage Users</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="visitors.php" class="nav-link">
+                            <span class="nav-icon">🚶</span>
+                            <span class="nav-text">Visitors</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_timebook.php" class="nav-link">
+                            <span class="nav-icon">⏰</span>
+                            <span class="nav-text">Teachers Time Book</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="permissions.php" class="nav-link">
+                            <span class="nav-icon">🔐</span>
+                            <span class="nav-text">Permissions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_attendance.php" class="nav-link">
+                            <span class="nav-icon">📋</span>
+                            <span class="nav-text">Attendance Register</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="payments_dashboard.php" class="nav-link">
+                            <span class="nav-icon">💰</span>
+                            <span class="nav-text">School Fees</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="sessions.php" class="nav-link">
+                            <span class="nav-icon">📅</span>
+                            <span class="nav-text">School Sessions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="school_calendar.php" class="nav-link">
+                            <span class="nav-icon">🗓️</span>
+                            <span class="nav-text">School Calendar</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="applicants.php" class="nav-link">
+                            <span class="nav-icon">📄</span>
+                            <span class="nav-text">Applicants</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-header">
+                <div class="welcome-section">
+                    <h2>👥 Student Management</h2>
+                    <p>Manage student registrations, records, and information</p>
+                </div>
+            </div>
         <!-- Dashboard Link -->
         <a href="../admin/index.php" class="dashboard-link">
             <i class="fas fa-arrow-left"></i> Back to Dashboard
@@ -458,26 +490,30 @@ $transfer_students = $pdo->query("SELECT COUNT(*) as total FROM students WHERE s
                 <i class="fas fa-users"></i>
                 <h3>Total Students</h3>
                 <div class="count"><?php echo $total_students; ?></div>
+                <p class="stat-description">All registered students</p>
             </div>
             <div class="stat-card">
                 <i class="fas fa-user-plus"></i>
                 <h3>Fresh Students</h3>
                 <div class="count"><?php echo $fresh_students; ?></div>
+                <p class="stat-description">New admissions</p>
             </div>
             <div class="stat-card">
                 <i class="fas fa-exchange-alt"></i>
                 <h3>Transfer Students</h3>
                 <div class="count"><?php echo $transfer_students; ?></div>
+                <p class="stat-description">Transferred in</p>
             </div>
             <div class="stat-card">
                 <i class="fas fa-chart-line"></i>
                 <h3>This Month</h3>
                 <div class="count">
-                    <?php 
+                    <?php
                     $month_count = $pdo->query("SELECT COUNT(*) as total FROM students WHERE MONTH(created_at) = MONTH(CURRENT_DATE())")->fetch(PDO::FETCH_ASSOC)['total'];
                     echo $month_count;
                     ?>
                 </div>
+                <p class="stat-description">Recent registrations</p>
             </div>
         </div>
 
@@ -705,11 +741,14 @@ $transfer_students = $pdo->query("SELECT COUNT(*) as total FROM students WHERE s
             <div class="panel-header">
                 <h2><i class="fas fa-list"></i> Recent Students (Last 10)</h2>
                 <div class="export-buttons">
-                    <button class="btn small" onclick="exportToCSV()">
+                    <button class="btn small primary" onclick="showCSVExportModal()">
                         <i class="fas fa-file-csv"></i> Export CSV
                     </button>
-                    <button class="btn small" onclick="printTable()">
-                        <i class="fas fa-print"></i> Print
+                    <button class="btn small success" onclick="showPDFExportModal()">
+                        <i class="fas fa-file-pdf"></i> Export PDF
+                    </button>
+                    <button class="btn small secondary" onclick="printTable()">
+                        <i class="fas fa-print"></i> Print Table
                     </button>
                 </div>
             </div>
@@ -799,13 +838,192 @@ $transfer_students = $pdo->query("SELECT COUNT(*) as total FROM students WHERE s
                 <a href="students.php?page=2" class="btn small">Next</a>
             </div>
         </section>
-    </main>
+
+        <!-- Export Modals -->
+        <!-- PDF Export Modal -->
+        <div id="pdfExportModal" class="modal-overlay" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-file-pdf"></i> Export Student List as PDF</h3>
+                    <button class="modal-close" onclick="closePDFModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="pdfExportForm" method="POST" action="../helpers/generate-students-pdf.php" target="_blank">
+                        <div class="form-group">
+                            <label for="pdf_class_id">Select Class *</label>
+                            <select name="class_id" id="pdf_class_id" required>
+                                <option value="">Choose a class...</option>
+                                <?php foreach($classes as $c): ?>
+                                    <option value="<?php echo intval($c['id']); ?>">
+                                        <?php echo htmlspecialchars($c['class_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="pdf_export_type">Export Type</label>
+                            <select name="export_type" id="pdf_export_type">
+                                <option value="full">Full Details</option>
+                                <option value="summary">Summary View</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="pdf_orientation">Orientation</label>
+                            <select name="orientation" id="pdf_orientation">
+                                <option value="P">Portrait</option>
+                                <option value="L">Landscape</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="include_photos" value="1" id="pdf_include_photos">
+                                Include student photos (Landscape only)
+                            </label>
+                        </div>
+
+                        <div class="modal-actions">
+                            <button type="button" class="btn secondary" onclick="closePDFModal()">Cancel</button>
+                            <button type="submit" class="btn success">
+                                <i class="fas fa-file-pdf"></i> Generate PDF
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- CSV Export Modal -->
+        <div id="csvExportModal" class="modal-overlay" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-file-csv"></i> Export Student List as CSV</h3>
+                    <button class="modal-close" onclick="closeCSVModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="csvExportForm" method="POST" action="../helpers/generate-students-csv.php" target="_blank">
+                        <div class="form-group">
+                            <label for="csv_class_id">Select Class *</label>
+                            <select name="class_id" id="csv_class_id" required>
+                                <option value="">Choose a class...</option>
+                                <?php foreach($classes as $c): ?>
+                                    <option value="<?php echo intval($c['id']); ?>">
+                                        <?php echo htmlspecialchars($c['class_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="export-info">
+                            <p><i class="fas fa-info-circle"></i> CSV export will include all student details for the selected class.</p>
+                        </div>
+
+                        <div class="modal-actions">
+                            <button type="button" class="btn secondary" onclick="closeCSVModal()">Cancel</button>
+                            <button type="submit" class="btn primary">
+                                <i class="fas fa-file-csv"></i> Generate CSV
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About SahabFormMaster</h4>
+                    <p>A comprehensive school management system designed for academic excellence and efficient administration.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="manage-school.php">School Settings</a></li>
+                        <li><a href="manage_user.php">User Management</a></li>
+                        <li><a href="#">Support & Help</a></li>
+                        <li><a href="#">Documentation</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact Information</h4>
+                    <p>📧 admin@sahabformmaster.com</p>
+                    <p>📱 +234 808 683 5607</p>
+                    <p>🌐 www.sahabformmaster.com</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="#">Privacy Policy</a>
+                    <span>•</span>
+                    <a href="#">Terms of Service</a>
+                    <span>•</span>
+                    <span>Version 2.0</span>
+                </div>
+            </div>
+        </div>
+    </footer>
 
     <script>
-        // Toggle registration form
+        // Mobile Menu Toggle
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarClose = document.getElementById('sidebarClose');
+
+        mobileMenuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+            mobileMenuToggle.classList.toggle('active');
+        });
+
+        sidebarClose.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            mobileMenuToggle.classList.remove('active');
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+                    sidebar.classList.remove('active');
+                    mobileMenuToggle.classList.remove('active');
+                }
+            }
+        });
+        // Toggle registration form with animation
         function toggleRegistrationForm() {
             const form = document.getElementById('registrationForm');
-            form.classList.toggle('hidden');
+            const button = document.querySelector('.toggle-form-btn');
+
+            if (form.classList.contains('hidden')) {
+                form.classList.remove('hidden');
+                button.innerHTML = '<i class="fas fa-minus"></i> Hide Form';
+                button.style.background = 'var(--gradient-danger)';
+                // Animate form appearance
+                form.style.opacity = '0';
+                form.style.transform = 'translateY(-20px)';
+                setTimeout(() => {
+                    form.style.transition = 'all 0.3s ease';
+                    form.style.opacity = '1';
+                    form.style.transform = 'translateY(0)';
+                }, 10);
+            } else {
+                form.style.opacity = '0';
+                form.style.transform = 'translateY(-20px)';
+                setTimeout(() => {
+                    form.classList.add('hidden');
+                    form.style.opacity = '';
+                    form.style.transform = '';
+                    button.innerHTML = '<i class="fas fa-plus"></i> Show/Hide Form';
+                    button.style.background = '';
+                }, 300);
+            }
         }
         
         // Toggle transfer fields
@@ -847,11 +1065,10 @@ $transfer_students = $pdo->query("SELECT COUNT(*) as total FROM students WHERE s
             button.closest('.additional-doc-item').remove();
         }
         
-        // Edit student function (simplified - would need proper implementation)
+        // Edit student function
         function editStudent(id) {
-            // This would typically fetch student data via AJAX and populate an edit form
-            alert('Edit functionality for student ID: ' + id);
-            // Implement AJAX call to fetch student data and populate edit form
+            // Redirect to edit student page
+            window.location.href = 'edit_student.php?id=' + id;
         }
         
         // Export to CSV
@@ -924,6 +1141,126 @@ $transfer_students = $pdo->query("SELECT COUNT(*) as total FROM students WHERE s
                 }
             });
         });
-    </script>
-</body>
+
+        // Add loading state to form submission
+        document.getElementById('registrationForm').addEventListener('submit', function(e) {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.classList.add('loading');
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registering...';
+            submitBtn.disabled = true;
+        });
+
+        // Add smooth scroll to top when page loads
+        window.addEventListener('load', function() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // Add ripple effect to buttons
+        document.querySelectorAll('.btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                const ripple = document.createElement('span');
+                ripple.style.position = 'absolute';
+                ripple.style.borderRadius = '50%';
+                ripple.style.background = 'rgba(255, 255, 255, 0.3)';
+                ripple.style.transform = 'scale(0)';
+                ripple.style.animation = 'ripple 0.6s linear';
+                ripple.style.left = (e.offsetX - 10) + 'px';
+                ripple.style.top = (e.offsetY - 10) + 'px';
+                ripple.style.width = '20px';
+                ripple.style.height = '20px';
+
+                this.style.position = 'relative';
+                this.style.overflow = 'hidden';
+                this.appendChild(ripple);
+
+                setTimeout(() => {
+                    ripple.remove();
+                }, 600);
+            });
+        });
+
+        // Add CSS animation for ripple
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes ripple {
+                to {
+                    transform: scale(4);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Add intersection observer for fade-in animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Initially hide elements for animation
+        document.querySelectorAll('.panel, .stat-card, .alert').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(30px)';
+            el.style.transition = 'all 0.6s ease';
+            observer.observe(el);
+        });
+
+        // Modal functions
+        function showPDFExportModal() {
+            document.getElementById('pdfExportModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closePDFModal() {
+            document.getElementById('pdfExportModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+            document.getElementById('pdfExportForm').reset();
+        }
+
+        function showCSVExportModal() {
+            document.getElementById('csvExportModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeCSVModal() {
+            document.getElementById('csvExportModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+            document.getElementById('csvExportForm').reset();
+        }
+
+        // Close modals when clicking outside
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    if (this.id === 'pdfExportModal') closePDFModal();
+                    if (this.id === 'csvExportModal') closeCSVModal();
+                }
+            });
+        });
+
+        // Handle orientation change for photos checkbox
+        document.getElementById('pdf_orientation')?.addEventListener('change', function() {
+            const photosCheckbox = document.getElementById('pdf_include_photos');
+            const photosLabel = photosCheckbox.closest('.checkbox-label');
+
+            if (this.value === 'P') {
+                photosCheckbox.disabled = true;
+                photosLabel.style.opacity = '0.5';
+                photosLabel.title = 'Photos only available in Landscape mode';
+            } else {
+                photosCheckbox.disabled = false;
+                photosLabel.style.opacity = '1';
+                photosLabel.title = '';
+            }
+        });
+    </script><?php include '../includes/floating-button.php'; ?></body>
 </html>

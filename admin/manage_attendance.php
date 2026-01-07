@@ -17,12 +17,12 @@ $class_filter = isset($_GET['class_id']) ? $_GET['class_id'] : 'all';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_update'])) {
     $update_date = $_POST['attendance_date'];
     $class_id = $_POST['class_id'];
-    
+
     try {
         $pdo->beginTransaction();
-        
+
         foreach ($_POST['attendance'] as $student_id => $status) {
-            $sql = "INSERT INTO attendance (student_id, date, status, recorded_by) 
+            $sql = "INSERT INTO attendance (student_id, date, status, recorded_by)
                     VALUES (:student_id, :date, :status, :recorded_by)
                     ON DUPLICATE KEY UPDATE status = :status_update, recorded_by = :recorded_by_update";
             $stmt = $pdo->prepare($sql);
@@ -35,12 +35,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_update'])) {
                 ':recorded_by_update' => $principal_id
             ]);
         }
-        
+
         $pdo->commit();
         $_SESSION['success'] = "Attendance updated successfully!";
         header("Location: manage_attendance.php?date=$update_date&class_id=$class_id");
         exit();
-        
+
     } catch(PDOException $e) {
         $pdo->rollBack();
         $_SESSION['error'] = "Error updating attendance: " . $e->getMessage();
@@ -53,9 +53,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_holiday'])) {
     $holiday_date = $_POST['holiday_date'];
     $holiday_type = $_POST['holiday_type'];
     $description = $_POST['description'];
-    
+
     try {
-        $sql = "INSERT INTO holidays (holiday_name, holiday_date, holiday_type, description) 
+        $sql = "INSERT INTO holidays (holiday_name, holiday_date, holiday_type, description)
                 VALUES (:holiday_name, :holiday_date, :holiday_type, :description)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
@@ -64,18 +64,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_holiday'])) {
             ':holiday_type' => $holiday_type,
             ':description' => $description
         ]);
-        
+
         $_SESSION['success'] = "Holiday added successfully!";
         header("Location: manage_attendance.php");
         exit();
-        
+
     } catch(PDOException $e) {
         $_SESSION['error'] = "Error adding holiday: " . $e->getMessage();
     }
 }
 
 // Fetch attendance summary
-$summary_sql = "SELECT 
+$summary_sql = "SELECT
     (SELECT COUNT(DISTINCT date) FROM attendance WHERE date >= DATE_SUB(NOW(), INTERVAL 30 DAY)) as total_days,
     (SELECT COUNT(*) FROM attendance WHERE status = 'present' AND date >= DATE_SUB(NOW(), INTERVAL 30 DAY)) as present_count,
     (SELECT COUNT(*) FROM attendance WHERE status = 'absent' AND date >= DATE_SUB(NOW(), INTERVAL 30 DAY)) as absent_count,
@@ -90,19 +90,19 @@ $classes = $classes_result->fetchAll();
 
 // Fetch attendance for selected date and class
 if ($class_filter === 'all') {
-    $attendance_sql = "SELECT s.id, s.full_name, s.admission_no, c.class_name, a.status 
-                       FROM students s 
-                       JOIN classes c ON s.class_id = c.id 
-                       LEFT JOIN attendance a ON s.id = a.student_id AND a.date = :selected_date 
+    $attendance_sql = "SELECT s.id, s.full_name, s.admission_no, c.class_name, a.status
+                       FROM students s
+                       JOIN classes c ON s.class_id = c.id
+                       LEFT JOIN attendance a ON s.id = a.student_id AND a.date = :selected_date
                        ORDER BY c.class_name, s.full_name";
     $attendance_stmt = $pdo->prepare($attendance_sql);
     $attendance_stmt->execute([':selected_date' => $selected_date]);
 } else {
-    $attendance_sql = "SELECT s.id, s.full_name, s.admission_no, c.class_name, a.status 
-                       FROM students s 
-                       JOIN classes c ON s.class_id = c.id 
-                       LEFT JOIN attendance a ON s.id = a.student_id AND a.date = :selected_date 
-                       WHERE s.class_id = :class_id 
+    $attendance_sql = "SELECT s.id, s.full_name, s.admission_no, c.class_name, a.status
+                       FROM students s
+                       JOIN classes c ON s.class_id = c.id
+                       LEFT JOIN attendance a ON s.id = a.student_id AND a.date = :selected_date
+                       WHERE s.class_id = :class_id
                        ORDER BY s.full_name";
     $attendance_stmt = $pdo->prepare($attendance_sql);
     $attendance_stmt->execute([
@@ -118,7 +118,7 @@ $holidays_stmt = $pdo->query($holidays_sql);
 $holidays = $holidays_stmt->fetchAll();
 
 // Fetch class-wise statistics
-$class_stats_sql = "SELECT 
+$class_stats_sql = "SELECT
     c.class_name,
     COUNT(DISTINCT s.id) as total_students,
     AVG(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) * 100 as attendance_percentage
@@ -130,6 +130,8 @@ $class_stats_sql = "SELECT
 $class_stats_stmt = $pdo->prepare($class_stats_sql);
 $class_stats_stmt->execute([':current_date' => $current_date]);
 $class_stats = $class_stats_stmt->fetchAll();
+
+$principal_name = $_SESSION['full_name'];
 ?>
 
 <!DOCTYPE html>
@@ -137,331 +139,437 @@ $class_stats = $class_stats_stmt->fetchAll();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Attendance - Principal</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <title>Manage Attendance - Principal | SahabFormMaster</title>
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-datepicker@1.9.0/dist/css/bootstrap-datepicker.min.css" rel="stylesheet">
-    <style>
-        .attendance-card {
-            transition: transform 0.2s;
-        }
-        .attendance-card:hover {
-            transform: translateY(-2px);
-        }
-        .status-present { color: #198754; }
-        .status-absent { color: #dc3545; }
-        .status-late { color: #fd7e14; }
-        .status-leave { color: #0dcaf0; }
-        .dashboard-stat {
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 15px;
-        }
-    </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">Sahab Academy - Attendance Management</a>
-            <div class="navbar-nav ms-auto">
-                <a href="dashboard.php" class="nav-link"><i class="bi bi-speedometer2"></i> Dashboard</a>
-                <a href="logout.php" class="nav-link"><i class="bi bi-box-arrow-right"></i> Logout</a>
-            </div>
-        </div>
-    </nav>
 
-    <div class="container-fluid mt-4">
-        <!-- Dashboard Summary -->
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <div class="dashboard-stat bg-success text-white">
-                    <h5><i class="bi bi-calendar-check"></i> Total Days</h5>
-                    <h2><?php echo $summary['total_days']; ?></h2>
-                    <small>Last 30 days</small>
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <!-- Logo and School Name -->
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Principal Portal</p>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="dashboard-stat bg-info text-white">
-                    <h5><i class="bi bi-person-check"></i> Present</h5>
-                    <h2><?php echo $summary['present_count']; ?></h2>
+
+            <!-- Principal Info and Logout -->
+            <div class="header-right">
+                <div class="principal-info">
+                    <p class="principal-label">Principal</p>
+                    <span class="principal-name"><?php echo htmlspecialchars($principal_name); ?></span>
                 </div>
-            </div>
-            <div class="col-md-3">
-                <div class="dashboard-stat bg-danger text-white">
-                    <h5><i class="bi bi-person-x"></i> Absent</h5>
-                    <h2><?php echo $summary['absent_count']; ?></h2>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="dashboard-stat bg-warning text-white">
-                    <h5><i class="bi bi-clock-history"></i> Late</h5>
-                    <h2><?php echo $summary['late_count']; ?></h2>
-                </div>
+                <a href="logout.php" class="btn-logout">
+                    <span class="logout-icon">🚪</span>
+                    <span>Logout</span>
+                </a>
             </div>
         </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <?php include '../includes/admin_sidebar.php'; ?>
 
         <!-- Main Content -->
-        <div class="row">
-            <!-- Left Sidebar - Filters and Actions -->
-            <div class="col-md-3">
-                <!-- Date Selection -->
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <h6><i class="bi bi-calendar"></i> Select Date</h6>
-                    </div>
-                    <div class="card-body">
-                        <form method="GET" action="">
-                            <div class="mb-3">
-                                <input type="text" class="form-control datepicker" name="date" 
-                                       value="<?php echo $selected_date; ?>" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Select Class</label>
-                                <select name="class_id" class="form-select">
-                                    <option value="all">All Classes</option>
-                                    <?php foreach($classes as $class): ?>
-                                        <option value="<?php echo $class['id']; ?>" 
-                                            <?php echo ($class_filter == $class['id']) ? 'selected' : ''; ?>>
-                                            <?php echo $class['class_name']; ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100">
-                                <i class="bi bi-search"></i> View Attendance
-                            </button>
-                        </form>
-                    </div>
+        <main class="main-content">
+            <div class="content-header">
+                <div class="welcome-section">
+                    <h2>📋 Attendance Management</h2>
+                    <p>Monitor and manage student attendance records</p>
                 </div>
+            </div>
 
-                <!-- Class Statistics -->
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <h6><i class="bi bi-bar-chart"></i> Today's Class Statistics</h6>
+            <!-- Dashboard Summary Cards -->
+            <div class="dashboard-cards">
+                <div class="card card-gradient-1">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon">📅</div>
                     </div>
-                    <div class="card-body">
-                        <div class="list-group">
-                            <?php foreach($class_stats as $stat): ?>
-                                <div class="list-group-item d-flex justify-content-between align-items-center">
-                                    <span><?php echo $stat['class_name']; ?></span>
-                                    <span class="badge bg-<?php echo ($stat['attendance_percentage'] > 80) ? 'success' : 'danger'; ?> rounded-pill">
-                                        <?php echo round($stat['attendance_percentage'], 1); ?>%
-                                    </span>
-                                </div>
-                            <?php endforeach; ?>
+                    <div class="card-content">
+                        <h3>Total Days</h3>
+                        <p class="card-value"><?php echo $summary['total_days'] ?? 0; ?></p>
+                        <div class="card-footer">
+                            <span class="card-badge">Last 30 days</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Holiday Management -->
-                <div class="card">
-                    <div class="card-header">
-                        <h6><i class="bi bi-calendar-event"></i> Add Holiday</h6>
+                <div class="card card-gradient-2">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon">✅</div>
                     </div>
-                    <div class="card-body">
-                        <form method="POST" action="">
-                            <div class="mb-3">
-                                <input type="text" class="form-control" name="holiday_name" 
-                                       placeholder="Holiday Name" required>
-                            </div>
-                            <div class="mb-3">
-                                <input type="text" class="form-control datepicker" name="holiday_date" 
-                                       placeholder="Date" required>
-                            </div>
-                            <div class="mb-3">
-                                <select name="holiday_type" class="form-select">
-                                    <option value="national">National Holiday</option>
-                                    <option value="religious">Religious Holiday</option>
-                                    <option value="school">School Holiday</option>
-                                    <option value="other">Other</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <textarea class="form-control" name="description" 
-                                          placeholder="Description" rows="2"></textarea>
-                            </div>
-                            <button type="submit" name="add_holiday" class="btn btn-warning w-100">
-                                <i class="bi bi-plus-circle"></i> Add Holiday
-                            </button>
-                        </form>
+                    <div class="card-content">
+                        <h3>Present</h3>
+                        <p class="card-value"><?php echo $summary['present_count'] ?? 0; ?></p>
+                        <div class="card-footer">
+                            <span class="card-badge">Total records</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-gradient-3">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon">❌</div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Absent</h3>
+                        <p class="card-value"><?php echo $summary['absent_count'] ?? 0; ?></p>
+                        <div class="card-footer">
+                            <span class="card-badge">Total records</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-gradient-4">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon">⏰</div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Late</h3>
+                        <p class="card-value"><?php echo $summary['late_count'] ?? 0; ?></p>
+                        <div class="card-footer">
+                            <span class="card-badge">Total records</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Main Content Area -->
-            <div class="col-md-9">
-                <!-- Attendance Management Form -->
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5>
-                            <i class="bi bi-clipboard-check"></i> 
-                            Attendance for <?php echo date('F j, Y', strtotime($selected_date)); ?>
-                        </h5>
-                        <div>
-                            <button class="btn btn-sm btn-success" onclick="markAll('present')">
-                                <i class="bi bi-check-circle"></i> Mark All Present
-                            </button>
-                            <button class="btn btn-sm btn-danger" onclick="markAll('absent')">
-                                <i class="bi bi-x-circle"></i> Mark All Absent
-                            </button>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <?php if(isset($_SESSION['success'])): ?>
-                            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                <?php echo $_SESSION['success']; unset($_SESSION['success']); ?>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
-                        <?php endif; ?>
-                        
-                        <?php if(isset($_SESSION['error'])): ?>
-                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                <?php echo $_SESSION['error']; unset($_SESSION['error']); ?>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
-                        <?php endif; ?>
+            <!-- Attendance Management Section -->
+            <div class="section-container">
+                <div class="section-header">
+                    <h3 class="section-title">
+                        <i class="fas fa-calendar-check"></i>
+                        Attendance for <?php echo date('F j, Y', strtotime($selected_date)); ?>
+                    </h3>
+                </div>
 
-                        <form method="POST" action="">
-                            <input type="hidden" name="attendance_date" value="<?php echo $selected_date; ?>">
-                            <input type="hidden" name="class_id" value="<?php echo $class_filter; ?>">
-                            
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Admission No</th>
-                                            <th>Student Name</th>
-                                            <th>Class</th>
-                                            <th>Status</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php $counter = 1; ?>
-                                        <?php foreach($attendance_records as $student): ?>
-                                            <tr>
-                                                <td><?php echo $counter++; ?></td>
-                                                <td><?php echo htmlspecialchars($student['admission_no']); ?></td>
-                                                <td><?php echo htmlspecialchars($student['full_name']); ?></td>
-                                                <td><?php echo htmlspecialchars($student['class_name']); ?></td>
-                                                <td>
-                                                    <?php 
-                                                    $status = $student['status'] ?: 'absent';
-                                                    $badge_class = [
-                                                        'present' => 'success',
-                                                        'absent' => 'danger',
-                                                        'late' => 'warning',
-                                                        'leave' => 'info'
-                                                    ][$status];
-                                                    ?>
-                                                    <span class="badge bg-<?php echo $badge_class; ?>">
-                                                        <?php echo ucfirst($status); ?>
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <select name="attendance[<?php echo $student['id']; ?>]" 
-                                                            class="form-select form-select-sm status-select">
-                                                        <option value="present" <?php echo ($status == 'present') ? 'selected' : ''; ?>>Present</option>
-                                                        <option value="absent" <?php echo ($status == 'absent') ? 'selected' : ''; ?>>Absent</option>
-                                                        <option value="late" <?php echo ($status == 'late') ? 'selected' : ''; ?>>Late</option>
-                                                        <option value="leave" <?php echo ($status == 'leave') ? 'selected' : ''; ?>>Leave</option>
-                                                    </select>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
-                                <button type="submit" name="bulk_update" class="btn btn-primary">
-                                    <i class="bi bi-save"></i> Save Attendance
-                                </button>
-                                <button type="button" class="btn btn-secondary" onclick="printAttendance()">
-                                    <i class="bi bi-printer"></i> Print
-                                </button>
-                            </div>
-                        </form>
+                <!-- Filters and Actions -->
+                <div class="stats-grid" style="margin-bottom: 2rem;">
+                    <div class="form-group">
+                        <label class="form-label">Select Date</label>
+                        <input type="text" class="form-control datepicker" name="date" value="<?php echo $selected_date; ?>" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Select Class</label>
+                        <select name="class_id" class="form-control" onchange="changeFilters()">
+                            <option value="all">All Classes</option>
+                            <?php foreach($classes as $class): ?>
+                                <option value="<?php echo $class['id']; ?>" <?php echo ($class_filter == $class['id']) ? 'selected' : ''; ?>>
+                                    <?php echo $class['class_name']; ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: end; gap: 0.5rem;">
+                        <button class="btn btn-success" onclick="markAll('present')">
+                            <i class="fas fa-check"></i> Mark All Present
+                        </button>
+                        <button class="btn btn-danger" onclick="markAll('absent')">
+                            <i class="fas fa-times"></i> Mark All Absent
+                        </button>
                     </div>
                 </div>
 
-                <!-- Upcoming Holidays -->
-                <div class="card mt-4">
-                    <div class="card-header">
-                        <h6><i class="bi bi-calendar-event"></i> Upcoming Holidays</h6>
+                <!-- Success/Error Messages -->
+                <?php if(isset($_SESSION['success'])): ?>
+                    <div class="alert alert-success" role="alert">
+                        <i class="fas fa-check-circle"></i>
+                        <?php echo $_SESSION['success']; unset($_SESSION['success']); ?>
                     </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <?php if(count($holidays) > 0): ?>
-                                <?php foreach($holidays as $holiday): ?>
-                                    <div class="col-md-6 mb-2">
-                                        <div class="card border-info">
-                                            <div class="card-body py-2">
-                                                <h6 class="card-title mb-1"><?php echo htmlspecialchars($holiday['holiday_name']); ?></h6>
-                                                <p class="card-text mb-1">
-                                                    <small class="text-muted">
-                                                        <i class="bi bi-calendar"></i> 
-                                                        <?php echo date('F j, Y', strtotime($holiday['holiday_date'])); ?>
-                                                    </small>
-                                                </p>
-                                                <?php if($holiday['description']): ?>
-                                                    <p class="card-text"><small><?php echo htmlspecialchars($holiday['description']); ?></small></p>
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
-                                    </div>
+                <?php endif; ?>
+
+                <?php if(isset($_SESSION['error'])): ?>
+                    <div class="alert alert-error" role="alert">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <?php echo $_SESSION['error']; unset($_SESSION['error']); ?>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Attendance Form -->
+                <form method="POST" action="">
+                    <input type="hidden" name="attendance_date" value="<?php echo $selected_date; ?>">
+                    <input type="hidden" name="class_id" value="<?php echo $class_filter; ?>">
+
+                    <div class="table-responsive">
+                        <table class="students-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Admission No</th>
+                                    <th>Student Name</th>
+                                    <th>Class</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php $counter = 1; ?>
+                                <?php foreach($attendance_records as $student): ?>
+                                    <tr>
+                                        <td><?php echo $counter++; ?></td>
+                                        <td><?php echo htmlspecialchars($student['admission_no']); ?></td>
+                                        <td><?php echo htmlspecialchars($student['full_name']); ?></td>
+                                        <td><?php echo htmlspecialchars($student['class_name']); ?></td>
+                                        <td>
+                                            <?php
+                                            $status = $student['status'] ?: 'absent';
+                                            $badge_class = [
+                                                'present' => 'badge-success',
+                                                'absent' => 'badge-danger',
+                                                'late' => 'badge-warning',
+                                                'leave' => 'badge-info'
+                                            ][$status];
+                                            ?>
+                                            <span class="badge <?php echo $badge_class; ?>">
+                                                <?php echo ucfirst($status); ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <select name="attendance[<?php echo $student['id']; ?>]" class="form-control form-control-sm status-select">
+                                                <option value="present" <?php echo ($status == 'present') ? 'selected' : ''; ?>>Present</option>
+                                                <option value="absent" <?php echo ($status == 'absent') ? 'selected' : ''; ?>>Absent</option>
+                                                <option value="late" <?php echo ($status == 'late') ? 'selected' : ''; ?>>Late</option>
+                                                <option value="leave" <?php echo ($status == 'leave') ? 'selected' : ''; ?>>Leave</option>
+                                            </select>
+                                        </td>
+                                    </tr>
                                 <?php endforeach; ?>
-                            <?php else: ?>
-                                <div class="col-12">
-                                    <p class="text-muted text-center">No upcoming holidays</p>
-                                </div>
-                            <?php endif; ?>
-                        </div>
+                            </tbody>
+                        </table>
                     </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
+                        <button type="submit" name="bulk_update" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Attendance
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="printAttendance()">
+                            <i class="fas fa-print"></i> Print
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Additional Sections -->
+            <div class="stats-section">
+                <div class="section-header">
+                    <h3>📊 Today's Class Statistics</h3>
+                </div>
+                <div class="stats-grid">
+                    <?php foreach($class_stats as $stat): ?>
+                        <div class="stat-box">
+                            <div class="stat-icon">📚</div>
+                            <div class="stat-info">
+                                <span class="stat-value"><?php echo round($stat['attendance_percentage'], 1); ?>%</span>
+                                <span class="stat-label"><?php echo $stat['class_name']; ?></span>
+                            </div>
+                            <div class="stat-progress">
+                                <div class="progress-bar" style="width: <?php echo round($stat['attendance_percentage'], 1); ?>%;"></div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <!-- Holiday Management -->
+            <div class="section-container">
+                <div class="section-header">
+                    <h3 class="section-title">
+                        <i class="fas fa-calendar-plus"></i>
+                        Add Holiday
+                    </h3>
+                </div>
+
+                <form method="POST" action="" class="stats-grid" style="margin-top: 1rem;">
+                    <div class="form-group">
+                        <label class="form-label">Holiday Name</label>
+                        <input type="text" class="form-control" name="holiday_name" placeholder="Holiday Name" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Date</label>
+                        <input type="text" class="form-control datepicker" name="holiday_date" placeholder="Date" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Type</label>
+                        <select name="holiday_type" class="form-control">
+                            <option value="national">National Holiday</option>
+                            <option value="religious">Religious Holiday</option>
+                            <option value="school">School Holiday</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" name="description" placeholder="Description" rows="2"></textarea>
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: end;">
+                        <button type="submit" name="add_holiday" class="btn btn-warning">
+                            <i class="fas fa-plus"></i> Add Holiday
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Upcoming Holidays -->
+            <div class="activity-section">
+                <div class="section-header">
+                    <h3>📅 Upcoming Holidays</h3>
+                </div>
+                <div class="activity-list">
+                    <?php if(count($holidays) > 0): ?>
+                        <?php foreach($holidays as $holiday): ?>
+                            <div class="activity-item">
+                                <div class="activity-icon activity-icon-info">📅</div>
+                                <div class="activity-content">
+                                    <span class="activity-text">
+                                        <strong><?php echo htmlspecialchars($holiday['holiday_name']); ?></strong> -
+                                        <?php echo htmlspecialchars($holiday['description'] ?: 'No description'); ?>
+                                    </span>
+                                    <span class="activity-date"><?php echo date('M j, Y', strtotime($holiday['holiday_date'])); ?></span>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="activity-item">
+                            <div class="activity-icon activity-icon-info">📅</div>
+                            <div class="activity-content">
+                                <span class="activity-text">No upcoming holidays</span>
+                                <span class="activity-date"><?php echo date('M j, Y'); ?></span>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About SahabFormMaster</h4>
+                    <p>A comprehensive school management system designed for academic excellence and efficient administration.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="manage-school.php">School Settings</a></li>
+                        <li><a href="manage_user.php">User Management</a></li>
+                        <li><a href="#">Support & Help</a></li>
+                        <li><a href="#">Documentation</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact Information</h4>
+                    <p>📧 admin@sahabformmaster.com</p>
+                    <p>📱 +234 808 683 5607</p>
+                    <p>🌐 www.sahabformmaster.com</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="#">Privacy Policy</a>
+                    <span>•</span>
+                    <a href="#">Terms of Service</a>
+                    <span>•</span>
+                    <span>Version 2.0</span>
                 </div>
             </div>
         </div>
-    </div>
+    </footer>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap-datepicker@1.9.0/dist/js/bootstrap-datepicker.min.js"></script>
     <script>
+        // Mobile Menu Toggle
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarClose = document.getElementById('sidebarClose');
+
+        mobileMenuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+            mobileMenuToggle.classList.toggle('active');
+        });
+
+        sidebarClose.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            mobileMenuToggle.classList.remove('active');
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+                    sidebar.classList.remove('active');
+                    mobileMenuToggle.classList.remove('active');
+                }
+            }
+        });
+
+        // Initialize Datepicker
         $(document).ready(function() {
             $('.datepicker').datepicker({
                 format: 'yyyy-mm-dd',
-                autoclose: true
+                autoclose: true,
+                todayHighlight: true
             });
         });
 
-        function markAll(status) {
-            $('.status-select').val(status);
+        // Filter change handler
+        function changeFilters() {
+            const classId = document.querySelector('select[name="class_id"]').value;
+            const date = document.querySelector('.datepicker').value;
+            window.location.href = `manage_attendance.php?date=${date}&class_id=${classId}`;
         }
 
+        // Mark all students function
+        function markAll(status) {
+            const selects = document.querySelectorAll('.status-select');
+            selects.forEach(select => select.value = status);
+        }
+
+        // Print functionality
         function printAttendance() {
             window.print();
         }
 
         // Auto-save notification
         let autoSaveTimer;
-        $('.status-select').change(function() {
-            clearTimeout(autoSaveTimer);
-            autoSaveTimer = setTimeout(() => {
-                // Show saving indicator
-                const savingIndicator = document.createElement('div');
-                savingIndicator.className = 'alert alert-info alert-dismissible fade show position-fixed top-0 end-0 m-3';
-                savingIndicator.innerHTML = `
-                    <i class="bi bi-info-circle"></i> Changes detected. Remember to save!
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                `;
-                document.body.appendChild(savingIndicator);
-                
-                setTimeout(() => {
-                    savingIndicator.remove();
-                }, 3000);
-            }, 1000);
+        document.addEventListener('change', function(e) {
+            if (e.target.classList.contains('status-select')) {
+                clearTimeout(autoSaveTimer);
+                autoSaveTimer = setTimeout(() => {
+                    const notification = document.createElement('div');
+                    notification.className = 'alert alert-success';
+                    notification.innerHTML = '<i class="fas fa-info-circle"></i> Changes detected. Remember to save!';
+                    notification.style.cssText = 'position: fixed; top: 100px; right: 20px; z-index: 9999; max-width: 300px;';
+
+                    document.body.appendChild(notification);
+                    setTimeout(() => notification.remove(), 3000);
+                }, 1000);
+            }
         });
     </script>
+
+    <?php include '../includes/floating-button.php'; ?>
+
 </body>
 </html>

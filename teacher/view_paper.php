@@ -222,6 +222,5 @@ $pdf_path = !empty($paper['pdf_file_path']) ? $paper['pdf_file_path'] : $paper['
                 alert('Failed to load PDF. Please try regenerating it.');
             };
         }
-    </script>
-</body>
+    </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>

@@ -1,4 +1,9 @@
 <?php
+// Enable error reporting for debugging
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 session_start();
 require_once '../config/db.php';
 
@@ -12,8 +17,23 @@ $teacher_id = $_SESSION['user_id'];
 
 $class_id = $_GET['id'] ?? $_GET['class_id'] ?? $_REQUEST['class'] ?? $_POST['class_id'] ?? null;
 
+// Get user's school_id
+$user_school_id = $_SESSION['school_id'] ?? null;
+if (!$user_school_id) {
+    // Fetch from database if not in session
+    $stmt = $pdo->prepare("SELECT school_id FROM users WHERE id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $user_school_id = $stmt->fetchColumn();
+    $_SESSION['school_id'] = $user_school_id;
+}
+
+// Ensure user has a valid school_id
+if (!$user_school_id) {
+    die("Error: User is not associated with any school. Please contact administrator.");
+}
+
 function normalize_term(string $t): string {
-    $map = [ 
+    $map = [
         'first term' => '1st Term', '1st term' => '1st Term', '1st' => '1st Term', 'first' => '1st Term',
         'second term' => '2nd Term', '2nd term' => '2nd Term', '2nd' => '2nd Term', 'second' => '2nd Term',
         'third term' => '3rd Term', '3rd term' => '3rd Term', '3rd' => '3rd Term', 'third' => '3rd Term'
@@ -493,11 +513,701 @@ $default_academic_session = "{$current_year}/{$next_year}";
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Results | SahabFormMaster</title>
-    <link rel="stylesheet" href="../assets/css/dashboard.css">
-    <link rel="stylesheet" href="../assets/css/tresults.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Additional styles for results page */
+        :root {
+            --primary-50: #eff6ff;
+            --primary-100: #dbeafe;
+            --primary-200: #bfdbfe;
+            --primary-300: #93c5fd;
+            --primary-400: #60a5fa;
+            --primary-500: #3b82f6;
+            --primary-600: #2563eb;
+            --primary-700: #1d4ed8;
+            --primary-800: #1e40af;
+            --primary-900: #1e3a8a;
+
+            --accent-50: #fdf4ff;
+            --accent-100: #fae8ff;
+            --accent-200: #f5d0fe;
+            --accent-300: #f0abfc;
+            --accent-400: #e879f9;
+            --accent-500: #d946ef;
+            --accent-600: #c026d3;
+            --accent-700: #a21caf;
+            --accent-800: #86198f;
+            --accent-900: #701a75;
+
+            --success-50: #f0fdf4;
+            --success-100: #dcfce7;
+            --success-500: #22c55e;
+            --success-600: #16a34a;
+            --success-700: #15803d;
+
+            --error-50: #fef2f2;
+            --error-100: #fee2e2;
+            --error-500: #ef4444;
+            --error-600: #dc2626;
+
+            --warning-50: #fffbeb;
+            --warning-100: #fef3c7;
+            --warning-500: #f59e0b;
+            --warning-600: #d97706;
+
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --shadow-medium: 0 8px 32px rgba(0, 0, 0, 0.12);
+            --shadow-strong: 0 16px 48px rgba(0, 0, 0, 0.15);
+
+            --gradient-primary: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-700) 100%);
+            --gradient-accent: linear-gradient(135deg, var(--accent-500) 0%, var(--accent-700) 100%);
+            --gradient-bg: linear-gradient(135deg, var(--primary-50) 0%, var(--accent-50) 50%, var(--primary-100) 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--gradient-bg);
+            color: var(--gray-800);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Modern Header */
+        .modern-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-container {
+            width: 56px;
+            height: 56px;
+            background: var(--gradient-primary);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            box-shadow: var(--shadow-medium);
+        }
+
+        .brand-text h1 {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 0.125rem;
+        }
+
+        .brand-text p {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            font-weight: 500;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.25rem;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 12px;
+            color: var(--gray-700);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .back-btn:hover {
+            background: white;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-accent);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .user-details p {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.125rem;
+        }
+
+        .user-details span {
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .logout-btn {
+            padding: 0.75rem 1.25rem;
+            background: var(--error-500);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logout-btn:hover {
+            background: var(--error-600);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        /* Main Container */
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Modern Cards */
+        .modern-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+            box-shadow: var(--shadow-soft);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            margin-bottom: 2rem;
+        }
+
+        .modern-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-strong);
+        }
+
+        .card-header-modern {
+            padding: 2rem;
+            background: var(--gradient-primary);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-header-modern::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.05)"/><circle cx="10" cy="90" r="0.5" fill="rgba(255,255,255,0.05)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .card-title-modern {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .card-subtitle-modern {
+            font-size: 1rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .card-body-modern {
+            padding: 2rem;
+        }
+
+        /* Form Controls */
+        .form-group-modern {
+            position: relative;
+        }
+
+        .form-label-modern {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.025em;
+        }
+
+        .form-input-modern {
+            width: 100%;
+            padding: 1rem 1.25rem;
+            border: 2px solid var(--gray-200);
+            border-radius: 12px;
+            font-size: 1rem;
+            background: white;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-input-modern:focus {
+            outline: none;
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-input-modern::placeholder {
+            color: var(--gray-400);
+        }
+
+        .btn-modern-primary {
+            padding: 1rem 2rem;
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: var(--shadow-medium);
+        }
+
+        .btn-modern-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-strong);
+        }
+
+        /* Alert Styles */
+        .alert-modern {
+            padding: 1.25rem 1.5rem;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-weight: 500;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .alert-success-modern {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--success-700);
+            border-left: 4px solid var(--success-500);
+        }
+
+        .alert-error-modern {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error-700);
+            border-left: 4px solid var(--error-500);
+        }
+
+        /* Modern Tabs */
+        .tabs-modern {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .tab-modern {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.5rem;
+            background: rgba(255, 255, 255, 0.8);
+            border: 2px solid var(--gray-200);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            color: var(--gray-700);
+            backdrop-filter: blur(10px);
+            box-shadow: var(--shadow-soft);
+        }
+
+        .tab-modern:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
+            border-color: var(--primary-300);
+        }
+
+        .tab-modern.active {
+            background: var(--gradient-primary);
+            color: white;
+            border-color: var(--primary-500);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .tab-modern i {
+            font-size: 1.1rem;
+        }
+
+        .tab-modern.active i {
+            transform: scale(1.1);
+        }
+
+        /* Footer */
+        .footer-modern {
+            background: var(--gray-900);
+            color: var(--gray-300);
+            padding: 3rem 2rem 2rem;
+            margin-top: 4rem;
+            position: relative;
+        }
+
+        .footer-modern::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--gray-700), transparent);
+        }
+
+        .footer-content-modern {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+
+        .footer-section-modern h4 {
+            color: white;
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .footer-section-modern p {
+            margin-bottom: 0.75rem;
+            line-height: 1.6;
+        }
+
+        .footer-section-modern ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .footer-section-modern li {
+            margin-bottom: 0.5rem;
+        }
+
+        .footer-section-modern a {
+            color: var(--gray-300);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-section-modern a:hover {
+            color: var(--primary-400);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .modern-header {
+                padding: 1rem;
+            }
+
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .header-brand {
+                order: 1;
+            }
+
+            .header-actions {
+                order: 2;
+                width: 100%;
+            }
+
+            .logo-container {
+                width: 48px;
+                height: 48px;
+                font-size: 1.25rem;
+            }
+
+            .brand-text h1 {
+                font-size: 1.25rem;
+            }
+
+            .brand-text p {
+                font-size: 0.75rem;
+            }
+
+            .back-btn {
+                padding: 0.625rem 1rem;
+                font-size: 0.875rem;
+            }
+
+            .user-info {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .user-avatar {
+                width: 36px;
+                height: 36px;
+                font-size: 0.875rem;
+            }
+
+            .user-details p,
+            .user-details span {
+                font-size: 0.75rem;
+            }
+
+            .logout-btn {
+                padding: 0.625rem 1rem;
+                font-size: 0.875rem;
+            }
+
+            .main-container {
+                padding: 1rem;
+            }
+
+            .modern-card {
+                margin-bottom: 1.5rem;
+            }
+
+            .card-header-modern,
+            .card-body-modern {
+                padding: 1.5rem;
+            }
+
+            .card-title-modern {
+                font-size: 1.5rem;
+            }
+
+            .stats-modern {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+            }
+
+            .stat-card-modern {
+                padding: 1.5rem;
+            }
+
+            .stat-icon-modern {
+                width: 56px;
+                height: 56px;
+                font-size: 1.5rem;
+            }
+
+            .stat-value-modern {
+                font-size: 2rem;
+            }
+
+            .tabs-modern {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+
+            .tab-modern {
+                padding: 0.875rem 1.25rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .modern-header {
+                padding: 0.75rem;
+            }
+
+            .header-content {
+                gap: 0.75rem;
+            }
+
+            .logo-container {
+                width: 40px;
+                height: 40px;
+                font-size: 1rem;
+            }
+
+            .brand-text h1 {
+                font-size: 1.125rem;
+            }
+
+            .back-btn {
+                padding: 0.5rem 0.875rem;
+                font-size: 0.8rem;
+            }
+
+            .user-avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 0.75rem;
+            }
+
+            .user-details p,
+            .user-details span {
+                font-size: 0.7rem;
+            }
+
+            .logout-btn {
+                padding: 0.5rem 0.875rem;
+                font-size: 0.8rem;
+            }
+
+            .main-container {
+                padding: 0.75rem;
+            }
+
+            .stats-modern {
+                grid-template-columns: 1fr;
+            }
+
+            .stat-card-modern {
+                padding: 1.25rem;
+            }
+
+            .stat-icon-modern {
+                width: 48px;
+                height: 48px;
+                font-size: 1.25rem;
+            }
+
+            .stat-value-modern {
+                font-size: 1.75rem;
+            }
+
+            .form-input-modern {
+                padding: 0.875rem 1rem;
+                font-size: 0.9rem;
+            }
+
+            .btn-modern-primary {
+                padding: 0.875rem 1.5rem;
+                font-size: 0.9rem;
+            }
+
+            .tabs-modern {
+                gap: 0.5rem;
+            }
+
+            .tab-modern {
+                padding: 0.75rem 1rem;
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .animate-fade-in-up {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .animate-slide-in-left {
+            animation: slideInLeft 0.6s ease-out;
+        }
+
+        .animate-slide-in-right {
+            animation: slideInRight 0.6s ease-out;
+        }
+
+        /* Results specific styles */
         .results-container {
             padding: 20px;
         }
@@ -717,76 +1427,143 @@ $default_academic_session = "{$current_year}/{$next_year}";
     </style>
 </head>
 <body>
-    
-<div class="dashboard-container">
-    
-        <main class="main-content">
-                <a href="index.php" style="color: #3498db; text-decoration: none; margin-bottom: 20px;">Back to Dashboard</a>
-<br>
-            <div class="results-container">
-                <div class="content-header">
-                    <h1>Manage Results</h1>
-                    <p>Class: <?php echo htmlspecialchars($class['class_name']); ?> | Term: <?php echo htmlspecialchars($term); ?></p>
+    <!-- Modern Header -->
+    <header class="modern-header">
+        <div class="header-content">
+            <div class="header-brand">
+                <a href="index.php" class="back-btn">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back to Dashboard</span>
+                </a>
+                <div class="logo-container">
+                    <i class="fas fa-graduation-cap"></i>
                 </div>
-                
-                <?php if ($errors): ?>
-                    <div class="alert alert-error">
-                        <?php foreach ($errors as $e) echo htmlspecialchars($e) . '<br>'; ?>
+                <div class="brand-text">
+                    <h1>SahabFormMaster</h1>
+                    <p>Results Management</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="user-info">
+                    <div class="user-avatar">
+                        <?php echo strtoupper(substr($_SESSION['full_name'] ?? 'T', 0, 1)); ?>
                     </div>
-                <?php endif; ?>
-                
-                <?php if ($success): ?>
-                    <div class="alert alert-success">
-                        <?php echo htmlspecialchars($success); ?>
+                    <div class="user-details">
+                        <p>Teacher</p>
+                        <span><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Teacher'); ?></span>
                     </div>
-                <?php endif; ?>
-                
-                <!-- Filter Section -->
-                <div class="section-card">
-                    <form method="GET" class="filter-form">
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                            <div>
-                                <label for="term_filter">Term</label>
-                                <select id="term_filter" name="term" class="form-control">
-                                    <option value="1st Term" <?php echo $term === '1st Term' ? 'selected' : ''; ?>>1st Term</option>
-                                    <option value="2nd Term" <?php echo $term === '2nd Term' ? 'selected' : ''; ?>>2nd Term</option>
-                                    <option value="3rd Term" <?php echo $term === '3rd Term' ? 'selected' : ''; ?>>3rd Term</option>
-                                </select>
-                            </div>
-                            
-                            <div>
-                                <label for="class_filter">Class</label>
-                                <select id="class_filter" name="filter_class_id" class="form-control">
-                                    <?php foreach ($teacher_classes as $tc): ?>
-                                        <option value="<?php echo intval($tc['id']); ?>" <?php echo $tc['id'] == $filter_class_id ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($tc['class_name']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            
-                            <div>
-                                <label for="admission_no">Admission No</label>
-                                <input id="admission_no" name="admission_no" class="form-control" 
-                                       value="<?php echo htmlspecialchars($_GET['admission_no'] ?? ''); ?>" 
-                                       placeholder="Filter by admission no">
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 10px;">
-                            <button type="submit" class="btn-gold">Apply Filter</button>
-                            <a href="results.php?id=<?php echo intval($class_id); ?>" class="btn-small">Reset</a>
-                        </div>
-                    </form>
                 </div>
+                <a href="logout.php" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Welcome Section -->
+        <div class="modern-card animate-fade-in-up">
+            <div class="card-header-modern">
+                <h2 class="card-title-modern">
+                    <i class="fas fa-chart-line"></i>
+                    Results Management Dashboard
+                </h2>
+                <p class="card-subtitle-modern">
+                    Manage and track student results for <?php echo htmlspecialchars($class['class_name']); ?> - <?php echo htmlspecialchars($term); ?>
+                </p>
+            </div>
+        </div>
+
+        <!-- Alerts -->
+        <?php if ($errors): ?>
+            <div class="alert-modern alert-error-modern animate-fade-in-up">
+                <i class="fas fa-exclamation-circle"></i>
+                <span><?php foreach ($errors as $e) echo htmlspecialchars($e) . '<br>'; ?></span>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($success): ?>
+            <div class="alert-modern alert-success-modern animate-fade-in-up">
+                <i class="fas fa-check-circle"></i>
+                <span><?php echo htmlspecialchars($success); ?></span>
+            </div>
+        <?php endif; ?>
+
+        <!-- Filter Section -->
+        <div class="modern-card animate-fade-in-up">
+            <div class="card-body-modern">
+                <form method="GET" class="filter-form">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+                        <div class="form-group-modern">
+                            <label class="form-label-modern" for="term_filter">Academic Term</label>
+                            <select id="term_filter" name="term" class="form-input-modern">
+                                <option value="1st Term" <?php echo $term === '1st Term' ? 'selected' : ''; ?>>1st Term</option>
+                                <option value="2nd Term" <?php echo $term === '2nd Term' ? 'selected' : ''; ?>>2nd Term</option>
+                                <option value="3rd Term" <?php echo $term === '3rd Term' ? 'selected' : ''; ?>>3rd Term</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group-modern">
+                            <label class="form-label-modern" for="class_filter">Class</label>
+                            <select id="class_filter" name="filter_class_id" class="form-input-modern">
+                                <?php foreach ($teacher_classes as $tc): ?>
+                                    <option value="<?php echo intval($tc['id']); ?>" <?php echo $tc['id'] == $filter_class_id ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($tc['class_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="form-group-modern">
+                            <label class="form-label-modern" for="admission_no">Admission Number</label>
+                            <input id="admission_no" name="admission_no" class="form-input-modern"
+                                   value="<?php echo htmlspecialchars($_GET['admission_no'] ?? ''); ?>"
+                                   placeholder="Filter by admission number">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 1rem;">
+                        <button type="submit" class="btn-modern-primary">
+                            <i class="fas fa-search"></i>
+                            <span>Apply Filter</span>
+                        </button>
+                        <a href="results.php?id=<?php echo intval($class_id); ?>" class="btn-modern-primary" style="background: var(--gray-200); color: var(--gray-700);">
+                            <i class="fas fa-undo"></i>
+                            <span>Reset</span>
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
                 
-                <!-- Tabs for different views -->
-                <div class="tabs">
-                    <div class="tab active" onclick="switchTab('batch')"><i class="fas fa-layer-group"></i> Batch Entry</div>
-                    <div class="tab" onclick="switchTab('single')"><i class="fas fa-plus"></i> Single Entry</div>
-                    <div class="tab" onclick="switchTab('multi')"><i class="fas fa-list"></i> Multiple Subjects</div>
-                    <div class="tab" onclick="switchTab('view')"><i class="fas fa-eye"></i> View Results</div>
-                    <div class="tab" onclick="switchTab('complaints')"><i class="fas fa-exclamation-triangle"></i> Complaints</div>
+        <!-- Navigation Tabs -->
+        <div class="modern-card animate-fade-in-up">
+            <div class="card-body-modern">
+                <div class="tabs-modern">
+                    <button class="tab-modern active" onclick="switchTab('batch')">
+                        <i class="fas fa-layer-group"></i>
+                        <span>Batch Entry</span>
+                    </button>
+                    <button class="tab-modern" onclick="switchTab('single')">
+                        <i class="fas fa-plus"></i>
+                        <span>Single Entry</span>
+                    </button>
+                    <button class="tab-modern" onclick="switchTab('multi')">
+                        <i class="fas fa-list"></i>
+                        <span>Multiple Subjects</span>
+                    </button>
+                    <button class="tab-modern" onclick="switchTab('view')">
+                        <i class="fas fa-eye"></i>
+                        <span>View Results</span>
+                    </button>
+                    <button class="tab-modern" onclick="switchTab('complaints')">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>Complaints</span>
+                    </button>
                 </div>
+            </div>
+        </div>
                 
                 <!-- Batch Entry Tab -->
                 <div id="batch-tab" class="tab-content active">
@@ -798,7 +1575,7 @@ $default_academic_session = "{$current_year}/{$next_year}";
                             <!-- Academic Session Selection -->
                             <div style="margin-bottom: 20px;">
                                 <label for="academic_session_batch">Academic Session *</label>
-                                <select id="academic_session_batch" name="academic_session" class="form-control" required style="max-width: 300px;">
+                                <select id="academic_session_batch" name="academic_session" class="form-input-modern" required style="max-width: 300px;">
                                     <option value="">Select Academic Session</option>
                                     <?php foreach ($academic_sessions as $session): ?>
                                         <option value="<?php echo htmlspecialchars($session); ?>" <?php echo $session == $default_academic_session ? 'selected' : ''; ?>>
@@ -825,8 +1602,14 @@ $default_academic_session = "{$current_year}/{$next_year}";
                             </div>
                             
                             <div style="margin: 15px 0; display: flex; gap: 10px;">
-                                <button type="button" class="btn-small" onclick="selectAllStudents()">Select All</button>
-                                <button type="button" class="btn-small" onclick="deselectAllStudents()">Deselect All</button>
+                                <button type="button" class="btn-modern-primary" onclick="selectAllStudents()">
+                                    <i class="fas fa-check-square"></i>
+                                    <span>Select All</span>
+                                </button>
+                                <button type="button" class="btn-modern-primary" onclick="deselectAllStudents()" style="background: var(--error-500);">
+                                    <i class="fas fa-square"></i>
+                                    <span>Deselect All</span>
+                                </button>
                             </div>
                             
                             <!-- Subject Scores Grid -->
@@ -913,13 +1696,13 @@ $default_academic_session = "{$current_year}/{$next_year}";
                 <div id="single-tab" class="tab-content">
                     <div class="section-card">
                         <h3>Single Entry - Individual Result</h3>
-                        <form method="POST" class="lesson-form">
+                        <form method="POST">
                             <input type="hidden" name="action" value="save_single_result">
                             
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
                                 <div>
                                     <label for="student_id_single">Student *</label>
-                                    <select id="student_id_single" name="student_id" class="form-control" required>
+                                    <select id="student_id_single" name="student_id" class="form-input-modern" required>
                                         <option value="">Select student</option>
                                         <?php foreach ($students as $s): ?>
                                             <option value="<?php echo intval($s['id']); ?>">
@@ -931,7 +1714,7 @@ $default_academic_session = "{$current_year}/{$next_year}";
                                 
                                 <div>
                                     <label for="subject_id_single">Subject *</label>
-                                    <select id="subject_id_single" name="subject_id" class="form-control" required>
+                                    <select id="subject_id_single" name="subject_id" class="form-input-modern" required>
                                         <option value="">Select subject</option>
                                         <?php foreach ($subjects as $sub): ?>
                                             <option value="<?php echo intval($sub['id']); ?>">
@@ -943,33 +1726,36 @@ $default_academic_session = "{$current_year}/{$next_year}";
                                 
                                 <div>
                                     <label for="academic_session_single">Academic Session *</label>
-                                    <input type="text" id="academic_session_single" name="academic_session" 
-                                           class="form-control" value="<?php echo $default_academic_session; ?>" required>
+                                    <input type="text" id="academic_session_single" name="academic_session"
+                                           class="form-input-modern" value="<?php echo $default_academic_session; ?>" required>
                                 </div>
                             </div>
                             
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 20px;">
                                 <div>
                                     <label for="first_ca_single">First C.A.</label>
-                                    <input type="number" id="first_ca_single" name="first_ca" class="form-control" 
+                                    <input type="number" id="first_ca_single" name="first_ca" class="form-input-modern"
                                            min="0" max="100" step="0.1" value="0" required>
                                 </div>
-                                
+
                                 <div>
                                     <label for="second_ca_single">Second C.A.</label>
-                                    <input type="number" id="second_ca_single" name="second_ca" class="form-control" 
+                                    <input type="number" id="second_ca_single" name="second_ca" class="form-input-modern"
                                            min="0" max="100" step="0.1" value="0" required>
                                 </div>
-                                
+
                                 <div>
                                     <label for="exam_single">Exam</label>
-                                    <input type="number" id="exam_single" name="exam" class="form-control" 
+                                    <input type="number" id="exam_single" name="exam" class="form-input-modern"
                                            min="0" max="100" step="0.1" value="0" required>
                                 </div>
                             </div>
                             
                             <div style="margin-top: 20px;">
-                                <button type="submit" class="btn-gold">Save Result</button>
+                                <button type="submit" class="btn-modern-primary">
+                                    <i class="fas fa-save"></i>
+                                    <span>Save Result</span>
+                                </button>
                             </div>
                         </form>
                     </div>
@@ -987,7 +1773,7 @@ $default_academic_session = "{$current_year}/{$next_year}";
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
                                 <div>
                                     <label for="student_id_multi">Select Student *</label>
-                                    <select id="student_id_multi" name="student_id_multi" class="form-control" required onchange="loadStudentScores()">
+                                    <select id="student_id_multi" name="student_id_multi" class="form-input-modern" required onchange="loadStudentScores()">
                                         <option value="">-- Select Student --</option>
                                         <?php foreach ($students as $student): ?>
                                             <option value="<?php echo intval($student['id']); ?>">
@@ -999,7 +1785,7 @@ $default_academic_session = "{$current_year}/{$next_year}";
                                 
                                 <div>
                                     <label for="academic_session_multi">Academic Session *</label>
-                                    <select id="academic_session_multi" name="academic_session_multi" class="form-control" required style="max-width: 300px;">
+                                    <select id="academic_session_multi" name="academic_session_multi" class="form-input-modern" required style="max-width: 300px;">
                                         <option value="">Select Academic Session</option>
                                         <?php foreach ($academic_sessions as $session): ?>
                                             <option value="<?php echo htmlspecialchars($session); ?>" <?php echo $session == $default_academic_session ? 'selected' : ''; ?>>
@@ -1189,25 +1975,49 @@ $default_academic_session = "{$current_year}/{$next_year}";
                 </div>
             </div>
         </main>
+
+        <!-- Footer -->
+        <footer class="footer-modern">
+            <div class="footer-content-modern">
+                <div class="footer-section-modern">
+                    <h4>About SahabFormMaster</h4>
+                    <p>A comprehensive school management system designed for effective teaching and learning.</p>
+                </div>
+                <div class="footer-section-modern">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="lesson-plan.php">Lesson Plans</a></li>
+                        <li><a href="students.php">Students</a></li>
+                        <li><a href="results.php">Results</a></li>
+                        <li><a href="#">Support</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section-modern">
+                    <h4>Contact</h4>
+                    <p><i class="fas fa-envelope"></i> teacher.support@sahabformmaster.com</p>
+                    <p><i class="fas fa-phone"></i> +234 808 683 5607</p>
+                </div>
+            </div>
+        </footer>
     </div>
-    
+
     <script>
         function switchTab(tabName) {
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
-            
+
             // Remove active class from all tab buttons
-            document.querySelectorAll('.tab').forEach(tabBtn => {
+            document.querySelectorAll('.tab-modern').forEach(tabBtn => {
                 tabBtn.classList.remove('active');
             });
-            
+
             // Show selected tab
             document.getElementById(tabName + '-tab').classList.add('active');
-            
+
             // Activate selected tab button
-            event.target.classList.add('active');
+            event.target.closest('.tab-modern').classList.add('active');
         }
         
         function selectAllStudents() {
@@ -1284,6 +2094,6 @@ $default_academic_session = "{$current_year}/{$next_year}";
                 switchTab('multi');
             }
         });
-    </script>
-</body>
+    </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
+

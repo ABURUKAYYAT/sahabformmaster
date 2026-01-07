@@ -192,109 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <!-- Main Container -->
     <div class="dashboard-container">
-        <!-- Sidebar Navigation -->
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <h3>Navigation</h3>
-                <button class="sidebar-close" id="sidebarClose">✕</button>
-            </div>
-            <nav class="sidebar-nav">
-                <ul class="nav-list">
-                    <li class="nav-item">
-                        <a href="index.php" class="nav-link">
-                            <i class="fas fa-tachometer-alt nav-icon"></i>
-                            <span class="nav-text">Dashboard</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="schoolfeed.php" class="nav-link">
-                            <i class="fas fa-newspaper nav-icon"></i>
-                            <span class="nav-text">School Feeds</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="school_diary.php" class="nav-link">
-                            <i class="fas fa-book nav-icon"></i>
-                            <span class="nav-text">School Diary</span>
-                        </a>
-                    </li>
-                    <li class="nav-item active">
-                        <a href="students.php" class="nav-link">
-                            <i class="fas fa-users nav-icon"></i>
-                            <span class="nav-text">Students</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="results.php" class="nav-link">
-                            <i class="fas fa-chart-line nav-icon"></i>
-                            <span class="nav-text">Results</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="subjects.php" class="nav-link">
-                            <i class="fas fa-book-open nav-icon"></i>
-                            <span class="nav-text">Subjects</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="questions.php" class="nav-link">
-                            <i class="fas fa-question-circle nav-icon"></i>
-                            <span class="nav-text">Questions</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="lesson-plan.php" class="nav-link">
-                            <i class="fas fa-clipboard-list nav-icon"></i>
-                            <span class="nav-text">Lesson Plans</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="curricullum.php" class="nav-link">
-                            <i class="fas fa-graduation-cap nav-icon"></i>
-                            <span class="nav-text">Curriculum</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="teacher_class_activities.php" class="nav-link">
-                            <i class="fas fa-tasks nav-icon"></i>
-                            <span class="nav-text">Class Activities</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="student-evaluation.php" class="nav-link">
-                            <i class="fas fa-star nav-icon"></i>
-                            <span class="nav-text">Evaluations</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="class_attendance.php" class="nav-link">
-                            <i class="fas fa-calendar-check nav-icon"></i>
-                            <span class="nav-text">Attendance</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="timebook.php" class="nav-link">
-                            <i class="fas fa-clock nav-icon"></i>
-                            <span class="nav-text">Time Book</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="permissions.php" class="nav-link">
-                            <i class="fas fa-key nav-icon"></i>
-                            <span class="nav-text">Permissions</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="payments.php" class="nav-link">
-                            <i class="fas fa-money-bill-wave nav-icon"></i>
-                            <span class="nav-text">Payments</span>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-        </aside>
-
-        <!-- Main Content -->
+                <!-- Main Content -->
         <main class="main-content">
             <!-- Breadcrumb -->
             <div style="margin-bottom: 1.5rem;">
@@ -626,6 +524,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (errorMsg) errorMsg.remove();
         });
     });
-</script>
-</body>
+</script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
+

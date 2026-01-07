@@ -20,11 +20,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $end_date = $_POST['end_date'];
         $status = $_POST['status'];
         $is_current = isset($_POST['is_current']) ? 1 : 0;
-        
+
         if ($is_current) {
             $pdo->query("UPDATE sessions SET is_current = 0 WHERE is_current = 1");
         }
-        
+
         $stmt = $pdo->prepare("INSERT INTO sessions (session_name, academic_year, start_date, end_date, is_current, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)");
         if ($stmt->execute([$session_name, $academic_year, $start_date, $end_date, $is_current, $status, $_SESSION['user_id']])) {
             $message = "Session added successfully!";
@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message_type = "danger";
         }
     }
-    
+
     if (isset($_POST['edit_session'])) {
         $id = $_POST['session_id'];
         $session_name = $_POST['session_name'];
@@ -43,11 +43,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $end_date = $_POST['end_date'];
         $status = $_POST['status'];
         $is_current = isset($_POST['is_current']) ? 1 : 0;
-        
+
         if ($is_current) {
             $pdo->query("UPDATE sessions SET is_current = 0 WHERE is_current = 1 AND id != $id");
         }
-        
+
         $stmt = $pdo->prepare("UPDATE sessions SET session_name = ?, academic_year = ?, start_date = ?, end_date = ?, is_current = ?, status = ? WHERE id = ?");
         if ($stmt->execute([$session_name, $academic_year, $start_date, $end_date, $is_current, $status, $id])) {
             $message = "Session updated successfully!";
@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message_type = "danger";
         }
     }
-    
+
     if (isset($_POST['delete_session'])) {
         $id = $_POST['session_id'];
         $stmt = $pdo->prepare("DELETE FROM sessions WHERE id = ?");
@@ -69,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message_type = "danger";
         }
     }
-    
+
     if (isset($_POST['set_current'])) {
         $id = $_POST['session_id'];
         $pdo->query("UPDATE sessions SET is_current = 0");
@@ -87,8 +87,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Get all sessions
 $sessions = $pdo->query("SELECT s.*, u.full_name as created_by_name FROM sessions s LEFT JOIN users u ON s.created_by = u.id ORDER BY academic_year DESC, start_date DESC")->fetchAll();
 
-// Get current session
 $current_session = $pdo->query("SELECT * FROM sessions WHERE is_current = 1 LIMIT 1")->fetch();
+
+// Get principal name for header
+$principal_name = $_SESSION['full_name'] ?? 'Principal';
 ?>
 
 <!DOCTYPE html>
@@ -97,681 +99,63 @@ $current_session = $pdo->query("SELECT * FROM sessions WHERE is_current = 1 LIMI
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Session Management | School System</title>
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #4361ee;
-            --secondary-color: #3a0ca3;
-            --success-color: #4cc9f0;
-            --info-color: #4895ef;
-            --warning-color: #f72585;
-            --danger-color: #7209b7;
-            --light-bg: #f8f9fa;
-            --dark-bg: #212529;
-            --gradient-primary: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
-            --gradient-success: linear-gradient(135deg, #4cc9f0 0%, #4895ef 100%);
-            --gradient-warning: linear-gradient(135deg, #f72585 0%, #b5179e 100%);
-            --gradient-info: linear-gradient(135deg, #7209b7 0%, #560bad 100%);
-            --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            --card-shadow-hover: 0 15px 40px rgba(0, 0, 0, 0.12);
-            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-        }
-
-        * {
-            font-family: 'Inter', sans-serif;
-        }
-
-        h1, h2, h3, h4, h5, h6 {
-            font-family: 'Poppins', sans-serif;
-            font-weight: 600;
-        }
-
-        body {
-            background-color: #f5f7fb;
-            color: #333;
-            line-height: 1.6;
-            min-height: 100vh;
-        }
-
-        .navbar-gradient {
-            background: var(--gradient-primary);
-            box-shadow: 0 4px 20px rgba(67, 97, 238, 0.15);
-        }
-
-        /* Main Container */
-        .main-container {
-            padding: 20px;
-            margin-top: 20px;
-        }
-
-        @media (max-width: 768px) {
-            .main-container {
-                padding: 15px;
-                margin-top: 10px;
-            }
-        }
-
-        /* Header Section */
-        .page-header {
-            background: white;
-            border-radius: 16px;
-            padding: 25px 30px;
-            margin-bottom: 30px;
-            box-shadow: var(--card-shadow);
-            border-left: 5px solid var(--primary-color);
-        }
-
-        .page-header h1 {
-            color: #2b2d42;
-            font-size: 1.8rem;
-            margin-bottom: 8px;
-        }
-
-        .page-header p {
-            color: #6c757d;
-            font-size: 0.95rem;
-        }
-
-        /* Floating Action Button */
-        .fab {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: var(--gradient-primary);
-            color: white;
-            border: none;
-            box-shadow: 0 8px 25px rgba(67, 97, 238, 0.3);
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            transition: var(--transition);
-        }
-
-        .fab:hover {
-            transform: translateY(-5px) scale(1.05);
-            box-shadow: 0 12px 30px rgba(67, 97, 238, 0.4);
-        }
-
-        @media (max-width: 768px) {
-            .fab {
-                bottom: 20px;
-                right: 20px;
-                width: 56px;
-                height: 56px;
-            }
-        }
-
-        /* Stats Cards */
-        .stats-card {
-            background: white;
-            border-radius: 16px;
-            padding: 25px;
-            height: 100%;
-            box-shadow: var(--card-shadow);
-            transition: var(--transition);
-            border-top: 4px solid transparent;
-            margin-bottom: 20px;
-        }
-
-        .stats-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--card-shadow-hover);
-        }
-
-        .stats-card.total {
-            border-top-color: var(--primary-color);
-        }
-
-        .stats-card.active {
-            border-top-color: var(--success-color);
-        }
-
-        .stats-card.upcoming {
-            border-top-color: var(--info-color);
-        }
-
-        .stats-card.completed {
-            border-top-color: var(--warning-color);
-        }
-
-        .stats-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            margin-bottom: 20px;
-        }
-
-        .stats-card.total .stats-icon {
-            background: rgba(67, 97, 238, 0.1);
-            color: var(--primary-color);
-        }
-
-        .stats-card.active .stats-icon {
-            background: rgba(76, 201, 240, 0.1);
-            color: var(--success-color);
-        }
-
-        .stats-card.upcoming .stats-icon {
-            background: rgba(114, 9, 183, 0.1);
-            color: var(--info-color);
-        }
-
-        .stats-card.completed .stats-icon {
-            background: rgba(247, 37, 133, 0.1);
-            color: var(--warning-color);
-        }
-
-        .stats-number {
-            font-size: 2.2rem;
-            font-weight: 700;
-            margin-bottom: 5px;
-            line-height: 1;
-        }
-
-        .stats-card.total .stats-number {
-            color: var(--primary-color);
-        }
-
-        .stats-card.active .stats-number {
-            color: var(--success-color);
-        }
-
-        .stats-card.upcoming .stats-number {
-            color: var(--info-color);
-        }
-
-        .stats-card.completed .stats-number {
-            color: var(--warning-color);
-        }
-
-        .stats-label {
-            font-size: 0.9rem;
-            color: #6c757d;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: 500;
-        }
-
-        /* Current Session Banner */
-        .current-session-banner {
-            background: var(--gradient-success);
-            border-radius: 16px;
-            padding: 25px;
-            color: white;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(76, 201, 240, 0.2);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .current-session-banner::before {
-            content: '';
-            position: absolute;
-            top: -50px;
-            right: -50px;
-            width: 150px;
-            height: 150px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-        }
-
-        .current-session-banner::after {
-            content: '';
-            position: absolute;
-            bottom: -30px;
-            right: 30px;
-            width: 100px;
-            height: 100px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 50%;
-        }
-
-        .current-badge {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 6px 15px;
-            border-radius: 50px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            display: inline-block;
-            margin-bottom: 15px;
-        }
-
-        .session-dates {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            padding: 12px 15px;
-            margin-top: 15px;
-            font-size: 0.9rem;
-        }
-
-        /* Sessions Table Card */
-        .table-card {
-            background: white;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: var(--card-shadow);
-            margin-bottom: 30px;
-        }
-
-        .table-header {
-            background: #f8f9fa;
-            padding: 20px 25px;
-            border-bottom: 1px solid #e9ecef;
-        }
-
-        .table-header h5 {
-            margin: 0;
-            color: #2b2d42;
-            font-weight: 600;
-        }
-
-        .search-box {
-            position: relative;
-            max-width: 300px;
-        }
-
-        .search-box input {
-            border-radius: 10px;
-            padding-left: 40px;
-            border: 1px solid #e0e0e0;
-            font-size: 0.9rem;
-        }
-
-        .search-box i {
-            position: absolute;
-            left: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #adb5bd;
-        }
-
-        /* Table Styling */
-        .table-responsive {
-            padding: 0 15px;
-        }
-
-        .table {
-            margin-bottom: 0;
-        }
-
-        .table thead th {
-            border-bottom: 2px solid #e9ecef;
-            border-top: 0;
-            font-weight: 600;
-            color: #495057;
-            text-transform: uppercase;
-            font-size: 0.8rem;
-            letter-spacing: 0.5px;
-            padding: 15px 10px;
-        }
-
-        .table tbody tr {
-            border-bottom: 1px solid #f1f3f5;
-            transition: var(--transition);
-        }
-
-        .table tbody tr:hover {
-            background-color: rgba(67, 97, 238, 0.03);
-        }
-
-        .table tbody tr.current-row {
-            background-color: rgba(76, 201, 240, 0.08);
-            border-left: 3px solid var(--success-color);
-        }
-
-        .table tbody td {
-            padding: 15px 10px;
-            vertical-align: middle;
-            font-size: 0.9rem;
-        }
-
-        /* Status Badges */
-        .status-badge {
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            letter-spacing: 0.3px;
-        }
-
-        .badge-active {
-            background-color: rgba(76, 201, 240, 0.15);
-            color: var(--success-color);
-        }
-
-        .badge-upcoming {
-            background-color: rgba(114, 9, 183, 0.15);
-            color: var(--info-color);
-        }
-
-        .badge-completed {
-            background-color: rgba(247, 37, 133, 0.15);
-            color: var(--warning-color);
-        }
-
-        .badge-cancelled {
-            background-color: rgba(108, 117, 125, 0.15);
-            color: #6c757d;
-        }
-
-        .badge-current {
-            background: var(--gradient-success);
-            color: white;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        /* Action Buttons */
-        .action-btns {
-            display: flex;
-            gap: 8px;
-        }
-
-        .btn-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-            border: none;
-            transition: var(--transition);
-        }
-
-        .btn-edit {
-            background: rgba(255, 193, 7, 0.15);
-            color: #ffc107;
-        }
-
-        .btn-edit:hover {
-            background: #ffc107;
-            color: white;
-            transform: translateY(-2px);
-        }
-
-        .btn-delete {
-            background: rgba(220, 53, 69, 0.15);
-            color: #dc3545;
-        }
-
-        .btn-delete:hover {
-            background: #dc3545;
-            color: white;
-            transform: translateY(-2px);
-        }
-
-        .btn-set-current {
-            background: rgba(67, 97, 238, 0.15);
-            color: var(--primary-color);
-            border-radius: 6px;
-            padding: 6px 12px;
-            font-size: 0.8rem;
-            font-weight: 500;
-            border: none;
-            transition: var(--transition);
-        }
-
-        .btn-set-current:hover {
-            background: var(--primary-color);
-            color: white;
-            transform: translateY(-2px);
-        }
-
-        /* Modal Styling */
-        .modal-content {
-            border-radius: 16px;
-            border: none;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-        }
-
-        .modal-header {
-            background: var(--gradient-primary);
-            color: white;
-            border-radius: 16px 16px 0 0;
-            padding: 20px 30px;
-            border-bottom: none;
-        }
-
-        .modal-header .btn-close {
-            filter: brightness(0) invert(1);
-            opacity: 0.8;
-        }
-
-        .modal-body {
-            padding: 25px 30px;
-        }
-
-        .modal-footer {
-            padding: 20px 30px;
-            border-top: 1px solid #e9ecef;
-        }
-
-        .form-label {
-            font-weight: 500;
-            color: #495057;
-            margin-bottom: 8px;
-            font-size: 0.9rem;
-        }
-
-        .form-control, .form-select {
-            border-radius: 10px;
-            padding: 10px 15px;
-            border: 1px solid #e0e0e0;
-            font-size: 0.95rem;
-            transition: var(--transition);
-        }
-
-        .form-control:focus, .form-select:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-        }
-
-        .form-check-input:checked {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-
-        .form-check-label {
-            font-size: 0.9rem;
-        }
-
-        /* Alert Styling */
-        .alert {
-            border-radius: 12px;
-            border: none;
-            padding: 15px 20px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-        }
-
-        .alert-success {
-            background-color: rgba(76, 201, 240, 0.15);
-            color: var(--success-color);
-            border-left: 4px solid var(--success-color);
-        }
-
-        .alert-danger {
-            background-color: rgba(220, 53, 69, 0.15);
-            color: #dc3545;
-            border-left: 4px solid #dc3545;
-        }
-
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #6c757d;
-        }
-
-        .empty-state i {
-            font-size: 4rem;
-            margin-bottom: 20px;
-            opacity: 0.3;
-        }
-
-        .empty-state h4 {
-            font-size: 1.3rem;
-            margin-bottom: 10px;
-            color: #495057;
-        }
-
-        .empty-state p {
-            max-width: 400px;
-            margin: 0 auto 25px;
-        }
-
-        /* Mobile Responsive Adjustments */
-        @media (max-width: 992px) {
-            .stats-number {
-                font-size: 1.8rem;
-            }
-            
-            .page-header {
-                padding: 20px;
-            }
-            
-            .table-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 15px;
-            }
-            
-            .search-box {
-                max-width: 100%;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .stats-card {
-                padding: 20px;
-            }
-            
-            .stats-number {
-                font-size: 1.6rem;
-            }
-            
-            .current-session-banner {
-                padding: 20px;
-            }
-            
-            .modal-body, .modal-footer {
-                padding: 20px;
-            }
-            
-            .action-btns {
-                flex-wrap: wrap;
-            }
-            
-            .table thead {
-                display: none;
-            }
-            
-            .table tbody tr {
-                display: block;
-                margin-bottom: 20px;
-                border: 1px solid #e9ecef;
-                border-radius: 12px;
-                padding: 15px;
-            }
-            
-            .table tbody td {
-                display: block;
-                padding: 8px 0;
-                border: none;
-            }
-            
-            .table tbody td:before {
-                content: attr(data-label);
-                font-weight: 600;
-                color: #495057;
-                display: block;
-                font-size: 0.8rem;
-                margin-bottom: 3px;
-            }
-            
-            .table tbody td .action-btns {
-                justify-content: flex-start;
-                margin-top: 10px;
-            }
-        }
-
-        @media (max-width: 576px) {
-            .main-container {
-                padding: 10px;
-            }
-            
-            .page-header h1 {
-                font-size: 1.5rem;
-            }
-            
-            .stats-icon {
-                width: 50px;
-                height: 50px;
-                font-size: 1.3rem;
-            }
-            
-            .modal-dialog {
-                margin: 10px;
-            }
-        }
-    </style>
 </head>
 <body>
-    <!-- Navigation (You can include your actual navbar here) -->
-    <nav class="navbar navbar-gradient navbar-expand-lg navbar-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="#">
-                <i class="fas fa-graduation-cap me-2"></i>School System
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="#"><i class="fas fa-calendar-alt me-1"></i> Sessions</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="index.php"><i class="fas fa-arrow-left me-1"></i> BAck to Dashboard</a>
-                    </li>
-                    <!-- <li class="nav-item">
-                        <a class="nav-link" href="logout.php"><i class="fas fa-sign-out-alt me-1"></i> Logout</a>
-                    </li> -->
-                </ul>
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <!-- Logo and School Name -->
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Principal Portal</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Principal Info and Logout -->
+            <div class="header-right">
+                <div class="principal-info">
+                    <p class="principal-label">Principal</p>
+                    <span class="principal-name"><?php echo htmlspecialchars($principal_name); ?></span>
+                </div>
+                <a href="logout.php" class="btn-logout">
+                    <span class="logout-icon">🚪</span>
+                    <span>Logout</span>
+                </a>
             </div>
         </div>
-    </nav>
+    </header>
+
+    <!-- Main Container -->
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <?php include '../includes/admin_sidebar.php'; ?>
+
+        <!-- Main Content -->
+        <main class="main-content">
 
     <!-- Main Content -->
     <div class="container-fluid main-container">
         <!-- Page Header -->
-        <div class="page-header">
-            <div class="row align-items-center">
-                <div class="col-md-8">
-                    <h1><i class="fas fa-calendar-alt me-2"></i>Academic Session Management</h1>
-                    <p class="mb-0">Manage all academic sessions, set current sessions, and track academic periods</p>
-                </div>
-                <div class="col-md-4 text-md-end">
-                    <button type="button" class="btn btn-primary px-4 py-2" data-bs-toggle="modal" data-bs-target="#addSessionModal">
-                        <i class="fas fa-plus me-2"></i> New Session
-                    </button>
+        <div class="content-header">
+            <div class="welcome-section">
+                <h2>Academic Session Management</h2>
+                <p>Manage all academic sessions, set current sessions, and track academic periods</p>
+            </div>
+            <div class="header-stats">
+                <div class="quick-stat">
+                    <span class="quick-stat-value"><?php echo count($sessions); ?></span>
+                    <span class="quick-stat-label">Sessions</span>
                 </div>
             </div>
         </div>
@@ -806,47 +190,66 @@ $current_session = $pdo->query("SELECT * FROM sessions WHERE is_current = 1 LIMI
         <?php endif; ?>
 
         <!-- Statistics Cards -->
-        <div class="row g-4 mb-4">
-            <div class="col-md-3 col-sm-6">
-                <div class="stats-card total">
-                    <div class="stats-icon">
-                        <i class="fas fa-calendar"></i>
+        <div class="dashboard-cards">
+            <div class="card card-gradient-1">
+                <div class="card-icon-wrapper">
+                    <div class="card-icon">📅</div>
+                </div>
+                <div class="card-content">
+                    <h3>Total Sessions</h3>
+                    <p class="card-value"><?= count($sessions) ?></p>
+                    <div class="card-footer">
+                        <span class="card-badge">All Time</span>
+                        <a href="#sessionsTable" class="card-link">View All →</a>
                     </div>
-                    <div class="stats-number"><?= count($sessions) ?></div>
-                    <div class="stats-label">Total Sessions</div>
                 </div>
             </div>
-            <div class="col-md-3 col-sm-6">
-                <div class="stats-card active">
-                    <div class="stats-icon">
-                        <i class="fas fa-play-circle"></i>
-                    </div>
-                    <div class="stats-number"><?= array_reduce($sessions, function($carry, $item) {
+
+            <div class="card card-gradient-2">
+                <div class="card-icon-wrapper">
+                    <div class="card-icon">▶️</div>
+                </div>
+                <div class="card-content">
+                    <h3>Active Sessions</h3>
+                    <p class="card-value"><?= array_reduce($sessions, function($carry, $item) {
                         return $carry + ($item['status'] == 'active' ? 1 : 0);
-                    }, 0) ?></div>
-                    <div class="stats-label">Active Sessions</div>
+                    }, 0) ?></p>
+                    <div class="card-footer">
+                        <span class="card-badge">Currently Running</span>
+                        <a href="#sessionsTable" class="card-link">Manage →</a>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-3 col-sm-6">
-                <div class="stats-card upcoming">
-                    <div class="stats-icon">
-                        <i class="fas fa-clock"></i>
-                    </div>
-                    <div class="stats-number"><?= array_reduce($sessions, function($carry, $item) {
+
+            <div class="card card-gradient-3">
+                <div class="card-icon-wrapper">
+                    <div class="card-icon">⏰</div>
+                </div>
+                <div class="card-content">
+                    <h3>Upcoming Sessions</h3>
+                    <p class="card-value"><?= array_reduce($sessions, function($carry, $item) {
                         return $carry + ($item['status'] == 'upcoming' ? 1 : 0);
-                    }, 0) ?></div>
-                    <div class="stats-label">Upcoming Sessions</div>
+                    }, 0) ?></p>
+                    <div class="card-footer">
+                        <span class="card-badge">Scheduled</span>
+                        <a href="#sessionsTable" class="card-link">Prepare →</a>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-3 col-sm-6">
-                <div class="stats-card completed">
-                    <div class="stats-icon">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                    <div class="stats-number"><?= array_reduce($sessions, function($carry, $item) {
+
+            <div class="card card-gradient-4">
+                <div class="card-icon-wrapper">
+                    <div class="card-icon">✅</div>
+                </div>
+                <div class="card-content">
+                    <h3>Completed Sessions</h3>
+                    <p class="card-value"><?= array_reduce($sessions, function($carry, $item) {
                         return $carry + ($item['status'] == 'completed' ? 1 : 0);
-                    }, 0) ?></div>
-                    <div class="stats-label">Completed Sessions</div>
+                    }, 0) ?></p>
+                    <div class="card-footer">
+                        <span class="card-badge">Finished</span>
+                        <a href="#sessionsTable" class="card-link">Review →</a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -871,7 +274,7 @@ $current_session = $pdo->query("SELECT * FROM sessions WHERE is_current = 1 LIMI
                         </button>
                     </div>
                 <?php else: ?>
-                    <table class="table table-hover" id="sessionsTable">
+                    <table class="students-table" id="sessionsTable">
                         <thead>
                             <tr>
                                 <th>Session Name</th>
@@ -884,7 +287,7 @@ $current_session = $pdo->query("SELECT * FROM sessions WHERE is_current = 1 LIMI
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($sessions as $session): 
+                            <?php foreach ($sessions as $session):
                                 $isCurrent = $session['is_current'];
                             ?>
                             <tr class="<?= $isCurrent ? 'current-row' : '' ?>" data-search="<?= strtolower(htmlspecialchars($session['session_name'] . ' ' . $session['academic_year'])) ?>">
@@ -895,7 +298,7 @@ $current_session = $pdo->query("SELECT * FROM sessions WHERE is_current = 1 LIMI
                                 <td data-label="Duration">
                                     <div class="session-dates small">
                                         <i class="far fa-calendar me-1"></i>
-                                        <?= date('M d, Y', strtotime($session['start_date'])) ?> - 
+                                        <?= date('M d, Y', strtotime($session['start_date'])) ?> -
                                         <?= date('M d, Y', strtotime($session['end_date'])) ?>
                                     </div>
                                 </td>
@@ -903,23 +306,23 @@ $current_session = $pdo->query("SELECT * FROM sessions WHERE is_current = 1 LIMI
                                     <?php
                                     $status_class = '';
                                     switch ($session['status']) {
-                                        case 'active': $status_class = 'badge-active'; break;
-                                        case 'upcoming': $status_class = 'badge-upcoming'; break;
-                                        case 'completed': $status_class = 'badge-completed'; break;
-                                        case 'cancelled': $status_class = 'badge-cancelled'; break;
+                                        case 'active': $status_class = 'badge-approved'; break;
+                                        case 'upcoming': $status_class = 'badge-pending'; break;
+                                        case 'completed': $status_class = 'badge-success'; break;
+                                        case 'cancelled': $status_class = 'badge-danger'; break;
                                     }
                                     ?>
-                                    <span class="status-badge <?= $status_class ?>">
-                                        <i class="fas fa-circle me-1 small"></i><?= ucfirst($session['status']) ?>
+                                    <span class="badge <?= $status_class ?>">
+                                        <?= ucfirst($session['status']) ?>
                                     </span>
                                 </td>
                                 <td data-label="Current">
                                     <?php if ($isCurrent): ?>
-                                        <span class="badge-current"><i class="fas fa-check me-1"></i> Current</span>
+                                        <span class="badge badge-success"><i class="fas fa-check me-1"></i> Current</span>
                                     <?php else: ?>
                                         <form method="POST" class="d-inline">
                                             <input type="hidden" name="session_id" value="<?= $session['id'] ?>">
-                                            <button type="submit" name="set_current" class="btn-set-current">
+                                            <button type="submit" name="set_current" class="btn btn-primary btn-small">
                                                 <i class="fas fa-exchange-alt me-1"></i> Set Current
                                             </button>
                                         </form>
@@ -934,8 +337,8 @@ $current_session = $pdo->query("SELECT * FROM sessions WHERE is_current = 1 LIMI
                                     </div>
                                 </td>
                                 <td data-label="Actions">
-                                    <div class="action-btns">
-                                        <button class="btn-icon btn-edit" data-bs-toggle="modal" data-bs-target="#editSessionModal" 
+                                    <div class="action-buttons">
+                                        <button class="btn btn-primary btn-small" data-bs-toggle="modal" data-bs-target="#editSessionModal"
                                                 data-id="<?= $session['id'] ?>"
                                                 data-name="<?= htmlspecialchars($session['session_name']) ?>"
                                                 data-year="<?= htmlspecialchars($session['academic_year']) ?>"
@@ -945,7 +348,7 @@ $current_session = $pdo->query("SELECT * FROM sessions WHERE is_current = 1 LIMI
                                                 data-current="<?= $session['is_current'] ?>">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <button class="btn-icon btn-delete" data-bs-toggle="modal" data-bs-target="#deleteSessionModal" 
+                                        <button class="btn btn-danger btn-small" data-bs-toggle="modal" data-bs-target="#deleteSessionModal"
                                                 data-id="<?= $session['id'] ?>"
                                                 data-name="<?= htmlspecialchars($session['session_name']) ?>">
                                             <i class="fas fa-trash"></i>
@@ -966,6 +369,46 @@ $current_session = $pdo->query("SELECT * FROM sessions WHERE is_current = 1 LIMI
         </button>
     </div>
 
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About SahabFormMaster</h4>
+                    <p>A comprehensive school management system designed for academic excellence and efficient administration.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="manage-school.php">School Settings</a></li>
+                        <li><a href="manage_user.php">User Management</a></li>
+                        <li><a href="#">Support & Help</a></li>
+                        <li><a href="#">Documentation</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact Information</h4>
+                    <p>📧 admin@sahabformmaster.com</p>
+                    <p>📱 +234 808 683 5607</p>
+                    <p>🌐 www.sahabformmaster.com</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="#">Privacy Policy</a>
+                    <span>•</span>
+                    <a href="#">Terms of Service</a>
+                    <span>•</span>
+                    <span>Version 2.0</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
     <!-- Modals (Same as before but with new styling) -->
     <!-- Add Session Modal -->
     <div class="modal fade" id="addSessionModal" tabindex="-1" aria-labelledby="addSessionModalLabel" aria-hidden="true">
@@ -979,12 +422,12 @@ $current_session = $pdo->query("SELECT * FROM sessions WHERE is_current = 1 LIMI
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="session_name" class="form-label">Session Name *</label>
-                            <input type="text" class="form-control" id="session_name" name="session_name" required 
+                            <input type="text" class="form-control" id="session_name" name="session_name" required
                                    placeholder="e.g., First Term 2025/2026">
                         </div>
                         <div class="mb-3">
                             <label for="academic_year" class="form-label">Academic Year *</label>
-                            <input type="text" class="form-control" id="academic_year" name="academic_year" required 
+                            <input type="text" class="form-control" id="academic_year" name="academic_year" required
                                    placeholder="e.g., 2025/2026">
                         </div>
                         <div class="row g-3 mb-3">
@@ -1014,7 +457,7 @@ $current_session = $pdo->query("SELECT * FROM sessions WHERE is_current = 1 LIMI
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                         <button type="submit" name="add_session" class="btn btn-primary px-4">
                             <i class="fas fa-save me-2"></i> Create Session
                         </button>
@@ -1070,7 +513,7 @@ $current_session = $pdo->query("SELECT * FROM sessions WHERE is_current = 1 LIMI
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                         <button type="submit" name="edit_session" class="btn btn-primary px-4">
                             <i class="fas fa-save me-2"></i> Update Session
                         </button>
@@ -1102,7 +545,7 @@ $current_session = $pdo->query("SELECT * FROM sessions WHERE is_current = 1 LIMI
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                         <button type="submit" name="delete_session" class="btn btn-danger px-4">
                             <i class="fas fa-trash me-2"></i> Delete Session
                         </button>
@@ -1115,37 +558,85 @@ $current_session = $pdo->query("SELECT * FROM sessions WHERE is_current = 1 LIMI
     <!-- Bootstrap & jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    
+
+    <script>
+        // Mobile Menu Toggle
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarClose = document.getElementById('sidebarClose');
+
+        mobileMenuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+            mobileMenuToggle.classList.toggle('active');
+        });
+
+        sidebarClose.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            mobileMenuToggle.classList.remove('active');
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+                    sidebar.classList.remove('active');
+                    mobileMenuToggle.classList.remove('active');
+                }
+            }
+        });
+
+        // Smooth scroll for internal links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Add active class on scroll
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('.dashboard-header');
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+    </script>
+
     <script>
     $(document).ready(function() {
         // Edit Modal Handler
         $('#editSessionModal').on('show.bs.modal', function (event) {
             var button = $(event.relatedTarget);
             var modal = $(this);
-            
+
             modal.find('#edit_session_id').val(button.data('id'));
             modal.find('#edit_session_name').val(button.data('name'));
             modal.find('#edit_academic_year').val(button.data('year'));
             modal.find('#edit_start_date').val(button.data('start'));
             modal.find('#edit_end_date').val(button.data('end'));
             modal.find('#edit_status').val(button.data('status'));
-            
+
             if (button.data('current') == 1) {
                 modal.find('#edit_is_current').prop('checked', true);
             } else {
                 modal.find('#edit_is_current').prop('checked', false);
             }
         });
-        
+
         // Delete Modal Handler
         $('#deleteSessionModal').on('show.bs.modal', function (event) {
             var button = $(event.relatedTarget);
             var modal = $(this);
-            
+
             modal.find('#delete_session_id').val(button.data('id'));
             modal.find('#delete_session_name').text(button.data('name'));
         });
-        
+
         // Search functionality
         $('#sessionSearch').on('keyup', function() {
             var value = $(this).val().toLowerCase();
@@ -1153,11 +644,11 @@ $current_session = $pdo->query("SELECT * FROM sessions WHERE is_current = 1 LIMI
                 $(this).toggle($(this).data('search').indexOf(value) > -1);
             });
         });
-        
+
         // Auto-fill today's date for new session
         var today = new Date().toISOString().split('T')[0];
         $('#start_date').val(today);
-        
+
         // Set end date to 90 days from start
         $('#start_date').change(function() {
             var startDate = new Date($(this).val());
@@ -1165,7 +656,7 @@ $current_session = $pdo->query("SELECT * FROM sessions WHERE is_current = 1 LIMI
             endDate.setDate(endDate.getDate() + 90);
             $('#end_date').val(endDate.toISOString().split('T')[0]);
         });
-        
+
         // Auto-format academic year
         $('#academic_year, #edit_academic_year').on('blur', function() {
             var value = $(this).val();
@@ -1174,19 +665,19 @@ $current_session = $pdo->query("SELECT * FROM sessions WHERE is_current = 1 LIMI
                 $(this).val(value + '/' + nextYear);
             }
         });
-        
+
         // Date validation
         $('form').on('submit', function() {
             var start = new Date($('#start_date').val());
             var end = new Date($('#end_date').val());
-            
+
             if (end <= start) {
                 alert('End date must be after start date!');
                 return false;
             }
             return true;
         });
-        
+
         // Add data-label attributes for mobile table
         if ($(window).width() < 768) {
             $('#sessionsTable thead th').each(function(i) {
@@ -1194,7 +685,7 @@ $current_session = $pdo->query("SELECT * FROM sessions WHERE is_current = 1 LIMI
                 $('#sessionsTable tbody td:nth-child(' + (i + 1) + ')').attr('data-label', label);
             });
         }
-        
+
         // Re-apply data-labels on window resize
         $(window).resize(function() {
             if ($(window).width() < 768) {
@@ -1206,5 +697,8 @@ $current_session = $pdo->query("SELECT * FROM sessions WHERE is_current = 1 LIMI
         });
     });
     </script>
+
+    <?php include '../includes/floating-button.php'; ?>
+
 </body>
 </html>

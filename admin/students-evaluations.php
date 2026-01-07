@@ -2,7 +2,6 @@
 session_start();
 require_once '../config/db.php';
 
-
 // Check if principal is logged in
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'principal') {
     header("Location: ../index.php");
@@ -84,150 +83,277 @@ $students = $pdo->query("SELECT id, full_name, class_id FROM students ORDER BY c
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Evaluations - Principal</title>
+    <title>Student Evaluations - Principal Dashboard</title>
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="css/style.css" rel="stylesheet">
     <style>
-        :root {
-            --primary-color: #2c3e50;
-            --secondary-color: #3498db;
-            --accent-color: #e74c3c;
-            --success-color: #27ae60;
-            --light-bg: #f8f9fa;
+        /* Modal Fix for Dashboard Layout */
+        .modal-backdrop {
+            z-index: 1060 !important;
         }
-        
-        body {
-            background-color: #f5f7fa;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+        .modal {
+            z-index: 1070 !important;
         }
-        
-        .card {
-            border-radius: 15px;
-            border: none;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-            transition: transform 0.3s;
-            margin-bottom: 20px;
+
+        .modal-dialog {
+            margin-top: 10vh;
         }
-        
-        .card:hover {
-            transform: translateY(-5px);
+
+        /* Ensure modals appear above dashboard elements */
+        .dashboard-header,
+        .sidebar,
+        .mobile-menu-toggle {
+            z-index: 1050 !important;
         }
-        
-        .card-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            border-radius: 15px 15px 0 0 !important;
-            padding: 1.2rem;
+
+        /* Fix modal close button positioning */
+        .modal-header .btn-close {
+            margin: 0;
         }
-        
-        .rating-badge {
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-weight: 600;
-            font-size: 0.85rem;
-        }
-        
-        .excellent { background-color: #d4edda; color: #155724; }
-        .very-good { background-color: #cce5ff; color: #004085; }
-        .good { background-color: #fff3cd; color: #856404; }
-        .needs-improvement { background-color: #f8d7da; color: #721c24; }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, var(--secondary-color), #2980b9);
-            border: none;
-            padding: 10px 25px;
-            border-radius: 8px;
-            font-weight: 600;
-        }
-        
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #2980b9, var(--secondary-color));
-            transform: scale(1.05);
-        }
-        
-        .modal-content {
-            border-radius: 15px;
-            border: none;
-        }
-        
-        .table th {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-        }
-        
-        .table td {
-            vertical-align: middle;
-        }
-        
-        .select2-container--bootstrap5 .select2-selection {
-            border-radius: 8px;
-            padding: 8px;
-        }
-        
+
+        /* Ensure modal content is properly positioned */
         @media (max-width: 768px) {
-            .table-responsive {
-                font-size: 0.9rem;
+            .modal-dialog {
+                margin: 5vh auto;
+                max-width: 95vw;
             }
-            
-            .card-header h5 {
-                font-size: 1.1rem;
+
+            .modal-content {
+                border-radius: 10px;
             }
         }
     </style>
 </head>
 <body>
-    
-    <div class="container-fluid mt-4">
-        <div class="row">
-            <div class="col-lg-12">
-                <!-- Success Message -->
-                <?php if (isset($_SESSION['success'])): ?>
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        <?= $_SESSION['success']; ?>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <!-- Logo and School Name -->
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Principal Portal</p>
                     </div>
-                    <?php unset($_SESSION['success']); ?>
-                <?php endif; ?>
-                
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Student Evaluations Management</h5>
-                        <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#addEvaluationModal">
-                            <i class="fas fa-plus me-2"></i>Add New Evaluation
-                        </button>
+                </div>
+            </div>
+
+            <!-- Principal Info and Logout -->
+            <div class="header-right">
+                <div class="principal-info">
+                    <p class="principal-label">Principal</p>
+                    <span class="principal-name"><?php echo htmlspecialchars($principal_name); ?></span>
+                </div>
+                <a href="logout.php" class="btn-logout">
+                    <span class="logout-icon">🚪</span>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3>Navigation</h3>
+                <button class="sidebar-close" id="sidebarClose">✕</button>
+            </div>
+            <nav class="sidebar-nav">
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="index.php" class="nav-link">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Dashboard</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a href="schoolnews.php" class="nav-link">
+                            <span class="nav-icon">📰</span>
+                            <span class="nav-text">School News</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="school_diary.php" class="nav-link">
+                            <span class="nav-icon">📔</span>
+                            <span class="nav-text">School Diary</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="students.php" class="nav-link">
+                            <span class="nav-icon">👥</span>
+                            <span class="nav-text">Students Registration</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="students-evaluations.php" class="nav-link active">
+                            <span class="nav-icon">⭐</span>
+                            <span class="nav-text">Students Evaluations</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_class.php" class="nav-link">
+                            <span class="nav-icon">🎓</span>
+                            <span class="nav-text">Manage Classes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_results.php" class="nav-link">
+                            <span class="nav-icon">📈</span>
+                            <span class="nav-text">Manage Results</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="lesson-plans.php" class="nav-link">
+                            <span class="nav-icon">📝</span>
+                            <span class="nav-text">Lesson Plans</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_curriculum.php" class="nav-link">
+                            <span class="nav-icon">📚</span>
+                            <span class="nav-text">Curriculum</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="content_coverage.php" class="nav-link">
+                            <span class="nav-icon">✅</span>
+                            <span class="nav-text">Content Coverage</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage-school.php" class="nav-link">
+                            <span class="nav-icon">🏫</span>
+                            <span class="nav-text">Manage School</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="subjects.php" class="nav-link">
+                            <span class="nav-icon">📖</span>
+                            <span class="nav-text">Subjects</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_user.php" class="nav-link">
+                            <span class="nav-icon">👤</span>
+                            <span class="nav-text">Manage Users</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="visitors.php" class="nav-link">
+                            <span class="nav-icon">🚶</span>
+                            <span class="nav-text">Visitors</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_timebook.php" class="nav-link">
+                            <span class="nav-icon">⏰</span>
+                            <span class="nav-text">Teachers Time Book</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="permissions.php" class="nav-link">
+                            <span class="nav-icon">🔐</span>
+                            <span class="nav-text">Permissions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_attendance.php" class="nav-link">
+                            <span class="nav-icon">📋</span>
+                            <span class="nav-text">Attendance Register</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="payments_dashboard.php" class="nav-link">
+                            <span class="nav-icon">💰</span>
+                            <span class="nav-text">School Fees</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="sessions.php" class="nav-link">
+                            <span class="nav-icon">📅</span>
+                            <span class="nav-text">School Sessions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="school_calendar.php" class="nav-link">
+                            <span class="nav-icon">🗓️</span>
+                            <span class="nav-text">School Calendar</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="applicants.php" class="nav-link">
+                            <span class="nav-icon">📄</span>
+                            <span class="nav-text">Applicants</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-header">
+                <div class="welcome-section">
+                    <h2>Student Evaluations Management</h2>
+                    <p>Monitor and manage student performance evaluations</p>
+                </div>
+                <div class="header-stats">
+                    <div class="quick-stat">
+                        <span class="quick-stat-value"><?php echo number_format(count($evaluations)); ?></span>
+                        <span class="quick-stat-label">Total Evaluations</span>
                     </div>
-                    
-                    <div class="card-body">
-                        <!-- Evaluation Summary -->
-                        <div class="row mb-4">
-                            <div class="col-md-3 col-sm-6 mb-3">
-                                <div class="card bg-primary text-white">
-                                    <div class="card-body text-center">
-                                        <h6>Total Evaluations</h6>
-                                        <h3><?= count($evaluations); ?></h3>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3 col-sm-6 mb-3">
-                                <div class="card bg-success text-white">
-                                    <div class="card-body text-center">
-                                        <h6>Excellent Ratings</h6>
-                                        <h3>
-                                            <?= array_reduce($evaluations, function($carry, $item) {
-                                                return $carry + (($item['academic'] === 'excellent' || 
-                                                                $item['non_academic'] === 'excellent') ? 1 : 0);
-                                            }, 0); ?>
-                                        </h3>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="quick-stat">
+                        <span class="quick-stat-value">
+                            <?php echo array_reduce($evaluations, function($carry, $item) {
+                                return $carry + (($item['academic'] === 'excellent' ||
+                                                $item['non_academic'] === 'excellent') ? 1 : 0);
+                            }, 0); ?>
+                        </span>
+                        <span class="quick-stat-label">Excellent Ratings</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Success Message -->
+            <?php if (isset($_SESSION['success'])): ?>
+                <div class="alert alert-success alert-dismissible fade show mb-4" role="alert" style="border-radius: 10px; border: none; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                    <i class="fas fa-check-circle me-2"></i><?php echo $_SESSION['success']; ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                <?php unset($_SESSION['success']); ?>
+            <?php endif; ?>
+
+            <!-- Evaluations Management Section -->
+            <div class="dashboard-cards">
+                <div class="card" style="grid-column: span 2;">
+                    <div class="card-header" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; border-radius: 15px 15px 0 0; padding: 1.5rem;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Student Evaluations</h5>
+                            <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#addEvaluationModal" style="border-radius: 8px;">
+                                <i class="fas fa-plus me-2"></i>Add New Evaluation
+                            </button>
                         </div>
-                        
+                    </div>
+
+                    <div class="card-body" style="padding: 2rem;">
                         <!-- Evaluations Table -->
                         <div class="table-responsive">
-                            <table class="table table-hover" id="evaluationsTable">
+                            <table class="table table-hover students-table" id="evaluationsTable">
                                 <thead>
                                     <tr>
                                         <th>Student</th>
@@ -245,147 +371,152 @@ $students = $pdo->query("SELECT id, full_name, class_id FROM students ORDER BY c
                                     <?php foreach ($evaluations as $eval): ?>
                                         <tr>
                                             <td>
-                                                <strong><?= htmlspecialchars($eval['full_name']); ?></strong>
-                                                <br><small class="text-muted">Roll: <?= $eval['admission_no']; ?></small>
+                                                <div class="d-flex flex-column">
+                                                    <strong><?php echo htmlspecialchars($eval['full_name']); ?></strong>
+                                                    <small class="text-muted">Roll: <?php echo $eval['admission_no']; ?></small>
+                                                </div>
                                             </td>
-                                            <td><?= htmlspecialchars($eval['class_name']); ?></td>
+                                            <td><?php echo htmlspecialchars($eval['class_name'] ?? 'N/A'); ?></td>
                                             <td>
-                                                <span class="badge bg-info">Term <?= $eval['term']; ?></span>
-                                                <br><small><?= $eval['year']; ?></small>
+                                                <span class="badge badge-info">Term <?php echo $eval['term']; ?></span>
+                                                <br><small><?php echo $eval['academic_year'] ?? $eval['year']; ?></small>
                                             </td>
-                                            <td><span class="rating-badge <?= $eval['academic']; ?>"><?= ucfirst($eval['academic']); ?></span></td>
-                                            <td><span class="rating-badge <?= $eval['non_academic']; ?>"><?= ucfirst($eval['non_academic']); ?></span></td>
-                                            <td><span class="rating-badge <?= $eval['cognitive']; ?>"><?= ucfirst($eval['cognitive']); ?></span></td>
-                                            <td><span class="rating-badge <?= $eval['psychomotor']; ?>"><?= ucfirst($eval['psychomotor']); ?></span></td>
-                                            <td><span class="rating-badge <?= $eval['affective']; ?>"><?= ucfirst($eval['affective']); ?></span></td>
+                                            <td><span class="badge badge-<?php echo str_replace('-', '', $eval['academic']); ?>"><?php echo ucfirst($eval['academic']); ?></span></td>
+                                            <td><span class="badge badge-<?php echo str_replace('-', '', $eval['non_academic']); ?>"><?php echo ucfirst($eval['non_academic']); ?></span></td>
+                                            <td><span class="badge badge-<?php echo str_replace('-', '', $eval['cognitive']); ?>"><?php echo ucfirst($eval['cognitive']); ?></span></td>
+                                            <td><span class="badge badge-<?php echo str_replace('-', '', $eval['psychomotor']); ?>"><?php echo ucfirst($eval['psychomotor']); ?></span></td>
+                                            <td><span class="badge badge-<?php echo str_replace('-', '', $eval['affective']); ?>"><?php echo ucfirst($eval['affective']); ?></span></td>
                                             <td>
                                                 <div class="btn-group" role="group">
-                                                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#viewModal<?= $eval['id']; ?>">
+                                                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#viewModal<?php echo $eval['id']; ?>" title="View">
                                                         <i class="fas fa-eye"></i>
                                                     </button>
-                                                    <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editModal<?= $eval['id']; ?>">
+                                                    <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editModal<?php echo $eval['id']; ?>" title="Edit">
                                                         <i class="fas fa-edit"></i>
                                                     </button>
-                                                    <a href="?delete_id=<?= $eval['id']; ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure?')">
+                                                    <a href="?delete_id=<?php echo $eval['id']; ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this evaluation?')" title="Delete">
                                                         <i class="fas fa-trash"></i>
                                                     </a>
-                                                    <button class="btn btn-sm btn-outline-success" onclick="printEvaluation(<?= $eval['id']; ?>)">
+                                                    <button class="btn btn-sm btn-outline-success" onclick="printEvaluation(<?php echo $eval['id']; ?>)" title="Print">
                                                         <i class="fas fa-print"></i>
                                                     </button>
                                                 </div>
                                             </td>
                                         </tr>
-                                        
+
                                         <!-- View Modal -->
-                                        <div class="modal fade" id="viewModal<?= $eval['id']; ?>" tabindex="-1">
+                                        <div class="modal fade" id="viewModal<?php echo $eval['id']; ?>" tabindex="-1">
                                             <div class="modal-dialog modal-lg">
                                                 <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title">Evaluation Details</h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                    <div class="modal-header" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white;">
+                                                        <h5 class="modal-title"><i class="fas fa-eye me-2"></i>Evaluation Details</h5>
+                                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                                     </div>
                                                     <div class="modal-body">
                                                         <div class="row">
                                                             <div class="col-md-6">
-                                                                <h6>Student Information</h6>
-                                                                <p><strong>Name:</strong> <?= $eval['first_name'] . ' ' . $eval['last_name']; ?></p>
-                                                                <p><strong>Class:</strong> <?= $eval['class']; ?></p>
-                                                                <p><strong>Term:</strong> <?= $eval['term']; ?> | <strong>Year:</strong> <?= $eval['year']; ?></p>
+                                                                <h6 class="text-primary mb-3"><i class="fas fa-user me-2"></i>Student Information</h6>
+                                                                <p><strong>Name:</strong> <?php echo htmlspecialchars($eval['full_name']); ?></p>
+                                                                <p><strong>Class:</strong> <?php echo htmlspecialchars($eval['class_name'] ?? 'N/A'); ?></p>
+                                                                <p><strong>Term:</strong> <?php echo $eval['term']; ?> | <strong>Year:</strong> <?php echo $eval['academic_year'] ?? $eval['year']; ?></p>
                                                             </div>
                                                             <div class="col-md-6">
-                                                                <h6>Ratings</h6>
-                                                                <p><strong>Academic:</strong> <span class="rating-badge <?= $eval['academic']; ?>"><?= ucfirst($eval['academic']); ?></span></p>
-                                                                <p><strong>Non-Academic:</strong> <span class="rating-badge <?= $eval['non_academic']; ?>"><?= ucfirst($eval['non_academic']); ?></span></p>
-                                                                <p><strong>Cognitive:</strong> <span class="rating-badge <?= $eval['cognitive']; ?>"><?= ucfirst($eval['cognitive']); ?></span></p>
-                                                                <p><strong>Psychomotor:</strong> <span class="rating-badge <?= $eval['psychomotor']; ?>"><?= ucfirst($eval['psychomotor']); ?></span></p>
-                                                                <p><strong>Affective:</strong> <span class="rating-badge <?= $eval['affective']; ?>"><?= ucfirst($eval['affective']); ?></span></p>
+                                                                <h6 class="text-primary mb-3"><i class="fas fa-star me-2"></i>Ratings</h6>
+                                                                <p><strong>Academic:</strong> <span class="badge badge-<?php echo str_replace('-', '', $eval['academic']); ?>"><?php echo ucfirst($eval['academic']); ?></span></p>
+                                                                <p><strong>Non-Academic:</strong> <span class="badge badge-<?php echo str_replace('-', '', $eval['non_academic']); ?>"><?php echo ucfirst($eval['non_academic']); ?></span></p>
+                                                                <p><strong>Cognitive:</strong> <span class="badge badge-<?php echo str_replace('-', '', $eval['cognitive']); ?>"><?php echo ucfirst($eval['cognitive']); ?></span></p>
+                                                                <p><strong>Psychomotor:</strong> <span class="badge badge-<?php echo str_replace('-', '', $eval['psychomotor']); ?>"><?php echo ucfirst($eval['psychomotor']); ?></span></p>
+                                                                <p><strong>Affective:</strong> <span class="badge badge-<?php echo str_replace('-', '', $eval['affective']); ?>"><?php echo ucfirst($eval['affective']); ?></span></p>
                                                             </div>
                                                         </div>
+                                                        <?php if (!empty($eval['comments'])): ?>
                                                         <hr>
-                                                        <h6>Comments</h6>
-                                                        <p><?= nl2br(htmlspecialchars($eval['comments'])); ?></p>
+                                                        <h6 class="text-primary mb-3"><i class="fas fa-comment me-2"></i>Comments</h6>
+                                                        <p><?php echo nl2br(htmlspecialchars($eval['comments'])); ?></p>
+                                                        <?php endif; ?>
                                                     </div>
                                                     <div class="modal-footer">
                                                         <form method="post" class="d-inline">
-                                                            <input type="hidden" name="student_id" value="<?= $eval['student_id']; ?>">
-                                                            <input type="hidden" name="term" value="<?= $eval['term']; ?>">
-                                                            <input type="hidden" name="year" value="<?= $eval['year']; ?>">
+                                                            <input type="hidden" name="student_id" value="<?php echo $eval['student_id']; ?>">
+                                                            <input type="hidden" name="term" value="<?php echo $eval['term']; ?>">
+                                                            <input type="hidden" name="year" value="<?php echo $eval['academic_year'] ?? $eval['year']; ?>">
                                                             <button type="submit" name="export_pdf" class="btn btn-success">
                                                                 <i class="fas fa-file-pdf me-2"></i>Export PDF
                                                             </button>
                                                         </form>
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                        
+
                                         <!-- Edit Modal -->
-                                        <div class="modal fade" id="editModal<?= $eval['id']; ?>" tabindex="-1">
+                                        <div class="modal fade" id="editModal<?php echo $eval['id']; ?>" tabindex="-1">
                                             <div class="modal-dialog modal-lg">
                                                 <div class="modal-content">
                                                     <form method="post">
-                                                        <div class="modal-header">
-                                                            <h5 class="modal-title">Edit Evaluation</h5>
-                                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                        <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
+                                                            <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Edit Evaluation</h5>
+                                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                                         </div>
                                                         <div class="modal-body">
-                                                            <input type="hidden" name="evaluation_id" value="<?= $eval['id']; ?>">
+                                                            <input type="hidden" name="evaluation_id" value="<?php echo $eval['id']; ?>">
                                                             <input type="hidden" name="update_evaluation" value="1">
-                                                            
+
                                                             <div class="row mb-3">
                                                                 <div class="col-md-6">
-                                                                    <label class="form-label">Academic Performance</label>
+                                                                    <label class="form-label fw-bold">Academic Performance</label>
                                                                     <select class="form-select" name="academic" required>
-                                                                        <option value="excellent" <?= $eval['academic'] == 'excellent' ? 'selected' : ''; ?>>Excellent</option>
-                                                                        <option value="very-good" <?= $eval['academic'] == 'very-good' ? 'selected' : ''; ?>>Very Good</option>
-                                                                        <option value="good" <?= $eval['academic'] == 'good' ? 'selected' : ''; ?>>Good</option>
-                                                                        <option value="needs-improvement" <?= $eval['academic'] == 'needs-improvement' ? 'selected' : ''; ?>>Needs Improvement</option>
+                                                                        <option value="excellent" <?php echo ($eval['academic'] == 'excellent' ? 'selected' : ''); ?>>Excellent</option>
+                                                                        <option value="very-good" <?php echo ($eval['academic'] == 'very-good' ? 'selected' : ''); ?>>Very Good</option>
+                                                                        <option value="good" <?php echo ($eval['academic'] == 'good' ? 'selected' : ''); ?>>Good</option>
+                                                                        <option value="needs-improvement" <?php echo ($eval['academic'] == 'needs-improvement' ? 'selected' : ''); ?>>Needs Improvement</option>
                                                                     </select>
                                                                 </div>
                                                                 <div class="col-md-6">
-                                                                    <label class="form-label">Non-Academic</label>
+                                                                    <label class="form-label fw-bold">Non-Academic Activities</label>
                                                                     <select class="form-select" name="non_academic" required>
-                                                                        <option value="excellent" <?= $eval['non_academic'] == 'excellent' ? 'selected' : ''; ?>>Excellent</option>
-                                                                        <option value="very-good" <?= $eval['non_academic'] == 'very-good' ? 'selected' : ''; ?>>Very Good</option>
-                                                                        <option value="good" <?= $eval['non_academic'] == 'good' ? 'selected' : ''; ?>>Good</option>
-                                                                        <option value="needs-improvement" <?= $eval['non_academic'] == 'needs-improvement' ? 'selected' : ''; ?>>Needs Improvement</option>
+                                                                        <option value="excellent" <?php echo ($eval['non_academic'] == 'excellent' ? 'selected' : ''); ?>>Excellent</option>
+                                                                        <option value="very-good" <?php echo ($eval['non_academic'] == 'very-good' ? 'selected' : ''); ?>>Very Good</option>
+                                                                        <option value="good" <?php echo ($eval['non_academic'] == 'good' ? 'selected' : ''); ?>>Good</option>
+                                                                        <option value="needs-improvement" <?php echo ($eval['non_academic'] == 'needs-improvement' ? 'selected' : ''); ?>>Needs Improvement</option>
                                                                     </select>
                                                                 </div>
                                                             </div>
-                                                            
+
                                                             <div class="row mb-3">
                                                                 <div class="col-md-4">
-                                                                    <label class="form-label">Cognitive Domain</label>
+                                                                    <label class="form-label fw-bold">Cognitive Domain</label>
                                                                     <select class="form-select" name="cognitive" required>
-                                                                        <option value="excellent" <?= $eval['cognitive'] == 'excellent' ? 'selected' : ''; ?>>Excellent</option>
-                                                                        <option value="very-good" <?= $eval['cognitive'] == 'very-good' ? 'selected' : ''; ?>>Very Good</option>
-                                                                        <option value="good" <?= $eval['cognitive'] == 'good' ? 'selected' : ''; ?>>Good</option>
-                                                                        <option value="needs-improvement" <?= $eval['cognitive'] == 'needs-improvement' ? 'selected' : ''; ?>>Needs Improvement</option>
+                                                                        <option value="excellent" <?php echo ($eval['cognitive'] == 'excellent' ? 'selected' : ''); ?>>Excellent</option>
+                                                                        <option value="very-good" <?php echo ($eval['cognitive'] == 'very-good' ? 'selected' : ''); ?>>Very Good</option>
+                                                                        <option value="good" <?php echo ($eval['cognitive'] == 'good' ? 'selected' : ''); ?>>Good</option>
+                                                                        <option value="needs-improvement" <?php echo ($eval['cognitive'] == 'needs-improvement' ? 'selected' : ''); ?>>Needs Improvement</option>
                                                                     </select>
                                                                 </div>
                                                                 <div class="col-md-4">
-                                                                    <label class="form-label">Psychomotor Domain</label>
+                                                                    <label class="form-label fw-bold">Psychomotor Domain</label>
                                                                     <select class="form-select" name="psychomotor" required>
-                                                                        <option value="excellent" <?= $eval['psychomotor'] == 'excellent' ? 'selected' : ''; ?>>Excellent</option>
-                                                                        <option value="very-good" <?= $eval['psychomotor'] == 'very-good' ? 'selected' : ''; ?>>Very Good</option>
-                                                                        <option value="good" <?= $eval['psychomotor'] == 'good' ? 'selected' : ''; ?>>Good</option>
-                                                                        <option value="needs-improvement" <?= $eval['psychomotor'] == 'needs-improvement' ? 'selected' : ''; ?>>Needs Improvement</option>
+                                                                        <option value="excellent" <?php echo ($eval['psychomotor'] == 'excellent' ? 'selected' : ''); ?>>Excellent</option>
+                                                                        <option value="very-good" <?php echo ($eval['psychomotor'] == 'very-good' ? 'selected' : ''); ?>>Very Good</option>
+                                                                        <option value="good" <?php echo ($eval['psychomotor'] == 'good' ? 'selected' : ''); ?>>Good</option>
+                                                                        <option value="needs-improvement" <?php echo ($eval['psychomotor'] == 'needs-improvement' ? 'selected' : ''); ?>>Needs Improvement</option>
                                                                     </select>
                                                                 </div>
                                                                 <div class="col-md-4">
-                                                                    <label class="form-label">Affective Domain</label>
+                                                                    <label class="form-label fw-bold">Affective Domain</label>
                                                                     <select class="form-select" name="affective" required>
-                                                                        <option value="excellent" <?= $eval['affective'] == 'excellent' ? 'selected' : ''; ?>>Excellent</option>
-                                                                        <option value="very-good" <?= $eval['affective'] == 'very-good' ? 'selected' : ''; ?>>Very Good</option>
-                                                                        <option value="good" <?= $eval['affective'] == 'good' ? 'selected' : ''; ?>>Good</option>
-                                                                        <option value="needs-improvement" <?= $eval['affective'] == 'needs-improvement' ? 'selected' : ''; ?>>Needs Improvement</option>
+                                                                        <option value="excellent" <?php echo ($eval['affective'] == 'excellent' ? 'selected' : ''); ?>>Excellent</option>
+                                                                        <option value="very-good" <?php echo ($eval['affective'] == 'very-good' ? 'selected' : ''); ?>>Very Good</option>
+                                                                        <option value="good" <?php echo ($eval['affective'] == 'good' ? 'selected' : ''); ?>>Good</option>
+                                                                        <option value="needs-improvement" <?php echo ($eval['affective'] == 'needs-improvement' ? 'selected' : ''); ?>>Needs Improvement</option>
                                                                     </select>
                                                                 </div>
                                                             </div>
-                                                            
+
                                                             <div class="mb-3">
-                                                                <label class="form-label">Comments & Recommendations</label>
-                                                                <textarea class="form-control" name="comments" rows="4"><?= htmlspecialchars($eval['comments']); ?></textarea>
+                                                                <label class="form-label fw-bold">Comments & Recommendations</label>
+                                                                <textarea class="form-control" name="comments" rows="4" placeholder="Enter additional comments, strengths, and areas for improvement..."><?php echo htmlspecialchars($eval['comments']); ?></textarea>
                                                             </div>
                                                         </div>
                                                         <div class="modal-footer">
@@ -403,57 +534,63 @@ $students = $pdo->query("SELECT id, full_name, class_id FROM students ORDER BY c
                     </div>
                 </div>
             </div>
-        </div>
+        </main>
     </div>
-    
+
     <!-- Add Evaluation Modal -->
     <div class="modal fade" id="addEvaluationModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <form method="post">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Add New Evaluation</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <div class="modal-header" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
+                        <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Add New Evaluation</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
                         <input type="hidden" name="add_evaluation" value="1">
-                        
+
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label class="form-label">Student</label>
+                                <label class="form-label fw-bold">Student</label>
                                 <select class="form-select" name="student_id" required>
                                     <option value="">Select Student</option>
                                     <?php foreach ($students as $student): ?>
-                                        <option value="<?= $student['id']; ?>">
-                                            <?= htmlspecialchars($student['full_name']); ?>
+                                        <option value="<?php echo $student['id']; ?>">
+                                            <?php echo htmlspecialchars($student['full_name']); ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">Class</label>
+                                <label class="form-label fw-bold">Class</label>
                                 <select class="form-select" name="class_id" required>
                                     <option value="">Select Class</option>
                                     <?php
                                     $classes = $pdo->query("SELECT id, class_name FROM classes ORDER BY class_name")->fetchAll();
                                     foreach ($classes as $class): ?>
-                                        <option value="<?= $class['id']; ?>">
-                                            <?= htmlspecialchars($class['class_name']); ?>
+                                        <option value="<?php echo $class['id']; ?>">
+                                            <?php echo htmlspecialchars($class['class_name']); ?>
                                         </option>
                                     <?php endforeach; ?>
+                                </select>
                             </div>
-      
                             <div class="col-md-3">
-                                <label class="form-label">Year</label>
-                                <input type="number" class="form-control" name="year" value="<?= date('Y'); ?>" required>
+                                <label class="form-label fw-bold">Year</label>
+                                <input type="number" class="form-control" name="year" value="<?php echo date('Y'); ?>" required>
                             </div>
                         </div>
-                        
-                        <hr>
-                        
+
                         <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Academic Performance</label>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Term</label>
+                                <select class="form-select" name="term" required>
+                                    <option value="1">Term 1</option>
+                                    <option value="2">Term 2</option>
+                                    <option value="3">Term 3</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Academic Performance</label>
                                 <select class="form-select" name="academic" required>
                                     <option value="excellent">Excellent</option>
                                     <option value="very-good">Very Good</option>
@@ -461,8 +598,8 @@ $students = $pdo->query("SELECT id, full_name, class_id FROM students ORDER BY c
                                     <option value="needs-improvement">Needs Improvement</option>
                                 </select>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Non-Academic Activities</label>
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold">Non-Academic Activities</label>
                                 <select class="form-select" name="non_academic" required>
                                     <option value="excellent">Excellent</option>
                                     <option value="very-good">Very Good</option>
@@ -471,19 +608,10 @@ $students = $pdo->query("SELECT id, full_name, class_id FROM students ORDER BY c
                                 </select>
                             </div>
                         </div>
-                        
-                            <div class="col-md-3">
-                                <label class="form-label">Term</label>
-                                <select class="form-select" name="term" required>
-                                    <option value="1">Term 1</option>
-                                    <option value="2">Term 2</option>
-                                    <option value="3">Term 3</option>
-                                </select>
-                            </div>
-                            
+
                         <div class="row mb-3">
                             <div class="col-md-4">
-                                <label class="form-label">Cognitive Domain</label>
+                                <label class="form-label fw-bold">Cognitive Domain</label>
                                 <select class="form-select" name="cognitive" required>
                                     <option value="excellent">Excellent</option>
                                     <option value="very-good">Very Good</option>
@@ -492,7 +620,7 @@ $students = $pdo->query("SELECT id, full_name, class_id FROM students ORDER BY c
                                 </select>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Psychomotor Domain</label>
+                                <label class="form-label fw-bold">Psychomotor Domain</label>
                                 <select class="form-select" name="psychomotor" required>
                                     <option value="excellent">Excellent</option>
                                     <option value="very-good">Very Good</option>
@@ -501,7 +629,7 @@ $students = $pdo->query("SELECT id, full_name, class_id FROM students ORDER BY c
                                 </select>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Affective Domain</label>
+                                <label class="form-label fw-bold">Affective Domain</label>
                                 <select class="form-select" name="affective" required>
                                     <option value="excellent">Excellent</option>
                                     <option value="very-good">Very Good</option>
@@ -510,9 +638,9 @@ $students = $pdo->query("SELECT id, full_name, class_id FROM students ORDER BY c
                                 </select>
                             </div>
                         </div>
-                        
+
                         <div class="mb-3">
-                            <label class="form-label">Comments & Recommendations</label>
+                            <label class="form-label fw-bold">Comments & Recommendations</label>
                             <textarea class="form-control" name="comments" rows="4" placeholder="Enter additional comments, strengths, and areas for improvement..."></textarea>
                         </div>
                     </div>
@@ -524,22 +652,114 @@ $students = $pdo->query("SELECT id, full_name, class_id FROM students ORDER BY c
             </div>
         </div>
     </div>
-    
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About SahabFormMaster</h4>
+                    <p>A comprehensive school management system designed for academic excellence and efficient administration.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="manage-school.php">School Settings</a></li>
+                        <li><a href="manage_user.php">User Management</a></li>
+                        <li><a href="#">Support & Help</a></li>
+                        <li><a href="#">Documentation</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact Information</h4>
+                    <p>📧 admin@sahabformmaster.com</p>
+                    <p>📱 +234 808 683 5607</p>
+                    <p>🌐 www.sahabformmaster.com</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="#">Privacy Policy</a>
+                    <span>•</span>
+                    <a href="#">Terms of Service</a>
+                    <span>•</span>
+                    <span>Version 2.0</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
+        // Mobile Menu Toggle
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarClose = document.getElementById('sidebarClose');
+
+        mobileMenuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+            mobileMenuToggle.classList.toggle('active');
+        });
+
+        sidebarClose.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            mobileMenuToggle.classList.remove('active');
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+                    sidebar.classList.remove('active');
+                    mobileMenuToggle.classList.remove('active');
+                }
+            }
+        });
+
+        // Print function
         function printEvaluation(evaluationId) {
             window.open(`print-evaluation.php?id=${evaluationId}`, '_blank');
         }
-        
+
         // DataTable initialization
         $(document).ready(function() {
             $('#evaluationsTable').DataTable({
                 "pageLength": 10,
-                "responsive": true
+                "responsive": true,
+                "language": {
+                    "search": "Search evaluations:",
+                    "lengthMenu": "Show _MENU_ evaluations per page",
+                    "info": "Showing _START_ to _END_ of _TOTAL_ evaluations"
+                }
             });
         });
+
+        // Smooth scroll for internal links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Add active class on scroll
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('.dashboard-header');
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
     </script>
+
+    <?php include '../includes/floating-button.php'; ?>
+
 </body>
 </html>

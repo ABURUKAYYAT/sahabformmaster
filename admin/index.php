@@ -379,6 +379,20 @@ try {
                         </div>
                     </div>
                 </div>
+
+                <div class="card card-gradient-7">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon">📱</div>
+                    </div>
+                    <div class="card-content">
+                        <h3>VTU Services</h3>
+                        <p class="card-value">Available</p>
+                        <div class="card-footer">
+                            <span class="card-badge">Buy Now</span>
+                            <a href="https://www.sahabdata.com.ng" target="_blank" class="card-link">Shop VTU →</a>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Statistics Section -->
@@ -489,6 +503,10 @@ try {
                     <a href="manage_attendance.php" class="quick-action-card">
                         <i class="fas fa-calendar-check"></i>
                         <span>Mark Attendance</span>
+                    </a>
+                    <a href="https://www.sahabdata.com.ng" target="_blank" class="quick-action-card">
+                        <i class="fas fa-mobile-alt"></i>
+                        <span>Buy VTU Services</span>
                     </a>
                 </div>
             </div>
@@ -732,7 +750,5 @@ try {
                 }, 500);
             });
         });
-    </script>
-
-</body>
+    </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>

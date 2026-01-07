@@ -65,6 +65,76 @@ $subject_count = $subject_stmt->fetch()['subject_count'];
         <i class="fas fa-bars"></i>
     </button>
 
+    <!-- Mobile Navigation Dropdown -->
+    <div class="mobile-nav-dropdown" id="mobileNavDropdown">
+        <div class="mobile-nav-header">
+            <h3>Navigation</h3>
+            <button class="mobile-nav-close" id="mobileNavClose">&times;</button>
+        </div>
+        <nav class="mobile-nav-menu">
+            <a href="index.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'index.php' ? 'active' : ''; ?>">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="schoolfeed.php" class="mobile-nav-link">
+                <i class="fas fa-newspaper"></i>
+                <span>School Feeds</span>
+            </a>
+            <a href="school_diary.php" class="mobile-nav-link">
+                <i class="fas fa-book"></i>
+                <span>School Diary</span>
+            </a>
+            <a href="students.php" class="mobile-nav-link">
+                <i class="fas fa-users"></i>
+                <span>Students</span>
+            </a>
+            <a href="results.php" class="mobile-nav-link">
+                <i class="fas fa-chart-line"></i>
+                <span>Results</span>
+            </a>
+            <a href="subjects.php" class="mobile-nav-link">
+                <i class="fas fa-book-open"></i>
+                <span>Subjects</span>
+            </a>
+            <a href="questions.php" class="mobile-nav-link">
+                <i class="fas fa-question-circle"></i>
+                <span>Questions</span>
+            </a>
+            <a href="lesson-plan.php" class="mobile-nav-link">
+                <i class="fas fa-clipboard-list"></i>
+                <span>Lesson Plans</span>
+            </a>
+            <a href="curricullum.php" class="mobile-nav-link">
+                <i class="fas fa-graduation-cap"></i>
+                <span>Curriculum</span>
+            </a>
+            <a href="teacher_class_activities.php" class="mobile-nav-link">
+                <i class="fas fa-tasks"></i>
+                <span>Class Activities</span>
+            </a>
+            <a href="student-evaluation.php" class="mobile-nav-link">
+                <i class="fas fa-star"></i>
+                <span>Evaluations</span>
+            </a>
+            <a href="class_attendance.php" class="mobile-nav-link">
+                <i class="fas fa-calendar-check"></i>
+                <span>Attendance</span>
+            </a>
+            <a href="timebook.php" class="mobile-nav-link">
+                <i class="fas fa-clock"></i>
+                <span>Time Book</span>
+            </a>
+            <a href="permissions.php" class="mobile-nav-link">
+                <i class="fas fa-key"></i>
+                <span>Permissions</span>
+            </a>
+            <a href="payments.php" class="mobile-nav-link">
+                <i class="fas fa-money-bill-wave"></i>
+                <span>Payments</span>
+            </a>
+        </nav>
+    </div>
+
     <!-- Header -->
     <header class="dashboard-header">
         <div class="header-container">
@@ -305,6 +375,20 @@ $subject_count = $subject_stmt->fetch()['subject_count'];
                         </div>
                     </div>
                 </div>
+
+                <div class="card card-gradient-7">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon"><i class="fas fa-mobile-alt"></i></div>
+                    </div>
+                    <div class="card-content">
+                        <h3>VTU Services</h3>
+                        <p class="card-value">Available</p>
+                        <div class="card-footer">
+                            <span class="card-badge">Buy Now</span>
+                            <a href="https://www.sahabdata.com.ng" target="_blank" class="card-link">Shop VTU →</a>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Quick Actions Section -->
@@ -337,6 +421,10 @@ $subject_count = $subject_stmt->fetch()['subject_count'];
                     <a href="timebook.php" class="quick-action-card">
                         <i class="fas fa-clock"></i>
                         <span>Time Book</span>
+                    </a>
+                    <a href="https://www.sahabdata.com.ng" target="_blank" class="quick-action-card">
+                        <i class="fas fa-mobile-alt"></i>
+                        <span>Buy VTU Services</span>
                     </a>
                 </div>
             </div>
@@ -427,29 +515,38 @@ $subject_count = $subject_stmt->fetch()['subject_count'];
     </footer>
 
     <script>
-        // Mobile Menu Toggle
+        // Mobile Menu Toggle - Dropdown Navigation
         const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-        const sidebar = document.getElementById('sidebar');
-        const sidebarClose = document.getElementById('sidebarClose');
+        const mobileNavDropdown = document.getElementById('mobileNavDropdown');
+        const mobileNavClose = document.getElementById('mobileNavClose');
 
-        mobileMenuToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('active');
+        // Toggle dropdown menu
+        mobileMenuToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            mobileNavDropdown.classList.toggle('active');
             mobileMenuToggle.classList.toggle('active');
         });
 
-        sidebarClose.addEventListener('click', () => {
-            sidebar.classList.remove('active');
+        // Close dropdown when clicking close button
+        mobileNavClose.addEventListener('click', () => {
+            mobileNavDropdown.classList.remove('active');
             mobileMenuToggle.classList.remove('active');
         });
 
-        // Close sidebar when clicking outside on mobile
+        // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
-            if (window.innerWidth <= 768) {
-                if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
-                    sidebar.classList.remove('active');
-                    mobileMenuToggle.classList.remove('active');
-                }
+            if (!mobileNavDropdown.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+                mobileNavDropdown.classList.remove('active');
+                mobileMenuToggle.classList.remove('active');
             }
+        });
+
+        // Close dropdown when clicking on a navigation link
+        document.querySelectorAll('.mobile-nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                mobileNavDropdown.classList.remove('active');
+                mobileMenuToggle.classList.remove('active');
+            });
         });
 
         // Smooth scroll for internal links
@@ -531,7 +628,5 @@ $subject_count = $subject_stmt->fetch()['subject_count'];
             // You can add AJAX calls here to refresh dynamic data
             console.log('Dashboard data refresh check...');
         }, 300000);
-    </script>
-
-</body>
+    </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>

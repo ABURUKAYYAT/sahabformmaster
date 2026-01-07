@@ -605,6 +605,6 @@ foreach ($questions_by_type as $type_questions) {
             alert('PDF download functionality would be implemented with a server-side PDF generator.');
             window.print(); // Fallback to print
         }
-    </script>
-</body>
+    </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
+

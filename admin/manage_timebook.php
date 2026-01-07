@@ -8,6 +8,35 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'principal') {
     exit;
 }
 
+// Ensure system_settings table exists
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS system_settings (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        setting_key VARCHAR(100) UNIQUE NOT NULL,
+        setting_value TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )");
+} catch (PDOException $e) {
+    // Table might already exist, continue
+}
+
+// Handle toggle update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_signin'])) {
+    $enabled = $_POST['enabled'] ? '1' : '0';
+    $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = NOW()");
+    $stmt->execute(['teacher_signin_enabled', $enabled, $enabled]);
+    $_SESSION['message'] = "Teacher sign-in " . ($enabled === '1' ? 'enabled' : 'disabled') . " successfully!";
+    header("Location: manage_timebook.php");
+    exit();
+}
+
+// Get current toggle state
+$toggleStmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ?");
+$toggleStmt->execute(['teacher_signin_enabled']);
+$signin_enabled = $toggleStmt->fetchColumn();
+$signin_enabled = $signin_enabled !== false ? (bool)$signin_enabled : true; // Default to true if not set
+
 
 // Handle status update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
@@ -69,460 +98,395 @@ $stats = $statsStmt->fetch();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Timebook - Admin Panel</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Manage Timebook - SahabFormMaster</title>
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #4361ee;
-            --success-color: #06d6a0;
-            --warning-color: #ffd166;
-            --danger-color: #ef476f;
-            --light-color: #f8f9fa;
-            --dark-color: #212529;
-        }
-        
-        body {
-            background-color: #f5f7fb;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        .sidebar {
-            background: linear-gradient(180deg, var(--primary-color), #3a56d4);
-            min-height: 100vh;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
-        }
-        
-        .sidebar-brand {
-            padding: 20px;
-            color: white;
-            font-weight: 600;
-            font-size: 1.2rem;
-            text-align: center;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .nav-link {
-            color: rgba(255,255,255,0.8);
-            padding: 12px 20px;
-            margin: 5px 10px;
-            border-radius: 8px;
-            transition: all 0.3s;
-        }
-        
-        .nav-link:hover, .nav-link.active {
-            background: rgba(255,255,255,0.1);
-            color: white;
-        }
-        
-        .content-wrapper {
-            padding: 20px;
-        }
-        
-        .stat-card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            transition: transform 0.3s;
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .stat-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-        }
-        
-        .time-record-card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            border-left: 4px solid var(--primary-color);
-        }
-        
-        .status-badge {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-        
-        .status-agreed {
-            background-color: rgba(6, 214, 160, 0.1);
-            color: var(--success-color);
-            border: 1px solid var(--success-color);
-        }
-        
-        .status-not_agreed {
-            background-color: rgba(239, 71, 111, 0.1);
-            color: var(--danger-color);
-            border: 1px solid var(--danger-color);
-        }
-        
-        .status-pending {
-            background-color: rgba(255, 209, 102, 0.1);
-            color: #e6b400;
-            border: 1px solid #e6b400;
-        }
-        
-        .time-display {
-            font-family: 'Courier New', monospace;
-            font-weight: 600;
-            color: var(--dark-color);
-        }
-        
-        @media (max-width: 768px) {
-            .sidebar {
-                min-height: auto;
-            }
-            
-            .content-wrapper {
-                padding: 15px;
-            }
-        }
-        
-        .filter-tabs .nav-link {
-            color: var(--dark-color);
-            border: 1px solid #dee2e6;
-            margin: 0 5px;
-        }
-        
-        .filter-tabs .nav-link.active {
-            background: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
-        }
-        
-        .modal-custom {
-            border-radius: 15px;
-            border: none;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
-        
-        .btn-custom {
-            padding: 10px 25px;
-            border-radius: 8px;
-            font-weight: 500;
-            border: none;
-            transition: all 0.3s;
-        }
-        
-        .btn-custom-primary {
-            background: var(--primary-color);
-            color: white;
-        }
-        
-        .btn-custom-primary:hover {
-            background: #3a56d4;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
-        }
-    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <div class="col-lg-2 col-md-3 sidebar d-none d-md-block">
-            
-                <nav class="nav flex-column mt-4">
-                    <a href="index.php" class="nav-link">
-                        <i class="fas fa-home me-2"></i>Dashboard
-                    </a>
-                    <a href="manage_timebook.php" class="nav-link active">
-                        <i class="fas fa-calendar-check me-2"></i>Timebook
-                    </a>
-                  
-                    <a href="attendance_reports.php" class="nav-link">
-                        <i class="fas fa-chart-bar me-2"></i>Reports
-                    </a>
-               
-                </nav>
-            </div>
-            
-            <!-- Mobile Header -->
-            <div class="d-md-none bg-white shadow-sm p-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-clock text-primary me-2"></i>TimeTrack</h5>
-                    <button class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileMenu">
-                        <i class="fas fa-bars"></i>
-                    </button>
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <!-- Logo and School Name -->
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Principal Portal</p>
+                    </div>
                 </div>
             </div>
-            
-            <!-- Mobile Menu -->
-            <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu">
-                <div class="offcanvas-header bg-primary text-white">
-                    <h5 class="offcanvas-title">TimeTrack Admin</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+
+            <!-- Principal Info and Logout -->
+            <div class="header-right">
+                <div class="principal-info">
+                    <p class="principal-label">Principal</p>
+                    <span class="principal-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Principal'); ?></span>
                 </div>
-                <div class="offcanvas-body">
-                    <nav class="nav flex-column">
-                        <a href="dashboard.php" class="nav-link">
-                            <i class="fas fa-home me-2"></i>Dashboard
-                        </a>
-                        <a href="manage_timebook.php" class="nav-link active">
-                            <i class="fas fa-calendar-check me-2"></i>Timebook
-                        </a>
-                        <a href="manage_teachers.php" class="nav-link">
-                            <i class="fas fa-users me-2"></i>Teachers
-                        </a>
-                        <a href="reports.php" class="nav-link">
-                            <i class="fas fa-chart-bar me-2"></i>Reports
-                        </a>
-                        <a href="settings.php" class="nav-link">
-                            <i class="fas fa-cog me-2"></i>Settings
-                        </a>
-                        <a href="logout.php" class="nav-link mt-3">
-                            <i class="fas fa-sign-out-alt me-2"></i>Logout
-                        </a>
-                    </nav>
+                <a href="logout.php" class="btn-logout">
+                    <span class="logout-icon">🚪</span>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <?php include '../includes/admin_sidebar.php'; ?>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-header">
+                <div class="welcome-section">
+                    <h2>⏰ Manage Teacher Timebook</h2>
+                    <p>Review and manage teacher attendance records</p>
+                </div>
+                <div class="header-stats">
+                    <div class="quick-stat">
+                        <span class="quick-stat-value"><?php echo number_format($stats['total'] ?? 0); ?></span>
+                        <span class="quick-stat-label">Total Today</span>
+                    </div>
+                    <div class="quick-stat">
+                        <span class="quick-stat-value"><?php echo number_format($stats['agreed'] ?? 0); ?></span>
+                        <span class="quick-stat-label">Approved</span>
+                    </div>
+                    <div class="quick-stat">
+                        <span class="quick-stat-value"><?php echo number_format($stats['pending'] ?? 0); ?></span>
+                        <span class="quick-stat-label">Pending</span>
+                    </div>
                 </div>
             </div>
-            
-            <!-- Main Content -->
-            <div class="col-lg-10 col-md-9 ms-sm-auto">
-                <div class="content-wrapper">
-                    <!-- Header -->
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <div>
-                            <h2 class="h4 fw-bold text-dark">Manage Timebook</h2>
-                            <p class="text-muted">Review and manage teacher attendance records</p>
+
+            <!-- Controls Section -->
+            <div class="stats-section">
+                <div class="section-header">
+                    <h3>⚙️ System Controls</h3>
+                    <span class="section-badge">Settings</span>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-icon">
+                            <i class="fas fa-toggle-on"></i>
                         </div>
-                        <div class="text-muted">
-                            <?php echo date('F j, Y'); ?>
+                        <div class="stat-info">
+                            <span class="stat-value">Teacher Sign-in</span>
+                            <span class="stat-label"><?php echo $signin_enabled ? 'Enabled' : 'Disabled'; ?></span>
+                        </div>
+                        <form method="POST" class="d-inline">
+                            <input type="hidden" name="toggle_signin" value="1">
+                            <input type="hidden" name="enabled" value="<?php echo $signin_enabled ? '0' : '1'; ?>">
+                            <button type="submit" class="btn btn-sm <?php echo $signin_enabled ? 'btn-danger' : 'btn-success'; ?> ms-2">
+                                <i class="fas fa-<?php echo $signin_enabled ? 'times' : 'check'; ?> me-1"></i>
+                                <?php echo $signin_enabled ? 'Disable' : 'Enable'; ?>
+                            </button>
+                        </form>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-icon">
+                            <i class="fas fa-calendar-day"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value"><?php echo date('F j, Y'); ?></span>
+                            <span class="stat-label">Current Date</span>
                         </div>
                     </div>
-                    
-                    <!-- Statistics Cards -->
-                    <div class="row mb-4">
-                        <div class="col-md-3 col-sm-6 mb-3">
-                            <div class="stat-card">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <h6 class="text-muted mb-1">Total Today</h6>
-                                        <h3 class="mb-0"><?php echo $stats['total']; ?></h3>
-                                    </div>
-                                    <div class="stat-icon" style="background: rgba(67, 97, 238, 0.1); color: var(--primary-color);">
-                                        <i class="fas fa-list-check"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-sm-6 mb-3">
-                            <div class="stat-card">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <h6 class="text-muted mb-1">Agreed</h6>
-                                        <h3 class="mb-0 text-success"><?php echo $stats['agreed']; ?></h3>
-                                    </div>
-                                    <div class="stat-icon" style="background: rgba(6, 214, 160, 0.1); color: var(--success-color);">
-                                        <i class="fas fa-check-circle"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-sm-6 mb-3">
-                            <div class="stat-card">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <h6 class="text-muted mb-1">Not Agreed</h6>
-                                        <h3 class="mb-0 text-danger"><?php echo $stats['not_agreed']; ?></h3>
-                                    </div>
-                                    <div class="stat-icon" style="background: rgba(239, 71, 111, 0.1); color: var(--danger-color);">
-                                        <i class="fas fa-times-circle"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-sm-6 mb-3">
-                            <div class="stat-card">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <h6 class="text-muted mb-1">Pending</h6>
-                                        <h3 class="mb-0 text-warning"><?php echo $stats['pending']; ?></h3>
-                                    </div>
-                                    <div class="stat-icon" style="background: rgba(255, 209, 102, 0.1); color: #e6b400;">
-                                        <i class="fas fa-clock"></i>
-                                    </div>
-                                </div>
-                            </div>
+                </div>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="dashboard-cards">
+                <div class="card card-gradient-1">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon">📊</div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Total Records</h3>
+                        <p class="card-value"><?php echo number_format($stats['total'] ?? 0); ?></p>
+                        <div class="card-footer">
+                            <span class="card-badge">Today's Activity</span>
                         </div>
                     </div>
-                    
-                    <!-- Filter Section -->
-                    <div class="card border-0 shadow-sm mb-4">
-                        <div class="card-body">
-                            <form method="GET" class="row g-3">
-                                <div class="col-md-4">
-                                    <label class="form-label">Select Date</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text"><i class="fas fa-calendar"></i></span>
-                                        <input type="text" class="form-control datepicker" name="date" value="<?php echo $date; ?>">
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Search Teacher</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
-                                        <input type="text" class="form-control" name="search" placeholder="Name or email..." value="<?php echo htmlspecialchars($search); ?>">
-                                    </div>
-                                </div>
-                                <div class="col-md-4 d-flex align-items-end">
-                                    <button type="submit" class="btn btn-custom-primary me-2">
-                                        <i class="fas fa-filter me-1"></i> Apply Filters
-                                    </button>
-                                    <a href="manage_timebook.php" class="btn btn-outline-secondary">
-                                        <i class="fas fa-redo me-1"></i> Reset
-                                    </a>
-                                </div>
-                            </form>
-                            
-                            <!-- Filter Tabs -->
-                            <div class="mt-4">
-                                <ul class="nav nav-pills filter-tabs">
-                                    <li class="nav-item">
-                                        <a class="nav-link <?php echo $filter === 'all' ? 'active' : ''; ?>" href="?date=<?php echo $date; ?>&filter=all">All</a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link <?php echo $filter === 'pending' ? 'active' : ''; ?>" href="?date=<?php echo $date; ?>&filter=pending">Pending</a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link <?php echo $filter === 'agreed' ? 'active' : ''; ?>" href="?date=<?php echo $date; ?>&filter=agreed">Agreed</a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link <?php echo $filter === 'not_agreed' ? 'active' : ''; ?>" href="?date=<?php echo $date; ?>&filter=not_agreed">Not Agreed</a>
-                                    </li>
-                                </ul>
-                            </div>
+                </div>
+
+                <div class="card card-gradient-4">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon">✅</div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Approved</h3>
+                        <p class="card-value"><?php echo number_format($stats['agreed'] ?? 0); ?></p>
+                        <div class="card-footer">
+                            <span class="card-badge">Accepted Records</span>
                         </div>
                     </div>
-                    
-                    <!-- Records List -->
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-body">
-                            <h5 class="card-title mb-4">Today's Records</h5>
-                            
-                            <?php if (empty($records)): ?>
-                                <div class="text-center py-5">
-                                    <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
-                                    <h5>No records found</h5>
-                                    <p class="text-muted">No attendance records for the selected date.</p>
-                                </div>
-                            <?php else: ?>
-                                <?php foreach ($records as $record): ?>
-                                    <div class="time-record-card">
-                                        <div class="row align-items-center">
-                                            <div class="col-lg-3 col-md-4 mb-3 mb-md-0">
-                                                <div class="d-flex align-items-center">
-                                                    <div class="bg-light rounded-circle p-3 me-3">
-                                                        <i class="fas fa-user text-primary"></i>
-                                                    </div>
-                                                    <div>
-                                                        <h6 class="mb-1"><?php echo htmlspecialchars($record['full_name']); ?></h6>
-                                                        <small class="text-muted"><?php echo htmlspecialchars($record['email']); ?></small>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-lg-2 col-md-3 mb-3 mb-md-0">
-                                                <div>
-                                                    <small class="text-muted d-block">Sign In Time</small>
-                                                    <span class="time-display"><?php echo date('H:i:s', strtotime($record['sign_in_time'])); ?></span>
-                                                </div>
-                                            </div>
-                                            <div class="col-lg-2 col-md-3 mb-3 mb-md-0">
-                                                <div>
-                                                    <small class="text-muted d-block">Expected Time</small>
-                                                    <span class="time-display"><?php echo $record['expected_arrival']; ?></span>
-                                                </div>
-                                            </div>
-                                            <div class="col-lg-2 col-md-2">
-                                                <span class="status-badge status-<?php echo $record['status']; ?>">
-                                                    <?php 
-                                                    $statusLabels = [
-                                                        'pending' => 'Pending Review',
-                                                        'agreed' => 'Agreed',
-                                                        'not_agreed' => 'Not Agreed'
-                                                    ];
-                                                    echo $statusLabels[$record['status']]; 
-                                                    ?>
-                                                </span>
-                                            </div>
-                                            <div class="col-lg-3 col-md-12 text-md-end">
-                                                <button class="btn btn-sm btn-outline-primary me-2" 
-                                                        data-bs-toggle="modal" 
-                                                        data-bs-target="#reviewModal"
-                                                        data-id="<?php echo $record['id']; ?>"
-                                                        data-status="<?php echo $record['status']; ?>"
-                                                        data-notes="<?php echo htmlspecialchars($record['admin_notes'] ?? ''); ?>"
-                                                        data-name="<?php echo htmlspecialchars($record['full_name']); ?>">
-                                                    <i class="fas fa-edit me-1"></i> Review
-                                                </button>
-                                                <a href="teacher_report.php?id=<?php echo $record['user_id']; ?>" class="btn btn-sm btn-outline-secondary">
-                                                    <i class="fas fa-chart-line me-1"></i> Report
-                                                </a>
-                                            </div>
+                </div>
+
+                <div class="card card-gradient-5">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon">⏳</div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Pending Review</h3>
+                        <p class="card-value"><?php echo number_format($stats['pending'] ?? 0); ?></p>
+                        <div class="card-footer">
+                            <span class="card-badge">Awaiting Action</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-gradient-6">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon">❌</div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Not Approved</h3>
+                        <p class="card-value"><?php echo number_format($stats['not_agreed'] ?? 0); ?></p>
+                        <div class="card-footer">
+                            <span class="card-badge">Rejected Records</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Section -->
+            <div class="activity-section">
+                <div class="section-header">
+                    <h3>🔍 Search & Filter</h3>
+                    <span class="section-badge">Records</span>
+                </div>
+                <div class="filters-form">
+                    <form method="GET" class="stats-grid">
+                        <div class="form-group">
+                            <label class="form-label">📅 Select Date</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-calendar"></i></span>
+                                <input type="text" class="form-control datepicker" name="date" value="<?php echo $date; ?>">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">👨‍🏫 Search Teacher</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" class="form-control" name="search" placeholder="Name or email..." value="<?php echo htmlspecialchars($search); ?>">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">🎯 Quick Actions</label>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-filter me-1"></i> Apply Filters
+                                </button>
+                                <a href="manage_timebook.php" class="btn btn-secondary">
+                                    <i class="fas fa-redo me-1"></i> Reset
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Filter Tabs -->
+                    <div class="mt-4">
+                        <div class="d-flex flex-wrap gap-2">
+                            <a class="badge <?php echo $filter === 'all' ? 'badge-primary' : 'badge-secondary'; ?> p-2 text-decoration-none" href="?date=<?php echo $date; ?>&filter=all">
+                                <i class="fas fa-list me-1"></i> All Records
+                            </a>
+                            <a class="badge <?php echo $filter === 'pending' ? 'badge-primary' : 'badge-secondary'; ?> p-2 text-decoration-none" href="?date=<?php echo $date; ?>&filter=pending">
+                                <i class="fas fa-clock me-1"></i> Pending Review
+                            </a>
+                            <a class="badge <?php echo $filter === 'agreed' ? 'badge-primary' : 'badge-secondary'; ?> p-2 text-decoration-none" href="?date=<?php echo $date; ?>&filter=agreed">
+                                <i class="fas fa-check me-1"></i> Approved
+                            </a>
+                            <a class="badge <?php echo $filter === 'not_agreed' ? 'badge-primary' : 'badge-secondary'; ?> p-2 text-decoration-none" href="?date=<?php echo $date; ?>&filter=not_agreed">
+                                <i class="fas fa-times me-1"></i> Not Approved
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Time Records Section -->
+            <div class="activity-section">
+                <div class="section-header">
+                    <h3>📋 Time Records</h3>
+                    <span class="section-badge"><?php echo count($records); ?> Records</span>
+                </div>
+
+                <?php if (empty($records)): ?>
+                    <div class="activity-item">
+                        <div class="activity-icon activity-icon-info">
+                            <i class="fas fa-clipboard-list"></i>
+                        </div>
+                        <div class="activity-content">
+                            <span class="activity-text">No attendance records found for the selected date</span>
+                            <span class="activity-date"><?php echo date('M j, Y', strtotime($date)); ?></span>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <?php foreach ($records as $record): ?>
+                        <div class="activity-item">
+                            <div class="activity-icon <?php
+                                echo $record['status'] === 'agreed' ? 'activity-icon-success' :
+                                     ($record['status'] === 'not_agreed' ? 'activity-icon-warning' : 'activity-icon-info');
+                            ?>">
+                                <i class="fas fa-<?php
+                                    echo $record['status'] === 'agreed' ? 'check-circle' :
+                                         ($record['status'] === 'not_agreed' ? 'times-circle' : 'clock');
+                                ?>"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <span class="activity-text">
+                                            <strong><?php echo htmlspecialchars($record['full_name']); ?></strong>
+                                            <small class="text-muted ms-2"><?php echo htmlspecialchars($record['email']); ?></small>
+                                        </span>
+                                        <div class="mt-2">
+                                            <small class="text-muted">
+                                                <i class="fas fa-sign-in-alt me-1"></i>
+                                                Sign-in: <strong><?php echo date('H:i:s', strtotime($record['sign_in_time'])); ?></strong>
+                                                <?php if ($record['expected_arrival']): ?>
+                                                    | Expected: <strong><?php echo $record['expected_arrival']; ?></strong>
+                                                <?php endif; ?>
+                                            </small>
                                         </div>
-                                        
                                         <?php if (!empty($record['admin_notes'])): ?>
-                                            <div class="mt-3 pt-3 border-top">
-                                                <small class="text-muted">Admin Notes:</small>
-                                                <p class="mb-0"><?php echo htmlspecialchars($record['admin_notes']); ?></p>
+                                            <div class="mt-2">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-sticky-note me-1"></i>
+                                                    <em><?php echo htmlspecialchars($record['admin_notes']); ?></em>
+                                                </small>
                                             </div>
                                         <?php endif; ?>
                                     </div>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
+                                    <div class="d-flex flex-column align-items-end gap-2">
+                                        <span class="badge badge-<?php
+                                            echo $record['status'] === 'agreed' ? 'approved' :
+                                                 ($record['status'] === 'not_agreed' ? 'rejected' : 'pending');
+                                        ?>">
+                                            <?php
+                                            $statusLabels = [
+                                                'pending' => 'Pending Review',
+                                                'agreed' => 'Approved',
+                                                'not_agreed' => 'Not Approved'
+                                            ];
+                                            echo $statusLabels[$record['status']];
+                                            ?>
+                                        </span>
+                                        <div class="btn-group" role="group">
+                                            <button class="btn btn-sm btn-primary"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#reviewModal"
+                                                    data-id="<?php echo $record['id']; ?>"
+                                                    data-status="<?php echo $record['status']; ?>"
+                                                    data-notes="<?php echo htmlspecialchars($record['admin_notes'] ?? ''); ?>"
+                                                    data-name="<?php echo htmlspecialchars($record['full_name']); ?>">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <a href="teacher_report.php?id=<?php echo $record['user_id']; ?>"
+                                               class="btn btn-sm btn-secondary">
+                                                <i class="fas fa-chart-line"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About SahabFormMaster</h4>
+                    <p>A comprehensive school management system designed for academic excellence and efficient administration.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="manage-school.php">School Settings</a></li>
+                        <li><a href="manage_user.php">User Management</a></li>
+                        <li><a href="#">Support & Help</a></li>
+                        <li><a href="#">Documentation</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact Information</h4>
+                    <p>📧 admin@sahabformmaster.com</p>
+                    <p>📱 +234 808 683 5607</p>
+                    <p>🌐 www.sahabformmaster.com</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="#">Privacy Policy</a>
+                    <span>•</span>
+                    <a href="#">Terms of Service</a>
+                    <span>•</span>
+                    <span>Version 2.0</span>
                 </div>
             </div>
         </div>
-    </div>
-    
+    </footer>
+
     <!-- Review Modal -->
     <div class="modal fade" id="reviewModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal-custom">
+        <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Review Attendance</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <h2 class="modal-title">
+                        <i class="fas fa-edit me-2"></i>Review Attendance Record
+                    </h2>
+                    <button type="button" class="close-btn" data-bs-dismiss="modal" aria-label="Close">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
                 <form method="POST">
                     <div class="modal-body">
+                        <input type="hidden" name="update_status" value="1">
                         <input type="hidden" name="id" id="recordId">
-                        <div class="mb-3">
-                            <label class="form-label">Teacher</label>
+
+                        <div class="form-group">
+                            <label class="form-label">👨‍🏫 Teacher Name</label>
                             <input type="text" class="form-control" id="teacherName" readonly>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Status</label>
-                            <select class="form-select" name="status" id="recordStatus" required>
-                                <option value="pending">Pending Review</option>
-                                <option value="agreed">Agreed</option>
-                                <option value="not_agreed">Not Agreed</option>
+
+                        <div class="form-group">
+                            <label class="form-label">📊 Review Status</label>
+                            <select class="form-control" name="status" id="recordStatus" required>
+                                <option value="pending">⏳ Pending Review</option>
+                                <option value="agreed">✅ Approved</option>
+                                <option value="not_agreed">❌ Not Approved</option>
                             </select>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Notes (Optional)</label>
-                            <textarea class="form-control" name="notes" id="recordNotes" rows="3" placeholder="Add notes for the teacher..."></textarea>
+
+                        <div class="form-group">
+                            <label class="form-label">📝 Admin Notes (Optional)</label>
+                            <textarea class="form-control" name="notes" id="recordNotes" rows="4"
+                                      placeholder="Add any notes or comments for this attendance record..."></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" name="update_status" class="btn btn-custom-primary">
-                            <i class="fas fa-save me-1"></i> Save Changes
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-1"></i>Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i>Save Changes
                         </button>
                     </div>
                 </form>
@@ -585,6 +549,5 @@ $stats = $statsStmt->fetch();
                 toast.remove();
             }, 3000);
         }
-    </script>
-</body>
+    </script><?php include '../includes/floating-button.php'; ?></body>
 </html>

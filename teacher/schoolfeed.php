@@ -978,3 +978,4 @@ if (!empty($news_items)) {
     </style>
 </body>
 </html>
+

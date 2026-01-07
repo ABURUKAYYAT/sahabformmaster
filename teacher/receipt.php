@@ -1,8 +1,9 @@
- <?php
-// receipt.php
+<?php
+// teacher/receipt.php - PDF Receipt Generation using TCPDF
 session_start();
 require_once '../config/db.php';
 require_once '../helpers/payment_helper.php';
+require_once '../TCPDF-main/TCPDF-main/tcpdf.php';
 
 if (!isset($_GET['id'])) {
     die("Receipt ID required");
@@ -34,176 +35,280 @@ $installments = $installments->fetchAll();
 
 // Get school info
 $schoolInfo = $pdo->query("SELECT * FROM school_profile LIMIT 1")->fetch();
+
+// Custom PDF class for receipt
+class PaymentReceiptPDF extends TCPDF {
+
+    private $schoolInfo;
+    private $payment;
+
+    public function __construct($schoolInfo, $payment) {
+        parent::__construct();
+        $this->schoolInfo = $schoolInfo;
+        $this->payment = $payment;
+    }
+
+    // Page header
+    public function Header() {
+        // Set background gradient for header (simulated with filled rectangle)
+        $this->Rect(0, 0, $this->getPageWidth(), 45, 'F', array(), array(59, 130, 246, 108, 117, 226));
+
+        // Add subtle pattern overlay
+        $this->SetAlpha(0.3);
+        for ($i = 0; $i < $this->getPageWidth(); $i += 10) {
+            for ($j = 0; $j < 40; $j += 10) {
+                $this->Circle($i + 5, $j + 5, 0.5, 0, 360, 'F', array(), array(255, 255, 255));
+            }
+        }
+        $this->SetAlpha(1);
+
+        // School logo
+        if (!empty($this->schoolInfo['school_logo']) && file_exists('../' . $this->schoolInfo['school_logo'])) {
+            $this->Image('../' . $this->schoolInfo['school_logo'], 15, 10, 15, 15, '', '', '', false, 300, '', false, false, 0);
+        } else {
+            // Fallback logo
+            $this->Image('../assets/images/nysc.jpg', 15, 10, 15, 15, '', '', '', false, 300, '', false, false, 0);
+        }
+
+        // School name
+        $this->SetFont('helvetica', 'B', 16);
+        $this->SetTextColor(255, 255, 255);
+        $this->SetXY(35, 12);
+        $this->Cell(0, 6, strtoupper($this->schoolInfo['school_name'] ?? 'Sahab Academy'), 0, 1, 'L');
+
+        // School motto
+        $this->SetFont('helvetica', 'I', 10);
+        $this->SetXY(35, 18);
+        $this->Cell(0, 5, $this->schoolInfo['school_motto'] ?? 'Excellence in Education', 0, 1, 'L');
+
+        // School details
+        $this->SetFont('helvetica', '', 8);
+        $this->SetXY(35, 23);
+        $address = $this->schoolInfo['school_address'] ?? '123 School Street, City, State';
+        $this->Cell(0, 4, $address, 0, 1, 'L');
+
+        $this->SetXY(35, 27);
+        $contact = [];
+        if (!empty($this->schoolInfo['school_phone'])) $contact[] = 'Phone: ' . $this->schoolInfo['school_phone'];
+        if (!empty($this->schoolInfo['school_email'])) $contact[] = 'Email: ' . $this->schoolInfo['school_email'];
+        $this->Cell(0, 4, implode(' | ', $contact), 0, 1, 'L');
+
+        // Receipt title
+        $this->SetFont('helvetica', 'B', 14);
+        $this->SetTextColor(59, 130, 246);
+        $this->SetXY(15, 50);
+        $this->Cell(0, 8, 'OFFICIAL PAYMENT RECEIPT', 0, 1, 'C');
+    }
+
+    // Page footer
+    public function Footer() {
+        $this->SetY(-30);
+
+        // Signature area
+        $this->SetFont('helvetica', '', 9);
+        $this->SetTextColor(0, 0, 0);
+
+        // Left signature
+        $this->SetXY(15, -25);
+        $this->Cell(60, 4, 'Student/Parent Signature', 0, 0, 'C');
+
+        // Center signature
+        $this->SetXY(85, -25);
+        $this->Cell(60, 4, 'Cashier/Authorized Signature', 0, 0, 'C');
+
+        // Right signature
+        $this->SetXY(155, -25);
+        $this->Cell(60, 4, 'Date: ____________________', 0, 1, 'L');
+
+        // Signature lines
+        $this->Line(15, -18, 75, -18);
+        $this->Line(85, -18, 145, -18);
+
+        // Footer info
+        $this->SetFont('helvetica', 'B', 9);
+        $this->SetXY(15, -15);
+        $this->Cell(0, 5, 'Payment Status: ' . ucfirst($this->payment['status']), 0, 1, 'L');
+
+        $this->SetFont('helvetica', '', 7);
+        $this->SetXY(15, -10);
+        $this->Cell(0, 3, 'This is a computer-generated receipt and is valid without signature.', 0, 1, 'L');
+        $this->Cell(0, 3, 'Please retain this receipt for your records.', 0, 1, 'L');
+
+        // Timestamp
+        $this->SetFont('helvetica', 'I', 6);
+        $this->SetXY(15, -5);
+        $this->Cell(0, 3, 'Generated on: ' . date('F j, Y \a\t H:i:s') . ' | Receipt ID: ' . $this->payment['id'], 0, 1, 'L');
+
+        // Page number
+        $this->SetFont('helvetica', 'I', 7);
+        $this->Cell(0, 8, 'Page ' . $this->getAliasNumPage() . '/' . $this->getAliasNbPages(), 0, 0, 'C');
+    }
+}
+
+// Create PDF instance
+$pdf = new PaymentReceiptPDF($schoolInfo, $payment);
+
+// Set document information
+$pdf->SetCreator('SahabFormMaster School Management System');
+$pdf->SetAuthor($schoolInfo['school_name'] ?? 'Sahab Academy');
+$pdf->SetTitle('Payment Receipt - ' . $payment['full_name']);
+$pdf->SetSubject('Payment receipt for ' . $payment['full_name']);
+
+// Set margins
+$pdf->SetMargins(15, 65, 15); // Left, Top, Right
+$pdf->SetHeaderMargin(5);
+$pdf->SetFooterMargin(35);
+
+// Set auto page breaks
+$pdf->SetAutoPageBreak(TRUE, 35);
+
+// Add first page
+$pdf->AddPage();
+
+// Student Information Section
+$pdf->SetFont('helvetica', 'B', 11);
+$pdf->SetTextColor(0, 0, 0);
+$pdf->Cell(0, 10, 'STUDENT INFORMATION', 0, 1, 'L');
+
+$pdf->SetFont('helvetica', '', 9);
+
+// Left column
+$pdf->Cell(50, 6, 'Student Name:', 0, 0, 'L');
+$pdf->Cell(50, 6, $payment['full_name'], 0, 0, 'L');
+$pdf->Cell(30, 6, 'Admission No:', 0, 0, 'L');
+$pdf->Cell(0, 6, $payment['admission_no'], 0, 1, 'L');
+
+$pdf->Cell(50, 6, 'Class:', 0, 0, 'L');
+$pdf->Cell(50, 6, $payment['class_name'], 0, 0, 'L');
+$pdf->Cell(30, 6, 'Phone:', 0, 0, 'L');
+$pdf->Cell(0, 6, $payment['phone'] ?? 'N/A', 0, 1, 'L');
+
+$pdf->Ln(5);
+
+// Payment Information Section
+$pdf->SetFont('helvetica', 'B', 11);
+$pdf->Cell(0, 10, 'PAYMENT INFORMATION', 0, 1, 'L');
+
+$pdf->SetFont('helvetica', '', 9);
+$pdf->Cell(50, 6, 'Receipt Number:', 0, 0, 'L');
+$pdf->SetFont('helvetica', 'B', 10);
+$pdf->SetTextColor(220, 53, 69);
+$pdf->Cell(50, 6, $payment['receipt_number'], 0, 0, 'L');
+$pdf->SetTextColor(0, 0, 0);
+$pdf->SetFont('helvetica', '', 9);
+$pdf->Cell(30, 6, 'Payment Date:', 0, 0, 'L');
+$pdf->Cell(0, 6, date('F j, Y', strtotime($payment['payment_date'])), 0, 1, 'L');
+
+$pdf->Cell(50, 6, 'Academic Year:', 0, 0, 'L');
+$pdf->Cell(50, 6, $payment['academic_year'] ?? 'N/A', 0, 0, 'L');
+$pdf->Cell(30, 6, 'Term:', 0, 0, 'L');
+$pdf->Cell(0, 6, $payment['term'] ?? 'N/A', 0, 1, 'L');
+
+if (!empty($payment['transaction_id'])) {
+    $pdf->Cell(50, 6, 'Transaction ID:', 0, 0, 'L');
+    $pdf->Cell(0, 6, $payment['transaction_id'], 0, 1, 'L');
+}
+
+$pdf->Cell(50, 6, 'Payment Method:', 0, 0, 'L');
+$pdf->Cell(0, 6, ucfirst(str_replace('_', ' ', $payment['payment_method'])), 0, 1, 'L');
+
+$pdf->Ln(5);
+
+// Amount Section
+$pdf->SetFillColor(240, 253, 244);
+$pdf->SetFont('helvetica', 'B', 12);
+$pdf->Cell(0, 12, 'PAYMENT AMOUNT', 1, 1, 'C', 1);
+
+$pdf->SetFont('helvetica', '', 10);
+$pdf->Cell(70, 10, 'Total Fee Amount:', 1, 0, 'L');
+$pdf->Cell(0, 10, '₦' . number_format($payment['total_amount'], 2), 1, 1, 'R');
+
+if ($payment['amount_paid'] > 0) {
+    $pdf->Cell(70, 10, 'Amount Paid:', 1, 0, 'L');
+    $pdf->SetFont('helvetica', 'B', 11);
+    $pdf->SetTextColor(34, 197, 94);
+    $pdf->Cell(0, 10, '₦' . number_format($payment['amount_paid'], 2), 1, 1, 'R');
+    $pdf->SetTextColor(0, 0, 0);
+    $pdf->SetFont('helvetica', '', 10);
+}
+
+if ($payment['balance'] != 0) {
+    $pdf->Cell(70, 10, 'Outstanding Balance:', 1, 0, 'L');
+    $color = $payment['balance'] > 0 ? [239, 68, 68] : [34, 197, 94];
+    $pdf->SetTextColor($color[0], $color[1], $color[2]);
+    $pdf->Cell(0, 10, '₦' . number_format(abs($payment['balance']), 2) . ($payment['balance'] > 0 ? ' (Due)' : ' (Credit)'), 1, 1, 'R');
+    $pdf->SetTextColor(0, 0, 0);
+}
+
+$pdf->Ln(5);
+
+// Installment Information (if applicable)
+if ($payment['payment_type'] === 'installment' && !empty($installments)) {
+    $pdf->SetFont('helvetica', 'B', 11);
+    $pdf->Cell(0, 10, 'INSTALLMENT SCHEDULE', 0, 1, 'L');
+
+    // Table header
+    $pdf->SetFont('helvetica', 'B', 8);
+    $pdf->SetFillColor(59, 130, 246);
+    $pdf->SetTextColor(255, 255, 255);
+
+    $pdf->Cell(15, 8, 'Inst.#', 1, 0, 'C', 1);
+    $pdf->Cell(25, 8, 'Due Date', 1, 0, 'C', 1);
+    $pdf->Cell(30, 8, 'Amount Due', 1, 0, 'C', 1);
+    $pdf->Cell(30, 8, 'Amount Paid', 1, 0, 'C', 1);
+    $pdf->Cell(20, 8, 'Status', 1, 1, 'C', 1);
+
+    // Table data
+    $pdf->SetFont('helvetica', '', 8);
+    $pdf->SetTextColor(0, 0, 0);
+
+    foreach ($installments as $installment) {
+        $pdf->Cell(15, 6, $installment['installment_number'], 1, 0, 'C');
+        $pdf->Cell(25, 6, date('M j, Y', strtotime($installment['due_date'])), 1, 0, 'C');
+        $pdf->Cell(30, 6, '₦' . number_format($installment['amount_due'], 2), 1, 0, 'R');
+        $pdf->Cell(30, 6, $installment['amount_paid'] > 0 ? '₦' . number_format($installment['amount_paid'], 2) : '-', 1, 0, 'R');
+
+        // Status with color
+        if ($installment['status'] === 'paid') {
+            $pdf->SetTextColor(34, 197, 94);
+        } elseif ($installment['status'] === 'overdue') {
+            $pdf->SetTextColor(239, 68, 68);
+        } else {
+            $pdf->SetTextColor(245, 158, 11);
+        }
+        $pdf->Cell(20, 6, ucfirst($installment['status']), 1, 1, 'C');
+        $pdf->SetTextColor(0, 0, 0);
+    }
+
+    $pdf->Ln(5);
+}
+
+// Verification Information
+if (!empty($payment['verified_by_name'])) {
+    $pdf->SetFont('helvetica', 'B', 9);
+    $pdf->Cell(0, 6, 'VERIFICATION INFORMATION:', 0, 1, 'L');
+    $pdf->SetFont('helvetica', '', 8);
+    $pdf->Cell(50, 5, 'Verified By:', 0, 0, 'L');
+    $pdf->Cell(0, 5, $payment['verified_by_name'], 0, 1, 'L');
+    $pdf->Cell(50, 5, 'Verified At:', 0, 0, 'L');
+    $pdf->Cell(0, 5, (!empty($payment['verified_at'])) ? date('F j, Y H:i', strtotime($payment['verified_at'])) : 'Auto-verified', 0, 1, 'L');
+    $pdf->Ln(3);
+}
+
+// Additional Notes
+if (!empty($payment['notes'])) {
+    $pdf->SetFont('helvetica', 'B', 9);
+    $pdf->Cell(0, 6, 'ADDITIONAL NOTES:', 0, 1, 'L');
+    $pdf->SetFont('helvetica', '', 8);
+    $pdf->MultiCell(0, 5, $payment['notes'], 0, 'L');
+    $pdf->Ln(3);
+}
+
+// Generate filename and output
+$filename = 'Receipt_' . preg_replace('/[^A-Za-z0-9\-_]/', '_', $payment['receipt_number']) . '_' . date('Ymd_His') . '.pdf';
+
+// Output PDF to browser
+$pdf->Output($filename, 'I');
+exit;
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Receipt</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f4f4f4; }
-        .receipt-container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
-        .header { text-align: center; border-bottom: 3px double #333; padding-bottom: 20px; margin-bottom: 30px; }
-        .school-name { font-size: 28px; font-weight: bold; color: #2c3e50; margin-bottom: 5px; }
-        .school-motto { font-style: italic; color: #7f8c8d; margin-bottom: 10px; }
-        .receipt-title { font-size: 24px; color: #27ae60; margin: 20px 0; }
-        .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
-        .detail-group { margin-bottom: 15px; }
-        .detail-label { font-weight: bold; color: #34495e; margin-bottom: 5px; }
-        .detail-value { color: #2c3e50; }
-        .amount-section { background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 30px 0; text-align: center; }
-        .amount-total { font-size: 36px; font-weight: bold; color: #27ae60; }
-        .table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        .table th, .table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        .table th { background: #2c3e50; color: white; }
-        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #7f8c8d; }
-        .signature-area { margin-top: 40px; display: flex; justify-content: space-between; }
-        .signature-box { width: 200px; text-align: center; }
-        .signature-line { border-top: 1px solid #333; margin-top: 50px; padding-top: 5px; }
-        .print-btn { display: block; margin: 20px auto; padding: 10px 30px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        @media print {
-            .print-btn { display: none; }
-            body { background: white; }
-            .receipt-container { box-shadow: none; }
-        }
-    </style>
-</head>
-<body>
-    <div class="receipt-container">
-        <div class="header">
-            <?php if ($schoolInfo && !empty($schoolInfo['school_logo'])): ?>
-                <img src="<?php echo htmlspecialchars($schoolInfo['school_logo']); ?>" alt="School Logo" style="max-height: 80px; margin-bottom: 10px;">
-            <?php endif; ?>
-            <div class="school-name"><?php echo htmlspecialchars($schoolInfo['school_name'] ?? 'Sahab Academy'); ?></div>
-            <div class="school-motto"><?php echo htmlspecialchars($schoolInfo['school_motto'] ?? 'Excellence in Education'); ?></div>
-            <div><?php echo htmlspecialchars($schoolInfo['school_address'] ?? '123 School Street, City, State'); ?></div>
-            <div>Phone: <?php echo htmlspecialchars($schoolInfo['school_phone'] ?? '123-456-7890'); ?> | Email: <?php echo htmlspecialchars($schoolInfo['school_email'] ?? 'info@sahabacademy.com'); ?></div>
-        </div>
-        
-        <div class="receipt-title">OFFICIAL PAYMENT RECEIPT</div>
-        
-        <div class="details-grid">
-            <div>
-                <div class="detail-group">
-                    <div class="detail-label">Receipt Number</div>
-                    <div class="detail-value" style="font-size: 18px; font-weight: bold; color: #e74c3c;">
-                        <?php echo htmlspecialchars($payment['receipt_number']); ?>
-                    </div>
-                </div>
-                
-                <div class="detail-group">
-                    <div class="detail-label">Student Name</div>
-                    <div class="detail-value"><?php echo htmlspecialchars($payment['full_name']); ?></div>
-                </div>
-                
-                <div class="detail-group">
-                    <div class="detail-label">Admission Number</div>
-                    <div class="detail-value"><?php echo htmlspecialchars($payment['admission_no']); ?></div>
-                </div>
-                
-                <div class="detail-group">
-                    <div class="detail-label">Class</div>
-                    <div class="detail-value"><?php echo htmlspecialchars($payment['class_name']); ?></div>
-                </div>
-            </div>
-            
-            <div>
-                <div class="detail-group">
-                    <div class="detail-label">Payment Date</div>
-                    <div class="detail-value"><?php echo date('F j, Y', strtotime($payment['payment_date'])); ?></div>
-                </div>
-                
-                <div class="detail-group">
-                    <div class="detail-label">Academic Year</div>
-                    <div class="detail-value"><?php echo htmlspecialchars($payment['academic_year']); ?></div>
-                </div>
-                
-                <div class="detail-group">
-                    <div class="detail-label">Term</div>
-                    <div class="detail-value"><?php echo htmlspecialchars($payment['term']); ?></div>
-                </div>
-                
-                <div class="detail-group">
-                    <div class="detail-label">Payment Method</div>
-                    <div class="detail-value"><?php echo ucfirst(str_replace('_', ' ', $payment['payment_method'])); ?></div>
-                </div>
-                
-                <div class="detail-group">
-                    <div class="detail-label">Transaction ID</div>
-                    <div class="detail-value"><?php echo htmlspecialchars($payment['transaction_id']); ?></div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="amount-section">
-            <div>Amount Paid</div>
-            <div class="amount-total"><?php echo $paymentHelper->formatCurrency($payment['amount_paid']); ?></div>
-            <div>Total Fee: <?php echo $paymentHelper->formatCurrency($payment['total_amount']); ?> | 
-                 Balance: <?php echo $paymentHelper->formatCurrency($payment['balance']); ?></div>
-        </div>
-        
-        <?php if ($payment['payment_type'] === 'installment' && !empty($installments)): ?>
-            <h3>Installment Schedule</h3>
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Installment</th>
-                        <th>Due Date</th>
-                        <th>Amount Due</th>
-                        <th>Amount Paid</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($installments as $installment): ?>
-                        <tr>
-                            <td>#<?php echo $installment['installment_number']; ?></td>
-                            <td><?php echo date('d/m/Y', strtotime($installment['due_date'])); ?></td>
-                            <td><?php echo $paymentHelper->formatCurrency($installment['amount_due']); ?></td>
-                            <td><?php echo $paymentHelper->formatCurrency($installment['amount_paid']); ?></td>
-                            <td>
-                                <span style="color: <?php 
-                                    echo $installment['status'] == 'paid' ? 'green' : 
-                                           ($installment['status'] == 'overdue' ? 'red' : 'orange');
-                                ?>;">
-                                    <?php echo ucfirst($installment['status']); ?>
-                                </span>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        <?php endif; ?>
-        
-        <div class="signature-area">
-            <div class="signature-box">
-                <div>Student/Parent Signature</div>
-                <div class="signature-line"></div>
-            </div>
-            
-            <div class="signature-box">
-                <div>Cashier/Authorized Signature</div>
-                <div class="signature-line"></div>
-                <div><?php echo htmlspecialchars($payment['verified_by_name'] ?: 'Not Verified'); ?></div>
-            </div>
-        </div>
-        
-        <div class="footer">
-            <p><strong>Payment Status:</strong> <?php echo ucfirst($payment['status']); ?></p>
-            <p>This is a computer-generated receipt. No signature required.</p>
-            <p>Generated on: <?php echo date('F j, Y H:i:s'); ?></p>
-        </div>
-    </div>
-    
-    <button class="print-btn" onclick="window.print()">Print Receipt</button>
-    <button class="print-btn"><a href='payments.php'>Bachk to Payments</a></button>
-    
-    <script>
-        // Auto-print if requested
-        if (window.location.search.includes('print=1')) {
-            window.print();
-        }
-    </script>
-</body>
-</html>
+

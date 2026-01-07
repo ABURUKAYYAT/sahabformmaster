@@ -346,3 +346,4 @@ function calculateGrade($score) {
     return ['grade' => 'F', 'remark' => 'Fail'];
 }
 ?>
+

@@ -1,4 +1,5 @@
 <?php
+// student/my-evaluations.php
 session_start();
 require_once '../config/db.php';
 
@@ -8,15 +9,16 @@ if (!isset($_SESSION['student_id'])) {
     exit;
 }
 
-
 $student_id = $_SESSION['student_id'];
+$student_name = $_SESSION['student_name'];
+$admission_number = $_SESSION['admission_no'];
 
 // Fetch student's evaluations
 $stmt = $pdo->prepare("
     SELECT e.*, t.full_name as teacher_fname
-    FROM evaluations e 
-    JOIN users t ON e.teacher_id = t.id 
-    WHERE e.student_id = ? 
+    FROM evaluations e
+    JOIN users t ON e.teacher_id = t.id
+    WHERE e.student_id = ?
     ORDER BY e.academic_year DESC, e.term DESC
 ");
 $stmt->execute([$student_id]);
@@ -27,410 +29,387 @@ $student = $pdo->prepare("SELECT * FROM students WHERE id = ?");
 $student->execute([$student_id]);
 $student_data = $student->fetch();
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Evaluations</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #2c3e50;
-            --secondary-color: #3498db;
-        }
-        
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        .student-card {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            padding: 30px;
-            margin-bottom: 30px;
-        }
-        
-        .evaluation-card {
-            background: white;
-            border-radius: 15px;
-            border-left: 5px solid var(--secondary-color);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-            margin-bottom: 20px;
-            transition: transform 0.3s;
-        }
-        
-        .evaluation-card:hover {
-            transform: translateX(5px);
-        }
-        
-        .rating-pill {
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-weight: 600;
-            font-size: 0.85rem;
-        }
-        
-        .excellent { background-color: #d4edda; color: #155724; }
-        .very-good { background-color: #cce5ff; color: #004085; }
-        .good { background-color: #fff3cd; color: #856404; }
-        .needs-improvement { background-color: #f8d7da; color: #721c24; }
-        
-        .term-badge {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 8px 20px;
-            border-radius: 20px;
-            font-weight: 600;
-        }
-        
-        .progress-bar {
-            border-radius: 10px;
-            height: 10px;
-        }
-        
-        @media (max-width: 768px) {
-            .student-card {
-                padding: 20px;
-            }
-            
-            .term-badge {
-                font-size: 0.9rem;
-                padding: 6px 15px;
-            }
-        }
-    </style>
+    <title>My Evaluations | SahabFormMaster</title>
+    <link rel="stylesheet" href="../assets/css/student-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/mobile-navigation.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    
-    <div class="container py-5">
-        <a href='dashboard.php' style='color:white, '>Back to Dashboard</a>
-        <br>
-        <!-- Student Profile -->
-        <div class="student-card">
-            <div class="row align-items-center">
-                <div class="col-md-3 text-center mb-3">
-                    <div class="rounded-circle bg-primary d-inline-flex align-items-center justify-content-center" 
-                         style="width: 120px; height: 120px;">
-                        <i class="fas fa-user-graduate fa-3x text-white"></i>
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <!-- Logo and School Name -->
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Student Portal</p>
                     </div>
                 </div>
-                <div class="col-md-9">
-                    <h2 class="mb-1"><?= htmlspecialchars($student_data['full_name'] ); ?></h2>
-                    <p class="text-muted mb-2">
-                        <i class="fas fa-graduation-cap me-2"></i>Class: <?= htmlspecialchars($student_data['class_id']); ?> | 
-                        Roll No: <?= htmlspecialchars($student_data['admission_no']); ?>
-                    </p>
-                    <p class="text-muted">
-                        <i class="fas fa-calendar-alt me-2"></i>Academic Year: <?= date('Y'); ?> - <?= date('Y')+1; ?>
-                    </p>
+            </div>
+
+            <!-- Student Info and Logout -->
+            <div class="header-right">
+                <div class="student-info">
+                    <p class="student-label">Student</p>
+                    <span class="student-name"><?php echo htmlspecialchars($student_name); ?></span>
+                    <span class="admission-number"><?php echo htmlspecialchars($admission_number); ?></span>
                 </div>
+                <a href="logout.php" class="btn-logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
             </div>
         </div>
-        
-        <!-- Evaluation Summary -->
-        <div class="row mb-4">
-            <div class="col-md-3 col-sm-6 mb-3">
-                <div class="card bg-primary text-white text-center p-3 rounded-3">
-                    <h6>Total Evaluations</h6>
-                    <h3 class="mb-0"><?= count($evaluations); ?></h3>
+    </header>
+
+    <!-- Main Container -->
+    <div class="dashboard-container">
+        <?php include '../includes/student_sidebar.php'; ?>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-header">
+                <div class="welcome-section">
+                    <h2><i class="fas fa-chart-line"></i> My Academic Evaluations</h2>
+                    <p>Track your academic progress and performance evaluations</p>
                 </div>
             </div>
-            <div class="col-md-3 col-sm-6 mb-3">
-                <div class="card bg-success text-white text-center p-3 rounded-3">
-                    <h6>Excellent Ratings</h6>
-                    <h3 class="mb-0">
-                        <?php
-                        $excellent_count = 0;
-                        foreach ($evaluations as $eval) {
-                            if ($eval['academic'] === 'excellent' || $eval['non_academic'] === 'excellent') {
-                                $excellent_count++;
+
+            <!-- Statistics Cards -->
+            <div class="dashboard-cards">
+                <?php
+                $total_evaluations = count($evaluations);
+                $excellent_count = 0;
+                $current_term = !empty($evaluations) ? $evaluations[0]['term'] : 'N/A';
+                $overall_progress = 0;
+
+                if (!empty($evaluations)) {
+                    foreach ($evaluations as $eval) {
+                        if ($eval['academic'] === 'excellent' || $eval['non_academic'] === 'excellent') {
+                            $excellent_count++;
+                        }
+                    }
+
+                    $total_ratings = count($evaluations) * 5;
+                    $positive_ratings = 0;
+                    foreach ($evaluations as $eval) {
+                        $ratings = [$eval['academic'], $eval['non_academic'], $eval['cognitive'], $eval['psychomotor'], $eval['affective']];
+                        foreach ($ratings as $rating) {
+                            if ($rating === 'excellent' || $rating === 'very-good') {
+                                $positive_ratings++;
                             }
                         }
-                        echo $excellent_count;
-                        ?>
-                    </h3>
+                    }
+                    $overall_progress = round(($positive_ratings / $total_ratings) * 100);
+                }
+                ?>
+                <div class="card card-gradient-1">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon"><i class="fas fa-clipboard-list"></i></div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Total Evaluations</h3>
+                        <p class="card-value"><?php echo $total_evaluations; ?></p>
+                    </div>
+                </div>
+                <div class="card card-gradient-4">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon"><i class="fas fa-star"></i></div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Excellent Ratings</h3>
+                        <p class="card-value"><?php echo $excellent_count; ?></p>
+                    </div>
+                </div>
+                <div class="card card-gradient-2">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon"><i class="fas fa-calendar-alt"></i></div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Current Term</h3>
+                        <p class="card-value"><?php echo $current_term; ?></p>
+                    </div>
+                </div>
+                <div class="card card-gradient-3">
+                    <div class="card-icon-wrapper">
+                        <div class="card-icon"><i class="fas fa-chart-pie"></i></div>
+                    </div>
+                    <div class="card-content">
+                        <h3>Overall Progress</h3>
+                        <p class="card-value"><?php echo $overall_progress; ?>%</p>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-3 col-sm-6 mb-3">
-                <div class="card bg-info text-white text-center p-3 rounded-3">
-                    <h6>Current Term</h6>
-                    <h3 class="mb-0">Term <?= !empty($evaluations) ? $evaluations[0]['term'] : 'N/A'; ?></h3>
-                </div>
-            </div>
-            <div class="col-md-3 col-sm-6 mb-3">
-                <div class="card bg-warning text-white text-center p-3 rounded-3">
-                    <h6>Overall Progress</h6>
-                    <h3 class="mb-0">
-                        <?php
-                        if (!empty($evaluations)) {
-                            $total_ratings = count($evaluations) * 5;
-                            $positive_ratings = 0;
-                            foreach ($evaluations as $eval) {
-                                $ratings = [$eval['academic'], $eval['non_academic'], $eval['cognitive'], $eval['psychomotor'], $eval['affective']];
-                                foreach ($ratings as $rating) {
-                                    if ($rating === 'excellent' || $rating === 'very-good') {
-                                        $positive_ratings++;
-                                    }
-                                }
-                            }
-                            echo round(($positive_ratings / $total_ratings) * 100) . '%';
-                        } else {
-                            echo 'N/A';
-                        }
-                        ?>
-                    </h3>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Term Filter -->
-        <div class="mb-4">
-            <h4 class="text-white">Filter by Term</h4>
-            <div class="btn-group" role="group">
-                <button type="button" class="btn btn-outline-light active" data-term="all">All Terms</button>
-                <button type="button" class="btn btn-outline-light" data-term="1">Term 1</button>
-                <button type="button" class="btn btn-outline-light" data-term="2">Term 2</button>
-                <button type="button" class="btn btn-outline-light" data-term="3">Term 3</button>
-            </div>
-        </div>
-        
-        <!-- Evaluations List -->
-        <h3 class="text-white mb-4">My Evaluations</h3>
-        
-        <?php if (empty($evaluations)): ?>
-            <div class="alert alert-info text-center">
-                <h4><i class="fas fa-info-circle me-2"></i>No Evaluations Yet</h4>
-                <p>You don't have any evaluations yet. Your teacher will evaluate you soon.</p>
-            </div>
-        <?php else: ?>
-            <?php foreach ($evaluations as $eval): ?>
-                <div class="evaluation-card p-4" data-term="<?= $eval['term']; ?>">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <div class="d-flex align-items-center mb-3">
-                                <span class="term-badge me-3">
-                                    Term <?= $eval['term']; ?> - <?= $eval['year']; ?>
-                                </span>
-                                <small class="text-muted">
-                                    <i class="fas fa-calendar me-1"></i>
-                                    <?= date('F d, Y', strtotime($eval['created_at'])); ?>
-                                </small>
+
+            <!-- Student Profile -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="profile-grid">
+                        <div class="profile-avatar">
+                            <div class="avatar-circle">
+                                <i class="fas fa-user-graduate"></i>
                             </div>
-                            
-                            <h5 class="mb-3">Evaluation by: <?= htmlspecialchars($eval['teacher_fname'] . ' ' . $eval['teacher_lname']); ?></h5>
-                            
-                            <div class="row">
-                                <div class="col-sm-6 mb-2">
-                                    <strong>Academic:</strong>
-                                    <span class="rating-pill <?= $eval['academic']; ?> ms-2">
-                                        <?= ucfirst($eval['academic']); ?>
-                                    </span>
-                                </div>
-                                <div class="col-sm-6 mb-2">
-                                    <strong>Non-Academic:</strong>
-                                    <span class="rating-pill <?= $eval['non_academic']; ?> ms-2">
-                                        <?= ucfirst($eval['non_academic']); ?>
-                                    </span>
-                                </div>
-                                <div class="col-sm-4 mb-2">
-                                    <strong>Cognitive:</strong>
-                                    <span class="rating-pill <?= $eval['cognitive']; ?> ms-2">
-                                        <?= ucfirst($eval['cognitive']); ?>
-                                    </span>
-                                </div>
-                                <div class="col-sm-4 mb-2">
-                                    <strong>Psychomotor:</strong>
-                                    <span class="rating-pill <?= $eval['psychomotor']; ?> ms-2">
-                                        <?= ucfirst($eval['psychomotor']); ?>
-                                    </span>
-                                </div>
-                                <div class="col-sm-4 mb-2">
-                                    <strong>Affective:</strong>
-                                    <span class="rating-pill <?= $eval['affective']; ?> ms-2">
-                                        <?= ucfirst($eval['affective']); ?>
-                                    </span>
-                                </div>
-                            </div>
-                            
-                            <?php if (!empty($eval['comments'])): ?>
-                                <div class="mt-3">
-                                    <strong>Teacher's Comments:</strong>
-                                    <p class="mt-2 p-3 bg-light rounded"><?= nl2br(htmlspecialchars($eval['comments'])); ?></p>
-                                </div>
-                            <?php endif; ?>
                         </div>
-                        
-                        <div class="col-md-4 text-end">
-                            <button class="btn btn-outline-primary mb-2" onclick="printEvaluation(<?= $eval['id']; ?>)">
-                                <i class="fas fa-print me-2"></i>Print
-                            </button>
-                            <br>
-                            <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#viewModal<?= $eval['id']; ?>">
-                                <i class="fas fa-expand me-2"></i>View Details
-                            </button>
+                        <div class="profile-info">
+                            <h3 class="profile-name"><?php echo htmlspecialchars($student_data['full_name']); ?></h3>
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <i class="fas fa-graduation-cap"></i>
+                                    <div class="info-content">
+                                        <strong>Class:</strong> <?php echo htmlspecialchars($student_data['class_id']); ?>
+                                    </div>
+                                </div>
+                                <div class="info-item">
+                                    <i class="fas fa-id-card"></i>
+                                    <div class="info-content">
+                                        <strong>Roll No:</strong> <?php echo htmlspecialchars($student_data['admission_no']); ?>
+                                    </div>
+                                </div>
+                                <div class="info-item">
+                                    <i class="fas fa-calendar"></i>
+                                    <div class="info-content">
+                                        <strong>Academic Year:</strong> <?php echo date('Y'); ?> - <?php echo date('Y')+1; ?>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                
-                <!-- View Modal -->
-                <div class="modal fade" id="viewModal<?= $eval['id']; ?>" tabindex="-1">
-                    <div class="modal-dialog modal-lg">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">Evaluation Details - Term <?= $eval['term']; ?> <?= $eval['year']; ?></h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                            </div>
-                            <div class="modal-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <h6>Performance Summary</h6>
-                                        <canvas id="radarChart<?= $eval['id']; ?>" width="300" height="300"></canvas>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <h6>Detailed Ratings</h6>
-                                        <?php
-                                        $ratings = [
-                                            'Academic' => $eval['academic'],
-                                            'Non-Academic' => $eval['non_academic'],
-                                            'Cognitive' => $eval['cognitive'],
-                                            'Psychomotor' => $eval['psychomotor'],
-                                            'Affective' => $eval['affective']
-                                        ];
-                                        
-                                        foreach ($ratings as $key => $value):
-                                            $color = '';
-                                            $score = 0;
-                                            switch($value) {
-                                                case 'excellent': $color = 'bg-success'; $score = 100; break;
-                                                case 'very-good': $color = 'bg-info'; $score = 75; break;
-                                                case 'good': $color = 'bg-warning'; $score = 50; break;
-                                                case 'needs-improvement': $color = 'bg-danger'; $score = 25; break;
-                                            }
-                                        ?>
-                                            <div class="mb-3">
-                                                <strong><?= $key; ?>:</strong>
-                                                <span class="float-end"><?= ucfirst($value); ?></span>
-                                                <div class="progress mt-1" style="height: 10px;">
-                                                    <div class="progress-bar <?= $color; ?>" 
-                                                         role="progressbar" 
-                                                         style="width: <?= $score; ?>%">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        <?php endforeach; ?>
-                                    </div>
-                                </div>
-                                
-                                <hr>
-                                
-                                <h6>Detailed Comments</h6>
-                                <div class="p-3 bg-light rounded">
-                                    <?= nl2br(htmlspecialchars($eval['comments'])); ?>
-                                </div>
-                                
-                                <div class="mt-3">
-                                    <small class="text-muted">
-                                        <i class="fas fa-user-tie me-1"></i>
-                                        Evaluated by: <?= htmlspecialchars($eval['teacher_fname'] . ' ' . $eval['teacher_lname']); ?>
-                                        <br>
-                                        <i class="fas fa-clock me-1"></i>
-                                        Date: <?= date('F d, Y', strtotime($eval['created_at'])); ?>
+            </div>
+
+            <!-- Controls Section -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="control-header">
+                        <i class="fas fa-filter"></i>
+                        <h4>Filter Evaluations</h4>
+                    </div>
+                    <div class="control-group">
+                        <label for="termFilter" class="control-label">Filter by Term</label>
+                        <select id="termFilter" class="control-select">
+                            <option value="all">All Terms</option>
+                            <option value="1">Term 1</option>
+                            <option value="2">Term 2</option>
+                            <option value="3">Term 3</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Evaluations List -->
+            <h3 style="margin: 3rem 0 2rem 0; font-family: 'Poppins', sans-serif; font-size: 1.5rem; font-weight: 600; color: var(--gray-900);">
+                <i class="fas fa-list" style="margin-right: 0.75rem;"></i>
+                My Evaluations
+            </h3>
+
+            <?php if (empty($evaluations)): ?>
+                <div class="card">
+                    <div class="card-body text-center" style="padding: 3rem;">
+                        <div style="font-size: 3rem; color: var(--gray-400); margin-bottom: 1rem;">
+                            <i class="fas fa-clipboard-list"></i>
+                        </div>
+                        <h4 style="color: var(--gray-600); margin-bottom: 0.5rem;">No Evaluations Yet</h4>
+                        <p style="color: var(--gray-500); margin: 0;">You don't have any evaluations yet. Your teacher will evaluate you soon.</p>
+                    </div>
+                </div>
+            <?php else: ?>
+                <?php foreach ($evaluations as $eval): ?>
+                    <div class="card" data-term="<?php echo $eval['term']; ?>">
+                        <div class="card-header" style="background: var(--gradient-2);">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <span class="badge badge-primary" style="font-size: 0.9rem;">
+                                        Term <?php echo $eval['term']; ?> - <?php echo $eval['academic_year']; ?>
+                                    </span>
+                                    <small style="display: block; margin-top: 0.5rem; color: rgba(255, 255, 255, 0.8);">
+                                        <i class="fas fa-calendar" style="margin-right: 0.25rem;"></i>
+                                        <?php echo date('F d, Y', strtotime($eval['created_at'])); ?>
                                     </small>
                                 </div>
+                                <div style="text-align: right; color: white;">
+                                    <div style="font-weight: 600; color: inherit; margin-bottom: 0.25rem;">
+                                        <?php echo htmlspecialchars($eval['teacher_fname']); ?>
+                                    </div>
+                                    <small style="opacity: 0.8;">Evaluated by</small>
+                                </div>
                             </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                <button class="btn btn-primary" onclick="printEvaluation(<?= $eval['id']; ?>)">
-                                    <i class="fas fa-print me-2"></i>Print Evaluation
+                        </div>
+
+                        <div class="card-body">
+                            <div class="rating-grid">
+                                <div class="rating-item">
+                                    <div class="rating-label">Academic</div>
+                                    <span class="rating-badge rating-<?php echo $eval['academic']; ?>">
+                                        <?php echo ucfirst($eval['academic']); ?>
+                                    </span>
+                                </div>
+                                <div class="rating-item">
+                                    <div class="rating-label">Non-Academic</div>
+                                    <span class="rating-badge rating-<?php echo $eval['non_academic']; ?>">
+                                        <?php echo ucfirst($eval['non_academic']); ?>
+                                    </span>
+                                </div>
+                                <div class="rating-item">
+                                    <div class="rating-label">Cognitive</div>
+                                    <span class="rating-badge rating-<?php echo $eval['cognitive']; ?>">
+                                        <?php echo ucfirst($eval['cognitive']); ?>
+                                    </span>
+                                </div>
+                                <div class="rating-item">
+                                    <div class="rating-label">Psychomotor</div>
+                                    <span class="rating-badge rating-<?php echo $eval['psychomotor']; ?>">
+                                        <?php echo ucfirst($eval['psychomotor']); ?>
+                                    </span>
+                                </div>
+                                <div class="rating-item">
+                                    <div class="rating-label">Affective</div>
+                                    <span class="rating-badge rating-<?php echo $eval['affective']; ?>">
+                                        <?php echo ucfirst($eval['affective']); ?>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <?php if (!empty($eval['comments'])): ?>
+                                <div class="comments-section">
+                                    <strong class="comments-title">Teacher's Comments:</strong>
+                                    <p class="comments-text">
+                                        <?php echo nl2br(htmlspecialchars($eval['comments'])); ?>
+                                    </p>
+                                </div>
+                            <?php endif; ?>
+
+                            <div class="card-actions">
+                                <button class="action-btn action-btn-secondary" onclick="printEvaluation(<?php echo $eval['id']; ?>)">
+                                    <i class="fas fa-print"></i> Print
+                                </button>
+                                <button class="action-btn action-btn-primary" onclick="viewDetails(<?php echo $eval['id']; ?>)">
+                                    <i class="fas fa-expand"></i> View Details
                                 </button>
                             </div>
                         </div>
                     </div>
-                </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </main>
     </div>
-    
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About SahabFormMaster</h4>
+                    <p>A comprehensive educational management system designed to help students track their academic progress and performance.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul class="footer-links">
+                        <li><a href="myresults.php">My Results</a></li>
+                        <li><a href="mysubjects.php">My Subjects</a></li>
+                        <li><a href="attendance.php">Attendance</a></li>
+                        <li><a href="#">Support</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact Information</h4>
+                    <p>📧 student.support@sahabformmaster.com</p>
+                    <p>📱 +234 808 683 5607</p>
+                    <p>🌐 www.sahabformmaster.com</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="#">Privacy Policy</a>
+                    <span>•</span>
+                    <a href="#">Terms of Service</a>
+                    <span>•</span>
+                    <span>Version 2.0</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
     <script>
+        // Mobile Menu Toggle
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarClose = document.getElementById('sidebarClose');
+
+        mobileMenuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+            mobileMenuToggle.classList.toggle('active');
+        });
+
+        sidebarClose.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            mobileMenuToggle.classList.remove('active');
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+                    sidebar.classList.remove('active');
+                    mobileMenuToggle.classList.remove('active');
+                }
+            }
+        });
+
         function printEvaluation(evaluationId) {
             window.open(`print-evaluation.php?id=${evaluationId}`, '_blank');
         }
-        
-        // Term filter
-        document.querySelectorAll('[data-term]').forEach(btn => {
-            btn.addEventListener('click', function() {
-                // Update active button
-                document.querySelectorAll('[data-term]').forEach(b => {
-                    b.classList.remove('active');
-                });
-                this.classList.add('active');
-                
-                const term = this.dataset.term;
-                document.querySelectorAll('.evaluation-card').forEach(card => {
-                    if (term === 'all' || card.dataset.term === term) {
-                        card.style.display = 'block';
-                    } else {
-                        card.style.display = 'none';
-                    }
-                });
+
+        function viewDetails(evaluationId) {
+            alert('View details for evaluation ID: ' + evaluationId + '\n\nFeature coming soon!');
+        }
+
+        // Term filter functionality
+        document.getElementById('termFilter').addEventListener('change', function() {
+            const selectedTerm = this.value;
+            const evaluationCards = document.querySelectorAll('[data-term]');
+
+            evaluationCards.forEach(card => {
+                const cardTerm = card.getAttribute('data-term');
+                if (selectedTerm === 'all' || cardTerm === selectedTerm) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
             });
         });
-        
-        // Initialize radar charts
-        document.addEventListener('DOMContentLoaded', function() {
-            <?php foreach ($evaluations as $eval): ?>
-                const ctx<?= $eval['id']; ?> = document.getElementById('radarChart<?= $eval['id']; ?>').getContext('2d');
-                
-                function getScore(rating) {
-                    switch(rating) {
-                        case 'excellent': return 100;
-                        case 'very-good': return 75;
-                        case 'good': return 50;
-                        case 'needs-improvement': return 25;
-                        default: return 0;
-                    }
-                }
-                
-                new Chart(ctx<?= $eval['id']; ?>, {
-                    type: 'radar',
-                    data: {
-                        labels: ['Academic', 'Non-Academic', 'Cognitive', 'Psychomotor', 'Affective'],
-                        datasets: [{
-                            label: 'Performance',
-                            data: [
-                                getScore('<?= $eval['academic']; ?>'),
-                                getScore('<?= $eval['non_academic']; ?>'),
-                                getScore('<?= $eval['cognitive']; ?>'),
-                                getScore('<?= $eval['psychomotor']; ?>'),
-                                getScore('<?= $eval['affective']; ?>')
-                            ],
-                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                            borderColor: 'rgba(54, 162, 235, 1)',
-                            borderWidth: 2
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            r: {
-                                beginAtZero: true,
-                                max: 100,
-                                ticks: {
-                                    stepSize: 25
-                                }
-                            }
-                        }
-                    }
-                });
-            <?php endforeach; ?>
+
+        // Add active class on scroll for header
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('.dashboard-header');
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
         });
     </script>
+
+    <?php include '../includes/floating-button.php'; ?>
+
 </body>
 </html>

@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $full_name = trim($_POST['full_name'] ?? '');
     $password = $_POST['password'] ?? '';
     $role = $_POST['role'] ?? 'teacher';
-    
+
     // New staff profile fields
     $staff_id = trim($_POST['staff_id'] ?? '');
     $email = trim($_POST['email'] ?? '');
@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             'tax_id' => $tax_id,
                             'pension_number' => $pension_number
                         ]);
-                        
+
                         $pdo->commit();
                         $success = 'Staff member created successfully.';
                         header("Location: manage_user.php");
@@ -192,7 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Update lesson_plans to set teacher_id to NULL
                 $stmt = $pdo->prepare("UPDATE lesson_plans SET teacher_id = NULL WHERE teacher_id = :id");
                 $stmt->execute(['id' => $id]);
-                
+
                 // Update other tables that reference users.id (add more as needed)
                 // Example: Update classwork, assignments, etc. if they exist
                 try {
@@ -201,25 +201,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } catch (Exception $e) {
                     // Table might not exist, continue
                 }
-                
+
                 try {
                     $stmt = $pdo->prepare("UPDATE assignment SET teacher_id = NULL WHERE teacher_id = :id");
                     $stmt->execute(['id' => $id]);
                 } catch (Exception $e) {
                     // Table might not exist, continue
                 }
-                
+
                 try {
                     $stmt = $pdo->prepare("UPDATE attendance SET teacher_id = NULL WHERE teacher_id = :id");
                     $stmt->execute(['id' => $id]);
                 } catch (Exception $e) {
                     // Table might not exist, continue
                 }
-                
+
                 // Now delete the user
                 $stmt = $pdo->prepare("DELETE FROM users WHERE id = :id");
                 $stmt->execute(['id' => $id]);
-                
+
                 $pdo->commit();
                 $success = 'Staff member deleted successfully.';
                 header("Location: manage_user.php");
@@ -242,7 +242,7 @@ if (isset($_GET['delete'])) {
             // Update foreign key references first
             $stmt = $pdo->prepare("UPDATE lesson_plans SET teacher_id = NULL WHERE teacher_id = :id");
             $stmt->execute(['id' => $del_id]);
-            
+
             // Update other tables as needed
             try {
                 $stmt = $pdo->prepare("UPDATE classwork SET teacher_id = NULL WHERE teacher_id = :id");
@@ -250,18 +250,18 @@ if (isset($_GET['delete'])) {
             } catch (Exception $e) {
                 // Continue if table doesn't exist
             }
-            
+
             try {
                 $stmt = $pdo->prepare("UPDATE assignment SET teacher_id = NULL WHERE teacher_id = :id");
                 $stmt->execute(['id' => $del_id]);
             } catch (Exception $e) {
                 // Continue if table doesn't exist
             }
-            
+
             // Now delete the user
             $stmt = $pdo->prepare("DELETE FROM users WHERE id = :id");
             $stmt->execute(['id' => $del_id]);
-            
+
             $pdo->commit();
             header("Location: manage_user.php");
             exit;
@@ -295,20 +295,22 @@ if (isset($_GET['edit'])) {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Manage Staff | SahabFormMaster</title>
-    <link rel="stylesheet" href="../assets/css/manage_user.css">
-    <link rel="stylesheet" href="../assets/css/dashboard.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/admin_dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         /* ===== CSS Variables ===== */
         :root {
-            --primary-color: #4361ee;
-            --primary-light: #4895ef;
-            --primary-dark: #3a0ca3;
-            --secondary-color: #7209b7;
-            --success-color: #4cc9f0;
-            --danger-color: #f72585;
-            --warning-color: #f8961e;
-            --info-color: #43aa8b;
+            --primary-color: #4f46e5;
+            --primary-dark: #3730a3;
+            --secondary-color: #06b6d4;
+            --accent-color: #f59e0b;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --info-color: #3b82f6;
             --light-color: #f8f9fa;
             --dark-color: #212529;
             --gray-light: #e9ecef;
@@ -353,7 +355,7 @@ if (isset($_GET['edit'])) {
         .school-name {
             font-size: 1.8rem;
             font-weight: 700;
-            background: linear-gradient(45deg, #fff 30%, #4cc9f0 100%);
+            background: linear-gradient(45deg, #fff 30%, var(--secondary-color) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             text-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -408,13 +410,13 @@ if (isset($_GET['edit'])) {
         }
 
         .nav-link:hover {
-            background: linear-gradient(90deg, rgba(67, 97, 238, 0.1) 0%, rgba(67, 97, 238, 0.05) 100%);
+            background: linear-gradient(90deg, rgba(79, 70, 229, 0.1) 0%, rgba(79, 70, 229, 0.05) 100%);
             transform: translateX(5px);
             border-left-color: var(--primary-color);
         }
 
         .nav-link.active {
-            background: linear-gradient(90deg, var(--primary-color) 0%, var(--primary-light) 100%);
+            background: linear-gradient(90deg, var(--primary-color) 0%, var(--primary-dark) 100%);
             color: white;
             box-shadow: var(--shadow-sm);
             border-left-color: white;
@@ -578,7 +580,7 @@ if (isset($_GET['edit'])) {
 
         /* ===== Button Enhancement ===== */
         .btn-gold {
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
             color: white;
             border: none;
             padding: 0.875rem 1.75rem;
@@ -930,13 +932,13 @@ if (isset($_GET['edit'])) {
             .dashboard-container {
                 flex-direction: column;
             }
-            
+
             .sidebar {
                 width: 100%;
                 border-radius: 0;
                 margin-bottom: 1rem;
             }
-            
+
             .form-row {
                 grid-template-columns: 1fr;
             }
@@ -946,21 +948,21 @@ if (isset($_GET['edit'])) {
             .main-content {
                 padding: 1rem;
             }
-            
+
             .table {
                 display: block;
                 overflow-x: auto;
             }
-            
+
             .manage-actions {
                 flex-wrap: wrap;
             }
-            
+
             .action-buttons {
                 flex-direction: column;
                 gap: 0.75rem;
             }
-            
+
             .btn-gold {
                 width: 100%;
                 justify-content: center;
@@ -971,19 +973,19 @@ if (isset($_GET['edit'])) {
             .header-container {
                 padding: 0 1rem;
             }
-            
+
             .content-header {
                 padding: 1rem;
             }
-            
+
             .form-section {
                 padding: 1.25rem;
             }
-            
+
             .footer-content {
                 grid-template-columns: 1fr;
             }
-            
+
             .footer-bottom {
                 flex-direction: column;
                 gap: 0.75rem;
@@ -1018,7 +1020,7 @@ if (isset($_GET['edit'])) {
         }
 
         ::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             border-radius: 5px;
         }
 
@@ -1029,39 +1031,172 @@ if (isset($_GET['edit'])) {
 </head>
 <body>
 
-<header class="dashboard-header">
-    <div class="header-container">
-        <div class="header-right">
-            <div class="school-logo-container">
-                <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
-                <h1 class="school-name">SahabFormMaster</h1>
-            </div>
-        </div>
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+        <i class="fas fa-bars"></i>
+    </button>
 
-        <div class="header-left">
-            <div class="teacher-info">
-                <span class="teacher-name"><?php echo htmlspecialchars($admin_name); ?></span>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <!-- Logo and School Name -->
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Admin Portal</p>
+                    </div>
+                </div>
             </div>
-            <a href="../index.php" class="btn-logout">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </a>
+
+            <!-- Principal Info and Logout -->
+            <div class="header-right">
+                <div class="principal-info">
+                    <p class="principal-label">Administrator</p>
+                    <span class="principal-name"><?php echo htmlspecialchars($admin_name); ?></span>
+                </div>
+                <a href="logout.php" class="btn-logout">
+                    <span class="logout-icon">🚪</span>
+                    <span>Logout</span>
+                </a>
+            </div>
         </div>
-    </div>
-</header>
+    </header>
 
 <div class="dashboard-container">
-    <aside class="sidebar">
-        <nav class="sidebar-nav">
-            <ul class="nav-list">
-                <li class="nav-item">
-                    <a href="index.php" class="nav-link">
-                        <span class="nav-icon">📊</span>
-                        <span class="nav-text">Dashboard</span>
-                    </a>
-                </li>
-            </ul>
-        </nav>
-    </aside>
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3>Navigation</h3>
+                <button class="sidebar-close" id="sidebarClose">✕</button>
+            </div>
+            <nav class="sidebar-nav">
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="index.php" class="nav-link">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Dashboard</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a href="schoolnews.php" class="nav-link">
+                            <span class="nav-icon">📰</span>
+                            <span class="nav-text">School News</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="school_diary.php" class="nav-link">
+                            <span class="nav-icon">📔</span>
+                            <span class="nav-text">School Diary</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="students.php" class="nav-link">
+                            <span class="nav-icon">👥</span>
+                            <span class="nav-text">Students Registration</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="students-evaluations.php" class="nav-link">
+                            <span class="nav-icon">⭐</span>
+                            <span class="nav-text">Students Evaluations</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_class.php" class="nav-link">
+                            <span class="nav-icon">🎓</span>
+                            <span class="nav-text">Manage Classes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_results.php" class="nav-link">
+                            <span class="nav-icon">📈</span>
+                            <span class="nav-text">Manage Results</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="lesson-plans.php" class="nav-link">
+                            <span class="nav-icon">📝</span>
+                            <span class="nav-text">Lesson Plans</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_curriculum.php" class="nav-link">
+                            <span class="nav-icon">📚</span>
+                            <span class="nav-text">Curriculum</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage-school.php" class="nav-link">
+                            <span class="nav-icon">🏫</span>
+                            <span class="nav-text">Manage School</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="subjects.php" class="nav-link">
+                            <span class="nav-icon">📖</span>
+                            <span class="nav-text">Subjects</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_user.php" class="nav-link active">
+                            <span class="nav-icon">👤</span>
+                            <span class="nav-text">Manage Users</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="visitors.php" class="nav-link">
+                            <span class="nav-icon">🚶</span>
+                            <span class="nav-text">Visitors</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_timebook.php" class="nav-link">
+                            <span class="nav-icon">⏰</span>
+                            <span class="nav-text">Teachers Time Book</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="permissions.php" class="nav-link">
+                            <span class="nav-icon">🔐</span>
+                            <span class="nav-text">Permissions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_attendance.php" class="nav-link">
+                            <span class="nav-icon">📋</span>
+                            <span class="nav-text">Attendance Register</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="payments_dashboard.php" class="nav-link">
+                            <span class="nav-icon">💰</span>
+                            <span class="nav-text">School Fees</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="sessions.php" class="nav-link">
+                            <span class="nav-icon">📅</span>
+                            <span class="nav-text">School Sessions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="school_calendar.php" class="nav-link">
+                            <span class="nav-icon">🗓️</span>
+                            <span class="nav-text">School Calendar</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="applicants.php" class="nav-link">
+                            <span class="nav-icon">📄</span>
+                            <span class="nav-text">Applicants</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
 
     <main class="main-content">
         <div class="content-header">
@@ -1094,7 +1229,7 @@ if (isset($_GET['edit'])) {
                 <form method="POST">
                     <input type="hidden" name="action" value="<?php echo $edit_user ? 'edit' : 'add'; ?>">
                     <?php if ($edit_user): ?>
-                        <input type="hidden" name="id" value="<?php echo intval($edit_user['id']); ?>">
+                        <input type="hidden" name="id" value="<?php echo intval($edit_user['id']); ?>"></input>
                     <?php endif; ?>
 
                     <div class="form-section">
@@ -1102,30 +1237,30 @@ if (isset($_GET['edit'])) {
                         <div class="form-row">
                             <div class="form-group">
                                 <label class="required">Staff ID</label>
-                                <input type="text" name="staff_id" class="form-control" 
-                                       value="<?php echo htmlspecialchars($edit_user['staff_id'] ?? ''); ?>" 
+                                <input type="text" name="staff_id" class="form-control"
+                                       value="<?php echo htmlspecialchars($edit_user['staff_id'] ?? ''); ?>"
                                        required placeholder="e.g., STF2023001">
                                 <small class="small-muted">Unique identifier for the staff member</small>
                             </div>
                             <div class="form-group">
                                 <label class="required">Username</label>
-                                <input type="text" name="username" class="form-control" 
-                                       value="<?php echo htmlspecialchars($edit_user['username'] ?? ''); ?>" 
+                                <input type="text" name="username" class="form-control"
+                                       value="<?php echo htmlspecialchars($edit_user['username'] ?? ''); ?>"
                                        required placeholder="For login">
                                 <small class="small-muted">Used for system login</small>
                             </div>
                             <div class="form-group">
                                 <label class="required">Full Name</label>
-                                <input type="text" name="full_name" class="form-control" 
-                                       value="<?php echo htmlspecialchars($edit_user['full_name'] ?? ''); ?>" 
+                                <input type="text" name="full_name" class="form-control"
+                                       value="<?php echo htmlspecialchars($edit_user['full_name'] ?? ''); ?>"
                                        required>
                             </div>
                         </div>
-                        
+
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Date of Birth</label>
-                                <input type="date" name="date_of_birth" class="form-control" 
+                                <input type="date" name="date_of_birth" class="form-control"
                                        value="<?php echo htmlspecialchars($edit_user['date_of_birth'] ?? ''); ?>">
                             </div>
                             <div class="form-group">
@@ -1141,7 +1276,7 @@ if (isset($_GET['edit'])) {
                             <div class="form-group">
                                 <label><?php echo $edit_user ? 'New Password (leave blank to keep current)' : 'Password (required)'; ?></label>
                                 <div style="position: relative;">
-                                    <input type="password" name="password" class="form-control" 
+                                    <input type="password" name="password" class="form-control"
                                            id="passwordField"
                                            placeholder="<?php echo $edit_user ? 'Enter new password' : 'Set password'; ?>"
                                            <?php echo !$edit_user ? 'required' : ''; ?>>
@@ -1159,8 +1294,8 @@ if (isset($_GET['edit'])) {
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Designation/Position</label>
-                                <input type="text" name="designation" class="form-control" 
-                                       value="<?php echo htmlspecialchars($edit_user['designation'] ?? ''); ?>" 
+                                <input type="text" name="designation" class="form-control"
+                                       value="<?php echo htmlspecialchars($edit_user['designation'] ?? ''); ?>"
                                        placeholder="e.g., Math Teacher, Head of Department">
                             </div>
                             <div class="form-group">
@@ -1177,22 +1312,22 @@ if (isset($_GET['edit'])) {
                             </div>
                             <div class="form-group">
                                 <label>Qualification</label>
-                                <input type="text" name="qualification" class="form-control" 
-                                       value="<?php echo htmlspecialchars($edit_user['qualification'] ?? ''); ?>" 
+                                <input type="text" name="qualification" class="form-control"
+                                       value="<?php echo htmlspecialchars($edit_user['qualification'] ?? ''); ?>"
                                        placeholder="e.g., B.Ed, M.Sc">
                             </div>
                         </div>
-                        
+
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Teacher License No.</label>
-                                <input type="text" name="teacher_license" class="form-control" 
-                                       value="<?php echo htmlspecialchars($edit_user['teacher_license'] ?? ''); ?>" 
+                                <input type="text" name="teacher_license" class="form-control"
+                                       value="<?php echo htmlspecialchars($edit_user['teacher_license'] ?? ''); ?>"
                                        placeholder="If applicable">
                             </div>
                             <div class="form-group">
                                 <label>Date Employed</label>
-                                <input type="date" name="date_employed" class="form-control" 
+                                <input type="date" name="date_employed" class="form-control"
                                        value="<?php echo htmlspecialchars($edit_user['date_employed'] ?? date('Y-m-d')); ?>">
                             </div>
                             <div class="form-group">
@@ -1212,25 +1347,25 @@ if (isset($_GET['edit'])) {
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Email Address</label>
-                                <input type="email" name="email" class="form-control" 
+                                <input type="email" name="email" class="form-control"
                                        value="<?php echo htmlspecialchars($edit_user['email'] ?? ''); ?>">
                             </div>
                             <div class="form-group">
                                 <label>Phone Number</label>
-                                <input type="tel" name="phone" class="form-control" 
+                                <input type="tel" name="phone" class="form-control"
                                        value="<?php echo htmlspecialchars($edit_user['phone'] ?? ''); ?>">
                             </div>
                             <div class="form-group">
                                 <label>Emergency Contact Name</label>
-                                <input type="text" name="emergency_contact" class="form-control" 
+                                <input type="text" name="emergency_contact" class="form-control"
                                        value="<?php echo htmlspecialchars($edit_user['emergency_contact'] ?? ''); ?>">
                             </div>
                         </div>
-                        
+
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Emergency Contact Phone</label>
-                                <input type="tel" name="emergency_phone" class="form-control" 
+                                <input type="tel" name="emergency_phone" class="form-control"
                                        value="<?php echo htmlspecialchars($edit_user['emergency_phone'] ?? ''); ?>">
                             </div>
                             <div class="form-group">
@@ -1245,25 +1380,25 @@ if (isset($_GET['edit'])) {
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Bank Name</label>
-                                <input type="text" name="bank_name" class="form-control" 
+                                <input type="text" name="bank_name" class="form-control"
                                        value="<?php echo htmlspecialchars($edit_user['bank_name'] ?? ''); ?>">
                             </div>
                             <div class="form-group">
                                 <label>Account Number</label>
-                                <input type="text" name="account_number" class="form-control" 
+                                <input type="text" name="account_number" class="form-control"
                                        value="<?php echo htmlspecialchars($edit_user['account_number'] ?? ''); ?>">
                             </div>
                         </div>
-                        
+
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Tax ID Number</label>
-                                <input type="text" name="tax_id" class="form-control" 
+                                <input type="text" name="tax_id" class="form-control"
                                        value="<?php echo htmlspecialchars($edit_user['tax_id'] ?? ''); ?>">
                             </div>
                             <div class="form-group">
                                 <label>Pension Number</label>
-                                <input type="text" name="pension_number" class="form-control" 
+                                <input type="text" name="pension_number" class="form-control"
                                        value="<?php echo htmlspecialchars($edit_user['pension_number'] ?? ''); ?>">
                             </div>
                         </div>
@@ -1300,7 +1435,7 @@ if (isset($_GET['edit'])) {
                     <h3><i class="fas fa-list"></i> All Staff Members</h3>
                     <p class="small-muted">Total: <?php echo count($users); ?> staff members</p>
                 </div>
-                
+
                 <div style="overflow-x: auto;">
                     <table class="table">
                         <thead>
@@ -1327,13 +1462,14 @@ if (isset($_GET['edit'])) {
                                     </td>
                                 </tr>
                             <?php else: ?>
-                                <?php foreach ($users as $u): 
+                                <?php foreach ($users as $u): ?>
+                                    <?php
                                     $badge_class = '';
                                     if ($u['role'] === 'principal') $badge_class = 'badge-principal';
                                     elseif ($u['role'] === 'teacher') $badge_class = 'badge-teacher';
                                     elseif ($u['role'] === 'admin') $badge_class = 'badge-admin';
                                     else $badge_class = 'badge-support';
-                                ?>
+                                    ?>
                                     <tr>
                                         <td><span class="staff-id"><?php echo htmlspecialchars($u['staff_id'] ?? 'N/A'); ?></span></td>
                                         <td>
@@ -1350,7 +1486,7 @@ if (isset($_GET['edit'])) {
                                                 <a class="btn-small btn-edit" href="manage_user.php?edit=<?php echo intval($u['id']); ?>" title="Edit">
                                                     <i class="fas fa-edit"></i> Edit
                                                 </a>
-                                                
+
                                                 <a class="btn-small btn-view" href="staff_profile.php?id=<?php echo intval($u['id']); ?>" title="View Profile">
                                                     <i class="fas fa-eye"></i> View
                                                 </a>
@@ -1426,7 +1562,7 @@ if (isset($_GET['edit'])) {
                 this.classList.remove('has-value');
             }
         });
-        
+
         // Trigger on page load if field has value
         if (control.value.trim() !== '') {
             control.classList.add('has-value');
@@ -1455,7 +1591,34 @@ if (isset($_GET['edit'])) {
         section.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
         observer.observe(section);
     });
+
+    // Mobile Menu Toggle
+    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarClose = document.getElementById('sidebarClose');
+
+    mobileMenuToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('active');
+        mobileMenuToggle.classList.toggle('active');
+    });
+
+    sidebarClose.addEventListener('click', () => {
+        sidebar.classList.remove('active');
+        mobileMenuToggle.classList.remove('active');
+    });
+
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', (e) => {
+        if (window.innerWidth <= 768) {
+            if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+                sidebar.classList.remove('active');
+                mobileMenuToggle.classList.remove('active');
+            }
+        }
+    });
 </script>
+
+    <?php include '../includes/floating-button.php'; ?>
 
 </body>
 </html>

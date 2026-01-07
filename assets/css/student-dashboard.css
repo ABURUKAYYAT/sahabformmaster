@@ -78,7 +78,7 @@ body {
     position: fixed;
     top: 20px;
     left: 20px;
-    z-index: 1001;
+    z-index: 999;
     background: var(--primary-color);
     color: white;
     border: none;
@@ -746,6 +746,7 @@ body {
 @media (max-width: 1024px) {
     .sidebar {
         transform: translateX(-100%);
+        z-index: 999;
     }
 
     .sidebar.active {
@@ -755,6 +756,8 @@ body {
     .main-content {
         margin-left: 0;
         padding: 1.5rem;
+        width: 100%;
+        max-width: 100%;
     }
 
     .mobile-menu-toggle {
@@ -769,44 +772,161 @@ body {
     .quick-actions-grid {
         grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     }
+
+    .header-stats {
+        gap: 1.5rem;
+    }
+
+    .quick-stat {
+        min-width: 120px;
+    }
 }
 
 @media (max-width: 768px) {
     .header-container {
         padding: 0 1rem;
         height: 70px;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .school-logo-container {
+        order: 1;
+        flex: 1;
+        min-width: 0;
     }
 
     .school-info h1 {
         font-size: 1.25rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .school-tagline {
+        font-size: 0.8rem;
+    }
+
+    .header-right {
+        order: 2;
+        gap: 0.75rem;
     }
 
     .welcome-section h2 {
         font-size: 1.5rem;
+        line-height: 1.3;
+    }
+
+    .welcome-section p {
+        font-size: 1rem;
     }
 
     .content-header {
         flex-direction: column;
         align-items: stretch;
         gap: 1.5rem;
+        margin-bottom: 1.5rem;
     }
 
     .header-stats {
         justify-content: center;
         gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .quick-stat {
+        min-width: 100px;
+        padding: 0.75rem;
+    }
+
+    .quick-stat-value {
+        font-size: 1.75rem;
+    }
+
+    .quick-stat-label {
+        font-size: 0.8rem;
     }
 
     .dashboard-cards {
         grid-template-columns: 1fr;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .card {
+        padding: 1.25rem;
+    }
+
+    .card-content h3 {
+        font-size: 1.1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .card-value {
+        font-size: 2rem;
+    }
+
+    .quick-actions-section {
+        margin-bottom: 2rem;
+    }
+
+    .section-header {
+        margin-bottom: 1rem;
+    }
+
+    .section-header h3 {
+        font-size: 1.25rem;
     }
 
     .quick-actions-grid {
         grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    .quick-action-card {
+        padding: 1.5rem 1rem;
+    }
+
+    .quick-action-card i {
+        font-size: 1.75rem;
+    }
+
+    .quick-action-card span {
+        font-size: 0.85rem;
+    }
+
+    .activity-section {
+        margin-bottom: 2rem;
+    }
+
+    .activity-item {
+        padding: 1rem;
+        gap: 0.75rem;
+    }
+
+    .activity-icon {
+        width: 35px;
+        height: 35px;
+        flex-shrink: 0;
+    }
+
+    .activity-text {
+        font-size: 0.9rem;
+    }
+
+    .activity-date {
+        font-size: 0.8rem;
     }
 
     .footer-content {
         grid-template-columns: 1fr;
         text-align: center;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .footer-section h4 {
+        font-size: 1rem;
     }
 
     .footer-bottom {
@@ -814,50 +934,262 @@ body {
         text-align: center;
         gap: 1rem;
     }
+
+    .footer-bottom-links {
+        justify-content: center;
+    }
 }
 
 @media (max-width: 480px) {
+    .header-container {
+        padding: 0 0.75rem;
+        height: auto;
+        min-height: 60px;
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+        position: relative;
+    }
+
+    .mobile-menu-toggle {
+        position: absolute;
+        top: 5px;
+        left: 5px;
+        z-index: 999;
+    }
+
+    .school-logo {
+        width: 40px;
+        height: 40px;
+    }
+
+    .school-info h1 {
+        font-size: 1.1rem;
+    }
+
+    .school-tagline {
+        font-size: 0.75rem;
+    }
+
     .header-right {
-        gap: 1rem;
+        gap: 0.5rem;
+    }
+
+    .student-info {
+        text-align: left;
+    }
+
+    .student-label {
+        font-size: 0.7rem;
     }
 
     .student-name {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
     }
 
     .admission-number {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
     }
 
     .btn-logout {
-        padding: 0.5rem 1rem;
-        font-size: 0.9rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.85rem;
     }
 
     .btn-logout span:last-child {
         display: none;
     }
 
+    .mobile-menu-toggle {
+        top: 15px;
+        left: 15px;
+        width: 45px;
+        height: 45px;
+        font-size: 1.1rem;
+    }
+
+    .sidebar {
+        top: 65px;
+        height: calc(100vh - 65px);
+    }
+
+    .sidebar-header {
+        padding: 1rem;
+    }
+
+    .sidebar-header h3 {
+        font-size: 1.1rem;
+    }
+
+    .welcome-section h2 {
+        font-size: 1.25rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .welcome-section p {
+        font-size: 0.9rem;
+    }
+
+    .content-header {
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .header-stats {
+        gap: 0.75rem;
+    }
+
+    .quick-stat {
+        min-width: 80px;
+        padding: 0.75rem 0.5rem;
+    }
+
+    .quick-stat-value {
+        font-size: 1.5rem;
+    }
+
+    .quick-stat-label {
+        font-size: 0.75rem;
+    }
+
+    .dashboard-cards {
+        gap: 0.75rem;
+    }
+
+    .card {
+        padding: 1rem;
+        border-radius: 1rem;
+    }
+
+    .card-icon-wrapper {
+        padding: 1.5rem 1rem 0.75rem;
+    }
+
+    .card-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.25rem;
+    }
+
+    .card-content {
+        padding: 0.75rem 1rem 1rem;
+    }
+
+    .card-content h3 {
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .card-value {
+        font-size: 1.75rem;
+    }
+
+    .card-footer {
+        gap: 0.5rem;
+    }
+
+    .card-badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+    }
+
+    .card-link {
+        font-size: 0.8rem;
+    }
+
     .quick-actions-grid {
         grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .quick-action-card {
+        padding: 1.25rem 0.75rem;
+        border-radius: 0.75rem;
+    }
+
+    .quick-action-card i {
+        font-size: 1.5rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .quick-action-card span {
+        font-size: 0.8rem;
+    }
+
+    .activity-section .section-header {
+        padding: 1rem;
+    }
+
+    .activity-list {
+        padding: 0 1rem 1rem;
     }
 
     .activity-item {
-        padding: 1rem;
+        padding: 0.75rem;
+        gap: 0.75rem;
+    }
+
+    .activity-icon {
+        width: 30px;
+        height: 30px;
+        font-size: 0.8rem;
     }
 
     .activity-content {
-        flex: 1;
-        min-width: 0;
+        gap: 0.25rem;
     }
 
     .activity-text {
-        font-size: 0.9rem;
-        word-break: break-word;
+        font-size: 0.85rem;
+        line-height: 1.3;
+    }
+
+    .activity-date {
+        font-size: 0.75rem;
     }
 
     .main-content {
-        padding: 1rem;
+        padding: 0.75rem;
+    }
+
+    .dashboard-footer {
+        margin-top: 2rem;
+    }
+
+    .footer-container {
+        padding: 2rem 1rem 1rem;
+    }
+
+    .footer-section h4 {
+        font-size: 0.9rem;
+    }
+
+    .footer-section p {
+        font-size: 0.85rem;
+        line-height: 1.4;
+    }
+
+    .footer-links {
+        text-align: center;
+    }
+
+    .footer-links li {
+        margin-bottom: 0.25rem;
+    }
+
+    .footer-links a {
+        font-size: 0.85rem;
+    }
+
+    .footer-bottom p {
+        font-size: 0.8rem;
+    }
+
+    .footer-bottom-links {
+        font-size: 0.8rem;
+    }
+
+    .footer-bottom-links span {
+        display: none;
     }
 }
 
@@ -937,6 +1269,317 @@ body {
     align-items: center;
     justify-content: center;
     border-radius: var(--border-radius-lg);
+}
+
+/* ===================================================
+   Subject Cards Enhancements
+   =================================================== */
+
+.teacher-info {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.75rem;
+    border-radius: var(--border-radius-md);
+    margin-bottom: 1rem;
+}
+
+.teacher-avatar {
+    width: 35px;
+    height: 35px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.card-badge.warning {
+    background: var(--warning-color);
+    color: white;
+}
+
+/* ===================================================
+   Student Profile Card Styles
+   =================================================== */
+
+.profile-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 2rem;
+    align-items: center;
+}
+
+.profile-avatar {
+    text-align: center;
+}
+
+.avatar-circle {
+    width: 120px;
+    height: 120px;
+    background: var(--gradient-1);
+    border-radius: var(--border-radius-xl);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 3rem;
+    margin: 0 auto 1rem;
+    box-shadow: var(--shadow-md);
+}
+
+.profile-info {
+    flex: 1;
+}
+
+.profile-name {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 0.5rem;
+    font-family: 'Poppins', sans-serif;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.info-item {
+    background: var(--gray-100);
+    padding: 1rem;
+    border-radius: var(--border-radius-lg);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: var(--transition-fast);
+    border: 1px solid var(--gray-200);
+}
+
+.info-item:hover {
+    background: var(--gray-50);
+    box-shadow: var(--shadow-sm);
+}
+
+.info-item i {
+    color: var(--primary-color);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.info-content strong {
+    display: block;
+    font-weight: 600;
+    color: var(--gray-900);
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+
+.info-content {
+    flex: 1;
+    font-size: 0.95rem;
+    color: var(--gray-700);
+}
+
+/* ===================================================
+   Control Section Styles
+   =================================================== */
+
+.control-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.control-header i {
+    color: var(--primary-color);
+    font-size: 1.25rem;
+}
+
+.control-header h4 {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--gray-900);
+}
+
+.control-group {
+    max-width: 300px;
+}
+
+.control-label {
+    display: block;
+    font-weight: 600;
+    color: var(--gray-700);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.control-select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--gray-200);
+    border-radius: var(--border-radius-lg);
+    background: var(--white);
+    color: var(--gray-700);
+    font-size: 0.95rem;
+    font-family: 'Inter', sans-serif;
+    transition: var(--transition-fast);
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 1rem;
+    padding-right: 2.5rem;
+}
+
+.control-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.control-select:hover {
+    border-color: var(--gray-300);
+}
+
+/* ===================================================
+   Evaluation Cards Styles
+   =================================================== */
+
+.rating-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.rating-item {
+    background: var(--gray-100);
+    padding: 1rem;
+    border-radius: var(--border-radius-lg);
+    border: 1px solid var(--gray-200);
+    transition: var(--transition-fast);
+}
+
+.rating-item:hover {
+    background: var(--gray-50);
+    box-shadow: var(--shadow-sm);
+}
+
+.rating-label {
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.rating-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.rating-excellent {
+    background: var(--success-color);
+    color: white;
+}
+
+.rating-very-good {
+    background: var(--info-color);
+    color: white;
+}
+
+.rating-good {
+    background: var(--warning-color);
+    color: white;
+}
+
+.rating-average {
+    background: var(--gray-400);
+    color: white;
+}
+
+.rating-poor {
+    background: var(--error-color);
+    color: white;
+}
+
+.comments-section {
+    background: var(--gray-100);
+    padding: 1.5rem;
+    border-radius: var(--border-radius-lg);
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--gray-200);
+}
+
+.comments-title {
+    color: var(--gray-900);
+    margin-bottom: 0.5rem;
+    display: block;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.comments-text {
+    color: var(--gray-700);
+    line-height: 1.6;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.card-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--border-radius-md);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    font-family: 'Inter', sans-serif;
+}
+
+.action-btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.action-btn-primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.action-btn-secondary {
+    background: var(--white);
+    color: var(--gray-700);
+    border: 1px solid var(--gray-300);
+}
+
+.action-btn-secondary:hover {
+    background: var(--gray-50);
+    border-color: var(--gray-400);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
 }
 
 /* ===================================================
