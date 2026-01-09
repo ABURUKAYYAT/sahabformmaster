@@ -4,11 +4,11 @@
 
 return [
     // OpenAI Configuration
-    'openai_api_key' => getenv('https://api.openai.com/v1/embeddings') ?: '', // Set via environment variable or replace with your key
+    'openai_api_key' => getenv('OPENAI_API_KEY') ?: '', // Set via environment variable or replace with your key
 
     // AI Model Settings
     'model' => 'gpt-3.5-turbo',
-    'max_tokens' => 1000,
+    'max_tokens' => 1500,
     'temperature' => 0.7,
 
     // Rate Limiting

@@ -1,9 +1,10 @@
-<!-- Draggable Floating Buttons Container -->
+<!-- Enhanced Draggable Floating Buttons Container -->
 <div id="floating-buttons-container">
     <!-- AI Assistant Button -->
     <div id="floating-ai-btn" class="floating-ai-btn" aria-label="AI Assistant">
         <i class="fas fa-robot"></i>
         <div class="ai-indicator"></div>
+        <div class="ai-pulse-ring"></div>
     </div>
 
     <!-- Scroll-to-Top Button -->
@@ -13,517 +14,321 @@
     </div>
 </div>
 
-<!-- AI Assistant Modal -->
+<!-- Enhanced AI Assistant Modal -->
 <div id="ai-assistant-modal" class="ai-modal">
+    <div class="ai-modal-overlay"></div>
     <div class="ai-modal-content">
         <div class="ai-modal-header">
             <div class="ai-header-left">
                 <div class="ai-avatar">
-                    <i class="fas fa-robot"></i>
+                    <div class="ai-avatar-gradient">
+                        <i class="fas fa-robot"></i>
+                    </div>
                 </div>
                 <div class="ai-info">
                     <h3>SahabFormMaster AI Assistant</h3>
-                    <p>Ask me anything about the system</p>
+                    <p>Intelligent help & analytics</p>
                 </div>
             </div>
-            <button class="ai-modal-close" id="ai-modal-close">&times;</button>
+            <div class="ai-header-actions">
+                <button class="ai-blur-toggle-btn" id="ai-blur-toggle" title="Toggle blur effects">
+                    <i class="fas fa-eye"></i>
+                </button>
+                <button class="ai-minimize-btn" id="ai-minimize-btn" title="Minimize">
+                    <i class="fas fa-minus"></i>
+                </button>
+                <button class="ai-modal-close" id="ai-modal-close" title="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
         </div>
 
         <div class="ai-chat-container" id="ai-chat-container">
             <div class="ai-welcome-message">
                 <div class="ai-message ai-message-bot">
                     <div class="ai-message-avatar">
-                        <i class="fas fa-robot"></i>
+                        <div class="ai-avatar-gradient">
+                            <i class="fas fa-robot"></i>
+                        </div>
                     </div>
                     <div class="ai-message-content">
-                        <p>Hello! I'm your AI assistant for SahabFormMaster. I can help you with:</p>
-                        <ul>
-                            <li><strong>System Guidance:</strong> How to use features, add students, manage results</li>
-                            <li><strong>Analytics:</strong> Student performance, attendance trends, fee reports</li>
-                            <li><strong>Troubleshooting:</strong> Common issues and solutions</li>
-                        </ul>
-                        <p>What would you like to know?</p>
+                        <div class="ai-message-text">
+                            <p>Hello! I'm your AI assistant for SahabFormMaster. I can help you with:</p>
+                            <div class="ai-capabilities">
+                                <div class="ai-capability-item">
+                                    <i class="fas fa-user-plus"></i>
+                                    <span>System Guidance</span>
+                                </div>
+                                <div class="ai-capability-item">
+                                    <i class="fas fa-chart-bar"></i>
+                                    <span>Analytics & Reports</span>
+                                </div>
+                                <div class="ai-capability-item">
+                                    <i class="fas fa-tools"></i>
+                                    <span>Troubleshooting</span>
+                                </div>
+                            </div>
+                            <p class="ai-welcome-question">What would you like to know?</p>
+                        </div>
+                        <div class="ai-message-time">Just now</div>
                     </div>
                 </div>
             </div>
         </div>
 
+        <div class="ai-typing-indicator" id="typing-indicator" style="display: none;">
+            <div class="ai-typing-avatar">
+                <div class="ai-avatar-gradient">
+                    <i class="fas fa-robot"></i>
+                </div>
+            </div>
+            <div class="ai-typing-content">
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+                <span class="typing-text">AI is thinking...</span>
+            </div>
+        </div>
+
         <div class="ai-input-container">
             <div class="ai-quick-actions">
-                <button class="ai-quick-btn" data-query="How do I add a new student?">Add Student</button>
-                <button class="ai-quick-btn" data-query="How do I compile results?">Compile Results</button>
-                <button class="ai-quick-btn" data-query="Show me attendance analytics">Attendance Stats</button>
-                <button class="ai-quick-btn" data-query="What's the fee collection status?">Fee Report</button>
+                <button class="ai-quick-btn" data-query="How do I add a new student?">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Add Student</span>
+                </button>
+                <button class="ai-quick-btn" data-query="How do I compile results?">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Compile Results</span>
+                </button>
+                <button class="ai-quick-btn" data-query="Show me attendance analytics">
+                    <i class="fas fa-calendar-check"></i>
+                    <span>Attendance Stats</span>
+                </button>
+                <button class="ai-quick-btn" data-query="What's the fee collection status?">
+                    <i class="fas fa-money-bill-wave"></i>
+                    <span>Fee Report</span>
+                </button>
             </div>
             <div class="ai-input-group">
-                <textarea id="ai-input" placeholder="Ask me anything about SahabFormMaster..." rows="2"></textarea>
-                <button id="ai-submit" class="ai-submit-btn">
+                <textarea id="ai-input" placeholder="Ask me anything about SahabFormMaster..." rows="1"></textarea>
+                <button id="ai-submit" class="ai-submit-btn" disabled>
                     <i class="fas fa-paper-plane"></i>
                 </button>
+            </div>
+            <div class="ai-input-footer">
+                <span class="ai-disclaimer">Powered by AI • Responses may not be 100% accurate</span>
             </div>
         </div>
     </div>
 </div>
 
-<style>
-/* Floating Scroll Button Styles */
-.floating-scroll-btn {
-    position: fixed;
-    bottom: 30px;
-    right: 30px;
-    width: 60px;
-    height: 60px;
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    cursor: grab;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-    transition: all 0.3s ease;
-    z-index: 1000;
-    opacity: 0;
-    transform: translateY(20px) scale(0.8);
-    user-select: none;
+
+
+<!-- Load AI Assistant CSS with improved path resolution and fallback styles -->
+<?php
+// Detect the correct CSS path based on current directory context
+$currentPath = $_SERVER['PHP_SELF'] ?? $_SERVER['SCRIPT_NAME'] ?? '';
+$cssPath = '../assets/css/ai-assistant.css'; // Default for admin/teacher/student directories
+
+// Check if we're in admin, teacher, or student directory (includes path will be ../includes/)
+if (strpos($currentPath, '/admin/') !== false ||
+    strpos($currentPath, '/teacher/') !== false ||
+    strpos($currentPath, '/student/') !== false) {
+    $cssPath = '../assets/css/ai-assistant.css';
+} elseif (strpos($currentPath, 'index.php') !== false && strpos($currentPath, '/') === 0) {
+    // Root index.php
+    $cssPath = 'assets/css/ai-assistant.css';
+} else {
+    // Fallback to relative path from includes directory
+    $cssPath = '../assets/css/ai-assistant.css';
+}
+?>
+<link rel="stylesheet" href="<?php echo htmlspecialchars($cssPath); ?>" id="ai-assistant-css">
+
+<!-- Fallback CSS styles in case main CSS fails to load -->
+<style id="ai-assistant-fallback-css">
+/* Fallback styles for AI Assistant - ensures visibility even if main CSS fails */
+#ai-assistant-modal.fallback {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    z-index: 99999 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
-.floating-scroll-btn.visible {
-    opacity: 1;
-    transform: translateY(0) scale(1);
+#ai-assistant-modal.fallback .ai-modal-content {
+    background: white !important;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3) !important;
+    max-width: 400px !important;
+    width: 90% !important;
+    max-height: 80vh !important;
+    overflow-y: auto !important;
+    position: relative !important;
+    z-index: 100000 !important;
 }
 
-.floating-scroll-btn:hover {
-    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
-    transform: scale(1.1);
+#ai-assistant-modal.fallback #ai-input {
+    width: 100% !important;
+    padding: 12px !important;
+    border: 1px solid #ddd !important;
+    border-radius: 8px !important;
+    font-size: 14px !important;
+    resize: vertical !important;
+    min-height: 40px !important;
+    max-height: 120px !important;
+    box-sizing: border-box !important;
+    background: white !important;
+    color: black !important;
+    pointer-events: auto !important;
+    cursor: text !important;
 }
 
-.floating-scroll-btn:active {
-    cursor: grabbing;
+#ai-assistant-modal.fallback .ai-submit-btn {
+    background: #6366f1 !important;
+    color: white !important;
+    border: none !important;
+    padding: 10px 16px !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    margin-top: 8px !important;
 }
 
-.floating-scroll-btn.dragging {
-    opacity: 0.8;
-    transform: scale(1.05);
-    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5);
-}
-
-.drag-indicator {
-    position: absolute;
-    top: 8px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 20px;
-    height: 3px;
-    background: rgba(255, 255, 255, 0.6);
-    border-radius: 2px;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.floating-scroll-btn:hover .drag-indicator {
-    opacity: 1;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .floating-scroll-btn {
-        width: 50px;
-        height: 50px;
-        font-size: 1.2rem;
-        bottom: 20px;
-        right: 20px;
-    }
-}
-
-@media (max-width: 480px) {
-    .floating-scroll-btn {
-        width: 45px;
-        height: 45px;
-        font-size: 1.1rem;
-        bottom: 15px;
-        right: 15px;
-    }
-}
-
-/* AI Assistant Button Styles */
-.floating-ai-btn {
-    position: fixed;
-    bottom: 100px;
-    right: 30px;
-    width: 60px;
-    height: 60px;
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.4rem;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-    transition: all 0.3s ease;
-    z-index: 1000;
-    user-select: none;
-}
-
-.floating-ai-btn:hover {
-    background: linear-gradient(135deg, #059669 0%, #047857 100%);
-    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-    transform: scale(1.1);
-}
-
-.floating-ai-btn.pulsing {
-    animation: pulse 2s infinite;
-}
-
-.ai-indicator {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 8px;
-    height: 8px;
-    background: #ef4444;
-    border-radius: 50%;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.floating-ai-btn.active .ai-indicator {
-    opacity: 1;
-}
-
-@keyframes pulse {
-    0% { box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
-    50% { box-shadow: 0 4px 20px rgba(16, 185, 129, 0.6); }
-    100% { box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
-}
-
-/* AI Modal Styles */
-.ai-modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 10000;
-    animation: fadeIn 0.3s ease;
-}
-
-.ai-modal.show {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.ai-modal-content {
-    background: white;
-    border-radius: 12px;
-    width: 90%;
-    max-width: 500px;
-    max-height: 80vh;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-    animation: slideUp 0.3s ease;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes slideUp {
-    from { transform: translateY(30px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-}
-
-/* Modal Header */
-.ai-modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.ai-header-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.ai-avatar {
-    width: 40px;
-    height: 40px;
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 1.2rem;
-}
-
-.ai-info h3 {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #111827;
-}
-
-.ai-info p {
-    margin: 4px 0 0 0;
-    font-size: 0.9rem;
-    color: #6b7280;
-}
-
-.ai-modal-close {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    color: #6b7280;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    transition: all 0.2s ease;
-}
-
-.ai-modal-close:hover {
-    background: #f3f4f6;
-    color: #374151;
-}
-
-/* Chat Container */
-.ai-chat-container {
-    flex: 1;
-    padding: 20px;
-    overflow-y: auto;
-    max-height: 400px;
-}
-
-.ai-welcome-message {
-    margin-bottom: 20px;
-}
-
-.ai-message {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 16px;
-}
-
-.ai-message-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.9rem;
-    flex-shrink: 0;
-}
-
-.ai-message.ai-message-bot .ai-message-avatar {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    color: white;
-}
-
-.ai-message.ai-message-user .ai-message-avatar {
-    background: #e5e7eb;
-    color: #6b7280;
-}
-
-.ai-message.ai-message-user {
-    flex-direction: row-reverse;
-}
-
-.ai-message.ai-message-user .ai-message-content {
-    background: #10b981;
-    color: white;
-}
-
-.ai-message-content {
-    background: #f3f4f6;
-    padding: 12px 16px;
-    border-radius: 16px;
-    max-width: 80%;
-    line-height: 1.5;
-}
-
-.ai-message-content p {
-    margin: 0 0 8px 0;
-}
-
-.ai-message-content ul {
-    margin: 8px 0;
-    padding-left: 20px;
-}
-
-.ai-message-content li {
-    margin-bottom: 4px;
-}
-
-.ai-message-content strong {
-    color: #059669;
-}
-
-/* Typing Indicator */
-.ai-typing {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 16px;
-}
-
-.ai-typing-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 0.9rem;
-}
-
-.ai-typing-indicator {
-    background: #f3f4f6;
-    padding: 12px 16px;
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.typing-dots {
-    display: flex;
-    gap: 2px;
-}
-
-.typing-dot {
-    width: 4px;
-    height: 4px;
-    background: #6b7280;
-    border-radius: 50%;
-    animation: typing 1.4s infinite;
-}
-
-.typing-dot:nth-child(2) { animation-delay: 0.2s; }
-.typing-dot:nth-child(3) { animation-delay: 0.4s; }
-
-@keyframes typing {
-    0%, 60%, 100% { transform: translateY(0); }
-    30% { transform: translateY(-8px); }
-}
-
-/* Input Container */
-.ai-input-container {
-    padding: 20px;
-    border-top: 1px solid #e5e7eb;
-}
-
-.ai-quick-actions {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
-}
-
-.ai-quick-btn {
-    background: #f3f4f6;
-    border: 1px solid #d1d5db;
-    color: #374151;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.ai-quick-btn:hover {
-    background: #10b981;
-    border-color: #10b981;
-    color: white;
-}
-
-.ai-input-group {
-    display: flex;
-    gap: 8px;
-    align-items: flex-end;
-}
-
-.ai-input-group textarea {
-    flex: 1;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    padding: 12px;
-    font-size: 0.95rem;
-    resize: none;
-    outline: none;
-    transition: border-color 0.2s ease;
-}
-
-.ai-input-group textarea:focus {
-    border-color: #10b981;
-}
-
-.ai-submit-btn {
-    background: #10b981;
-    color: white;
-    border: none;
-    width: 44px;
-    height: 44px;
-    border-radius: 8px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s ease;
-}
-
-.ai-submit-btn:hover {
-    background: #059669;
-}
-
-.ai-submit-btn:disabled {
-    background: #d1d5db;
-    cursor: not-allowed;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .floating-ai-btn {
-        width: 50px;
-        height: 50px;
-        font-size: 1.1rem;
-        bottom: 80px;
-        right: 20px;
-    }
-
-    .ai-modal-content {
-        width: 95%;
-        max-height: 90vh;
-    }
-
-    .ai-quick-actions {
-        gap: 6px;
-    }
-
-    .ai-quick-btn {
-        padding: 4px 8px;
-        font-size: 0.8rem;
-    }
+#ai-assistant-modal.fallback .ai-modal-close {
+    position: absolute !important;
+    top: 10px !important;
+    right: 10px !important;
+    background: none !important;
+    border: none !important;
+    font-size: 20px !important;
+    cursor: pointer !important;
+    color: #666 !important;
 }
 </style>
 
 <script>
-// Draggable Floating Scroll Button Functionality
+// Enhanced CSS loading and fallback mechanism
+(function() {
+    let cssLoaded = false;
+    let fallbackApplied = false;
+
+    function checkCSSLoaded() {
+        const testBtn = document.getElementById('floating-ai-btn');
+        if (!testBtn) return false;
+
+        const styles = window.getComputedStyle(testBtn);
+        // Check if our custom CSS variables are applied
+        return styles.getPropertyValue('--ai-primary') !== '';
+    }
+
+    function applyFallbackStyles() {
+        if (fallbackApplied) return;
+        fallbackApplied = true;
+
+        console.warn('[AI Assistant] Applying fallback styles due to CSS loading failure');
+
+        const modal = document.getElementById('ai-assistant-modal');
+        if (modal) {
+            modal.classList.add('fallback');
+        }
+
+        // Force show modal if it should be visible
+        const aiBtn = document.getElementById('floating-ai-btn');
+        if (aiBtn && aiBtn.classList.contains('active')) {
+            if (modal) {
+                modal.style.display = 'flex !important';
+                modal.style.opacity = '1 !important';
+                modal.style.pointerEvents = 'auto !important';
+            }
+        }
+
+        // Ensure textarea is always interactive
+        const textarea = document.getElementById('ai-input');
+        if (textarea) {
+            textarea.style.pointerEvents = 'auto';
+            textarea.style.cursor = 'text';
+            textarea.disabled = false;
+            textarea.readOnly = false;
+            textarea.removeAttribute('readonly');
+            textarea.removeAttribute('disabled');
+        }
+    }
+
+    function loadCSSFallback() {
+        const cssLink = document.getElementById('ai-assistant-css');
+        if (!cssLink) return;
+
+        // Check if CSS loaded after a short delay
+        setTimeout(function() {
+            cssLoaded = checkCSSLoaded();
+            if (!cssLoaded) {
+                console.warn('[AI Assistant] CSS may not have loaded properly, trying fallback paths...');
+                // Try alternative paths
+                const fallbackPaths = [
+                    'assets/css/ai-assistant.css',
+                    '/assets/css/ai-assistant.css',
+                    '../assets/css/ai-assistant.css',
+                    '../../assets/css/ai-assistant.css',
+                    './assets/css/ai-assistant.css'
+                ];
+
+                let loadedCount = 0;
+                fallbackPaths.forEach(function(path, index) {
+                    const link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.href = path;
+                    link.id = 'ai-assistant-css-fallback-' + index;
+                    document.head.appendChild(link);
+
+                    link.onload = function() {
+                        loadedCount++;
+                        if (checkCSSLoaded()) {
+                            cssLoaded = true;
+                            console.log('[AI Assistant] CSS loaded successfully from:', path);
+                            return;
+                        }
+                    };
+                });
+
+                // If still not loaded after all attempts, apply fallback
+                setTimeout(function() {
+                    if (!cssLoaded) {
+                        applyFallbackStyles();
+                    }
+                }, 1000);
+            } else {
+                console.log('[AI Assistant] CSS loaded successfully');
+            }
+        }, 500);
+
+        // Handle direct CSS load error
+        cssLink.addEventListener('error', function() {
+            console.error('[AI Assistant] CSS file failed to load from:', cssLink.href);
+            applyFallbackStyles();
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadCSSFallback);
+    } else {
+        loadCSSFallback();
+    }
+})();
+</script>
+
+<!-- AI Assistant Enhancement Notice -->
+<!-- Enhanced floating button with modern design, improved UX, and better functionality -->
+<!-- Features: Glassmorphism modal, auto-resize textarea, minimize function, keyboard shortcuts -->
+
+<script>
+// Enhanced Draggable Floating Scroll Button Functionality
 document.addEventListener('DOMContentLoaded', function() {
     const scrollBtn = document.getElementById('floating-scroll-btn');
     if (!scrollBtn) return;
@@ -553,7 +358,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Update button position
     function updateButtonPosition() {
-        scrollBtn.style.transform = `translate(${currentX}px, ${currentY}px)`;
+        const container = document.getElementById('floating-buttons-container');
+        if (container) {
+            container.style.transform = `translate(${currentX}px, ${currentY}px)`;
+        }
     }
 
     // Save position to localStorage
@@ -681,76 +489,431 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// AI Assistant Modal Functionality
+// Enhanced AI Assistant Modal Functionality
 document.addEventListener('DOMContentLoaded', function() {
+    // Get all DOM elements with null checks
     const aiBtn = document.getElementById('floating-ai-btn');
     const aiModal = document.getElementById('ai-assistant-modal');
     const aiModalClose = document.getElementById('ai-modal-close');
+    const aiMinimizeBtn = document.getElementById('ai-minimize-btn');
+    const aiBlurToggle = document.getElementById('ai-blur-toggle');
     const aiInput = document.getElementById('ai-input');
     const aiSubmit = document.getElementById('ai-submit');
     const aiChatContainer = document.getElementById('ai-chat-container');
     const quickBtns = document.querySelectorAll('.ai-quick-btn');
 
-    // Open modal
-    aiBtn.addEventListener('click', function() {
-        aiModal.classList.add('show');
-        aiBtn.classList.add('active');
-        aiInput.focus();
+    // Critical null checks - exit early if essential elements don't exist
+    if (!aiBtn) {
+        console.error('[AI Assistant] Critical: floating-ai-btn element not found in DOM');
+        return; // Exit early if button doesn't exist
+    }
+
+    if (!aiModal) {
+        console.error('[AI Assistant] Critical: ai-assistant-modal element not found in DOM');
+        return; // Exit early if modal doesn't exist
+    }
+
+    // Log successful initialization
+    console.log('[AI Assistant] Initializing...', {
+        button: !!aiBtn,
+        modal: !!aiModal,
+        input: !!aiInput,
+        submit: !!aiSubmit,
+        timestamp: new Date().toISOString()
     });
 
-    // Close modal
-    aiModalClose.addEventListener('click', function() {
-        aiModal.classList.remove('show');
-        aiBtn.classList.remove('active');
-    });
+    // Debug: Force modal visibility for testing
+    console.log('[AI Assistant] Debug - Modal classes before:', aiModal.className);
+    console.log('[AI Assistant] Debug - Button classes before:', aiBtn.className);
 
-    // Close modal when clicking outside
-    aiModal.addEventListener('click', function(e) {
-        if (e.target === aiModal) {
+    // Verify button is visible and clickable
+    try {
+        const btnStyles = window.getComputedStyle(aiBtn);
+        const btnRect = aiBtn.getBoundingClientRect();
+        console.log('[AI Assistant] Button visibility check:', {
+            display: btnStyles.display,
+            visibility: btnStyles.visibility,
+            opacity: btnStyles.opacity,
+            pointerEvents: btnStyles.pointerEvents,
+            zIndex: btnStyles.zIndex,
+            cursor: btnStyles.cursor,
+            width: btnRect.width,
+            height: btnRect.height,
+            isVisible: btnRect.width > 0 && btnRect.height > 0
+        });
+
+        // Ensure button is clickable - fix any blocking styles
+        if (btnStyles.pointerEvents === 'none') {
+            console.warn('[AI Assistant] Button has pointer-events: none, fixing...');
+            aiBtn.style.pointerEvents = 'auto';
+        }
+        
+        // Ensure button has proper cursor
+        if (btnStyles.cursor === 'default' || btnStyles.cursor === 'auto') {
+            aiBtn.style.cursor = 'pointer';
+        }
+        
+        // Ensure button has minimum z-index
+        const zIndex = parseInt(btnStyles.zIndex) || 0;
+        if (zIndex < 9999) {
+            aiBtn.style.zIndex = '9999';
+            console.log('[AI Assistant] Adjusted button z-index to 9999');
+        }
+        
+        // Ensure button container is also properly positioned
+        const container = document.getElementById('floating-buttons-container');
+        if (container) {
+            const containerStyles = window.getComputedStyle(container);
+            if (containerStyles.position !== 'fixed' && containerStyles.position !== 'absolute') {
+                container.style.position = 'fixed';
+                container.style.bottom = '24px';
+                container.style.right = '24px';
+                container.style.zIndex = '9999';
+                console.log('[AI Assistant] Fixed button container positioning');
+            }
+        }
+    } catch (error) {
+        console.error('[AI Assistant] Error checking button visibility:', error);
+    }
+
+    let isMinimized = false;
+
+    // Blur effect management - default to disabled for better clarity
+    let blurEnabled = false;
+
+    // Browser compatibility detection
+    function detectBackdropFilterSupport() {
+        // Check if backdrop-filter is supported
+        const testEl = document.createElement('div');
+        testEl.style.backdropFilter = 'blur(1px)';
+        const supported = testEl.style.backdropFilter !== '';
+        testEl.remove();
+        return supported;
+    }
+
+    // Initialize blur settings
+    function initializeBlurSettings() {
+        const backdropSupported = detectBackdropFilterSupport();
+
+        // Set CSS variable for browser support
+        document.documentElement.style.setProperty('--ai-backdrop-supported', backdropSupported ? '1' : '0');
+
+        // Load user preference from localStorage, default to false (reduced blur)
+        const savedPreference = localStorage.getItem('ai-blur-enabled');
+        blurEnabled = savedPreference !== null ? JSON.parse(savedPreference) : false;
+
+        // If browser doesn't support backdrop-filter, disable blur by default
+        if (!backdropSupported) {
+            blurEnabled = false;
+            localStorage.setItem('ai-blur-enabled', 'false');
+        }
+
+        updateBlurState();
+        updateBlurToggleButton();
+    }
+
+    // Update blur state
+    function updateBlurState() {
+        const root = document.documentElement;
+
+        if (blurEnabled) {
+            root.style.setProperty('--ai-blur-overlay', 'blur(2px)');
+            root.style.setProperty('--ai-blur-modal', 'blur(1px)');
+        } else {
+            root.style.setProperty('--ai-blur-overlay', 'blur(0.5px)');
+            root.style.setProperty('--ai-blur-modal', 'none');
+        }
+    }
+
+    // Update toggle button appearance
+    function updateBlurToggleButton() {
+        if (aiBlurToggle) {
+            if (blurEnabled) {
+                aiBlurToggle.classList.add('active');
+                aiBlurToggle.innerHTML = '<i class="fas fa-eye-slash"></i>';
+                aiBlurToggle.title = 'Disable blur effects';
+            } else {
+                aiBlurToggle.classList.remove('active');
+                aiBlurToggle.innerHTML = '<i class="fas fa-eye"></i>';
+                aiBlurToggle.title = 'Enable blur effects';
+            }
+        }
+    }
+
+    // Toggle blur effects
+    function toggleBlur() {
+        blurEnabled = !blurEnabled;
+        localStorage.setItem('ai-blur-enabled', JSON.stringify(blurEnabled));
+        updateBlurState();
+        updateBlurToggleButton();
+    }
+
+    // Open modal with error handling
+    try {
+        aiBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('[AI Assistant] Button clicked, isMinimized:', isMinimized);
+            
+            try {
+                if (isMinimized) {
+                    // Restore from minimized state
+                    aiModal.classList.add('show');
+                    aiModal.classList.remove('minimized');
+                    aiBtn.classList.add('active');
+                    isMinimized = false;
+                    console.log('[AI Assistant] Modal restored from minimized state');
+                    // Ensure textarea is enabled and focusable
+                    if (aiInput) {
+                        aiInput.disabled = false;
+                        aiInput.readOnly = false;
+                        aiInput.removeAttribute('readonly');
+                        setTimeout(() => {
+                            if (aiInput) aiInput.focus();
+                        }, 100);
+                    }
+                } else {
+                    // Open normally
+                    aiModal.classList.add('show');
+                    aiBtn.classList.add('active');
+                    console.log('[AI Assistant] Modal opened');
+                    // Ensure textarea is enabled and focusable
+                    if (aiInput) {
+                        aiInput.disabled = false;
+                        aiInput.readOnly = false;
+                        aiInput.removeAttribute('readonly');
+                        setTimeout(() => {
+                            if (aiInput) aiInput.focus();
+                        }, 100);
+                    }
+                }
+            } catch (error) {
+                console.error('[AI Assistant] Error opening modal:', error);
+            }
+        }, { passive: false });
+        
+        console.log('[AI Assistant] Click event listener attached successfully');
+    } catch (error) {
+        console.error('[AI Assistant] Error attaching click event listener:', error);
+        // Fallback: Use event delegation
+        document.addEventListener('click', function(e) {
+            if (e.target && (e.target.closest('#floating-ai-btn') || e.target.id === 'floating-ai-btn')) {
+                e.preventDefault();
+                e.stopPropagation();
+                aiModal.classList.add('show');
+                aiBtn.classList.add('active');
+            }
+        });
+    }
+
+    // Close modal with null check
+    if (aiModalClose) {
+        try {
+            aiModalClose.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                aiModal.classList.remove('show');
+                aiBtn.classList.remove('active');
+                isMinimized = false;
+                aiModal.classList.remove('minimized');
+                console.log('[AI Assistant] Modal closed');
+            });
+        } catch (error) {
+            console.error('[AI Assistant] Error attaching close button listener:', error);
+        }
+    } else {
+        console.warn('[AI Assistant] Close button not found');
+    }
+
+    // Minimize modal with null check
+    if (aiMinimizeBtn) {
+        try {
+            aiMinimizeBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                aiModal.classList.remove('show');
+                aiModal.classList.add('minimized');
+                aiBtn.classList.add('active');
+                isMinimized = true;
+                console.log('[AI Assistant] Modal minimized');
+            });
+        } catch (error) {
+            console.error('[AI Assistant] Error attaching minimize button listener:', error);
+        }
+    } else {
+        console.warn('[AI Assistant] Minimize button not found');
+    }
+
+    // Close modal when clicking outside (on overlay only)
+    const aiModalOverlay = aiModal.querySelector('.ai-modal-overlay');
+    if (aiModalOverlay) {
+        aiModalOverlay.addEventListener('click', function(e) {
             aiModal.classList.remove('show');
             aiBtn.classList.remove('active');
-        }
-    });
-
-    // Handle quick action buttons
-    quickBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const query = this.getAttribute('data-query');
-            aiInput.value = query;
-            sendMessage();
+            isMinimized = false;
+            aiModal.classList.remove('minimized');
         });
-    });
+    }
+    
+    // Prevent clicks inside modal content from closing the modal
+    const aiModalContent = aiModal.querySelector('.ai-modal-content');
+    if (aiModalContent) {
+        aiModalContent.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    }
 
-    // Handle enter key in textarea
-    aiInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
+    // Handle quick action buttons with null checks
+    if (quickBtns && quickBtns.length > 0) {
+        try {
+            quickBtns.forEach(btn => {
+                if (btn) {
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const query = this.getAttribute('data-query');
+                        if (aiInput && query) {
+                            aiInput.value = query;
+                            sendMessage();
+                        }
+                    });
+                }
+            });
+        } catch (error) {
+            console.error('[AI Assistant] Error attaching quick action button listeners:', error);
         }
-    });
+    } else {
+        console.warn('[AI Assistant] Quick action buttons not found');
+    }
 
-    // Handle submit button
-    aiSubmit.addEventListener('click', sendMessage);
+    // Handle enter key in textarea with null check
+    if (aiInput) {
+        try {
+            aiInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+        } catch (error) {
+            console.error('[AI Assistant] Error attaching textarea keydown listener:', error);
+        }
+    } else {
+        console.warn('[AI Assistant] Textarea not found');
+    }
 
-    // Send message function
+    // Ensure textarea is always enabled and interactive
+    function ensureTextareaInteractivity() {
+        if (!aiInput) return;
+
+        // Force remove any disabled/readonly states
+        aiInput.disabled = false;
+        aiInput.readOnly = false;
+        aiInput.removeAttribute('disabled');
+        aiInput.removeAttribute('readonly');
+
+        // Ensure proper styling
+        aiInput.style.pointerEvents = 'auto';
+        aiInput.style.cursor = 'text';
+        aiInput.style.opacity = '1';
+        aiInput.style.backgroundColor = 'white';
+        aiInput.style.color = 'black';
+
+        // Set tabindex for accessibility
+        aiInput.setAttribute('tabindex', '0');
+
+        console.log('[AI Assistant] Textarea interactivity ensured');
+    }
+
+    // Call this immediately and periodically
+    ensureTextareaInteractivity();
+    setInterval(ensureTextareaInteractivity, 1000); // Check every second
+
+    // Handle input changes to enable/disable submit button
+    if (aiInput) {
+        aiInput.addEventListener('input', function() {
+            const hasText = this.value.trim().length > 0;
+            if (aiSubmit) {
+                aiSubmit.disabled = !hasText;
+            }
+
+            // Auto-resize textarea
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+
+            // Re-ensure interactivity on input
+            ensureTextareaInteractivity();
+        });
+
+        // Also handle on focus to ensure it's interactive
+        aiInput.addEventListener('focus', function() {
+            ensureTextareaInteractivity();
+            console.log('[AI Assistant] Textarea focused and verified interactive');
+        });
+
+        // Handle click to ensure it's interactive
+        aiInput.addEventListener('click', function() {
+            ensureTextareaInteractivity();
+        });
+    }
+
+    // Handle blur toggle button
+    if (aiBlurToggle) {
+        aiBlurToggle.addEventListener('click', toggleBlur);
+    }
+
+    // Initialize blur settings on load
+    initializeBlurSettings();
+
+    // Handle submit button with null check
+    if (aiSubmit) {
+        try {
+            aiSubmit.addEventListener('click', function(e) {
+                e.preventDefault();
+                sendMessage();
+            });
+        } catch (error) {
+            console.error('[AI Assistant] Error attaching submit button listener:', error);
+        }
+    } else {
+        console.warn('[AI Assistant] Submit button not found');
+    }
+
+    // Send message function with null checks
     function sendMessage() {
-        const message = aiInput.value.trim();
-        if (!message) return;
+        try {
+            if (!aiInput) {
+                console.error('[AI Assistant] Cannot send message: textarea not found');
+                return;
+            }
 
-        // Add user message to chat
-        addMessage(message, 'user');
+            const message = aiInput.value.trim();
+            if (!message) {
+                console.log('[AI Assistant] Message is empty, not sending');
+                return;
+            }
 
-        // Clear input
-        aiInput.value = '';
+            console.log('[AI Assistant] Sending message:', message.substring(0, 50) + '...');
 
-        // Disable submit button
-        aiSubmit.disabled = true;
+            // Add user message to chat
+            if (aiChatContainer) {
+                addMessage(message, 'user');
+            }
 
-        // Show typing indicator
-        showTypingIndicator();
+            // Clear input
+            aiInput.value = '';
+            aiInput.style.height = 'auto';
+            if (aiSubmit) {
+                aiSubmit.disabled = true;
+            }
 
-        // Send to AI API
-        fetchAIResponse(message);
+            // Show typing indicator
+            showTypingIndicator();
+
+            // Send to AI API
+            fetchAIResponse(message);
+        } catch (error) {
+            console.error('[AI Assistant] Error in sendMessage:', error);
+        }
     }
 
     // Add message to chat
@@ -760,11 +923,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const avatarDiv = document.createElement('div');
         avatarDiv.className = 'ai-message-avatar';
-        avatarDiv.innerHTML = type === 'bot' ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-user"></i>';
+        avatarDiv.innerHTML = `<div class="ai-avatar-gradient">${type === 'bot' ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-user"></i>'}</div>`;
 
         const contentDiv = document.createElement('div');
         contentDiv.className = 'ai-message-content';
-        contentDiv.innerHTML = content;
+
+        const textDiv = document.createElement('div');
+        textDiv.className = 'ai-message-text';
+        textDiv.innerHTML = content;
+
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'ai-message-time';
+        timeDiv.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        contentDiv.appendChild(textDiv);
+        contentDiv.appendChild(timeDiv);
 
         messageDiv.appendChild(avatarDiv);
         messageDiv.appendChild(contentDiv);
@@ -781,42 +954,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Show typing indicator
     function showTypingIndicator() {
-        const typingDiv = document.createElement('div');
-        typingDiv.className = 'ai-typing';
-        typingDiv.id = 'typing-indicator';
-
-        const avatarDiv = document.createElement('div');
-        avatarDiv.className = 'ai-typing-avatar';
-        avatarDiv.innerHTML = '<i class="fas fa-robot"></i>';
-
-        const indicatorDiv = document.createElement('div');
-        indicatorDiv.className = 'ai-typing-indicator';
-        indicatorDiv.innerHTML = `
-            <div class="typing-dots">
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-            </div>
-        `;
-
-        typingDiv.appendChild(avatarDiv);
-        typingDiv.appendChild(indicatorDiv);
-
-        aiChatContainer.appendChild(typingDiv);
-        scrollToBottom();
+        const typingDiv = document.getElementById('typing-indicator');
+        if (typingDiv) {
+            typingDiv.style.display = 'flex';
+            scrollToBottom();
+        }
     }
 
     // Hide typing indicator
     function hideTypingIndicator() {
-        const typingIndicator = document.getElementById('typing-indicator');
-        if (typingIndicator) {
-            typingIndicator.remove();
+        const typingDiv = document.getElementById('typing-indicator');
+        if (typingDiv) {
+            typingDiv.style.display = 'none';
         }
     }
 
     // Fetch AI response
     function fetchAIResponse(message) {
-        fetch('ajax/ai_assistant.php', {
+        fetch('../ajax/ai_assistant.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -834,7 +989,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 addMessage(data.response, 'bot');
             } else {
-                addMessage('Sorry, I encountered an error. Please try again.', 'bot');
+                addMessage('<div class="ai-message-error">Sorry, I encountered an error. Please try again.</div>', 'bot');
             }
 
             // Re-enable submit button
@@ -843,7 +998,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => {
             console.error('AI API Error:', error);
             hideTypingIndicator();
-            addMessage('Sorry, I\'m unable to connect right now. Please try again later.', 'bot');
+            addMessage('<div class="ai-message-error">Sorry, I\'m unable to connect right now. Please try again later.</div>', 'bot');
             aiSubmit.disabled = false;
         });
     }
@@ -851,17 +1006,86 @@ document.addEventListener('DOMContentLoaded', function() {
     // Scroll chat to bottom
     function scrollToBottom() {
         setTimeout(() => {
-            aiChatContainer.scrollTop = aiChatContainer.scrollHeight;
+            if (aiChatContainer) {
+                aiChatContainer.scrollTop = aiChatContainer.scrollHeight;
+            }
         }, 100);
     }
 
-    // Auto-resize textarea
-    aiInput.addEventListener('input', function() {
-        this.style.height = 'auto';
-        this.style.height = Math.min(this.scrollHeight, 100) + 'px';
-    });
-
     // Set user role (this will be set by PHP)
     window.userRole = '<?php echo isset($_SESSION['role']) ? $_SESSION['role'] : 'unknown'; ?>';
+
+    // Add keyboard shortcuts with safety checks
+    document.addEventListener('keydown', function(e) {
+        try {
+            // Ctrl/Cmd + / to focus AI input
+            if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+                e.preventDefault();
+                if (!aiModal.classList.contains('show')) {
+                    if (aiBtn) aiBtn.click();
+                } else {
+                    if (aiInput) aiInput.focus();
+                }
+            }
+
+            // Escape to close modal
+            if (e.key === 'Escape' && aiModal.classList.contains('show')) {
+                if (aiModalClose) aiModalClose.click();
+            }
+        } catch (error) {
+            console.error('[AI Assistant] Error in keyboard shortcut handler:', error);
+        }
+    });
+
+    // Add minimize functionality styles
+    const style = document.createElement('style');
+    style.textContent = `
+        .ai-modal.minimized {
+            display: none !important;
+        }
+
+        .ai-modal.minimized + .ai-modal-overlay {
+            display: none !important;
+        }
+
+        /* Emergency fallback - force modal visibility */
+        .ai-modal.emergency-show {
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            z-index: 10001 !important;
+        }
+
+        .ai-modal.emergency-show .ai-modal-overlay {
+            opacity: 1 !important;
+        }
+
+        .ai-modal.emergency-show .ai-modal-content {
+            transform: translateY(0) scale(1) !important;
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Emergency fallback - force modal to show after 3 seconds if button is active
+    setTimeout(function() {
+        const aiBtn = document.getElementById('floating-ai-btn');
+        const aiModal = document.getElementById('ai-assistant-modal');
+        if (aiBtn && aiModal && aiBtn.classList.contains('active') && !aiModal.classList.contains('show')) {
+            console.warn('[AI Assistant] Emergency fallback: Forcing modal visibility');
+            aiModal.classList.add('emergency-show');
+            aiModal.classList.add('show');
+
+            // Ensure textarea is interactive
+            const aiInput = document.getElementById('ai-input');
+            if (aiInput) {
+                aiInput.disabled = false;
+                aiInput.readOnly = false;
+                aiInput.removeAttribute('disabled');
+                aiInput.removeAttribute('readonly');
+                aiInput.style.pointerEvents = 'auto';
+                aiInput.style.cursor = 'text';
+                aiInput.focus();
+            }
+        }
+    }, 3000);
 });
 </script>
