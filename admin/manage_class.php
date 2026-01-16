@@ -1,14 +1,18 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
-// Only principal/admin
+// Only principal/admin with school authentication
 if (!isset($_SESSION['user_id']) || strtolower($_SESSION['role'] ?? '') !== 'principal') {
     header("Location: ../index.php");
     exit;
 }
 
-$principal_name = $_SESSION['full_name'];
+$current_school_id = require_school_auth();
+
+$errors = [];
+$success = null;
 
 // Helpers
 function flash($k, $v = null) {
@@ -20,8 +24,7 @@ function flash($k, $v = null) {
     $_SESSION['flash'][$k] = $v;
 }
 
-$errors = [];
-$success = null;
+$principal_name = $_SESSION['full_name'];
 
 // CSRF token (simple)
 if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(16));
@@ -39,8 +42,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $desc = trim($_POST['description'] ?? '');
             if (strlen($name) < 2) $errors[] = "Class name must be at least 2 characters.";
             if (empty($errors)) {
-                $stmt = $pdo->prepare("INSERT INTO classes (class_name, created_at) VALUES (:name,  NOW())");
-                $stmt->execute(['name' => $name]);
+                $stmt = $pdo->prepare("INSERT INTO classes (class_name, school_id, created_at) VALUES (:name, :school_id, NOW())");
+                $stmt->execute(['name' => $name, 'school_id' => $current_school_id]);
                 flash('success', 'Class created successfully!');
                 header("Location: manage_class.php");
                 exit;
@@ -53,11 +56,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($id <= 0) $errors[] = "Invalid class ID.";
             if (strlen($name) < 2) $errors[] = "Class name must be at least 2 characters.";
             if (empty($errors)) {
-                $stmt = $pdo->prepare("UPDATE classes SET class_name = :name,  updated_at = NOW() WHERE id = :id");
-                $stmt->execute(['name' => $name, 'id' => $id]);
-                flash('success', 'Class updated successfully!');
-                header("Location: manage_class.php");
-                exit;
+                // Verify class belongs to user's school
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM classes WHERE id = :id AND school_id = :school_id");
+                $stmt->execute(['id' => $id, 'school_id' => $current_school_id]);
+                if ($stmt->fetchColumn() == 0) {
+                    $errors[] = "Class not found or access denied.";
+                } else {
+                    $stmt = $pdo->prepare("UPDATE classes SET class_name = :name, updated_at = NOW() WHERE id = :id AND school_id = :school_id");
+                    $stmt->execute(['name' => $name, 'id' => $id, 'school_id' => $current_school_id]);
+                    flash('success', 'Class updated successfully!');
+                    header("Location: manage_class.php");
+                    exit;
+                }
             }
         }
 
@@ -65,18 +75,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id = intval($_POST['class_id'] ?? 0);
             if ($id <= 0) $errors[] = "Invalid class ID.";
             if (empty($errors)) {
-                // check dependencies: students, subject_assignments, results
-                $stmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE class_id = :id");
-                $stmt->execute(['id' => $id]);
-                if ($stmt->fetchColumn() > 0) {
-                    $errors[] = "Cannot delete class with students assigned. Reassign or remove students first.";
+                // Verify class belongs to user's school
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM classes WHERE id = :id AND school_id = :school_id");
+                $stmt->execute(['id' => $id, 'school_id' => $current_school_id]);
+                if ($stmt->fetchColumn() == 0) {
+                    $errors[] = "Class not found or access denied.";
                 } else {
-                    // safe to delete mappings then class
-                    $pdo->prepare("DELETE FROM class_teachers WHERE class_id = :id")->execute(['id' => $id]);
-                    $pdo->prepare("DELETE FROM classes WHERE id = :id")->execute(['id' => $id]);
-                    flash('success', 'Class deleted successfully.');
-                    header("Location: manage_class.php");
-                    exit;
+                    // check dependencies: students, subject_assignments, results
+                    $stmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE class_id = :id AND school_id = :school_id");
+                    $stmt->execute(['id' => $id, 'school_id' => $current_school_id]);
+                    if ($stmt->fetchColumn() > 0) {
+                        $errors[] = "Cannot delete class with students assigned. Reassign or remove students first.";
+                    } else {
+                        // safe to delete mappings then class
+                        $pdo->prepare("DELETE FROM class_teachers WHERE class_id = :id")->execute(['id' => $id]);
+                        $pdo->prepare("DELETE FROM classes WHERE id = :id AND school_id = :school_id")->execute(['id' => $id, 'school_id' => $current_school_id]);
+                        flash('success', 'Class deleted successfully.');
+                        header("Location: manage_class.php");
+                        exit;
+                    }
                 }
             }
         }
@@ -86,23 +103,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $teacher_id = intval($_POST['teacher_id'] ?? 0);
             if ($class_id <= 0 || $teacher_id <= 0) $errors[] = "Invalid class or teacher selection.";
             if (empty($errors)) {
-                // ensure teacher exists and role = teacher
-                $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE id = :tid AND role = 'teacher'");
-                $stmt->execute(['tid' => $teacher_id]);
+                // Verify class belongs to user's school
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM classes WHERE id = :id AND school_id = :school_id");
+                $stmt->execute(['id' => $class_id, 'school_id' => $current_school_id]);
                 if ($stmt->fetchColumn() == 0) {
-                    $errors[] = "Selected teacher not found or not a valid teacher account.";
+                    $errors[] = "Class not found or access denied.";
                 } else {
-                    // Check if already assigned
-                    $stmt = $pdo->prepare("SELECT COUNT(*) FROM class_teachers WHERE class_id = :cid AND teacher_id = :tid");
-                    $stmt->execute(['cid' => $class_id, 'tid' => $teacher_id]);
-                    if ($stmt->fetchColumn() > 0) {
-                        $errors[] = "This teacher is already assigned to the selected class.";
+                    // ensure teacher exists, belongs to school, and role = teacher
+                    $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE id = :tid AND role = 'teacher' AND school_id = :school_id");
+                    $stmt->execute(['tid' => $teacher_id, 'school_id' => $current_school_id]);
+                    if ($stmt->fetchColumn() == 0) {
+                        $errors[] = "Selected teacher not found or not authorized for this school.";
                     } else {
-                        $stmt = $pdo->prepare("INSERT INTO class_teachers (class_id, teacher_id) VALUES (:cid, :tid)");
+                        // Check if already assigned
+                        $stmt = $pdo->prepare("SELECT COUNT(*) FROM class_teachers WHERE class_id = :cid AND teacher_id = :tid");
                         $stmt->execute(['cid' => $class_id, 'tid' => $teacher_id]);
-                        flash('success', 'Teacher assigned to class successfully!');
-                        header("Location: manage_class.php");
-                        exit;
+                        if ($stmt->fetchColumn() > 0) {
+                            $errors[] = "This teacher is already assigned to the selected class.";
+                        } else {
+                            $stmt = $pdo->prepare("INSERT INTO class_teachers (class_id, teacher_id) VALUES (:cid, :tid)");
+                            $stmt->execute(['cid' => $class_id, 'tid' => $teacher_id]);
+                            flash('success', 'Teacher assigned to class successfully!');
+                            header("Location: manage_class.php");
+                            exit;
+                        }
                     }
                 }
             }
@@ -113,11 +137,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $teacher_id = intval($_POST['teacher_id'] ?? 0);
             if ($class_id <= 0 || $teacher_id <= 0) $errors[] = "Invalid class or teacher.";
             if (empty($errors)) {
-                $stmt = $pdo->prepare("DELETE FROM class_teachers WHERE class_id = :cid AND teacher_id = :tid");
-                $stmt->execute(['cid' => $class_id, 'tid' => $teacher_id]);
-                flash('success', 'Teacher unassigned successfully.');
-                header("Location: manage_class.php");
-                exit;
+                // Verify class belongs to user's school
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM classes WHERE id = :id AND school_id = :school_id");
+                $stmt->execute(['id' => $class_id, 'school_id' => $current_school_id]);
+                if ($stmt->fetchColumn() == 0) {
+                    $errors[] = "Class not found or access denied.";
+                } else {
+                    $stmt = $pdo->prepare("DELETE FROM class_teachers WHERE class_id = :cid AND teacher_id = :tid");
+                    $stmt->execute(['cid' => $class_id, 'tid' => $teacher_id]);
+                    flash('success', 'Teacher unassigned successfully.');
+                    header("Location: manage_class.php");
+                    exit;
+                }
             }
         }
     }
@@ -125,16 +156,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Load data for display
 try {
-    $classes = $pdo->query("SELECT * FROM classes ORDER BY class_name ASC")->fetchAll(PDO::FETCH_ASSOC);
-    $teachers = $pdo->query("SELECT id, full_name, email FROM users WHERE role = 'teacher' ORDER BY full_name ASC")->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Load assignments mapping with proper error handling
+    // Load classes for current school only
+    $stmt = $pdo->prepare("SELECT * FROM classes WHERE school_id = ? ORDER BY class_name ASC");
+    $stmt->execute([$current_school_id]);
+    $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Load teachers from current school only
+    $stmt = $pdo->prepare("SELECT id, full_name, email FROM users WHERE role = 'teacher' AND school_id = ? ORDER BY full_name ASC");
+    $stmt->execute([$current_school_id]);
+    $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Load assignments mapping with school filtering
     $assignments = [];
-    $stmt = $pdo->query("SELECT ct.class_id, u.id AS teacher_id, u.full_name, u.email FROM class_teachers ct JOIN users u ON ct.teacher_id = u.id WHERE u.role = 'teacher'");
-    if ($stmt) {
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $assignments[$row['class_id']][] = $row;
-        }
+    $stmt = $pdo->prepare("
+        SELECT ct.class_id, u.id AS teacher_id, u.full_name, u.email
+        FROM class_teachers ct
+        JOIN users u ON ct.teacher_id = u.id
+        JOIN classes c ON ct.class_id = c.id
+        WHERE u.role = 'teacher' AND u.school_id = ? AND c.school_id = ?
+    ");
+    $stmt->execute([$current_school_id, $current_school_id]);
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $assignments[$row['class_id']][] = $row;
     }
 } catch (PDOException $e) {
     $errors[] = "Database error: " . $e->getMessage();
@@ -151,7 +194,8 @@ $success = flash('success');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Classes | SahabFormMaster</title>
-    <link rel="stylesheet" href="../assets/css/admin_dashboard.css">
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -195,298 +239,366 @@ $success = flash('success');
     <!-- Main Container -->
     <div class="dashboard-container">
         <!-- Sidebar Navigation -->
-        <?php include '../includes/admin_sidebar.php'; ?>
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3>Navigation</h3>
+                <button class="sidebar-close" id="sidebarClose">✕</button>
+            </div>
+            <nav class="sidebar-nav">
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="index.php" class="nav-link">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Dashboard</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a href="schoolnews.php" class="nav-link">
+                            <span class="nav-icon">📰</span>
+                            <span class="nav-text">School News</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="school_diary.php" class="nav-link">
+                            <span class="nav-icon">📔</span>
+                            <span class="nav-text">School Diary</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="students.php" class="nav-link">
+                            <span class="nav-icon">👥</span>
+                            <span class="nav-text">Students Registration</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="students-evaluations.php" class="nav-link">
+                            <span class="nav-icon">⭐</span>
+                            <span class="nav-text">Students Evaluations</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_class.php" class="nav-link active">
+                            <span class="nav-icon">🎓</span>
+                            <span class="nav-text">Manage Classes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_results.php" class="nav-link">
+                            <span class="nav-icon">📈</span>
+                            <span class="nav-text">Manage Results</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="lesson-plans.php" class="nav-link">
+                            <span class="nav-icon">📝</span>
+                            <span class="nav-text">Lesson Plans</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_curriculum.php" class="nav-link">
+                            <span class="nav-icon">📚</span>
+                            <span class="nav-text">Curriculum</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage-school.php" class="nav-link">
+                            <span class="nav-icon">🏫</span>
+                            <span class="nav-text">Manage School</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="subjects.php" class="nav-link">
+                            <span class="nav-icon">📖</span>
+                            <span class="nav-text">Subjects</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_user.php" class="nav-link">
+                            <span class="nav-icon">👤</span>
+                            <span class="nav-text">Manage Users</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="visitors.php" class="nav-link">
+                            <span class="nav-icon">🚶</span>
+                            <span class="nav-text">Visitors</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_timebook.php" class="nav-link">
+                            <span class="nav-icon">⏰</span>
+                            <span class="nav-text">Teachers Time Book</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="permissions.php" class="nav-link">
+                            <span class="nav-icon">🔐</span>
+                            <span class="nav-text">Permissions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_attendance.php" class="nav-link">
+                            <span class="nav-icon">📋</span>
+                            <span class="nav-text">Attendance Register</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="payments_dashboard.php" class="nav-link">
+                            <span class="nav-icon">💰</span>
+                            <span class="nav-text">School Fees</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="sessions.php" class="nav-link">
+                            <span class="nav-icon">📅</span>
+                            <span class="nav-text">School Sessions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="school_calendar.php" class="nav-link">
+                            <span class="nav-icon">🗓️</span>
+                            <span class="nav-text">School Calendar</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="applicants.php" class="nav-link">
+                            <span class="nav-icon">📄</span>
+                            <span class="nav-text">Applicants</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
 
         <!-- Main Content -->
         <main class="main-content">
             <div class="content-header">
                 <div class="welcome-section">
-                    <h2><i class="fas fa-chalkboard-teacher"></i> Manage Classes</h2>
+                    <h2>🎓 Class Management</h2>
                     <p>Create, edit, and assign teachers to classes</p>
                 </div>
-                <div class="header-stats">
-                    <div class="quick-stat">
-                        <span class="quick-stat-value"><?php echo count($classes); ?></span>
-                        <span class="quick-stat-label">Classes</span>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="stats-container">
+                <div class="stat-card">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h3>Total Classes</h3>
+                    <div class="count"><?php echo count($classes); ?></div>
+                    <p class="stat-description">Active classes in the system</p>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    <h3>Available Teachers</h3>
+                    <div class="count"><?php echo count($teachers); ?></div>
+                    <p class="stat-description">Teachers for assignment</p>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-link"></i>
+                    <h3>Assignments</h3>
+                    <div class="count">
+                        <?php
+                        $total_assignments = 0;
+                        foreach ($assignments as $class_assignments) {
+                            $total_assignments += count($class_assignments);
+                        }
+                        echo $total_assignments;
+                        ?>
                     </div>
-                    <div class="quick-stat">
-                        <span class="quick-stat-value"><?php echo count($teachers); ?></span>
-                        <span class="quick-stat-label">Teachers</span>
-                    </div>
+                    <p class="stat-description">Teacher-class connections</p>
                 </div>
             </div>
 
-            <!-- Alerts -->
-            <?php if (!empty($success)): ?>
-                <div class="alert alert-success" style="padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 12px; background-color: #d1fae5; color: #065f46; border-left: 4px solid #10b981;">
+            <!-- Messages -->
+            <?php if($errors): ?>
+                <div class="alert alert-error">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <?php foreach($errors as $e) echo htmlspecialchars($e) . '<br>'; ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if($success): ?>
+                <div class="alert alert-success">
                     <i class="fas fa-check-circle"></i>
-                    <div><?php echo htmlspecialchars($success); ?></div>
+                    <?php echo htmlspecialchars($success); ?>
                 </div>
             <?php endif; ?>
 
-            <?php if (!empty($errors)): ?>
-                <div class="alert alert-error" style="padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 12px; background-color: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444;">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <div>
-                        <?php foreach ($errors as $e): ?>
-                            <div><?php echo htmlspecialchars($e); ?></div>
+            <!-- Class Management Forms -->
+            <section class="panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-plus-circle"></i> Create New Class</h2>
+                </div>
+
+                <form method="POST" class="form-inline">
+                    <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
+                    <input type="hidden" name="action" value="create_class">
+
+                    <input name="class_name" placeholder="Class Name *" required>
+
+                    <button type="submit" class="btn primary">
+                        <i class="fas fa-plus"></i> Create Class
+                    </button>
+                </form>
+            </section>
+
+            <!-- Assign Teacher Section -->
+            <section class="panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-user-plus"></i> Assign Teacher to Class</h2>
+                </div>
+
+                <form method="POST" class="form-inline">
+                    <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
+                    <input type="hidden" name="action" value="assign_teacher">
+
+                    <select name="class_id" required>
+                        <option value="">Select Class *</option>
+                        <?php foreach($classes as $c): ?>
+                            <option value="<?php echo intval($c['id']); ?>">
+                                <?php echo htmlspecialchars($c['class_name']); ?>
+                            </option>
                         <?php endforeach; ?>
-                    </div>
-                </div>
-            <?php endif; ?>
+                    </select>
 
-            <!-- Dashboard Cards -->
-            <div class="dashboard-cards">
-                <div class="card card-gradient-1">
-                    <div class="card-icon-wrapper">
-                        <div class="card-icon">🎓</div>
-                    </div>
-                    <div class="card-content">
-                        <h3>Total Classes</h3>
-                        <p class="card-value"><?php echo count($classes); ?></p>
-                        <div class="card-footer">
-                            <span class="card-badge">Active Classes</span>
-                            <a href="#class-list" class="card-link">View All →</a>
-                        </div>
-                    </div>
-                </div>
+                    <select name="teacher_id" required>
+                        <option value="">Select Teacher *</option>
+                        <?php foreach($teachers as $t): ?>
+                            <option value="<?php echo intval($t['id']); ?>">
+                                <?php echo htmlspecialchars($t['full_name']); ?>
+                                <?php if (!empty($t['email'])): ?>
+                                    (<?php echo htmlspecialchars($t['email']); ?>)
+                                <?php endif; ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
 
-                <div class="card card-gradient-2">
-                    <div class="card-icon-wrapper">
-                        <div class="card-icon">👨‍🏫</div>
-                    </div>
-                    <div class="card-content">
-                        <h3>Available Teachers</h3>
-                        <p class="card-value"><?php echo count($teachers); ?></p>
-                        <div class="card-footer">
-                            <span class="card-badge">For Assignment</span>
-                            <a href="manage_user.php" class="card-link">Manage →</a>
-                        </div>
-                    </div>
+                    <button type="submit" class="btn success">
+                        <i class="fas fa-link"></i> Assign Teacher
+                    </button>
+                </form>
+            </section>
+
+            <!-- Classes List -->
+            <section class="panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-list"></i> Class List</h2>
+                    <button class="btn small secondary" onclick="refreshPage()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
                 </div>
 
-                <div class="card card-gradient-3">
-                    <div class="card-icon-wrapper">
-                        <div class="card-icon">📊</div>
-                    </div>
-                    <div class="card-content">
-                        <h3>Assignments</h3>
-                        <p class="card-value">
-                            <?php
-                            $total_assignments = 0;
-                            foreach ($assignments as $class_assignments) {
-                                $total_assignments += count($class_assignments);
-                            }
-                            echo $total_assignments;
-                            ?>
-                        </p>
-                        <div class="card-footer">
-                            <span class="card-badge">Teacher-Class Links</span>
-                            <a href="#assignments" class="card-link">Review →</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Forms and Class List Grid -->
-            <div class="stats-section" style="padding: 30px;">
-                <div class="section-header">
-                    <h3>📝 Class Management</h3>
-                    <span class="section-badge">Forms & List</span>
-                </div>
-                <div class="dashboard-grid" style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; margin-top: 1rem;">
-                    <!-- Left Column: Forms -->
-                    <div>
-                        <!-- Create Class Card -->
-                        <div class="card" style="margin-bottom: 2rem;">
-                            <div class="card-header">
-                                <h2 class="card-title" style="font-size: 1.4rem; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 10px;">
-                                    <i class="fas fa-plus-circle" style="color: #FFD700;"></i> Create New Class
-                                </h2>
-                            </div>
-                            <form method="POST" id="createForm" style="padding: 0;">
-                                <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
-                                <input type="hidden" name="action" value="create_class">
-
-                                <div class="form-group" style="margin-bottom: 1.25rem;">
-                                    <label class="form-label" for="class_name" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b; font-size: 0.95rem;">Class Name *</label>
-                                    <input type="text" class="form-input" name="class_name" id="class_name" required placeholder="e.g., Grade 10 Science" style="width: 100%; padding: 0.875rem 1rem; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 1rem; transition: all 0.3s; background-color: white;">
-                                </div>
-
-                                <button type="submit" class="btn btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0.875rem 1.5rem; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.3s; background: linear-gradient(135deg, #FFD700, #B8860B); color: white;">
-                                    <i class="fas fa-save"></i> Create Class
-                                </button>
-                            </form>
-                        </div>
-
-                        <!-- Assign Teacher Card -->
-                        <div class="card">
-                            <div class="card-header">
-                                <h2 class="card-title" style="font-size: 1.4rem; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 10px;">
-                                    <i class="fas fa-user-plus" style="color: #FFD700;"></i> Assign Teacher to Class
-                                </h2>
-                            </div>
-                            <form method="POST" id="assignForm" style="padding: 0;">
-                                <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
-                                <input type="hidden" name="action" value="assign_teacher">
-
-                                <div class="form-group" style="margin-bottom: 1.25rem;">
-                                    <label class="form-label" for="assign_class_id" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b; font-size: 0.95rem;">Select Class *</label>
-                                    <select class="form-select" name="class_id" id="assign_class_id" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 1rem; transition: all 0.3s; background-color: white;">
-                                        <option value="">-- Choose a class --</option>
-                                        <?php foreach ($classes as $c): ?>
-                                            <option value="<?php echo intval($c['id']); ?>">
-                                                <?php echo htmlspecialchars($c['class_name']); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-
-                                <div class="form-group" style="margin-bottom: 1.25rem;">
-                                    <label class="form-label" for="assign_teacher_id" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b; font-size: 0.95rem;">Select Teacher *</label>
-                                    <select class="form-select" name="teacher_id" id="assign_teacher_id" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 1rem; transition: all 0.3s; background-color: white;">
-                                        <option value="">-- Choose a teacher --</option>
-                                        <?php foreach ($teachers as $t): ?>
-                                            <option value="<?php echo intval($t['id']); ?>">
-                                                <?php echo htmlspecialchars($t['full_name']); ?>
-                                                <?php if (!empty($t['email'])): ?>
-                                                    (<?php echo htmlspecialchars($t['email']); ?>)
-                                                <?php endif; ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-
-                                <button type="submit" class="btn btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0.875rem 1.5rem; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.3s; background: linear-gradient(135deg, #FFD700, #B8860B); color: white;">
-                                    <i class="fas fa-link"></i> Assign Teacher
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-
-                    <!-- Right Column: Classes List -->
-                    <div id="class-list">
-                        <div class="card">
-                            <div class="card-header">
-                                <h2 class="card-title" style="font-size: 1.4rem; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 10px;">
-                                    <i class="fas fa-list-alt" style="color: #FFD700;"></i> Class List
-                                </h2>
-                                <div class="action-buttons" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                                    <button class="btn btn-secondary btn-small" onclick="refreshPage()" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0.5rem 1rem; border: none; border-radius: 8px; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: all 0.3s; background: #e2e8f0; color: #1e293b;">
-                                        <i class="fas fa-sync-alt"></i> Refresh
-                                    </button>
-                                </div>
-                            </div>
-
-                            <?php if (empty($classes)): ?>
-                                <div class="empty-state" style="text-align: center; padding: 3rem 1rem; color: #64748b;">
-                                    <i class="fas fa-chalkboard" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
-                                    <h3 style="font-size: 1.3rem; margin-bottom: 0.5rem;">No Classes Found</h3>
-                                    <p>Create your first class using the form on the left.</p>
-                                </div>
+                <div class="table-wrap">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Class Name</th>
+                                <th>Created</th>
+                                <th>Assigned Teachers</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if(empty($classes)): ?>
+                                <tr>
+                                    <td colspan="4" class="text-center">
+                                        <i class="fas fa-graduation-cap"></i> No classes found. Create your first class above.
+                                    </td>
+                                </tr>
                             <?php else: ?>
-                                <div style="overflow-x: auto;">
-                                    <table class="classes-table" style="width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 1rem;">
-                                        <thead>
-                                            <tr>
-                                                <th style="background-color: #f1f5f9; padding: 1rem; text-align: left; font-weight: 700; color: #1e293b; border-bottom: 2px solid #cbd5e1;">Class Details</th>
-                                                <th style="background-color: #f1f5f9; padding: 1rem; text-align: left; font-weight: 700; color: #1e293b; border-bottom: 2px solid #cbd5e1;">Assigned Teachers</th>
-                                                <th style="background-color: #f1f5f9; padding: 1rem; text-align: left; font-weight: 700; color: #1e293b; border-bottom: 2px solid #cbd5e1; width: 180px;">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach ($classes as $c): ?>
-                                                <tr style="transition: background-color 0.2s;">
-                                                    <td style="padding: 1.25rem 1rem; border-bottom: 1px solid #e2e8f0; vertical-align: top;">
-                                                        <div class="class-name" style="font-weight: 700; font-size: 1.1rem; color: #FFD700; margin-bottom: 0.25rem;"><?php echo htmlspecialchars($c['class_name']); ?></div>
-                                                        <div class="small" style="color: #64748b; font-size: 0.85rem; margin-top: 0.5rem;">
-                                                            ID: <?php echo $c['id']; ?> | Created: <?php echo date('M j, Y', strtotime($c['created_at'])); ?>
-                                                        </div>
-                                                    </td>
-                                                    <td style="padding: 1.25rem 1rem; border-bottom: 1px solid #e2e8f0; vertical-align: top;">
-                                                        <div class="teachers-list" style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem;">
-                                                            <?php if (!empty($assignments[$c['id']])): ?>
-                                                                <?php foreach ($assignments[$c['id']] as $a): ?>
-                                                                    <div class="teacher-tag" style="background: #e0e7ff; color: #4338ca; padding: 0.5rem 0.875rem; border-radius: 50px; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 6px; font-weight: 500;">
-                                                                        <i class="fas fa-user-graduate"></i>
-                                                                        <?php echo htmlspecialchars($a['full_name']); ?>
-                                                                        <form method="POST" style="display: inline;" onsubmit="return confirm('Unassign this teacher from the class?')">
-                                                                            <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
-                                                                            <input type="hidden" name="action" value="unassign_teacher">
-                                                                            <input type="hidden" name="class_id" value="<?php echo intval($c['id']); ?>">
-                                                                            <input type="hidden" name="teacher_id" value="<?php echo intval($a['teacher_id']); ?>">
-                                                                            <button type="submit" class="remove-btn" title="Unassign teacher" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 0; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
-                                                                                <i class="fas fa-times"></i>
-                                                                            </button>
-                                                                        </form>
-                                                                    </div>
-                                                                <?php endforeach; ?>
-                                                            <?php else: ?>
-                                                                <div class="no-teachers" style="color: #64748b; font-style: italic; font-size: 0.9rem;">No teachers assigned yet</div>
-                                                            <?php endif; ?>
-                                                        </div>
-                                                    </td>
-                                                    <td style="padding: 1.25rem 1rem; border-bottom: 1px solid #e2e8f0; vertical-align: top;">
-                                                        <div class="action-buttons" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                                                            <button class="btn btn-secondary btn-small" onclick="openEditModal(<?php echo intval($c['id']); ?>, '<?php echo addslashes(htmlspecialchars($c['class_name'])); ?>', '<?php echo addslashes(htmlspecialchars($c['description'] ?? '')); ?>')" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0.5rem 1rem; border: none; border-radius: 8px; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: all 0.3s; background: #e2e8f0; color: #1e293b;">
-                                                                <i class="fas fa-edit"></i> Edit
+                                <?php foreach($classes as $c): ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars($c['class_name']); ?></td>
+                                        <td><?php echo date('M j, Y', strtotime($c['created_at'])); ?></td>
+                                        <td>
+                                            <?php if(!empty($assignments[$c['id']])): ?>
+                                                <?php foreach($assignments[$c['id']] as $a): ?>
+                                                    <span class="badge badge-info">
+                                                        <?php echo htmlspecialchars($a['full_name']); ?>
+                                                        <form method="POST" class="inline-form" onsubmit="return confirm('Unassign this teacher?');">
+                                                            <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
+                                                            <input type="hidden" name="action" value="unassign_teacher">
+                                                            <input type="hidden" name="class_id" value="<?php echo intval($c['id']); ?>">
+                                                            <input type="hidden" name="teacher_id" value="<?php echo intval($a['teacher_id']); ?>">
+                                                            <button type="submit" class="btn small danger" title="Unassign">
+                                                                <i class="fas fa-times"></i>
                                                             </button>
+                                                        </form>
+                                                    </span>
+                                                <?php endforeach; ?>
+                                            <?php else: ?>
+                                                <span class="badge badge-warning">No teachers assigned</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="actions">
+                                            <button class="btn small warning" onclick="openEditModal(<?php echo intval($c['id']); ?>, '<?php echo addslashes(htmlspecialchars($c['class_name'])); ?>')">
+                                                <i class="fas fa-edit"></i> Edit
+                                            </button>
 
-                                                            <form method="POST" onsubmit="return confirmDeleteClass()" style="display: inline;">
-                                                                <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
-                                                                <input type="hidden" name="action" value="delete_class">
-                                                                <input type="hidden" name="class_id" value="<?php echo intval($c['id']); ?>">
-                                                                <button type="submit" class="btn btn-danger btn-small" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0.5rem 1rem; border: none; border-radius: 8px; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: all 0.3s; background: #ef4444; color: white;">
-                                                                    <i class="fas fa-trash-alt"></i> Delete
-                                                                </button>
-                                                            </form>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
+                                            <form method="POST" class="inline-form" onsubmit="return confirm('Are you sure you want to delete this class?\n\nThis action cannot be undone and will remove all teacher assignments.');">
+                                                <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
+                                                <input type="hidden" name="action" value="delete_class">
+                                                <input type="hidden" name="class_id" value="<?php echo intval($c['id']); ?>">
+                                                <button type="submit" class="btn small danger">
+                                                    <i class="fas fa-trash"></i> Delete
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
                             <?php endif; ?>
-                        </div>
-                    </div>
+                        </tbody>
+                    </table>
                 </div>
-            </div>
+            </section>
         </main>
     </div>
 
     <!-- Edit Class Modal -->
-    <div class="modal" id="editModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; align-items: center; justify-content: center;">
-        <div class="modal-content" style="background: white; border-radius: 12px; padding: 2rem; width: 90%; max-width: 500px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
-            <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0;">
-                <h2 class="modal-title" style="font-size: 1.5rem; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-edit" style="color: #FFD700;"></i> Edit Class
-                </h2>
-                <button class="close-modal" onclick="closeEditModal()" style="background: none; border: none; font-size: 1.5rem; color: #64748b; cursor: pointer; padding: 0.25rem; border-radius: 4px;">&times;</button>
+    <div id="editModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-edit"></i> Edit Class</h3>
+                <button class="modal-close" onclick="closeEditModal()">&times;</button>
             </div>
-            <form method="POST" id="editForm">
-                <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
-                <input type="hidden" name="action" value="update_class">
-                <input type="hidden" name="class_id" id="edit_class_id">
+            <div class="modal-body">
+                <form method="POST" id="editForm">
+                    <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
+                    <input type="hidden" name="action" value="update_class">
+                    <input type="hidden" name="class_id" id="edit_class_id">
 
-                <div class="form-group" style="margin-bottom: 1.25rem;">
-                    <label class="form-label" for="edit_class_name" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b; font-size: 0.95rem;">Class Name *</label>
-                    <input type="text" class="form-input" name="class_name" id="edit_class_name" required style="width: 100%; padding: 0.875rem 1rem; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 1rem; transition: all 0.3s; background-color: white;">
-                </div>
+                    <div class="form-group">
+                        <label for="edit_class_name">Class Name *</label>
+                        <input type="text" name="class_name" id="edit_class_name" class="form-control" required placeholder="Enter class name">
+                    </div>
 
-                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
-                    <button type="submit" class="btn btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0.875rem 1.5rem; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.3s; background: linear-gradient(135deg, #FFD700, #B8860B); color: white;">
-                        <i class="fas fa-save"></i> Save Changes
-                    </button>
-                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0.875rem 1.5rem; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.3s; background: #e2e8f0; color: #1e293b;">
-                        <i class="fas fa-times"></i> Cancel
-                    </button>
-                </div>
-            </form>
+                    <div class="modal-actions">
+                        <button type="button" class="btn secondary" onclick="closeEditModal()">Cancel</button>
+                        <button type="submit" class="btn primary">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
     <script>
+        // Modal functions
+        function openEditModal(id, name) {
+            document.getElementById('edit_class_id').value = id;
+            document.getElementById('edit_class_name').value = name;
+            document.getElementById('editModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+            document.getElementById('editForm').reset();
+        }
+
         // Mobile Menu Toggle
         const mobileMenuToggle = document.getElementById('mobileMenuToggle');
         const sidebar = document.getElementById('sidebar');
@@ -504,7 +616,7 @@ $success = flash('success');
 
         // Close sidebar when clicking outside on mobile
         document.addEventListener('click', (e) => {
-            if (window.innerWidth <= 768) {
+            if (window.innerWidth <= 1024) {
                 if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
                     sidebar.classList.remove('active');
                     mobileMenuToggle.classList.remove('active');
@@ -512,17 +624,7 @@ $success = flash('success');
             }
         });
 
-        // Edit Modal Functions
-        function openEditModal(id, name, desc) {
-            document.getElementById('edit_class_id').value = id;
-            document.getElementById('edit_class_name').value = name;
-            document.getElementById('editModal').style.display = 'flex';
-        }
-
-        function closeEditModal() {
-            document.getElementById('editModal').style.display = 'none';
-        }
-
+        // Confirmation functions
         function confirmDeleteClass() {
             return confirm("Are you sure you want to delete this class?\n\nThis action cannot be undone and will remove all teacher assignments for this class.");
         }
@@ -531,82 +633,106 @@ $success = flash('success');
             window.location.reload();
         }
 
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('editModal');
-            if (event.target === modal) {
+        // Close modals when clicking outside
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    if (this.id === 'editModal') closeEditModal();
+                }
+            });
+        });
+
+        // Form submission with loading state
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                const submitBtn = this.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.classList.add('loading');
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                    submitBtn.disabled = true;
+                }
+            });
+        });
+
+        // Add smooth scroll to top when page loads
+        window.addEventListener('load', function() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // Add ripple effect to buttons
+        document.querySelectorAll('.btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                const ripple = document.createElement('span');
+                ripple.style.position = 'absolute';
+                ripple.style.borderRadius = '50%';
+                ripple.style.background = 'rgba(255, 255, 255, 0.3)';
+                ripple.style.transform = 'scale(0)';
+                ripple.style.animation = 'ripple 0.6s linear';
+                ripple.style.left = (e.offsetX - 10) + 'px';
+                ripple.style.top = (e.offsetY - 10) + 'px';
+                ripple.style.width = '20px';
+                ripple.style.height = '20px';
+
+                this.style.position = 'relative';
+                this.style.overflow = 'hidden';
+                this.appendChild(ripple);
+
+                setTimeout(() => {
+                    ripple.remove();
+                }, 600);
+            });
+        });
+
+        // Add CSS animation for ripple
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes ripple {
+                to {
+                    transform: scale(4);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Add intersection observer for fade-in animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Initially hide elements for animation
+        document.querySelectorAll('.panel, .stat-card, .alert').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(30px)';
+            el.style.transition = 'all 0.6s ease';
+            observer.observe(el);
+        });
+
+        // Keyboard navigation for modals
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
                 closeEditModal();
             }
-        }
+        });
 
-        // Auto-hide success messages after 5 seconds
+        // Auto-hide alerts after 5 seconds
         setTimeout(() => {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
-                alert.style.transition = 'opacity 0.5s ease';
+            document.querySelectorAll('.alert').forEach(alert => {
                 alert.style.opacity = '0';
-                setTimeout(() => {
-                    if (alert.parentNode) alert.parentNode.removeChild(alert);
-                }, 500);
+                setTimeout(() => alert.remove(), 300);
             });
         }, 5000);
-
-        // Form validation
-        document.getElementById('createForm')?.addEventListener('submit', function(e) {
-            const className = document.getElementById('class_name').value.trim();
-            if (className.length < 2) {
-                e.preventDefault();
-                alert('Class name must be at least 2 characters long.');
-            }
-        });
-
-        document.getElementById('assignForm')?.addEventListener('submit', function(e) {
-            const classId = document.getElementById('assign_class_id').value;
-            const teacherId = document.getElementById('assign_teacher_id').value;
-
-            if (!classId || !teacherId) {
-                e.preventDefault();
-                alert('Please select both a class and a teacher.');
-            }
-        });
     </script>
-
-    <!-- Footer -->
-    <footer class="dashboard-footer">
-        <div class="footer-container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4>About SahabFormMaster</h4>
-                    <p>A comprehensive school management system designed for academic excellence and efficient administration.</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Quick Links</h4>
-                    <ul class="footer-links">
-                        <li><a href="manage-school.php">School Settings</a></li>
-                        <li><a href="manage_user.php">User Management</a></li>
-                        <li><a href="#">Support & Help</a></li>
-                        <li><a href="#">Documentation</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Contact Information</h4>
-                    <p>📧 admin@sahabformmaster.com</p>
-                    <p>📱 +234 808 683 5607</p>
-                    <p>🌐 www.sahabformmaster.com</p>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
-                <div class="footer-bottom-links">
-                    <a href="#">Privacy Policy</a>
-                    <span>•</span>
-                    <a href="#">Terms of Service</a>
-                    <span>•</span>
-                    <span>Version 2.0</span>
-                </div>
-            </div>
-        </div>
-    </footer>
 
     <?php include '../includes/floating-button.php'; ?>
 

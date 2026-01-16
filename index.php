@@ -18,11 +18,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $user = $stmt->fetch();
 
         // Verify user exists and password is correct
-        if ($user && $password === $user['password']) {
-            // Login Success
+        if ($user && password_verify($password, $user['password'])) {
+        // Login Success
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['role'] = $user['role'];
             $_SESSION['full_name'] = $user['full_name'];
+            $_SESSION['school_id'] = $user['school_id'];
+            $_SESSION['email'] = $user['email'];
 
             // Redirect based on Role
             if ($user['role'] === 'principal') {

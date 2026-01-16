@@ -1032,3 +1032,4 @@ try {
         'error' => 'Database error: ' . $e->getMessage()
     ]);
 }
+

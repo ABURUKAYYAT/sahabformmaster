@@ -2,80 +2,118 @@
 
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
-// Check if principal is logged in
+// Check if principal is logged in and get school_id
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'principal') {
     header("Location: ../index.php");
     exit;
 }
 
 $principal_name = $_SESSION['full_name'];
+$current_school_id = require_school_auth();
 
 // Fetch dynamic statistics
 try {
     // Student statistics
-    $stmt = $pdo->query("SELECT COUNT(*) as total_students FROM students WHERE is_active = 1");
+    $query = "SELECT COUNT(*) as total_students FROM students WHERE is_active = 1";
+    $params = [];
+    $query = add_school_filter($query, $params);
+    $stmt = $pdo->prepare($query);
+    $stmt->execute($params);
     $total_students = $stmt->fetchColumn();
 
-    $stmt = $pdo->query("SELECT COUNT(*) as new_students FROM students WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)");
+    $query = "SELECT COUNT(*) as new_students FROM students WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+    $params = [];
+    $query = add_school_filter($query, $params);
+    $stmt = $pdo->prepare($query);
+    $stmt->execute($params);
     $new_students = $stmt->fetchColumn();
 
     // Teacher statistics
-    $stmt = $pdo->query("SELECT COUNT(*) as total_teachers FROM users WHERE role IN ('teacher', 'principal') AND is_active = 1");
+    $query = "SELECT COUNT(*) as total_teachers FROM users WHERE role IN ('teacher', 'principal') AND is_active = 1";
+    $params = [];
+    $query = add_school_filter($query, $params);
+    $stmt = $pdo->prepare($query);
+    $stmt->execute($params);
     $total_teachers = $stmt->fetchColumn();
 
     // Class statistics
-    $stmt = $pdo->query("SELECT COUNT(*) as total_classes FROM classes");
+    $query = "SELECT COUNT(*) as total_classes FROM classes";
+    $params = [];
+    $query = add_school_filter($query, $params);
+    $stmt = $pdo->prepare($query);
+    $stmt->execute($params);
     $total_classes = $stmt->fetchColumn();
 
     // Attendance statistics (last 30 days)
-    $stmt = $pdo->prepare("
+    $query = "
         SELECT
             COUNT(*) as total_records,
             ROUND(AVG(CASE WHEN status = 'present' THEN 1 ELSE 0 END) * 100, 1) as attendance_rate
         FROM attendance
         WHERE date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-    ");
-    $stmt->execute();
+    ";
+    $params = [];
+    $query = add_school_filter($query, $params);
+    $stmt = $pdo->prepare($query);
+    $stmt->execute($params);
     $attendance_stats = $stmt->fetch();
 
     // Results statistics
-    $stmt = $pdo->query("SELECT COUNT(*) as total_results FROM results");
+    $query = "SELECT COUNT(*) as total_results FROM results";
+    $params = [];
+    $query = add_school_filter($query, $params);
+    $stmt = $pdo->prepare($query);
+    $stmt->execute($params);
     $total_results = $stmt->fetchColumn();
 
     // Fee collection statistics
-    $stmt = $pdo->prepare("
+    $query = "
         SELECT
             SUM(amount_paid) as total_collected,
             SUM(total_amount - amount_paid) as total_outstanding
         FROM student_payments
         WHERE academic_year = YEAR(CURDATE())
-    ");
-    $stmt->execute();
+    ";
+    $params = [];
+    $query = add_school_filter($query, $params);
+    $stmt = $pdo->prepare($query);
+    $stmt->execute($params);
     $fee_stats = $stmt->fetch();
 
     // Recent activities
-    $stmt = $pdo->prepare("
-        SELECT 'student' as type, full_name, admission_no, created_at
-        FROM students
-        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-        UNION ALL
+    $query1 = "SELECT 'student' as type, full_name, admission_no, created_at FROM students WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+    $params1 = [];
+    $query1 = add_school_filter($query1, $params1);
+
+    $query2 = "
         SELECT 'result' as type, CONCAT(s.full_name, ' - ', sub.subject_name) as full_name, s.admission_no, r.created_at
         FROM results r
         JOIN students s ON r.student_id = s.id
         JOIN subjects sub ON r.subject_id = sub.id
         WHERE r.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-        ORDER BY created_at DESC
-        LIMIT 10
-    ");
-    $stmt->execute();
+    ";
+    $params2 = [];
+    $query2 = add_school_filter($query2, $params2);
+
+    $stmt = $pdo->prepare("{$query1} UNION ALL {$query2} ORDER BY created_at DESC LIMIT 10");
+    $stmt->execute(array_merge($params1, $params2));
     $recent_activities = $stmt->fetchAll();
 
     // System health check
-    $stmt = $pdo->query("SELECT COUNT(*) as pending_complaints FROM results_complaints WHERE status = 'pending'");
+    $query = "SELECT COUNT(*) as pending_complaints FROM results_complaints WHERE status = 'pending'";
+    $params = [];
+    $query = add_school_filter($query, $params);
+    $stmt = $pdo->prepare($query);
+    $stmt->execute($params);
     $pending_complaints = $stmt->fetchColumn();
 
-    $stmt = $pdo->query("SELECT COUNT(*) as unpaid_fees FROM student_payments WHERE balance > 0");
+    $query = "SELECT COUNT(*) as unpaid_fees FROM student_payments WHERE balance > 0";
+    $params = [];
+    $query = add_school_filter($query, $params);
+    $stmt = $pdo->prepare($query);
+    $stmt->execute($params);
     $unpaid_fees = $stmt->fetchColumn();
 
 } catch (PDOException $e) {
@@ -103,10 +141,8 @@ try {
 </head>
 <body>
 
-    <!-- Mobile Menu Toggle -->
-    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
-        <i class="fas fa-bars"></i>
-    </button>
+    <!-- Mobile Navigation Component -->
+    <?php include '../includes/mobile_navigation.php'; ?>
 
     <!-- Header -->
     <header class="dashboard-header">
@@ -199,6 +235,12 @@ try {
                         <a href="manage_curriculum.php" class="nav-link">
                             <span class="nav-icon">📚</span>
                             <span class="nav-text">Curriculum</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="content_coverage.php" class="nav-link">
+                            <span class="nav-icon">✅</span>
+                            <span class="nav-text">Content Coverage</span>
                         </a>
                     </li>
                     <li class="nav-item">
@@ -550,69 +592,7 @@ try {
         </main>
     </div>
 
-    <!-- Footer -->
-    <footer class="dashboard-footer">
-        <div class="footer-container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4>About SahabFormMaster</h4>
-                    <p>A comprehensive school management system designed for academic excellence and efficient administration.</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Quick Links</h4>
-                    <ul class="footer-links">
-                        <li><a href="manage-school.php">School Settings</a></li>
-                        <li><a href="manage_user.php">User Management</a></li>
-                        <li><a href="#">Support & Help</a></li>
-                        <li><a href="#">Documentation</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Contact Information</h4>
-                    <p>📧 admin@sahabformmaster.com</p>
-                    <p>📱 +234 808 683 5607</p>
-                    <p>🌐 www.sahabformmaster.com</p>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
-                <div class="footer-bottom-links">
-                    <a href="#">Privacy Policy</a>
-                    <span>•</span>
-                    <a href="#">Terms of Service</a>
-                    <span>•</span>
-                    <span>Version 2.0</span>
-                </div>
-            </div>
-        </div>
-    </footer>
-
     <script>
-        // Mobile Menu Toggle
-        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-        const sidebar = document.getElementById('sidebar');
-        const sidebarClose = document.getElementById('sidebarClose');
-        
-        mobileMenuToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('active');
-            mobileMenuToggle.classList.toggle('active');
-        });
-        
-        sidebarClose.addEventListener('click', () => {
-            sidebar.classList.remove('active');
-            mobileMenuToggle.classList.remove('active');
-        });
-
-        // Close sidebar when clicking outside on mobile
-        document.addEventListener('click', (e) => {
-            if (window.innerWidth <= 768) {
-                if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
-                    sidebar.classList.remove('active');
-                    mobileMenuToggle.classList.remove('active');
-                }
-            }
-        });
-
         // Smooth scroll for internal links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
@@ -750,5 +730,6 @@ try {
                 }, 500);
             });
         });
-    </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
+    </script><?php include '../includes/floating-button.php'; ?></body>
+</html>
 </html>

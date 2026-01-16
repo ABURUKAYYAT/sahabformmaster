@@ -455,3 +455,4 @@ $filename = 'Payment_Receipt_' . $paymentDetails['receipt_number'] . '_' . date(
 $pdf->Output($filename, 'D');
 exit;
 ?>
+

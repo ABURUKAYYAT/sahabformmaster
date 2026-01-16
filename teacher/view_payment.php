@@ -2114,30 +2114,7 @@ $paymentStats = [
             </div>
         <?php endif; ?>
 
-        <!-- Footer -->
-        <footer class="footer-modern">
-            <div class="footer-content-modern">
-                <div class="footer-section-modern">
-                    <h4>About SahabFormMaster</h4>
-                    <p>Comprehensive school management system designed for efficient payment processing and student financial management.</p>
-                </div>
-                <div class="footer-section-modern">
-                    <h4>Quick Links</h4>
-                    <ul style="list-style: none; padding: 0;">
-                        <li style="margin-bottom: 0.5rem;"><a href="payments.php" style="color: var(--gray-300); text-decoration: none;">Payment Dashboard</a></li>
-                        <li style="margin-bottom: 0.5rem;"><a href="students.php" style="color: var(--gray-300); text-decoration: none;">Students</a></li>
-                        <li style="margin-bottom: 0.5rem;"><a href="index.php" style="color: var(--gray-300); text-decoration: none;">Dashboard</a></li>
-                        <li><a href="#" style="color: var(--gray-300); text-decoration: none;">Support</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section-modern">
-                    <h4>Contact Support</h4>
-                    <p><i class="fas fa-envelope"></i> payments.support@sahabformmaster.com</p>
-                    <p><i class="fas fa-phone"></i> +234 808 683 5607</p>
-                    <p><i class="fas fa-clock"></i> Mon-Fri: 8AM-6PM</p>
-                </div>
-            </div>
-        </footer>
+        
     </div>
     
     <!-- Verification Modal -->
@@ -2285,4 +2262,5 @@ $paymentStats = [
         });
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
+
 

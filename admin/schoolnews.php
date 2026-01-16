@@ -1,12 +1,16 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Check if principal is logged in
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'principal') {
     header("Location: ../index.php");
     exit;
 }
+
+// Get current school for data isolation
+$current_school_id = require_school_auth();
 
 $user_id = $_SESSION['user_id'];
 $user_name = $_SESSION['full_name'] ?? 'Principal';
@@ -128,11 +132,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['bulk_action'])) {
             try {
                 if ($action === 'add') {
                     $stmt = $pdo->prepare("INSERT INTO school_news
-                        (title, slug, excerpt, content, category, featured_image, author_id, priority,
+                        (title, slug, excerpt, content, category, featured_image, author_id, school_id, priority,
                          target_audience, status, allow_comments, featured, tags, published_date, scheduled_date, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
                     $stmt->execute([
-                        $title, $slug, $excerpt, $content, $category, $featured_image, $user_id, $priority,
+                        $title, $slug, $excerpt, $content, $category, $featured_image, $user_id, $current_school_id, $priority,
                         $target_audience, $status, $allow_comments, $featured, $tags,
                         $status === 'published' ? $published_date : null,
                         !empty($scheduled_date) ? $scheduled_date : null
@@ -213,8 +217,8 @@ $filter_featured = $_GET['filter_featured'] ?? '';
 $query = "SELECT sn.*, CONCAT(u.full_name, ' (', u.role, ')') as author_name
           FROM school_news sn
           LEFT JOIN users u ON sn.author_id = u.id
-          WHERE 1=1";
-$params = [];
+          WHERE sn.school_id = ?";
+$params = [$current_school_id];
 
 if (!empty($search)) {
     $query .= " AND (sn.title LIKE ? OR sn.excerpt LIKE ? OR sn.content LIKE ? OR sn.tags LIKE ?)";
@@ -250,19 +254,23 @@ $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $news_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get statistics
-$stats = $pdo->query("
+// Get statistics - filtered by current school
+$stats_query = $pdo->prepare("
     SELECT
         COUNT(CASE WHEN status = 'published' THEN 1 END) as published_count,
         COUNT(CASE WHEN status = 'draft' THEN 1 END) as draft_count,
-        0 as featured_count,
+        COUNT(CASE WHEN featured = 1 THEN 1 END) as featured_count,
         SUM(view_count) as total_views
     FROM school_news
-    WHERE status != 'archived'
-")->fetch();
+    WHERE status != 'archived' AND school_id = ?
+");
+$stats_query->execute([$current_school_id]);
+$stats = $stats_query->fetch();
 
-// Get categories
-$categories = $pdo->query("SELECT DISTINCT category FROM school_news WHERE category IS NOT NULL ORDER BY category")->fetchAll(PDO::FETCH_COLUMN);
+// Get categories - filtered by current school
+$categories_query = $pdo->prepare("SELECT DISTINCT category FROM school_news WHERE category IS NOT NULL AND school_id = ? ORDER BY category");
+$categories_query->execute([$current_school_id]);
+$categories = $categories_query->fetchAll(PDO::FETCH_COLUMN);
 
 // Handle editing
 $edit_news = null;
@@ -529,7 +537,7 @@ function getPriorityBadge($priority) {
             position: fixed;
             top: 20px;
             left: 20px;
-            z-index: 999;
+            z-index: 1001;
             background: var(--primary-color);
             color: white;
             border: none;
@@ -1246,7 +1254,7 @@ function getPriorityBadge($priority) {
            Responsive Design
            =================================================== */
 
-        @media (max-width: 1200px) {
+        @media (max-width: 768px) {
             .sidebar {
                 transform: translateX(-100%);
                 z-index: 999;
@@ -2466,5 +2474,5 @@ const toastStyles = `
 const style = document.createElement('style');
 style.textContent = toastStyles;
 document.head.appendChild(style);
-</script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
+</script><?php include '../includes/floating-button.php'; ?></body>
 </html>

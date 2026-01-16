@@ -34,3 +34,4 @@ if ($request_id) {
 header('Location: teacher_permission.php');
 exit();
 ?>
+

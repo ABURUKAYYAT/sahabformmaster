@@ -2,46 +2,55 @@
 // teacher/index.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
-// Check if teacher is logged in
+// Check if teacher is logged in and get school_id
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../index.php");
     exit;
 }
 
 $teacher_name = $_SESSION['full_name'];
+$current_school_id = require_school_auth();
 
 // Get dynamic stats for the teacher
 $teacher_id = $_SESSION['user_id'];
 
 // Get teacher's class count
-$class_stmt = $pdo->prepare("SELECT COUNT(*) as class_count FROM class_teachers WHERE teacher_id = ?");
-$class_stmt->execute([$teacher_id]);
+$query = "SELECT COUNT(*) as class_count FROM class_teachers ct JOIN classes c ON ct.class_id = c.id WHERE ct.teacher_id = ? AND c.school_id = ?";
+$class_stmt = $pdo->prepare($query);
+$class_stmt->execute([$teacher_id, $current_school_id]);
 $class_count = $class_stmt->fetch()['class_count'];
 
 // Get student's count for teacher's classes
-$student_stmt = $pdo->prepare("
+$query = "
     SELECT COUNT(DISTINCT s.id) as student_count
     FROM students s
     JOIN class_teachers ct ON s.class_id = ct.class_id
-    WHERE ct.teacher_id = ?
-");
-$student_stmt->execute([$teacher_id]);
+    JOIN classes c ON s.class_id = c.id
+    WHERE ct.teacher_id = ? AND s.school_id = ? AND c.school_id = ?
+";
+$student_stmt = $pdo->prepare($query);
+$student_stmt->execute([$teacher_id, $current_school_id, $current_school_id]);
 $student_count = $student_stmt->fetch()['student_count'];
 
 // Get lesson plans count
-$lesson_stmt = $pdo->prepare("SELECT COUNT(*) as lesson_count FROM lesson_plans WHERE teacher_id = ?");
-$lesson_stmt->execute([$teacher_id]);
+$query = "SELECT COUNT(*) as lesson_count FROM lesson_plans WHERE teacher_id = ? AND school_id = ?";
+$lesson_stmt = $pdo->prepare($query);
+$lesson_stmt->execute([$teacher_id, $current_school_id]);
 $lesson_count = $lesson_stmt->fetch()['lesson_count'];
 
 // Get subjects count
-$subject_stmt = $pdo->prepare("
+$query = "
     SELECT COUNT(DISTINCT sa.subject_id) as subject_count
     FROM subject_assignments sa
     JOIN class_teachers ct ON sa.class_id = ct.class_id
-    WHERE ct.teacher_id = ?
-");
-$subject_stmt->execute([$teacher_id]);
+    JOIN classes c ON sa.class_id = c.id
+    JOIN subjects sub ON sa.subject_id = sub.id
+    WHERE ct.teacher_id = ? AND c.school_id = ? AND sub.school_id = ?
+";
+$subject_stmt = $pdo->prepare($query);
+$subject_stmt->execute([$teacher_id, $current_school_id, $current_school_id]);
 $subject_count = $subject_stmt->fetch()['subject_count'];
 
 ?>
@@ -476,43 +485,6 @@ $subject_count = $subject_stmt->fetch()['subject_count'];
             </div>
         </main>
     </div>
-
-    <!-- Footer -->
-    <footer class="dashboard-footer">
-        <div class="footer-container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4>About SahabFormMaster</h4>
-                    <p>A comprehensive school management system designed for effective teaching and learning.</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Quick Links</h4>
-                    <ul class="footer-links">
-                        <li><a href="lesson-plan.php">Lesson Plans</a></li>
-                        <li><a href="students.php">Students</a></li>
-                        <li><a href="results.php">Results</a></li>
-                        <li><a href="#">Support</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Contact Information</h4>
-                    <p>📧 teacher.support@sahabformmaster.com</p>
-                    <p>📱 +234 808 683 5607</p>
-                    <p>🌐 www.sahabformmaster.com</p>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
-                <div class="footer-bottom-links">
-                    <a href="#">Privacy Policy</a>
-                    <span>•</span>
-                    <a href="#">Terms of Service</a>
-                    <span>•</span>
-                    <span>Version 2.0</span>
-                </div>
-            </div>
-        </div>
-    </footer>
 
     <script>
         // Mobile Menu Toggle - Dropdown Navigation

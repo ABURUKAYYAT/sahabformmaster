@@ -759,38 +759,7 @@ $months = $months_stmt->fetchAll();
         </main>
     </div>
 
-    <!-- Footer -->
-    <footer class="dashboard-footer">
-        <div class="footer-container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4>About SahabFormMaster</h4>
-                    <p>A comprehensive educational management system designed to help students track their academic progress and performance.</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Quick Links</h4>
-                    <ul class="footer-links">
-                        <li><a href="myresults.php">My Results</a></li>
-                        <li><a href="mysubjects.php">My Subjects</a></li>
-                        <li><a href="attendance.php">Attendance</a></li>
-                        <li><a href="#">Support</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Contact Information</h4>
-                    <p>📧 student.support@sahabformmaster.com</p>
-                    <p>📱 +234 808 683 5607</p>
-                    <p>🌐 www.sahabformmaster.com</p>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
-                <div class="footer-bottom-links">
-                    <a href="#">Privacy Policy</a> • <a href="#">Terms of Service</a> • <span>Version 2.0</span>
-                </div>
-            </div>
-        </div>
-    </footer>
+    
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap-datepicker@1.9.0/dist/js/bootstrap-datepicker.min.js"></script>
@@ -823,3 +792,4 @@ $months = $months_stmt->fetchAll();
     <?php include '../includes/floating-button.php'; ?>
 </body>
 </html>
+

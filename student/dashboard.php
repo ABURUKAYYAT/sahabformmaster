@@ -2,8 +2,9 @@
 // student/dashboard.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
-// Check if student is logged in
+// Check if student is logged in and get school_id
 if (!isset($_SESSION['student_id'])) {
     header("Location: index.php");
     exit;
@@ -12,37 +13,49 @@ if (!isset($_SESSION['student_id'])) {
 $student_id = $_SESSION['student_id'];
 $student_name = $_SESSION['student_name'];
 $admission_number = $_SESSION['admission_no'];
+$current_school_id = get_current_school_id();
 
 // Get student details and stats
-$stmt = $pdo->prepare("SELECT * FROM students WHERE id = ?");
-$stmt->execute([$student_id]);
+$query = "SELECT * FROM students WHERE id = ? AND school_id = ?";
+$stmt = $pdo->prepare($query);
+$stmt->execute([$student_id, $current_school_id]);
 $student = $stmt->fetch();
 
+// If student doesn't belong to user's school, logout
+if (!$student) {
+    session_destroy();
+    header("Location: index.php?error=access_denied");
+    exit;
+}
+
 // Get attendance stats
-$attendance_stmt = $pdo->prepare("
+$query = "
     SELECT
         COUNT(*) as total_days,
         SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present_days,
         ROUND((SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) / COUNT(*)) * 100, 1) as attendance_rate
     FROM attendance
-    WHERE student_id = ?
-");
-$attendance_stmt->execute([$student_id]);
+    WHERE student_id = ? AND school_id = ?
+";
+$attendance_stmt = $pdo->prepare($query);
+$attendance_stmt->execute([$student_id, $current_school_id]);
 $attendance = $attendance_stmt->fetch();
 
 // Get results count
-$results_stmt = $pdo->prepare("SELECT COUNT(*) as results_count FROM results WHERE student_id = ?");
-$results_stmt->execute([$student_id]);
+$query = "SELECT COUNT(*) as results_count FROM results WHERE student_id = ? AND school_id = ?";
+$results_stmt = $pdo->prepare($query);
+$results_stmt->execute([$student_id, $current_school_id]);
 $results_count = $results_stmt->fetch()['results_count'];
 
 // Get pending activities
-$activities_stmt = $pdo->prepare("
+$query = "
     SELECT COUNT(*) as pending_activities
     FROM student_submissions ss
     JOIN class_activities ca ON ss.activity_id = ca.id
-    WHERE ss.student_id = ? AND ss.status = 'pending'
-");
-$activities_stmt->execute([$student_id]);
+    WHERE ss.student_id = ? AND ss.status = 'pending' AND ca.school_id = ?
+";
+$activities_stmt = $pdo->prepare($query);
+$activities_stmt->execute([$student_id, $current_school_id]);
 $pending_activities = $activities_stmt->fetch()['pending_activities'];
 
 ?>
@@ -384,42 +397,7 @@ $pending_activities = $activities_stmt->fetch()['pending_activities'];
         </main>
     </div>
 
-    <!-- Footer -->
-    <footer class="dashboard-footer">
-        <div class="footer-container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4>About SahabFormMaster</h4>
-                    <p>A comprehensive educational management system designed to help students track their academic progress and performance.</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Quick Links</h4>
-                    <ul class="footer-links">
-                        <li><a href="myresults.php">My Results</a></li>
-                        <li><a href="mysubjects.php">My Subjects</a></li>
-                        <li><a href="attendance.php">Attendance</a></li>
-                        <li><a href="#">Support</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Contact Information</h4>
-                    <p>📧 student.support@sahabformmaster.com</p>
-                    <p>📱 +234 808 683 5607</p>
-                    <p>🌐 www.sahabformmaster.com</p>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
-                <div class="footer-bottom-links">
-                    <a href="#">Privacy Policy</a>
-                    <span>•</span>
-                    <a href="#">Terms of Service</a>
-                    <span>•</span>
-                    <span>Version 2.0</span>
-                </div>
-            </div>
-        </div>
-    </footer>
+    
 
     <script>
         // Mobile Menu Toggle

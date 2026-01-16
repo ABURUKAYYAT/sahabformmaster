@@ -3,10 +3,10 @@
 require_once 'config/db.php';
 
 try {
-    echo "Running export_logs migration...\n";
+    echo "Running content_coverage migration...\n";
 
     // Read the migration file
-    $migration_sql = file_get_contents('database/migrations/002_export_logs.sql');
+    $migration_sql = file_get_contents('database/migrations/004_add_content_coverage.sql');
 
     // Split into individual statements and execute
     $statements = array_filter(array_map('trim', explode(';', $migration_sql)));
@@ -19,7 +19,7 @@ try {
     }
 
     echo "Migration completed successfully!\n";
-    echo "Export logs table created.\n";
+    echo "Content coverage tables created.\n";
 
 } catch (Exception $e) {
     echo "Migration failed: " . $e->getMessage() . "\n";

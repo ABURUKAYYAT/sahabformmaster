@@ -130,3 +130,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Location: teacher_class_activities.php?action=activities');
     exit();
 }
+

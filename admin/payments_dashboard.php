@@ -2,6 +2,7 @@
 // principal/payments_dashboard.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 require_once '../helpers/payment_helper.php';
 
 // Check if user is principal
@@ -10,6 +11,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'principal') {
     exit();
 }
 
+// Get current school for data isolation
+$current_school_id = require_school_auth();
+
 $principal_name = $_SESSION['full_name'];
 $paymentHelper = new PaymentHelper();
 
@@ -17,50 +21,65 @@ $paymentHelper = new PaymentHelper();
 $stats = [];
 
 // Total collection
-$stats['total_collected'] = $pdo->query("SELECT SUM(amount_paid) FROM student_payments WHERE status = 'completed'")->fetchColumn() ?? 0;
+$stats['total_collected'] = $pdo->prepare("SELECT SUM(amount_paid) FROM student_payments WHERE status = 'completed' AND school_id = ?");
+$stats['total_collected']->execute([$current_school_id]);
+$stats['total_collected'] = $stats['total_collected']->fetchColumn() ?? 0;
 
 // Collection by term
-$stats['term_collection'] = $pdo->query("SELECT term, academic_year, SUM(amount_paid) as total
+$stats['term_collection'] = $pdo->prepare("SELECT term, academic_year, SUM(amount_paid) as total
                                          FROM student_payments
-                                         WHERE status = 'completed'
+                                         WHERE status = 'completed' AND school_id = ?
                                          GROUP BY term, academic_year
-                                         ORDER BY academic_year DESC, term")->fetchAll();
+                                         ORDER BY academic_year DESC, term");
+$stats['term_collection']->execute([$current_school_id]);
+$stats['term_collection'] = $stats['term_collection']->fetchAll();
 
 // Collection by class
-$stats['class_collection'] = $pdo->query("SELECT c.class_name, SUM(sp.amount_paid) as total
+$stats['class_collection'] = $pdo->prepare("SELECT c.class_name, SUM(sp.amount_paid) as total
                                           FROM student_payments sp
                                           JOIN classes c ON sp.class_id = c.id
-                                          WHERE sp.status = 'completed'
+                                          WHERE sp.status = 'completed' AND sp.school_id = ? AND c.school_id = ?
                                           GROUP BY sp.class_id
-                                          ORDER BY total DESC")->fetchAll();
+                                          ORDER BY total DESC");
+$stats['class_collection']->execute([$current_school_id, $current_school_id]);
+$stats['class_collection'] = $stats['class_collection']->fetchAll();
 
 // Defaulters
-$stats['defaulters'] = $pdo->query("SELECT s.full_name, s.admission_no, c.class_name,
+$defaulters_query = $pdo->prepare("SELECT s.full_name, s.admission_no, c.class_name,
                                    (SELECT SUM(amount_paid) FROM student_payments sp2
-                                    WHERE sp2.student_id = s.id AND sp2.status = 'completed') as total_paid,
+                                    WHERE sp2.student_id = s.id AND sp2.status = 'completed' AND sp2.school_id = ?) as total_paid,
                                    (SELECT SUM(fs.amount) FROM fee_structure fs
                                     WHERE fs.class_id = s.class_id AND fs.is_active = 1) as total_fee
                                    FROM students s
                                    JOIN classes c ON s.class_id = c.id
-                                   WHERE s.is_active = 1
+                                   WHERE s.is_active = 1 AND s.school_id = ? AND c.school_id = ?
                                    HAVING total_paid < total_fee OR total_paid IS NULL
-                                   LIMIT 20")->fetchAll();
+                                   LIMIT 20");
+$defaulters_query->execute([$current_school_id, $current_school_id, $current_school_id]);
+$stats['defaulters'] = $defaulters_query->fetchAll();
 
 // Recent payments
-$stats['recent_payments'] = $pdo->query("SELECT sp.*, s.full_name, c.class_name
+$recent_payments_query = $pdo->prepare("SELECT sp.*, s.full_name, c.class_name
                                          FROM student_payments sp
                                          JOIN students s ON sp.student_id = s.id
                                          JOIN classes c ON sp.class_id = c.id
-                                         ORDER BY sp.created_at DESC LIMIT 10")->fetchAll();
+                                         WHERE sp.school_id = ? AND s.school_id = ? AND c.school_id = ?
+                                         ORDER BY sp.created_at DESC LIMIT 10");
+$recent_payments_query->execute([$current_school_id, $current_school_id, $current_school_id]);
+$stats['recent_payments'] = $recent_payments_query->fetchAll();
 
 // Payment methods distribution
-$stats['payment_methods'] = $pdo->query("SELECT payment_method, COUNT(*) as count, SUM(amount_paid) as total
+$payment_methods_query = $pdo->prepare("SELECT payment_method, COUNT(*) as count, SUM(amount_paid) as total
                                          FROM student_payments
-                                         WHERE status = 'completed'
-                                         GROUP BY payment_method")->fetchAll();
+                                         WHERE status = 'completed' AND school_id = ?
+                                         GROUP BY payment_method");
+$payment_methods_query->execute([$current_school_id]);
+$stats['payment_methods'] = $payment_methods_query->fetchAll();
 
 // Additional stats for dashboard
-$total_students = $pdo->query("SELECT COUNT(*) FROM students WHERE is_active = 1")->fetchColumn();
+$total_students_query = $pdo->prepare("SELECT COUNT(*) FROM students WHERE is_active = 1 AND school_id = ?");
+$total_students_query->execute([$current_school_id]);
+$total_students = $total_students_query->fetchColumn();
 $unpaid_students = count($stats['defaulters']);
 $paid_students = $total_students - $unpaid_students;
 $completion_rate = $total_students > 0 ? round(($paid_students / $total_students) * 100, 1) : 0;
@@ -399,9 +418,12 @@ $completion_rate = $total_students > 0 ? round(($paid_students / $total_students
                                             <td><?php echo $paymentHelper->formatCurrency($class['total']); ?></td>
                                             <td>
                                                 <?php
-                                                $count = $pdo->query("SELECT COUNT(*) FROM student_payments
-                                                                     WHERE class_id = (SELECT id FROM classes WHERE class_name = '{$class['class_name']}')
-                                                                     AND status = 'completed'")->fetchColumn();
+                                                $count_query = $pdo->prepare("SELECT COUNT(*) FROM student_payments sp
+                                                                             JOIN classes c ON sp.class_id = c.id
+                                                                             WHERE c.class_name = ? AND sp.status = 'completed'
+                                                                             AND sp.school_id = ? AND c.school_id = ?");
+                                                $count_query->execute([$class['class_name'], $current_school_id, $current_school_id]);
+                                                $count = $count_query->fetchColumn();
                                                 echo $count;
                                                 ?>
                                             </td>
@@ -504,42 +526,7 @@ $completion_rate = $total_students > 0 ? round(($paid_students / $total_students
         </main>
     </div>
 
-    <!-- Footer -->
-    <footer class="dashboard-footer">
-        <div class="footer-container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4>About SahabFormMaster</h4>
-                    <p>A comprehensive school management system designed for academic excellence and efficient administration.</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Quick Links</h4>
-                    <ul class="footer-links">
-                        <li><a href="manage-school.php">School Settings</a></li>
-                        <li><a href="manage_user.php">User Management</a></li>
-                        <li><a href="#">Support & Help</a></li>
-                        <li><a href="#">Documentation</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Contact Information</h4>
-                    <p>📧 admin@sahabformmaster.com</p>
-                    <p>📱 +234 808 683 5607</p>
-                    <p>🌐 www.sahabformmaster.com</p>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
-                <div class="footer-bottom-links">
-                    <a href="#">Privacy Policy</a>
-                    <span>•</span>
-                    <a href="#">Terms of Service</a>
-                    <span>•</span>
-                    <span>Version 2.0</span>
-                </div>
-            </div>
-        </div>
-    </footer>
+    
 
     <script>
         // Mobile Menu Toggle

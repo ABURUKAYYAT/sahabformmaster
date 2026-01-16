@@ -456,3 +456,4 @@ $filename = 'Attendance_Report_' . $student['admission_no'] . '_' . $selected_mo
 $pdf->Output($filename, 'D');
 exit;
 ?>
+

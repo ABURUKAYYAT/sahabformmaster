@@ -46,6 +46,16 @@ $stmt = $pdo->prepare("
 $stmt->execute([$student_id]);
 $notes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Fetch student documents
+$stmt = $pdo->prepare("
+    SELECT *
+    FROM student_documents
+    WHERE student_id = ?
+    ORDER BY uploaded_at DESC
+");
+$stmt->execute([$student_id]);
+$documents = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 // Fetch attendance records (last 30 days)
 $stmt = $pdo->prepare("
     SELECT *
@@ -465,11 +475,17 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
             <?php endif; ?>
 
             <!-- Student Header -->
-            <div class="panel" style="margin-bottom: 2rem;">
+            <div class="panel student-header" style="margin-bottom: 2rem;">
                 <div style="display: flex; align-items: center; gap: 2rem; margin-bottom: 2rem;">
-                    <div style="width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); display: flex; align-items: center; justify-content: center; color: white; font-size: 2.5rem; flex-shrink: 0;">
-                        <i class="fas fa-user"></i>
-                    </div>
+                    <?php if (!empty($student['passport_photo']) && file_exists('../' . $student['passport_photo'])): ?>
+                        <div class="photo-container" style="width: 100px; height: 100px; border-radius: 50%; overflow: hidden; flex-shrink: 0; border: 4px solid var(--primary-color);">
+                            <img src="../<?php echo htmlspecialchars($student['passport_photo']); ?>" alt="Passport Photo" style="width: 100%; height: 100%; object-fit: cover;">
+                        </div>
+                    <?php else: ?>
+                        <div class="photo-container" style="width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); display: flex; align-items: center; justify-content: center; color: white; font-size: 2.5rem; flex-shrink: 0;">
+                            <i class="fas fa-user placeholder-icon"></i>
+                        </div>
+                    <?php endif; ?>
                     <div style="flex: 1;">
                         <h1 style="margin: 0 0 0.5rem 0; font-size: 2rem; color: var(--primary-color);">
                             <?php echo htmlspecialchars($student['full_name']); ?>
@@ -477,7 +493,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
                                 <span class="badge badge-success" style="font-size: 0.8rem; margin-left: 1rem;">New Student</span>
                             <?php endif; ?>
                         </h1>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                        <div class="student-info-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
                             <div style="display: flex; align-items: center; gap: 0.75rem;">
                                 <i class="fas fa-id-card" style="color: var(--primary-color);"></i>
                                 <div>
@@ -500,7 +516,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
                                 </div>
                             </div>
                         </div>
-                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <div class="action-buttons" style="display: flex; gap: 1rem; flex-wrap: wrap;">
                             <a href="?id=<?php echo $student['id']; ?>&action=download_pdf" class="btn btn-success">
                                 <i class="fas fa-download"></i> Download PDF
                             </a>
@@ -518,7 +534,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+            <div class="main-content-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
                 <!-- Main Content -->
                 <div>
                     <!-- Personal Information -->
@@ -526,7 +542,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
                         <h2 style="margin-top: 0;">
                             <i class="fas fa-user"></i> Personal Information
                         </h2>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
+                        <div class="info-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
                             <div class="info-card">
                                 <div class="info-label">Full Name</div>
                                 <div class="info-value"><?php echo htmlspecialchars($student['full_name']); ?></div>
@@ -577,6 +593,63 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
                             <div class="info-card" style="margin-top: 1.5rem;">
                                 <div class="info-label">Address</div>
                                 <div class="info-value" style="white-space: pre-line;"><?php echo htmlspecialchars($student['address']); ?></div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Student Documents -->
+                    <div class="panel">
+                        <h2>
+                            <i class="fas fa-file-alt"></i> Student Documents
+                        </h2>
+                        <?php if (!empty($documents)): ?>
+                            <div class="documents-grid" style="display: grid; gap: 1rem;">
+                                <?php foreach ($documents as $doc): ?>
+                                    <div class="document-item" style="border: 1px solid var(--gray-200); border-radius: var(--border-radius); padding: 1rem; background: var(--gray-50);">
+                                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                                            <div style="flex: 1;">
+                                                <div style="font-weight: 600; color: var(--gray-900); margin-bottom: 0.25rem;">
+                                                    <?php echo htmlspecialchars($doc['document_name']); ?>
+                                                </div>
+                                                <div style="font-size: 0.85rem; color: var(--gray-600);">
+                                                    <span style="text-transform: capitalize;"><?php echo htmlspecialchars($doc['document_type']); ?></span> •
+                                                    Uploaded <?php echo date('M d, Y', strtotime($doc['uploaded_at'])); ?>
+                                                </div>
+                                            </div>
+                                            <div class="document-actions" style="display: flex; gap: 0.5rem;">
+                                                <?php
+                                                $file_path = '../' . $doc['file_path'];
+                                                $file_extension = strtolower(pathinfo($file_path, PATHINFO_EXTENSION));
+                                                $is_image = in_array($file_extension, ['jpg', 'jpeg', 'png', 'gif']);
+                                                $is_pdf = $file_extension === 'pdf';
+                                                ?>
+
+                                                <?php if (file_exists($file_path)): ?>
+                                                    <?php if ($is_image): ?>
+                                                        <button type="button" class="btn btn-small" onclick="viewDocument('<?php echo htmlspecialchars($file_path); ?>', 'image')">
+                                                            <i class="fas fa-eye"></i> View
+                                                        </button>
+                                                    <?php elseif ($is_pdf): ?>
+                                                        <button type="button" class="btn btn-small" onclick="viewDocument('<?php echo htmlspecialchars($file_path); ?>', 'pdf')">
+                                                            <i class="fas fa-eye"></i> View
+                                                        </button>
+                                                    <?php endif; ?>
+
+                                                    <a href="<?php echo htmlspecialchars($file_path); ?>" download class="btn btn-primary btn-small">
+                                                        <i class="fas fa-download"></i> Download
+                                                    </a>
+                                                <?php else: ?>
+                                                    <span style="color: var(--danger-color); font-size: 0.8rem;">File not found</span>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <div style="text-align: center; padding: 2rem; color: var(--gray-500);">
+                                <i class="fas fa-file-alt" style="font-size: 2rem; opacity: 0.5; margin-bottom: 1rem;"></i>
+                                <p>No documents available for this student.</p>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -709,42 +782,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
         </main>
     </div>
 
-    <!-- Footer -->
-    <footer class="dashboard-footer">
-        <div class="footer-container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4>About SahabFormMaster</h4>
-                    <p>A comprehensive school management system designed for academic excellence and efficient administration.</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Quick Links</h4>
-                    <ul class="footer-links">
-                        <li><a href="manage-school.php">School Settings</a></li>
-                        <li><a href="manage_user.php">User Management</a></li>
-                        <li><a href="#">Support & Help</a></li>
-                        <li><a href="#">Documentation</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Contact Information</h4>
-                    <p>📧 admin@sahabformmaster.com</p>
-                    <p>📱 +234 808 683 5607</p>
-                    <p>🌐 www.sahabformmaster.com</p>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
-                <div class="footer-bottom-links">
-                    <a href="#">Privacy Policy</a>
-                    <span>•</span>
-                    <a href="#">Terms of Service</a>
-                    <span>•</span>
-                    <span>Version 2.0</span>
-                </div>
-            </div>
-        </div>
-    </footer>
+    
 
     <style>
         .info-card {
@@ -767,6 +805,100 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
             font-size: 1.1rem;
             color: var(--gray-900);
             font-weight: 500;
+        }
+
+        /* Responsive Design for Student Details */
+        @media (max-width: 1024px) {
+            .student-header {
+                flex-direction: column;
+                text-align: center;
+                gap: 1.5rem;
+            }
+
+            .student-header .photo-container {
+                align-self: center;
+            }
+
+            .student-info-grid {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-content-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+
+            .student-header {
+                padding: 1.5rem;
+            }
+
+            .student-header h1 {
+                font-size: 1.5rem;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+
+            .action-buttons .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .info-cards-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .documents-grid {
+                gap: 0.75rem;
+            }
+
+            .document-item {
+                padding: 0.75rem;
+            }
+
+            .document-actions {
+                flex-direction: column;
+                gap: 0.5rem;
+                width: 100%;
+            }
+
+            .document-actions .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .student-header {
+                padding: 1rem;
+            }
+
+            .student-header .photo-container {
+                width: 80px;
+                height: 80px;
+            }
+
+            .student-header .photo-container img,
+            .student-header .photo-container .placeholder-icon {
+                font-size: 2rem;
+            }
+
+            .student-header h1 {
+                font-size: 1.25rem;
+            }
+
+            .info-card {
+                padding: 0.75rem;
+            }
+
+            .panel {
+                padding: 1rem;
+            }
         }
     </style>
 
@@ -813,6 +945,17 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
             `;
             document.body.appendChild(form);
             form.submit();
+        }
+    }
+
+    // View document function
+    function viewDocument(filePath, type) {
+        if (type === 'image') {
+            // Open image in new tab
+            window.open(filePath, '_blank');
+        } else if (type === 'pdf') {
+            // Open PDF in new tab
+            window.open(filePath, '_blank');
         }
     }
 </script>

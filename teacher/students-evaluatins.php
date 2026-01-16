@@ -526,3 +526,4 @@ $students = $pdo->query("SELECT id, first_name, last_name, class FROM students O
         });
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
+

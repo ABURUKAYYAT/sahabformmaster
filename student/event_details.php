@@ -848,22 +848,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['set_reminder'])) {
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="bg-dark text-white mt-5 py-4">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-8">
-                    <h5>Sahab Academy</h5>
-                    <p class="text-muted mb-0">Stay connected with all school activities and events.</p>
-                </div>
-                <div class="col-md-4 text-md-end mt-3 mt-md-0">
-                    <a href="school_diary.php" class="btn btn-outline-light btn-sm">
-                        <i class="bi bi-arrow-left me-1"></i> Back to Events
-                    </a>
-                </div>
-            </div>
-        </div>
-    </footer>
+    
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

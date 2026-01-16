@@ -816,3 +816,4 @@ $recent_news = $recent_stmt->fetchAll(PDO::FETCH_ASSOC);
         });
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
+

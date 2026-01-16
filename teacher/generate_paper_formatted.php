@@ -608,3 +608,4 @@ foreach ($questions_by_type as $type_questions) {
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
 
+

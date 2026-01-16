@@ -2,6 +2,7 @@
 
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Only principal/admin
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'principal') {
@@ -9,11 +10,19 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'principal') {
     exit;
 }
 
+// Get current school for data isolation
+$current_school_id = require_school_auth();
+
 $errors = [];
 $success = '';
-// Lists for assignment
-$teachers = $pdo->query("SELECT id, full_name FROM users WHERE role = 'teacher' ORDER BY full_name")->fetchAll(PDO::FETCH_ASSOC);
-$classes = $pdo->query("SELECT id, class_name FROM classes ORDER BY class_name")->fetchAll(PDO::FETCH_ASSOC);
+// Lists for assignment - filtered by current school
+$teachers_query = $pdo->prepare("SELECT id, full_name FROM users WHERE role = 'teacher' AND school_id = ? ORDER BY full_name");
+$teachers_query->execute([$current_school_id]);
+$teachers = $teachers_query->fetchAll(PDO::FETCH_ASSOC);
+
+$classes_query = $pdo->prepare("SELECT id, class_name FROM classes WHERE school_id = ? ORDER BY class_name");
+$classes_query->execute([$current_school_id]);
+$classes = $classes_query->fetchAll(PDO::FETCH_ASSOC);
 
 // Handle actions: create, update, delete, assign, unassign
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -24,8 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $desc = trim($_POST['description'] ?? '');
         if ($name === '') $errors[] = 'Subject name required.';
         if (empty($errors)) {
-            $stmt = $pdo->prepare("INSERT INTO subjects (subject_name, subject_code, description, created_by, created_at) VALUES (:name, :code, :desc, :uid, NOW())");
-            $stmt->execute(['name'=>$name,'code'=>$code,'desc'=>$desc,'uid'=>$_SESSION['user_id']]);
+            $stmt = $pdo->prepare("INSERT INTO subjects (subject_name, subject_code, description, created_by, school_id, created_at) VALUES (:name, :code, :desc, :uid, :school_id, NOW())");
+            $stmt->execute(['name'=>$name,'code'=>$code,'desc'=>$desc,'uid'=>$_SESSION['user_id'], 'school_id'=>$current_school_id]);
             $success = 'Subject created successfully.';
             header("Location: subjects.php");
             exit;
@@ -93,29 +102,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch subjects and assignments
-$subjects = $pdo->query("SELECT s.*, 
+// Fetch subjects and assignments - filtered by current school
+$subjects_query = $pdo->prepare("SELECT s.*,
     (SELECT COUNT(*) FROM lesson_plans WHERE subject_id = s.id) as lesson_count,
     (SELECT COUNT(*) FROM subject_assignments WHERE subject_id = s.id) as assignment_count,
     u.full_name as creator_name
-    FROM subjects s 
+    FROM subjects s
     LEFT JOIN users u ON s.created_by = u.id
-    ORDER BY s.subject_name ASC")->fetchAll(PDO::FETCH_ASSOC);
+    WHERE s.school_id = ?
+    ORDER BY s.subject_name ASC");
+$subjects_query->execute([$current_school_id]);
+$subjects = $subjects_query->fetchAll(PDO::FETCH_ASSOC);
 
-$assignments = $pdo->query("SELECT sa.id AS assign_id, sa.subject_id, sa.class_id, sa.teacher_id, 
+$assignments_query = $pdo->prepare("SELECT sa.id AS assign_id, sa.subject_id, sa.class_id, sa.teacher_id,
     c.class_name, u.full_name as teacher_name, s.subject_name, sa.assigned_at
     FROM subject_assignments sa
     JOIN classes c ON sa.class_id = c.id
     JOIN users u ON sa.teacher_id = u.id
     JOIN subjects s ON sa.subject_id = s.id
-    ORDER BY c.class_name, s.subject_name")->fetchAll(PDO::FETCH_ASSOC);
+    WHERE c.school_id = ? AND u.school_id = ? AND s.school_id = ?
+    ORDER BY c.class_name, s.subject_name");
+$assignments_query->execute([$current_school_id, $current_school_id, $current_school_id]);
+$assignments = $assignments_query->fetchAll(PDO::FETCH_ASSOC);
 
-// Get statistics
-$stats = $pdo->query("SELECT 
-    (SELECT COUNT(*) FROM subjects) as total_subjects,
-    (SELECT COUNT(*) FROM subject_assignments) as total_assignments,
-    (SELECT COUNT(DISTINCT teacher_id) FROM subject_assignments) as teachers_with_assignments
-    ")->fetch(PDO::FETCH_ASSOC);
+// Get statistics - filtered by current school
+$stats_query = $pdo->prepare("SELECT
+    (SELECT COUNT(*) FROM subjects WHERE school_id = ?) as total_subjects,
+    (SELECT COUNT(*) FROM subject_assignments sa
+     JOIN classes c ON sa.class_id = c.id
+     JOIN subjects s ON sa.subject_id = s.id
+     WHERE c.school_id = ? AND s.school_id = ?) as total_assignments,
+    (SELECT COUNT(DISTINCT sa.teacher_id) FROM subject_assignments sa
+     JOIN classes c ON sa.class_id = c.id
+     JOIN subjects s ON sa.subject_id = s.id
+     WHERE c.school_id = ? AND s.school_id = ?) as teachers_with_assignments");
+$stats_query->execute([$current_school_id, $current_school_id, $current_school_id, $current_school_id, $current_school_id]);
+$stats = $stats_query->fetch(PDO::FETCH_ASSOC);
 
 $principal_name = $_SESSION['full_name'] ?? 'Principal';
 
@@ -540,42 +562,7 @@ $school_tagline = 'Principal Portal'; // Default
         </main>
     </div>
 
-    <!-- Footer -->
-    <footer class="dashboard-footer">
-        <div class="footer-container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4>About SahabFormMaster</h4>
-                    <p>A comprehensive school management system designed for academic excellence and efficient administration.</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Quick Links</h4>
-                    <ul class="footer-links">
-                        <li><a href="manage-school.php">School Settings</a></li>
-                        <li><a href="manage_user.php">User Management</a></li>
-                        <li><a href="#">Support & Help</a></li>
-                        <li><a href="#">Documentation</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Contact Information</h4>
-                    <p>📧 admin@sahabformmaster.com</p>
-                    <p>📱 +234 808 683 5607</p>
-                    <p>🌐 www.sahabformmaster.com</p>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
-                <div class="footer-bottom-links">
-                    <a href="#">Privacy Policy</a>
-                    <span>•</span>
-                    <a href="#">Terms of Service</a>
-                    <span>•</span>
-                    <span>Version 2.0</span>
-                </div>
-            </div>
-        </div>
-    </footer>
+    
 
     <script>
         // Mobile Menu Toggle

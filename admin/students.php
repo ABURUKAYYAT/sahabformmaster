@@ -1,12 +1,15 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
-// Only principal/admin
+// Only principal/admin with school authentication
 if (!isset($_SESSION['user_id']) || strtolower($_SESSION['role'] ?? '') !== 'principal') {
     header("Location: ../index.php");
     exit;
 }
+
+$current_school_id = require_school_auth();
 
 $errors = [];
 $success = '';
@@ -63,11 +66,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = 'Full name, admission number and class are required.';
         }
         
-        // Check admission number uniqueness
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE admission_no = ?");
-        $stmt->execute([$ad]);
+        // Check admission number uniqueness within the school
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE admission_no = ? AND school_id = ?");
+        $stmt->execute([$ad, $current_school_id]);
         if ($stmt->fetchColumn() > 0) {
-            $errors[] = 'Admission number already exists.';
+            $errors[] = 'Admission number already exists in your school.';
         }
         
         if (empty($errors)) {
@@ -107,10 +110,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 if (empty($errors)) {
+                // Verify class belongs to user's school
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM classes WHERE id = ? AND school_id = ?");
+                $stmt->execute([$class_id, $current_school_id]);
+                if ($stmt->fetchColumn() == 0) {
+                    $errors[] = "Selected class is not available for your school.";
+                } else {
                     // Insert student
                     $stmt = $pdo->prepare("
                         INSERT INTO students (
-                            full_name, admission_no, class_id, phone, address, dob, gender, 
+                            full_name, admission_no, class_id, school_id, phone, address, dob, gender,
                             guardian_name, guardian_phone, guardian_email, guardian_address,
                             guardian_occupation, guardian_relation, enrollment_date,
                             student_type, birth_certificate, passport_photo, transfer_letter,
@@ -119,14 +128,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             emergency_contact_phone, emergency_contact_relation,
                             registration_date, created_at
                         ) VALUES (
-                            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()
+                            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()
                         )
                     ");
-                    
+
                     $stmt->execute([
                         $name,
                         $ad,
                         $class_id,
+                        $current_school_id,
                         $_POST['phone'] ?? null,
                         $_POST['address'] ?? null,
                         $_POST['dob'] ?: null,
@@ -152,6 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $_POST['emergency_contact_phone'] ?? null,
                         $_POST['emergency_contact_relation'] ?? null
                     ]);
+                }
                     
                     $student_id = $pdo->lastInsertId();
                     
@@ -200,26 +211,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     elseif ($action === 'delete') {
         $id = intval($_POST['id'] ?? 0);
         if ($id > 0) {
-            try {
-                $pdo->beginTransaction();
-                
-                // Delete related records first
-                $pdo->prepare("DELETE FROM student_documents WHERE student_id = ?")->execute([$id]);
-                $pdo->prepare("DELETE FROM student_academic_history WHERE student_id = ?")->execute([$id]);
-                $pdo->prepare("DELETE FROM student_notes WHERE student_id = ?")->execute([$id]);
-                
-                // Delete the student
-                $stmt = $pdo->prepare("DELETE FROM students WHERE id = ?");
-                $stmt->execute([$id]);
-                
-                if ($stmt->rowCount() > 0) {
-                    $success = 'Student deleted successfully.';
+            // Verify student belongs to user's school
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE id = ? AND school_id = ?");
+            $stmt->execute([$id, $current_school_id]);
+            if ($stmt->fetchColumn() == 0) {
+                $errors[] = "Student not found or access denied.";
+            } else {
+                try {
+                    $pdo->beginTransaction();
+
+                    // Delete related records first
+                    $pdo->prepare("DELETE FROM student_documents WHERE student_id = ?")->execute([$id]);
+                    $pdo->prepare("DELETE FROM student_academic_history WHERE student_id = ?")->execute([$id]);
+                    $pdo->prepare("DELETE FROM student_notes WHERE student_id = ?")->execute([$id]);
+
+                    // Delete the student
+                    $stmt = $pdo->prepare("DELETE FROM students WHERE id = ? AND school_id = ?");
+                    $stmt->execute([$id, $current_school_id]);
+
+                    if ($stmt->rowCount() > 0) {
+                        $success = 'Student deleted successfully.';
+                    }
+
+                    $pdo->commit();
+                } catch (Exception $e) {
+                    $pdo->rollBack();
+                    $errors[] = 'Delete failed: ' . $e->getMessage();
                 }
-                
-                $pdo->commit();
-            } catch (Exception $e) {
-                $pdo->rollBack();
-                $errors[] = 'Delete failed: ' . $e->getMessage();
             }
         } else {
             $errors[] = 'Invalid student ID.';
@@ -235,58 +253,58 @@ $student_type_filter = $_GET['student_type_filter'] ?? '';
 
 // Build query with filters
 $query = "
-    SELECT s.*, c.class_name 
-    FROM students s 
-    LEFT JOIN classes c ON s.class_id = c.id 
-    WHERE 1=1
+    SELECT s.*, c.class_name
+    FROM students s
+    LEFT JOIN classes c ON s.class_id = c.id
+    WHERE s.school_id = ?
 ";
 
-$params = [];
-$types = '';
+$params = [$current_school_id];
 
 if ($search) {
     $query .= " AND (s.full_name LIKE ? OR s.guardian_name LIKE ?)";
     $params[] = "%$search%";
     $params[] = "%$search%";
-    $types .= 'ss';
 }
 
 if ($admission_no) {
     $query .= " AND s.admission_no LIKE ?";
     $params[] = "%$admission_no%";
-    $types .= 's';
 }
 
 if ($class_filter) {
     $query .= " AND s.class_id = ?";
     $params[] = $class_filter;
-    $types .= 'i';
 }
 
 if ($student_type_filter) {
     $query .= " AND s.student_type = ?";
     $params[] = $student_type_filter;
-    $types .= 's';
 }
 
 $query .= " ORDER BY s.created_at DESC LIMIT 10";
 
 // Fetch students with filters
-if (!empty($params)) {
-    $stmt = $pdo->prepare($query);
-    $stmt->execute($params);
-    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} else {
-    $students = $pdo->query($query)->fetchAll(PDO::FETCH_ASSOC);
-}
+$stmt = $pdo->prepare($query);
+$stmt->execute($params);
+$students = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch classes for dropdown
-$classes = $pdo->query("SELECT id, class_name FROM classes ORDER BY class_name")->fetchAll(PDO::FETCH_ASSOC);
+// Fetch classes for dropdown (school-filtered)
+$classes = get_school_classes($pdo, $current_school_id);
 
-// Get total count for statistics
-$total_students = $pdo->query("SELECT COUNT(*) as total FROM students")->fetch(PDO::FETCH_ASSOC)['total'];
-$fresh_students = $pdo->query("SELECT COUNT(*) as total FROM students WHERE student_type = 'fresh'")->fetch(PDO::FETCH_ASSOC)['total'];
-$transfer_students = $pdo->query("SELECT COUNT(*) as total FROM students WHERE student_type = 'transfer'")->fetch(PDO::FETCH_ASSOC)['total'];
+// Get total count for statistics (school-filtered)
+$total_students = $pdo->prepare("SELECT COUNT(*) as total FROM students WHERE school_id = ?")->execute([$current_school_id]);
+$total_students = $pdo->prepare("SELECT COUNT(*) as total FROM students WHERE school_id = ?");
+$total_students->execute([$current_school_id]);
+$total_students = $total_students->fetch(PDO::FETCH_ASSOC)['total'];
+
+$fresh_students = $pdo->prepare("SELECT COUNT(*) as total FROM students WHERE student_type = 'fresh' AND school_id = ?");
+$fresh_students->execute([$current_school_id]);
+$fresh_students = $fresh_students->fetch(PDO::FETCH_ASSOC)['total'];
+
+$transfer_students = $pdo->prepare("SELECT COUNT(*) as total FROM students WHERE student_type = 'transfer' AND school_id = ?");
+$transfer_students->execute([$current_school_id]);
+$transfer_students = $transfer_students->fetch(PDO::FETCH_ASSOC)['total'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -509,7 +527,9 @@ $transfer_students = $pdo->query("SELECT COUNT(*) as total FROM students WHERE s
                 <h3>This Month</h3>
                 <div class="count">
                     <?php
-                    $month_count = $pdo->query("SELECT COUNT(*) as total FROM students WHERE MONTH(created_at) = MONTH(CURRENT_DATE())")->fetch(PDO::FETCH_ASSOC)['total'];
+                    $month_stmt = $pdo->prepare("SELECT COUNT(*) as total FROM students WHERE MONTH(created_at) = MONTH(CURRENT_DATE()) AND school_id = ?");
+                    $month_stmt->execute([$current_school_id]);
+                    $month_count = $month_stmt->fetch(PDO::FETCH_ASSOC)['total'];
                     echo $month_count;
                     ?>
                 </div>
@@ -632,8 +652,8 @@ $transfer_students = $pdo->query("SELECT COUNT(*) as total FROM students WHERE s
                     </div>
                     
                     <div class="form-inline">
-                        <textarea name="medical_conditions" placeholder="Medical Conditions" rows="2"></textarea>
-                        <textarea name="allergies" placeholder="Allergies" rows="2"></textarea>
+                        <input name="medical_conditions" placeholder="Medical Conditions" rows="2"></textarea>
+                        <input name="allergies" placeholder="Allergies" rows="2"></textarea>
                     </div>
                 </div>
 
@@ -934,42 +954,7 @@ $transfer_students = $pdo->query("SELECT COUNT(*) as total FROM students WHERE s
         </main>
     </div>
 
-    <!-- Footer -->
-    <footer class="dashboard-footer">
-        <div class="footer-container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4>About SahabFormMaster</h4>
-                    <p>A comprehensive school management system designed for academic excellence and efficient administration.</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Quick Links</h4>
-                    <ul class="footer-links">
-                        <li><a href="manage-school.php">School Settings</a></li>
-                        <li><a href="manage_user.php">User Management</a></li>
-                        <li><a href="#">Support & Help</a></li>
-                        <li><a href="#">Documentation</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Contact Information</h4>
-                    <p>📧 admin@sahabformmaster.com</p>
-                    <p>📱 +234 808 683 5607</p>
-                    <p>🌐 www.sahabformmaster.com</p>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
-                <div class="footer-bottom-links">
-                    <a href="#">Privacy Policy</a>
-                    <span>•</span>
-                    <a href="#">Terms of Service</a>
-                    <span>•</span>
-                    <span>Version 2.0</span>
-                </div>
-            </div>
-        </div>
-    </footer>
+    
 
     <script>
         // Mobile Menu Toggle

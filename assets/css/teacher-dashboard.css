@@ -78,14 +78,14 @@ body {
     position: fixed;
     top: 20px;
     left: 20px;
-    z-index: 999;
+    z-index: 1001;
     background: var(--primary-color);
     color: white;
     border: none;
     width: 50px;
     height: 50px;
     border-radius: 50%;
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.2rem;
@@ -103,6 +103,13 @@ body {
     background: var(--error-color);
 }
 
+/* Hide hamburger menu on larger screens */
+@media (min-width: 1025px) {
+    .mobile-menu-toggle {
+        display: none;
+    }
+}
+
 /* ===================================================
    Mobile Navigation Dropdown
    =================================================== */
@@ -115,7 +122,7 @@ body {
     background: var(--white);
     border-radius: var(--border-radius-lg);
     box-shadow: var(--shadow-xl);
-    z-index: 998;
+    z-index: 1002;
     opacity: 0;
     visibility: hidden;
     transform: translateY(-20px) scale(0.95);
@@ -1072,10 +1079,10 @@ body {
     }
 
     .mobile-menu-toggle {
-        position: absolute;
+        position: fixed;
         top: 5px;
         left: 5px;
-        z-index: 999;
+        z-index: 1001;
     }
 
     .school-logo {
@@ -2985,6 +2992,108 @@ body {
 }
 
 /* ===================================================
+   Floating Buttons Styles
+   =================================================== */
+
+#floating-buttons-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.floating-ai-btn,
+.floating-scroll-btn {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--shadow-lg);
+    transition: var(--transition-normal);
+    position: relative;
+    font-size: 1.2rem;
+    border: none;
+}
+
+.floating-ai-btn:hover,
+.floating-scroll-btn:hover {
+    transform: scale(1.1);
+    background: var(--primary-dark);
+}
+
+.floating-scroll-btn {
+    background: var(--success-color);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.floating-scroll-btn:hover {
+    background: #059669;
+}
+
+.floating-scroll-btn.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.floating-ai-btn.active {
+    background: var(--primary-dark);
+    transform: scale(1.05);
+}
+
+.drag-indicator,
+.ai-indicator {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--error-color);
+    border: 2px solid white;
+}
+
+/* AI Assistant Modal */
+.ai-modal {
+    display: none;
+    position: fixed;
+    z-index: 10001;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.3s ease;
+}
+
+.ai-modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ai-modal-content {
+    background: var(--white);
+    border-radius: var(--border-radius-xl);
+    box-shadow: var(--shadow-xl);
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow: hidden;
+    animation: slideUp 0.3s ease;
+}
+
+/* ===================================================
    Print Styles
    =================================================== */
 
@@ -2992,7 +3101,8 @@ body {
     .mobile-menu-toggle,
     .sidebar,
     .btn-logout,
-    .footer-bottom-links {
+    .footer-bottom-links,
+    #floating-buttons-container {
         display: none !important;
     }
 

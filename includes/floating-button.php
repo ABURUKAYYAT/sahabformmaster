@@ -15,15 +15,13 @@
 </div>
 
 <!-- Enhanced AI Assistant Modal -->
-<div id="ai-assistant-modal" class="ai-modal">
-    <div class="ai-modal-overlay"></div>
-    <div class="ai-modal-content">
+<div id="ai-assistant-modal" class="ai-modal" style="position: fixed; inset: 0; z-index: 10001; display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.4s ease;">
+    <div class="ai-modal-overlay" style="position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 10000; opacity: 0; transition: opacity 0.4s ease;"></div>
+    <div class="ai-modal-content" style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 28px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15); width: 100%; max-width: 450px; max-height: 85vh; display: flex; flex-direction: column; transform: scale(0.9) translateY(20px); transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); overflow: hidden; position: relative; z-index: 10002;">
         <div class="ai-modal-header">
             <div class="ai-header-left">
                 <div class="ai-avatar">
-                    <div class="ai-avatar-gradient">
-                        <i class="fas fa-robot"></i>
-                    </div>
+                    <i class="fas fa-robot"></i>
                 </div>
                 <div class="ai-info">
                     <h3>SahabFormMaster AI Assistant</h3>
@@ -46,11 +44,9 @@
         <div class="ai-chat-container" id="ai-chat-container">
             <div class="ai-welcome-message">
                 <div class="ai-message ai-message-bot">
-                    <div class="ai-message-avatar">
-                        <div class="ai-avatar-gradient">
-                            <i class="fas fa-robot"></i>
-                        </div>
-                    </div>
+                <div class="ai-message-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
                     <div class="ai-message-content">
                         <div class="ai-message-text">
                             <p>Hello! I'm your AI assistant for SahabFormMaster. I can help you with:</p>
@@ -78,9 +74,7 @@
 
         <div class="ai-typing-indicator" id="typing-indicator" style="display: none;">
             <div class="ai-typing-avatar">
-                <div class="ai-avatar-gradient">
-                    <i class="fas fa-robot"></i>
-                </div>
+                <i class="fas fa-robot"></i>
             </div>
             <div class="ai-typing-content">
                 <div class="typing-dots">
@@ -224,8 +218,8 @@ if (strpos($currentPath, '/admin/') !== false ||
         if (!testBtn) return false;
 
         const styles = window.getComputedStyle(testBtn);
-        // Check if our custom CSS variables are applied
-        return styles.getPropertyValue('--ai-primary') !== '';
+        // Check if our custom CSS variables are applied (updated for new glassmorphism design)
+        return styles.getPropertyValue('--primary') !== '';
     }
 
     function applyFallbackStyles() {
@@ -648,13 +642,16 @@ document.addEventListener('DOMContentLoaded', function() {
         updateBlurToggleButton();
     }
 
-    // Open modal with error handling
+    // Open modal with error handling and enhanced debugging
     try {
         aiBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
             console.log('[AI Assistant] Button clicked, isMinimized:', isMinimized);
-            
+            console.log('[AI Assistant] Event target:', e.target);
+            console.log('[AI Assistant] Modal element:', aiModal);
+            console.log('[AI Assistant] Modal classes before click:', aiModal.className);
+
             try {
                 if (isMinimized) {
                     // Restore from minimized state
@@ -663,6 +660,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     aiBtn.classList.add('active');
                     isMinimized = false;
                     console.log('[AI Assistant] Modal restored from minimized state');
+                    console.log('[AI Assistant] Modal classes after restore:', aiModal.className);
                     // Ensure textarea is enabled and focusable
                     if (aiInput) {
                         aiInput.disabled = false;
@@ -674,9 +672,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 } else {
                     // Open normally
+                    console.log('[AI Assistant] Opening modal normally...');
                     aiModal.classList.add('show');
                     aiBtn.classList.add('active');
-                    console.log('[AI Assistant] Modal opened');
+                    console.log('[AI Assistant] Modal opened, classes after:', aiModal.className);
+                    console.log('[AI Assistant] Button classes after:', aiBtn.className);
                     // Ensure textarea is enabled and focusable
                     if (aiInput) {
                         aiInput.disabled = false;
@@ -684,14 +684,27 @@ document.addEventListener('DOMContentLoaded', function() {
                         aiInput.removeAttribute('readonly');
                         setTimeout(() => {
                             if (aiInput) aiInput.focus();
+                            console.log('[AI Assistant] Textarea focused');
                         }, 100);
                     }
                 }
+
+                // Force visibility check after a short delay
+                setTimeout(() => {
+                    const modalStyles = window.getComputedStyle(aiModal);
+                    console.log('[AI Assistant] Modal computed styles:', {
+                        display: modalStyles.display,
+                        opacity: modalStyles.opacity,
+                        visibility: modalStyles.visibility,
+                        pointerEvents: modalStyles.pointerEvents
+                    });
+                }, 100);
+
             } catch (error) {
                 console.error('[AI Assistant] Error opening modal:', error);
             }
         }, { passive: false });
-        
+
         console.log('[AI Assistant] Click event listener attached successfully');
     } catch (error) {
         console.error('[AI Assistant] Error attaching click event listener:', error);
@@ -700,8 +713,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.target && (e.target.closest('#floating-ai-btn') || e.target.id === 'floating-ai-btn')) {
                 e.preventDefault();
                 e.stopPropagation();
+                console.log('[AI Assistant] Fallback click handler triggered');
                 aiModal.classList.add('show');
                 aiBtn.classList.add('active');
+                console.log('[AI Assistant] Modal opened via fallback');
             }
         });
     }
@@ -923,7 +938,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const avatarDiv = document.createElement('div');
         avatarDiv.className = 'ai-message-avatar';
-        avatarDiv.innerHTML = `<div class="ai-avatar-gradient">${type === 'bot' ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-user"></i>'}</div>`;
+        avatarDiv.innerHTML = `${type === 'bot' ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-user"></i>'}`;
 
         const contentDiv = document.createElement('div');
         contentDiv.className = 'ai-message-content';
@@ -1065,27 +1080,34 @@ document.addEventListener('DOMContentLoaded', function() {
     `;
     document.head.appendChild(style);
 
-    // Emergency fallback - force modal to show after 3 seconds if button is active
-    setTimeout(function() {
+    // Remove emergency fallback - modal should only open on explicit user click
+
+    // Manual debug function - accessible via console
+    window.debugAIModal = function() {
+        console.log('[AI Assistant] Manual Debug Triggered');
         const aiBtn = document.getElementById('floating-ai-btn');
         const aiModal = document.getElementById('ai-assistant-modal');
-        if (aiBtn && aiModal && aiBtn.classList.contains('active') && !aiModal.classList.contains('show')) {
-            console.warn('[AI Assistant] Emergency fallback: Forcing modal visibility');
-            aiModal.classList.add('emergency-show');
-            aiModal.classList.add('show');
 
-            // Ensure textarea is interactive
-            const aiInput = document.getElementById('ai-input');
-            if (aiInput) {
-                aiInput.disabled = false;
-                aiInput.readOnly = false;
-                aiInput.removeAttribute('disabled');
-                aiInput.removeAttribute('readonly');
-                aiInput.style.pointerEvents = 'auto';
-                aiInput.style.cursor = 'text';
-                aiInput.focus();
-            }
+        console.log('Button element:', aiBtn);
+        console.log('Modal element:', aiModal);
+        console.log('Button classes:', aiBtn ? aiBtn.className : 'N/A');
+        console.log('Modal classes:', aiModal ? aiModal.className : 'N/A');
+
+        if (aiBtn) {
+            console.log('Button computed style:', window.getComputedStyle(aiBtn));
         }
-    }, 3000);
+
+        if (aiModal) {
+            console.log('Modal computed style:', window.getComputedStyle(aiModal));
+            console.log('Forcing modal open...');
+            aiModal.classList.add('show');
+            aiModal.style.display = 'flex';
+            aiModal.style.opacity = '1';
+            aiModal.style.pointerEvents = 'auto';
+            console.log('Modal classes after force:', aiModal.className);
+        }
+    };
+
+    console.log('[AI Assistant] Debug function available: window.debugAIModal()');
 });
 </script>

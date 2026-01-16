@@ -1322,29 +1322,7 @@ $monthly_data = $monthly_stmt->fetchAll();
             </button>
         </div>
 
-        <!-- Footer -->
-        <footer class="footer-modern">
-            <div class="footer-content-modern">
-                <div class="footer-section-modern">
-                    <h4>About SahabFormMaster</h4>
-                    <p>A comprehensive school management system designed for effective teaching and learning.</p>
-                </div>
-                <div class="footer-section-modern">
-                    <h4>Quick Links</h4>
-                    <ul>
-                        <li><a href="lesson-plan.php">Lesson Plans</a></li>
-                        <li><a href="students.php">Students</a></li>
-                        <li><a href="results.php">Results</a></li>
-                        <li><a href="#">Support</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section-modern">
-                    <h4>Contact</h4>
-                    <p><i class="fas fa-envelope"></i> teacher.support@sahabformmaster.com</p>
-                    <p><i class="fas fa-phone"></i> +234 808 683 5607</p>
-                </div>
-            </div>
-        </footer>
+        
     </div>
 
     <!-- Student History Modal -->
@@ -1538,4 +1516,5 @@ $monthly_data = $monthly_stmt->fetchAll();
         });
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
+
 

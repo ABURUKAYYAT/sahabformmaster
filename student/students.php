@@ -272,18 +272,7 @@ $complaints = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </section>
     </main>
 
-    <!-- Footer -->
-    <footer style="background: var(--gray-900); color: var(--gray-300); padding: 2rem 0; margin-top: 3rem;">
-        <div class="container" style="text-align: center;">
-            <p style="margin: 0; font-size: 0.9rem;">
-                <i class="fas fa-graduation-cap"></i>
-                Student Portal — Academic Management System
-            </p>
-            <p style="margin: 0.5rem 0 0 0; font-size: 0.8rem; opacity: 0.7;">
-                © <?php echo date('Y'); ?> All Rights Reserved
-            </p>
-        </div>
-    </footer>
+    
 
 <script>
 function toggleComplaint(id){
@@ -294,3 +283,4 @@ function toggleComplaint(id){
 </script>
 </body>
 </html>
+
