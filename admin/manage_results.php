@@ -2,13 +2,15 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
-// Only allow principal to access this page
+// Only allow principal to access this page with school authentication
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'principal') {
     header("Location: ../index.php");
     exit;
 }
 
+$current_school_id = require_school_auth();
 $principal_id = $_SESSION['user_id'];
 $principal_name = $_SESSION['full_name'] ?? 'Principal';
 
@@ -37,12 +39,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'delete_result') {
         $result_id = intval($_POST['result_id'] ?? 0);
         if ($result_id > 0) {
-            try {
-                $stmt = $pdo->prepare("DELETE FROM results WHERE id = :id");
-                $stmt->execute(['id' => $result_id]);
-                $success = "Result deleted successfully.";
-            } catch (PDOException $e) {
-                $errors[] = "Error deleting result: " . $e->getMessage();
+            // Verify result belongs to user's school
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM results r JOIN students s ON r.student_id = s.id WHERE r.id = :id AND s.school_id = :school_id");
+            $stmt->execute(['id' => $result_id, 'school_id' => $current_school_id]);
+            if ($stmt->fetchColumn() == 0) {
+                $errors[] = "Result not found or access denied.";
+            } else {
+                try {
+                    $stmt = $pdo->prepare("DELETE FROM results WHERE id = :id");
+                    $stmt->execute(['id' => $result_id]);
+                    $success = "Result deleted successfully.";
+                } catch (PDOException $e) {
+                    $errors[] = "Error deleting result: " . $e->getMessage();
+                }
             }
         }
     }
@@ -55,57 +64,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $academic_session = trim($_POST['academic_session'] ?? '');
 
         if ($result_id > 0) {
-            // Clamp scores
-            $first_ca = max(0, min(100, $first_ca));
-            $second_ca = max(0, min(100, $second_ca));
-            $exam = max(0, min(100, $exam));
-            $total_ca = $first_ca + $second_ca;
+            // Verify result belongs to user's school
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM results r JOIN students s ON r.student_id = s.id WHERE r.id = :id AND s.school_id = :school_id");
+            $stmt->execute(['id' => $result_id, 'school_id' => $current_school_id]);
+            if ($stmt->fetchColumn() == 0) {
+                $errors[] = "Result not found or access denied.";
+            } else {
+                // Clamp scores
+                $first_ca = max(0, min(100, $first_ca));
+                $second_ca = max(0, min(100, $second_ca));
+                $exam = max(0, min(100, $exam));
+                $total_ca = $first_ca + $second_ca;
 
-            try {
-                $hasUpdatedAt = (bool) $pdo->query("SHOW COLUMNS FROM `results` LIKE 'updated_at'")->fetchColumn();
-                if ($hasUpdatedAt) {
-                    $stmt = $pdo->prepare("UPDATE results SET first_ca = :first_ca, second_ca = :second_ca, exam = :exam, total_ca = :total_ca, academic_session = :academic_session, updated_at = NOW() WHERE id = :id");
-                } else {
-                    $stmt = $pdo->prepare("UPDATE results SET first_ca = :first_ca, second_ca = :second_ca, exam = :exam, total_ca = :total_ca, academic_session = :academic_session WHERE id = :id");
+                try {
+                    $hasUpdatedAt = (bool) $pdo->query("SHOW COLUMNS FROM `results` LIKE 'updated_at'")->fetchColumn();
+                    if ($hasUpdatedAt) {
+                        $stmt = $pdo->prepare("UPDATE results SET first_ca = :first_ca, second_ca = :second_ca, exam = :exam, total_ca = :total_ca, academic_session = :academic_session, updated_at = NOW() WHERE id = :id");
+                    } else {
+                        $stmt = $pdo->prepare("UPDATE results SET first_ca = :first_ca, second_ca = :second_ca, exam = :exam, total_ca = :total_ca, academic_session = :academic_session WHERE id = :id");
+                    }
+                    $stmt->execute([
+                        'first_ca' => $first_ca,
+                        'second_ca' => $second_ca,
+                        'exam' => $exam,
+                        'total_ca' => $total_ca,
+                        'academic_session' => $academic_session,
+                        'id' => $result_id
+                    ]);
+                    $success = "Result updated successfully.";
+                } catch (PDOException $e) {
+                    $errors[] = "Error updating result: " . $e->getMessage();
                 }
-                $stmt->execute([
-                    'first_ca' => $first_ca,
-                    'second_ca' => $second_ca,
-                    'exam' => $exam,
-                    'total_ca' => $total_ca,
-                    'academic_session' => $academic_session,
-                    'id' => $result_id
-                ]);
-                $success = "Result updated successfully.";
-            } catch (PDOException $e) {
-                $errors[] = "Error updating result: " . $e->getMessage();
             }
         }
     }
 }
 
-// Fetch all classes
-$classes = $pdo->query("SELECT * FROM classes ORDER BY class_name")->fetchAll(PDO::FETCH_ASSOC);
+// Fetch school-filtered classes
+$classes = get_school_classes($pdo, $current_school_id);
 
-// Fetch all students
-$students = $pdo->query("SELECT * FROM students ORDER BY full_name")->fetchAll(PDO::FETCH_ASSOC);
+// Fetch school-filtered students
+$students = get_school_students($pdo, $current_school_id);
 
-// Build query for results
+// Build query for grouped results by student
 $query = "
-    SELECT r.*,
-           s.full_name AS student_name,
-           s.admission_no,
-           s.class_id,
-           c.class_name,
-           sub.subject_name
-    FROM results r
-    JOIN students s ON r.student_id = s.id
-    JOIN classes c ON s.class_id = c.id
-    JOIN subjects sub ON r.subject_id = sub.id
-    WHERE r.term = :term
+    SELECT
+        s.id AS student_id,
+        s.full_name AS student_name,
+        s.admission_no,
+        s.class_id,
+        c.class_name,
+        COUNT(r.id) AS subject_count,
+        r.term
+    FROM students s
+    LEFT JOIN results r ON s.id = r.student_id AND r.term = :term
+    LEFT JOIN classes c ON s.class_id = c.id
+    WHERE s.school_id = :school_id
 ";
 
-$params = ['term' => $term];
+$params = ['term' => $term, 'school_id' => $current_school_id];
 
 if ($class_id > 0) {
     $query .= " AND s.class_id = :class_id";
@@ -117,39 +134,60 @@ if ($student_id > 0) {
     $params['student_id'] = $student_id;
 }
 
-$query .= " ORDER BY c.class_name, s.full_name, sub.subject_name";
+$query .= " GROUP BY s.id, s.full_name, s.admission_no, s.class_id, c.class_name, r.term
+            ORDER BY c.class_name, s.full_name";
 
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
-$results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$grouped_results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Calculate statistics
-$total_students = count(array_unique(array_column($results, 'student_id')));
-$total_subjects = count(array_unique(array_column($results, 'subject_id')));
-$total_results = count($results);
+$total_students = count($grouped_results);
+$total_subjects = 0;
+$total_results = 0;
 
-// Calculate class averages
+// Get total subjects and results for statistics
+$stats_query = "
+    SELECT COUNT(DISTINCT r.subject_id) as total_subjects, COUNT(r.id) as total_results
+    FROM results r
+    JOIN students s ON r.student_id = s.id
+    WHERE r.term = :term AND s.school_id = :school_id
+";
+
+$stats_params = ['term' => $term, 'school_id' => $current_school_id];
+
+if ($class_id > 0) {
+    $stats_query .= " AND s.class_id = :class_id";
+    $stats_params['class_id'] = $class_id;
+}
+
+if ($student_id > 0) {
+    $stats_query .= " AND s.id = :student_id";
+    $stats_params['student_id'] = $student_id;
+}
+
+$stats_stmt = $pdo->prepare($stats_query);
+$stats_stmt->execute($stats_params);
+$stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
+$total_subjects = $stats['total_subjects'] ?? 0;
+$total_results = $stats['total_results'] ?? 0;
+
+// Calculate class averages from grouped results
 $class_stats = [];
-foreach ($results as $result) {
+foreach ($grouped_results as $result) {
     $class_id = $result['class_id'];
-    $ca_total = $result['first_ca'] + $result['second_ca'];
-    $grand_total = $ca_total + $result['exam'];
+    $subject_count = intval($result['subject_count']);
 
     if (!isset($class_stats[$class_id])) {
         $class_stats[$class_id] = [
             'class_name' => $result['class_name'],
-            'total_scores' => 0,
-            'count' => 0,
-            'students' => []
+            'total_subjects' => 0,
+            'student_count' => 0
         ];
     }
 
-    $class_stats[$class_id]['total_scores'] += $grand_total;
-    $class_stats[$class_id]['count']++;
-
-    if (!in_array($result['student_id'], $class_stats[$class_id]['students'])) {
-        $class_stats[$class_id]['students'][] = $result['student_id'];
-    }
+    $class_stats[$class_id]['total_subjects'] += $subject_count;
+    $class_stats[$class_id]['student_count']++;
 }
 
 // Function to calculate grade
@@ -502,18 +540,17 @@ function calculateGrade($grand_total) {
                     </div>
                     <div class="stats-grid">
                         <?php foreach ($class_stats as $class_id => $stats):
-                            $average = $stats['count'] > 0 ? $stats['total_scores'] / $stats['count'] : 0;
-                            $student_count = count($stats['students']);
+                            $average_subjects = $stats['student_count'] > 0 ? $stats['total_subjects'] / $stats['student_count'] : 0;
                         ?>
                             <div class="stat-box">
                                 <div class="stat-icon">🎓</div>
                                 <div class="stat-info">
-                                    <span class="stat-value"><?php echo number_format($average, 1); ?></span>
-                                    <span class="stat-label">Avg Score - <?php echo htmlspecialchars($stats['class_name']); ?></span>
+                                    <span class="stat-value"><?php echo number_format($average_subjects, 1); ?></span>
+                                    <span class="stat-label">Avg Subjects - <?php echo htmlspecialchars($stats['class_name']); ?></span>
                                 </div>
                                 <div style="display: flex; justify-content: space-between; margin-top: 1rem; font-size: 0.85rem; color: var(--gray-600);">
-                                    <span><?php echo $student_count; ?> Students</span>
-                                    <span><?php echo $stats['count']; ?> Results</span>
+                                    <span><?php echo $stats['student_count']; ?> Students</span>
+                                    <span><?php echo $stats['total_subjects']; ?> Total Subjects</span>
                                 </div>
                             </div>
                         <?php endforeach; ?>
@@ -524,14 +561,14 @@ function calculateGrade($grand_total) {
             <!-- Results Table -->
             <div class="activity-section" id="results-table">
                 <div class="section-header">
-                    <h3>📋 All Results</h3>
+                    <h3>📋 Student Results Summary</h3>
                     <div style="display: flex; align-items: center; gap: 1rem;">
-                        <span class="section-badge"><?php echo count($results); ?> Results</span>
+                        <span class="section-badge"><?php echo count($grouped_results); ?> Students</span>
                         <span style="color: var(--gray-500); font-size: 0.9rem;">Term: <?php echo htmlspecialchars($term); ?></span>
                     </div>
                 </div>
 
-                <?php if (empty($results)): ?>
+                <?php if (empty($grouped_results)): ?>
                     <div style="text-align: center; padding: 4rem 2rem; color: var(--gray-500);">
                         <div style="font-size: 4rem; margin-bottom: 1rem;">📊</div>
                         <h3 style="color: var(--gray-700); margin-bottom: 0.5rem;">No Results Found</h3>
@@ -544,68 +581,29 @@ function calculateGrade($grand_total) {
                                 <tr>
                                     <th>#</th>
                                     <th>Class</th>
-                                    <th>Student</th>
+                                    <th>Student Name</th>
                                     <th>Admission No</th>
-                                    <th>Subject</th>
-                                    <th>1st CA</th>
-                                    <th>2nd CA</th>
-                                    <th>CA Total</th>
-                                    <th>Exam</th>
-                                    <th>Total</th>
-                                    <th>Grade</th>
-                                    <th>Remark</th>
+                                    <th>Total Subjects</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($results as $index => $result):
-                                    $ca_total = $result['first_ca'] + $result['second_ca'];
-                                    $grand_total = $ca_total + $result['exam'];
-                                    $grade_data = calculateGrade($grand_total);
-                                ?>
+                                <?php foreach ($grouped_results as $index => $result): ?>
                                     <tr>
                                         <td><?php echo $index + 1; ?></td>
                                         <td><?php echo htmlspecialchars($result['class_name']); ?></td>
                                         <td><?php echo htmlspecialchars($result['student_name']); ?></td>
                                         <td><?php echo htmlspecialchars($result['admission_no']); ?></td>
-                                        <td><?php echo htmlspecialchars($result['subject_name']); ?></td>
-                                        <td><?php echo number_format($result['first_ca'], 1); ?></td>
-                                        <td><?php echo number_format($result['second_ca'], 1); ?></td>
-                                        <td><strong><?php echo number_format($ca_total, 1); ?></strong></td>
-                                        <td><?php echo number_format($result['exam'], 1); ?></td>
-                                        <td><strong><?php echo number_format($grand_total, 1); ?></strong></td>
-                                        <td>
-                                            <span class="badge badge-<?php
-                                                echo match($grade_data['grade']) {
-                                                    'A' => 'success',
-                                                    'B' => 'info',
-                                                    'C' => 'warning',
-                                                    'D' => 'secondary',
-                                                    'E' => 'primary',
-                                                    'F' => 'danger',
-                                                    default => 'secondary'
-                                                };
-                                            ?>">
-                                                <?php echo $grade_data['grade']; ?>
-                                            </span>
-                                        </td>
-                                        <td><?php echo $grade_data['remark']; ?></td>
+                                        <td><strong><?php echo intval($result['subject_count']); ?></strong></td>
                                         <td>
                                             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                                <button type="button" onclick="openEditModal(<?php echo $result['id']; ?>, <?php echo number_format($result['first_ca'], 1); ?>, <?php echo number_format($result['second_ca'], 1); ?>, <?php echo number_format($result['exam'], 1); ?>, '<?php echo addslashes($result['academic_session']); ?>')" style="background: var(--warning-color); color: white; border: none; padding: 0.5rem 0.75rem; border-radius: 0.375rem; font-size: 0.85rem; cursor: pointer; transition: background 0.3s ease;">
-                                                    <i class="fas fa-edit"></i> Edit
+                                                <button type="button" onclick="showStudentDetails(<?php echo intval($result['student_id']); ?>, <?php echo intval($result['class_id']); ?>, '<?php echo htmlspecialchars($term); ?>')" style="background: var(--primary-color); color: white; border: none; padding: 0.5rem 0.75rem; border-radius: 0.375rem; font-size: 0.85rem; cursor: pointer; transition: background 0.3s ease;">
+                                                    <i class="fas fa-eye"></i> Details
                                                 </button>
-                                                <form method="POST" style="display: inline;">
-                                                    <input type="hidden" name="action" value="delete_result">
-                                                    <input type="hidden" name="result_id" value="<?php echo intval($result['id']); ?>">
-                                                    <button type="submit" onclick="return confirm('Are you sure you want to delete this result?')" style="background: var(--error-color); color: white; border: none; padding: 0.5rem 0.75rem; border-radius: 0.375rem; font-size: 0.85rem; cursor: pointer; transition: background 0.3s ease;">
-                                                        <i class="fas fa-trash"></i> Delete
-                                                    </button>
-                                                </form>
                                                 <form method="POST" action="../teacher/generate-result-pdf.php" style="display: inline;">
                                                     <input type="hidden" name="student_id" value="<?php echo intval($result['student_id']); ?>">
                                                     <input type="hidden" name="class_id" value="<?php echo intval($result['class_id']); ?>">
-                                                    <input type="hidden" name="term" value="<?php echo htmlspecialchars($result['term']); ?>">
+                                                    <input type="hidden" name="term" value="<?php echo htmlspecialchars($term); ?>">
                                                     <button type="submit" style="background: var(--info-color); color: white; border: none; padding: 0.5rem 0.75rem; border-radius: 0.375rem; font-size: 0.85rem; cursor: pointer; transition: background 0.3s ease;">
                                                         <i class="fas fa-file-pdf"></i> PDF
                                                     </button>
@@ -668,42 +666,36 @@ function calculateGrade($grand_total) {
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="dashboard-footer">
-        <div class="footer-container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4>About SahabFormMaster</h4>
-                    <p>A comprehensive school management system designed for academic excellence and efficient administration.</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Quick Links</h4>
-                    <ul class="footer-links">
-                        <li><a href="manage-school.php">School Settings</a></li>
-                        <li><a href="manage_user.php">User Management</a></li>
-                        <li><a href="#">Support & Help</a></li>
-                        <li><a href="#">Documentation</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Contact Information</h4>
-                    <p>📧 admin@sahabformmaster.com</p>
-                    <p>📱 +234 808 683 5607</p>
-                    <p>🌐 www.sahabformmaster.com</p>
+    <!-- Details Modal -->
+    <div class="modal" id="detailsModal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-eye"></i> Student Result Details</h2>
+                <button class="close-btn" onclick="closeDetailsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="detailsContent">
+                    <div style="text-align: center; padding: 2rem;">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary-color);"></i>
+                        <p style="margin-top: 1rem; color: var(--gray-600);">Loading details...</p>
+                    </div>
                 </div>
             </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 SahabFormMaster. All rights reserved.</p>
-                <div class="footer-bottom-links">
-                    <a href="#">Privacy Policy</a>
-                    <span>•</span>
-                    <a href="#">Terms of Service</a>
-                    <span>•</span>
-                    <span>Version 2.0</span>
-                </div>
+            <div class="modal-footer">
+                <form method="POST" action="../teacher/generate-result-pdf.php" style="display: inline;">
+                    <input type="hidden" name="student_id" id="pdf_student_id">
+                    <input type="hidden" name="class_id" id="pdf_class_id">
+                    <input type="hidden" name="term" id="pdf_term">
+                    <button type="submit" style="background: var(--info-color); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; margin-right: 0.5rem;">
+                        <i class="fas fa-file-pdf"></i> Download PDF
+                    </button>
+                </form>
+                <button type="button" onclick="closeDetailsModal()" style="background: var(--gray-500); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer;">Close</button>
             </div>
         </div>
-    </footer>
+    </div>
+
+    
 
     <script>
         // Mobile Menu Toggle
@@ -752,6 +744,149 @@ function calculateGrade($grand_total) {
                 closeEditModal();
             }
         });
+
+        // Details modal functions
+        function showStudentDetails(studentId, classId, term) {
+            // Set PDF form values
+            document.getElementById('pdf_student_id').value = studentId;
+            document.getElementById('pdf_class_id').value = classId;
+            document.getElementById('pdf_term').value = term;
+
+            document.getElementById('detailsModal').style.display = 'flex';
+            document.getElementById('detailsContent').innerHTML = `
+                <div style="text-align: center; padding: 2rem;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary-color);"></i>
+                    <p style="margin-top: 1rem; color: var(--gray-600);">Loading details...</p>
+                </div>
+            `;
+
+            // Fetch student details via AJAX
+            fetch(`../ajax/ajax_get_student_results.php?student_id=${studentId}&term=${encodeURIComponent(term)}&class_id=${classId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.results) {
+                        displayStudentResults(data.results, data.academic_session);
+                    } else {
+                        document.getElementById('detailsContent').innerHTML = `
+                            <div style="text-align: center; padding: 2rem; color: var(--gray-500);">
+                                <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                                <h3>No Results Found</h3>
+                                <p>This student has no results for the selected term.</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading student details:', error);
+                    document.getElementById('detailsContent').innerHTML = `
+                        <div style="text-align: center; padding: 2rem; color: var(--error-600);">
+                            <i class="fas fa-exclamation-circle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                            <h3>Error Loading Details</h3>
+                            <p>Please try again later.</p>
+                        </div>
+                    `;
+                });
+        }
+
+        function closeDetailsModal() {
+            document.getElementById('detailsModal').style.display = 'none';
+        }
+
+        // Close details modal when clicking outside
+        document.getElementById('detailsModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeDetailsModal();
+            }
+        });
+
+        function displayStudentResults(results, academicSession) {
+            let html = `
+                <div style="margin-bottom: 1.5rem;">
+                    <h3 style="color: var(--primary-color); margin-bottom: 0.5rem;">Academic Session: ${academicSession || 'N/A'}</h3>
+                    <p style="color: var(--gray-600);">Total Subjects: ${results.length}</p>
+                </div>
+                <div class="table-responsive">
+                    <table class="students-table">
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>1st CA</th>
+                                <th>2nd CA</th>
+                                <th>CA Total</th>
+                                <th>Exam</th>
+                                <th>Total</th>
+                                <th>Grade</th>
+                                <th>Remark</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            results.forEach(result => {
+                const caTotal = parseFloat(result.first_ca) + parseFloat(result.second_ca);
+                const grandTotal = caTotal + parseFloat(result.exam);
+                const grade = calculateGradeClient(grandTotal);
+
+                html += `
+                    <tr>
+                        <td>${result.subject_name}</td>
+                        <td>${parseFloat(result.first_ca).toFixed(1)}</td>
+                        <td>${parseFloat(result.second_ca).toFixed(1)}</td>
+                        <td><strong>${caTotal.toFixed(1)}</strong></td>
+                        <td>${parseFloat(result.exam).toFixed(1)}</td>
+                        <td><strong>${grandTotal.toFixed(1)}</strong></td>
+                        <td>
+                            <span class="badge badge-${getGradeClass(grade.grade)}">${grade.grade}</span>
+                        </td>
+                        <td>${grade.remark}</td>
+                        <td>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <button type="button" onclick="openEditModal(${result.id}, ${result.first_ca}, ${result.second_ca}, ${result.exam}, '${result.academic_session}')" style="background: var(--warning-color); color: white; border: none; padding: 0.5rem 0.75rem; border-radius: 0.375rem; font-size: 0.85rem; cursor: pointer; transition: background 0.3s ease;">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                                <form method="POST" style="display: inline;">
+                                    <input type="hidden" name="action" value="delete_result">
+                                    <input type="hidden" name="result_id" value="${result.id}">
+                                    <button type="submit" onclick="return confirm('Are you sure you want to delete this result?')" style="background: var(--error-color); color: white; border: none; padding: 0.5rem 0.75rem; border-radius: 0.375rem; font-size: 0.85rem; cursor: pointer; transition: background 0.3s ease;">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            document.getElementById('detailsContent').innerHTML = html;
+        }
+
+        function calculateGradeClient(grandTotal) {
+            if (grandTotal >= 90) return { grade: 'A', remark: 'Excellent' };
+            if (grandTotal >= 80) return { grade: 'B', remark: 'Very Good' };
+            if (grandTotal >= 70) return { grade: 'C', remark: 'Good' };
+            if (grandTotal >= 60) return { grade: 'D', remark: 'Fair' };
+            if (grandTotal >= 50) return { grade: 'E', remark: 'Pass' };
+            return { grade: 'F', remark: 'Fail' };
+        }
+
+        function getGradeClass(grade) {
+            const classes = {
+                'A': 'success',
+                'B': 'info',
+                'C': 'warning',
+                'D': 'secondary',
+                'E': 'primary',
+                'F': 'danger'
+            };
+            return classes[grade] || 'secondary';
+        }
 
         // Calculate total automatically
         function updateTotal() {
