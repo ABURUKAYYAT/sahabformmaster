@@ -2,12 +2,16 @@
 // teacher/curriculum.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Only allow teachers to access this page
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'teacher') {
     header("Location: ../index.php");
     exit;
 }
+
+// Get current school context
+$current_school_id = require_school_auth();
 
 $teacher_id = $_SESSION['user_id'];
 $teacher_name = $_SESSION['full_name'] ?? 'Teacher';
@@ -20,12 +24,14 @@ $stmt = $pdo->prepare("SELECT DISTINCT c.* FROM classes c
 $stmt->execute(['teacher_id' => $teacher_id]);
 $assigned_classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch all classes for filter (since teacher can view all curriculum)
-$stmt = $pdo->query("SELECT id, class_name FROM classes ORDER BY class_name ASC");
+// Fetch all classes for filter (school-filtered)
+$stmt = $pdo->prepare("SELECT id, class_name FROM classes WHERE school_id = ? ORDER BY class_name ASC");
+$stmt->execute([$current_school_id]);
 $all_classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch all subjects
-$stmt = $pdo->query("SELECT id, subject_name FROM subjects ORDER BY subject_name ASC");
+// Fetch all subjects (school-filtered)
+$stmt = $pdo->prepare("SELECT id, subject_name FROM subjects WHERE school_id = ? ORDER BY subject_name ASC");
+$stmt->execute([$current_school_id]);
 $all_subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Search and filter
@@ -36,12 +42,12 @@ $filter_week = $_GET['filter_week'] ?? '';
 $filter_subject = $_GET['filter_subject'] ?? '';
 $filter_status = $_GET['filter_status'] ?? 'active';
 
-// Build query for teacher's curriculum
+// Build query for teacher's curriculum (school-filtered)
 $query = "SELECT DISTINCT c.*, cl.class_name
           FROM curriculum c
-          LEFT JOIN classes cl ON c.class_id = cl.id
-          WHERE c.status = :status";
-$params = ['status' => $filter_status];
+          LEFT JOIN classes cl ON c.class_id = cl.id AND cl.school_id = :school_id
+          WHERE c.status = :status AND c.school_id = :school_id2";
+$params = ['status' => $filter_status, 'school_id' => $current_school_id, 'school_id2' => $current_school_id];
 
 // Add teacher filter only if not viewing all
 if ($filter_status === 'active') {
@@ -74,14 +80,15 @@ if ($filter_subject !== '' && $filter_subject !== 'all') {
     $params['subject_id'] = $filter_subject;
 }
 
-// Get unique terms from curriculum
-$stmt = $pdo->query("SELECT DISTINCT term FROM curriculum WHERE term IS NOT NULL AND term != '' ORDER BY
+// Get unique terms from curriculum (school-filtered)
+$stmt = $pdo->prepare("SELECT DISTINCT term FROM curriculum WHERE term IS NOT NULL AND term != '' AND school_id = ? ORDER BY
     CASE term
         WHEN '1st Term' THEN 1
         WHEN '2nd Term' THEN 2
         WHEN '3rd Term' THEN 3
         ELSE 4
     END");
+$stmt->execute([$current_school_id]);
 $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
 // If no terms found, use default terms
@@ -1665,4 +1672,3 @@ function getStatusBadgeClass($status) {
         });
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
-

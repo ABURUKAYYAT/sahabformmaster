@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 require_once '../TCPDF-main/TCPDF-main/tcpdf.php';
 
 // Check if teacher is logged in
@@ -8,6 +9,8 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     header("Location: ../index.php");
     exit;
 }
+
+$current_school_id = require_school_auth();
 
 $teacher_id = $_SESSION['user_id'];
 $teacher_name = $_SESSION['full_name'];
@@ -18,12 +21,13 @@ $class_filter = $_GET['class_id'] ?? null;
 $term_filter = $_GET['term'] ?? null;
 
 // Fetch school profile
-$stmt = $pdo->query("SELECT * FROM school_profile WHERE id = 1");
+$stmt = $pdo->prepare("SELECT * FROM school_profile WHERE school_id = ? LIMIT 1");
+$stmt->execute([$current_school_id]);
 $school = $stmt->fetch(PDO::FETCH_ASSOC);
 
 // Build query based on filters
-$where = ["e.teacher_id = ?"];
-$params = [$teacher_id];
+$where = ["e.teacher_id = ?", "e.school_id = ?", "s.school_id = ?", "c.school_id = ?"];
+$params = [$teacher_id, $current_school_id, $current_school_id, $current_school_id];
 
 if ($class_filter) {
     $where[] = "e.class_id = ?";
@@ -41,12 +45,12 @@ $whereClause = "WHERE " . implode(" AND ", $where);
 $stmt = $pdo->prepare("
     SELECT e.*, s.full_name, s.class_id, s.admission_no, c.class_name
     FROM evaluations e
-    JOIN students s ON e.student_id = s.id
-    JOIN classes c ON e.class_id = c.id
+    JOIN students s ON e.student_id = s.id AND s.school_id = ?
+    JOIN classes c ON e.class_id = c.id AND c.school_id = ?
     $whereClause
     ORDER BY c.class_name, s.full_name, e.term DESC, e.academic_year DESC
 ");
-$stmt->execute($params);
+$stmt->execute(array_merge([$current_school_id, $current_school_id], $params));
 $evaluations = $stmt->fetchAll();
 
 // Calculate comprehensive statistics
@@ -614,5 +618,3 @@ function getRatingColor($rating) {
     }
 }
 ?>
-
-

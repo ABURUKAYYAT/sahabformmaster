@@ -2,18 +2,13 @@
 session_start();
 require_once '../config/db.php';
 
-// Check authorization
-if (!isset($_SESSION['user_id'])) {
+// Check if teacher is logged in
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     header("Location: ../index.php");
     exit;
 }
-
-// Only allow teachers and principal
-$allowed_roles = ['principal', 'teacher'];
-if (!in_array(strtolower($_SESSION['role'] ?? ''), $allowed_roles)) {
-    header("Location: ../index.php");
-    exit;
-}
+require_once '../includes/functions.php';
+$current_school_id = require_school_auth();
 
 // Get POST data
 $selected_questions = $_POST['selected_questions'] ?? '';
@@ -48,34 +43,35 @@ if (empty($selected_questions) || !is_array($selected_questions)) {
     die('Please select at least one question to generate paper.');
 }
 
-// Get subject and class names
+// Get subject and class names - school-filtered
 $subject_name = '';
 $class_name = '';
 
 if ($subject_id > 0) {
-    $stmt = $pdo->prepare("SELECT subject_name FROM subjects WHERE id = ?");
-    $stmt->execute([$subject_id]);
+    $stmt = $pdo->prepare("SELECT subject_name FROM subjects WHERE id = ? AND school_id = ?");
+    $stmt->execute([$subject_id, $current_school_id]);
     $subject = $stmt->fetch(PDO::FETCH_ASSOC);
     $subject_name = $subject['subject_name'] ?? '';
 }
 
 if ($class_id > 0) {
-    $stmt = $pdo->prepare("SELECT class_name FROM classes WHERE id = ?");
-    $stmt->execute([$class_id]);
+    $stmt = $pdo->prepare("SELECT class_name FROM classes WHERE id = ? AND school_id = ?");
+    $stmt->execute([$class_id, $current_school_id]);
     $class = $stmt->fetch(PDO::FETCH_ASSOC);
     $class_name = $class['class_name'] ?? '';
 }
 
-// Fetch questions with their options
+// Fetch questions with their options - school-filtered
 $placeholders = implode(',', array_fill(0, count($selected_questions), '?'));
 $stmt = $pdo->prepare("
     SELECT q.*, qo.option_letter, qo.option_text, qo.is_correct
     FROM questions_bank q
     LEFT JOIN question_options qo ON q.id = qo.question_id
-    WHERE q.id IN ($placeholders)
+    WHERE q.id IN ($placeholders) AND q.school_id = ?
     ORDER BY FIELD(q.id, " . implode(',', $selected_questions) . ")
 ");
-$stmt->execute($selected_questions);
+$params = array_merge($selected_questions, [$current_school_id]);
+$stmt->execute($params);
 $questions_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Organize questions by type and with their options
@@ -607,5 +603,3 @@ foreach ($questions_by_type as $type_questions) {
         }
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
-
-

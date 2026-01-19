@@ -13,16 +13,18 @@ if (!$uid && !$admission_no) {
     exit;
 }
 
+$current_school_id = get_current_school_id();
+
 // Resolve student record
 $student = null;
 if ($admission_no) {
-    $stmt = $pdo->prepare("SELECT id, full_name, class_id FROM students WHERE admission_no = :admission_no LIMIT 1");
-    $stmt->execute(['admission_no' => $admission_no]);
+    $stmt = $pdo->prepare("SELECT id, full_name, class_id FROM students WHERE admission_no = :admission_no AND school_id = :school_id LIMIT 1");
+    $stmt->execute(['admission_no' => $admission_no, 'school_id' => $current_school_id]);
     $student = $stmt->fetch(PDO::FETCH_ASSOC);
 }
 if (!$student && $uid) {
-    $stmt = $pdo->prepare("SELECT id, full_name, class_id FROM students WHERE user_id = :uid OR id = :uid LIMIT 1");
-    $stmt->execute(['uid' => $uid]);
+    $stmt = $pdo->prepare("SELECT id, full_name, class_id FROM students WHERE (user_id = :uid OR id = :uid) AND school_id = :school_id LIMIT 1");
+    $stmt->execute(['uid' => $uid, 'school_id' => $current_school_id]);
     $student = $stmt->fetch(PDO::FETCH_ASSOC);
 }
 if (!$student) {
@@ -73,10 +75,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 try {
     $stmt = $pdo->prepare("SELECT r.*, sub.subject_name
         FROM results r
-        JOIN subjects sub ON r.subject_id = sub.id
-        WHERE r.student_id = :student_id AND LOWER(TRIM(r.term)) = LOWER(TRIM(:term))
+        JOIN subjects sub ON r.subject_id = sub.id AND sub.school_id = :school_id
+        WHERE r.student_id = :student_id AND r.school_id = :school_id AND LOWER(TRIM(r.term)) = LOWER(TRIM(:term))
         ORDER BY sub.subject_name");
-    $stmt->execute(['student_id' => $student_id, 'term' => $term]);
+    $stmt->execute(['student_id' => $student_id, 'school_id' => $current_school_id, 'term' => $term]);
     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $errors[] = "Database error while fetching results.";
@@ -85,13 +87,13 @@ try {
 }
 
 // Fetch existing complaints by student
-$stmt = $pdo->prepare("SELECT rc.*, sub.subject_name, r.term FROM results_complaints rc JOIN results r ON rc.result_id = r.id JOIN subjects sub ON r.subject_id = sub.id WHERE rc.student_id = :student_id ORDER BY rc.created_at DESC");
-$stmt->execute(['student_id' => $student_id]);
+$stmt = $pdo->prepare("SELECT rc.*, sub.subject_name, r.term FROM results_complaints rc JOIN results r ON rc.result_id = r.id AND r.school_id = :school_id JOIN subjects sub ON r.subject_id = sub.id AND sub.school_id = :school_id WHERE rc.student_id = :student_id ORDER BY rc.created_at DESC");
+$stmt->execute(['student_id' => $student_id, 'school_id' => $current_school_id]);
 $complaints = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get class name
-$stmt = $pdo->prepare("SELECT class_name FROM classes WHERE id = :id");
-$stmt->execute(['id' => $class_id]);
+$stmt = $pdo->prepare("SELECT class_name FROM classes WHERE id = :id AND school_id = :school_id");
+$stmt->execute(['id' => $class_id, 'school_id' => $current_school_id]);
 $class_name = $stmt->fetchColumn() ?: 'N/A';
 
 ?>
@@ -606,4 +608,3 @@ $class_name = $stmt->fetchColumn() ?: 'N/A';
 
 </body>
 </html>
-

@@ -5,10 +5,12 @@ require_once '../config/db.php';
 // Include TCPDF
 require_once '../tcpdf/tcpdf.php';
 
-if (!isset($_SESSION['user_id'])) {
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     header("Location: ../index.php");
-    exit; 
+    exit;
 }
+require_once '../includes/functions.php';
+$current_school_id = require_school_auth();
 
 $paper_id = intval($_GET['paper_id'] ?? $_POST['paper_id'] ?? 0);
 
@@ -16,9 +18,9 @@ if ($paper_id <= 0) {
     die('Invalid paper ID');
 }
 
-// Fetch paper details
+// Fetch paper details - school-filtered
 $stmt = $pdo->prepare("
-    SELECT ep.*, s.subject_name, c.class_name, 
+    SELECT ep.*, s.subject_name, c.class_name,
            si.school_name, si.motto, si.address as school_address,
            si.phone as school_phone, si.email as school_email,
            u.full_name as teacher_name
@@ -27,10 +29,10 @@ $stmt = $pdo->prepare("
     LEFT JOIN classes c ON ep.class_id = c.id
     LEFT JOIN school_info si ON 1=1
     LEFT JOIN users u ON ep.created_by = u.id
-    WHERE ep.id = ?
+    WHERE ep.id = ? AND ep.school_id = ?
     LIMIT 1
 ");
-$stmt->execute([$paper_id]);
+$stmt->execute([$paper_id, $current_school_id]);
 $paper = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$paper) {

@@ -2,11 +2,13 @@
 session_start();
 require_once '../config/db.php';
 
-// Check if principal is logged in
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'principal') {
+// Check if teacher is logged in
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     echo '<div class="alert alert-danger">Unauthorized access</div>';
     exit;
 }
+require_once '../includes/functions.php';
+$current_school_id = require_school_auth();
 
 if (!isset($_GET['id'])) {
     echo '<div class="alert alert-warning">Activity ID is required</div>';
@@ -19,12 +21,12 @@ $principal_id = $_SESSION['user_id'];
 try {
     // Get activity details
     $stmt = $pdo->prepare("
-        SELECT sd.*, u.full_name as coordinator_name 
-        FROM school_diary sd 
-        LEFT JOIN users u ON sd.coordinator_id = u.id 
-        WHERE sd.id = ? AND sd.created_by = ?
+        SELECT sd.*, u.full_name as coordinator_name
+        FROM school_diary sd
+        LEFT JOIN users u ON sd.coordinator_id = u.id
+        WHERE sd.id = ? AND sd.school_id = ? AND sd.created_by = ?
     ");
-    $stmt->execute([$activity_id, $principal_id]);
+    $stmt->execute([$activity_id, $current_school_id, $principal_id]);
     $activity = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$activity) {
@@ -33,8 +35,8 @@ try {
     }
 
     // Get attachments
-    $attachments_stmt = $pdo->prepare("SELECT * FROM school_diary_attachments WHERE diary_id = ?");
-    $attachments_stmt->execute([$activity_id]);
+    $attachments_stmt = $pdo->prepare("SELECT * FROM school_diary_attachments WHERE diary_id = ? AND school_id = ?");
+    $attachments_stmt->execute([$activity_id, $current_school_id]);
     $attachments = $attachments_stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Format date and time

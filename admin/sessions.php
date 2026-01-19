@@ -45,7 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $is_current = isset($_POST['is_current']) ? 1 : 0;
 
         if ($is_current) {
-            $pdo->query("UPDATE sessions SET is_current = 0 WHERE is_current = 1 AND id != $id");
+            $stmt = $pdo->prepare("UPDATE sessions SET is_current = 0 WHERE is_current = 1 AND id != ?");
+            $stmt->execute([$id]);
         }
 
         $stmt = $pdo->prepare("UPDATE sessions SET session_name = ?, academic_year = ?, start_date = ?, end_date = ?, is_current = ?, status = ? WHERE id = ?");

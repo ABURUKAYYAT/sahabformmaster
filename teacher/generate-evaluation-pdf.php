@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 require_once '../TCPDF-main/TCPDF-main/tcpdf.php';
 
 // Check if teacher is logged in
@@ -9,23 +10,27 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     exit;
 }
 
+// School authentication and context
+$current_school_id = require_school_auth();
+
 $teacher_id = $_SESSION['user_id'];
 $teacher_name = $_SESSION['full_name'];
 
-// Fetch school profile
-$stmt = $pdo->query("SELECT * FROM school_profile WHERE id = 1");
+// Fetch school profile - filtered by school_id
+$stmt = $pdo->prepare("SELECT * FROM school_profile WHERE school_id = ?");
+$stmt->execute([$current_school_id]);
 $school = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// Fetch evaluations created by this teacher
+// Fetch evaluations created by this teacher - filtered by school
 $stmt = $pdo->prepare("
     SELECT e.*, s.full_name, s.class_id, s.admission_no, c.class_name
     FROM evaluations e
     JOIN students s ON e.student_id = s.id
     JOIN classes c ON e.class_id = c.id
-    WHERE e.teacher_id = ?
+    WHERE e.teacher_id = ? AND s.school_id = ? AND c.school_id = ?
     ORDER BY c.class_name, s.full_name, e.term DESC, e.academic_year DESC
 ");
-$stmt->execute([$teacher_id]);
+$stmt->execute([$teacher_id, $current_school_id, $current_school_id]);
 $evaluations = $stmt->fetchAll();
 
 // Calculate statistics
@@ -333,5 +338,3 @@ function getRatingColor($rating) {
     }
 }
 ?>
-
-

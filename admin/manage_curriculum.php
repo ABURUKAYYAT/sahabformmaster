@@ -2,12 +2,15 @@
 // admin/manage_curriculum.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
-// Only allow principal (admin) to access this page
+// Only allow principal (admin) to access this page with school authentication
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'principal') {
     header("Location: ../index.php");
     exit;
 }
+
+$current_school_id = require_school_auth();
 
 $admin_name = $_SESSION['full_name'] ?? 'Administrator';
 $errors = [];
@@ -32,19 +35,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($subject_id <= 0) {
         $errors[] = 'Subject is required.';
     } else {
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM subjects WHERE id = :id");
-        $stmt->execute(['id' => $subject_id]);
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM subjects WHERE id = :id AND school_id = :school_id");
+        $stmt->execute(['id' => $subject_id, 'school_id' => $current_school_id]);
         if ($stmt->fetchColumn() == 0) {
-            $errors[] = 'Selected subject does not exist.';
+            $errors[] = 'Selected subject does not exist or is not available for your school.';
         }
     }
 
     // Validate class_id if provided
     if ($class_id > 0) {
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM classes WHERE id = :id");
-        $stmt->execute(['id' => $class_id]);
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM classes WHERE id = :id AND school_id = :school_id");
+        $stmt->execute(['id' => $class_id, 'school_id' => $current_school_id]);
         if ($stmt->fetchColumn() == 0) {
-            $errors[] = 'Selected class does not exist.';
+            $errors[] = 'Selected class does not exist or is not available for your school.';
         }
     } else {
         $class_id = null;
@@ -52,10 +55,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Validate teacher_id if provided
     if ($teacher_id > 0) {
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE id = :id AND role = 'teacher'");
-        $stmt->execute(['id' => $teacher_id]);
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE id = :id AND role = 'teacher' AND school_id = :school_id");
+        $stmt->execute(['id' => $teacher_id, 'school_id' => $current_school_id]);
         if ($stmt->fetchColumn() == 0) {
-            $errors[] = 'Selected teacher does not exist.';
+            $errors[] = 'Selected teacher does not exist or is not available for your school.';
         }
     } else {
         $teacher_id = null;
@@ -149,8 +152,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($id <= 0) {
                 $errors[] = 'Invalid curriculum id.';
             } else {
-                $stmt = $pdo->prepare("DELETE FROM curriculum WHERE id = :id");
-                $stmt->execute(['id' => $id]);
+                $stmt = $pdo->prepare("DELETE FROM curriculum WHERE id = :id AND school_id = :school_id");
+                $stmt->execute(['id' => $id, 'school_id' => $current_school_id]);
                 $success = 'Curriculum deleted successfully.';
                 header("Location: manage_curriculum.php");
                 exit;
@@ -161,8 +164,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ids = $_POST['selected_ids'] ?? [];
             if (!empty($ids)) {
                 $placeholders = implode(',', array_fill(0, count($ids), '?'));
-                $stmt = $pdo->prepare("DELETE FROM curriculum WHERE id IN ($placeholders)");
-                $stmt->execute($ids);
+                $stmt = $pdo->prepare("DELETE FROM curriculum WHERE id IN ($placeholders) AND school_id = ?");
+                $params = array_merge($ids, [$current_school_id]);
+                $stmt->execute($params);
                 $success = count($ids) . ' curriculum items deleted successfully.';
                 header("Location: manage_curriculum.php");
                 exit;
@@ -171,17 +175,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch subjects for dropdown
-$stmt = $pdo->query("SELECT id, subject_name FROM subjects ORDER BY subject_name ASC");
-$subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// Fetch subjects for dropdown - filtered by current school
+$subjects_query = $pdo->prepare("SELECT id, subject_name FROM subjects WHERE school_id = ? ORDER BY subject_name ASC");
+$subjects_query->execute([$current_school_id]);
+$subjects = $subjects_query->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch teachers for dropdown
-$stmt = $pdo->query("SELECT id, full_name FROM users WHERE role = 'teacher' ORDER BY full_name ASC");
-$teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// Fetch teachers for dropdown - filtered by current school
+$teachers_query = $pdo->prepare("SELECT id, full_name FROM users WHERE role = 'teacher' AND school_id = ? ORDER BY full_name ASC");
+$teachers_query->execute([$current_school_id]);
+$teachers = $teachers_query->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch classes for dropdown
-$stmt = $pdo->query("SELECT id, class_name FROM classes ORDER BY class_name ASC");
-$classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// Fetch classes for dropdown - filtered by current school
+$classes_query = $pdo->prepare("SELECT id, class_name FROM classes WHERE school_id = ? ORDER BY class_name ASC");
+$classes_query->execute([$current_school_id]);
+$classes = $classes_query->fetchAll(PDO::FETCH_ASSOC);
 
 // Search and filter
 $search = trim($_GET['search'] ?? '');
@@ -232,8 +239,8 @@ $edit_curriculum = null;
 if (isset($_GET['edit'])) {
     $edit_id = intval($_GET['edit']);
     if ($edit_id > 0) {
-        $stmt = $pdo->prepare("SELECT * FROM curriculum WHERE id = :id");
-        $stmt->execute(['id' => $edit_id]);
+        $stmt = $pdo->prepare("SELECT * FROM curriculum WHERE id = :id AND school_id = :school_id");
+        $stmt->execute(['id' => $edit_id, 'school_id' => $current_school_id]);
         $edit_curriculum = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 }

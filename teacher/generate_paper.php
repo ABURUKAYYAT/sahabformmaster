@@ -5,7 +5,7 @@ require_once '../config/db.php';
 // Check authorization
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../index.php");
-    exit; 
+    exit;
 }
 
 // Only allow teachers and principal
@@ -14,6 +14,10 @@ if (!in_array(strtolower($_SESSION['role'] ?? ''), $allowed_roles)) {
     header("Location: ../index.php");
     exit;
 }
+
+// Get current school context
+require_once '../includes/functions.php';
+$current_school_id = require_school_auth();
 
 $errors = [];
 $success = '';
@@ -239,9 +243,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch data
-$subjects = $pdo->query("SELECT id, subject_name FROM subjects ORDER BY subject_name")->fetchAll(PDO::FETCH_ASSOC);
-$classes = $pdo->query("SELECT id, class_name FROM classes ORDER BY class_name")->fetchAll(PDO::FETCH_ASSOC);
+// Fetch data with school filtering
+$subjects = $pdo->prepare("SELECT id, subject_name FROM subjects WHERE school_id = ? ORDER BY subject_name");
+$subjects->execute([$current_school_id]);
+$subjects = $subjects->fetchAll(PDO::FETCH_ASSOC);
+
+$classes = $pdo->prepare("SELECT id, class_name FROM classes WHERE school_id = ? ORDER BY class_name");
+$classes->execute([$current_school_id]);
+$classes = $classes->fetchAll(PDO::FETCH_ASSOC);
 
 // Get search parameters from GET or POST
 $subject_filter = $_GET['subject_filter'] ?? $_POST['subject_filter'] ?? '';
@@ -321,6 +330,114 @@ foreach ($questions as &$question) {
     }
     $question['correct_answer'] = implode(', ', $correct_answers);
 }
+
+// Function to generate answer key HTML
+function generateAnswerKeyHTML($question_ids) {
+    global $pdo;
+
+    if (empty($question_ids)) {
+        return '<div class="alert alert-warning">No questions selected for answer key generation.</div>';
+    }
+
+    $placeholders = str_repeat('?,', count($question_ids) - 1) . '?';
+
+    $stmt = $pdo->prepare("
+        SELECT qb.question_code, qb.question_text, qb.question_type, qb.marks,
+               qo.option_letter, qo.option_text, qo.is_correct,
+               s.subject_name, c.class_name
+        FROM questions_bank qb
+        LEFT JOIN question_options qo ON qb.id = qo.question_id
+        LEFT JOIN subjects s ON qb.subject_id = s.id
+        LEFT JOIN classes c ON qb.class_id = c.id
+        WHERE qb.id IN ($placeholders)
+        ORDER BY FIELD(qb.id, $placeholders), qo.option_letter
+    ");
+
+    $stmt->execute(array_merge($question_ids, $question_ids));
+    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Organize by question
+    $questions = [];
+    foreach ($results as $row) {
+        $qid = $row['question_code'];
+        if (!isset($questions[$qid])) {
+            $questions[$qid] = [
+                'question_text' => $row['question_text'],
+                'question_type' => $row['question_type'],
+                'marks' => $row['marks'],
+                'subject' => $row['subject_name'],
+                'class' => $row['class_name'],
+                'options' => []
+            ];
+        }
+        if ($row['option_text']) {
+            $questions[$qid]['options'][] = [
+                'letter' => $row['option_letter'],
+                'text' => $row['option_text'],
+                'correct' => $row['is_correct']
+            ];
+        }
+    }
+
+    $html = '<div class="answer-key">';
+    $html .= '<h2>Answer Key</h2>';
+    $html .= '<div class="key-info">';
+    $html .= '<p><strong>Generated:</strong> ' . date('Y-m-d H:i:s') . '</p>';
+    $html .= '<p><strong>Total Questions:</strong> ' . count($questions) . '</p>';
+    $html .= '</div>';
+
+    $counter = 1;
+    foreach ($questions as $code => $question) {
+        $html .= '<div class="question-answer">';
+        $html .= '<h4>Question ' . $counter . ' (' . $code . ')</h4>';
+        $html .= '<p><strong>Subject:</strong> ' . htmlspecialchars($question['subject']) . ' | ';
+        $html .= '<strong>Class:</strong> ' . htmlspecialchars($question['class']) . ' | ';
+        $html .= '<strong>Marks:</strong> ' . $question['marks'] . '</p>';
+
+        $html .= '<div class="question-text">' . htmlspecialchars($question['question_text']) . '</div>';
+
+        if ($question['question_type'] === 'mcq' && !empty($question['options'])) {
+            $html .= '<div class="correct-answer">';
+            $html .= '<strong>Correct Answer(s):</strong> ';
+            $correct_letters = [];
+            foreach ($question['options'] as $option) {
+                if ($option['correct']) {
+                    $correct_letters[] = $option['letter'];
+                }
+            }
+            $html .= implode(', ', $correct_letters);
+            $html .= '</div>';
+        } elseif ($question['question_type'] === 'true_false') {
+            $html .= '<div class="correct-answer">';
+            $html .= '<strong>Correct Answer:</strong> (To be determined by teacher)';
+            $html .= '</div>';
+        } else {
+            $html .= '<div class="correct-answer">';
+            $html .= '<strong>Answer:</strong> (To be provided by teacher)';
+            $html .= '</div>';
+        }
+
+        $html .= '</div>';
+        $counter++;
+    }
+
+    $html .= '</div>';
+    return $html;
+}
+
+// Function to generate AJAX PDF preview
+function generateAjaxPreviewPDF($question_ids, $school_name, $school_motto, $school_address, $paper_title, $exam_type, $subject_name, $class_name, $term, $time_allotted, $total_marks, $general_instructions, $specific_instructions) {
+    // This is a placeholder - in a real implementation, you would use TCPDF or similar
+    // For now, return a simple message
+    return "PDF Preview functionality would be implemented using TCPDF library.\n\n" .
+           "Paper Title: $paper_title\n" .
+           "Questions Selected: " . count($question_ids) . "\n" .
+           "Total Marks: $total_marks\n" .
+           "Time: $time_allotted minutes\n\n" .
+           "Please implement TCPDF integration for full functionality.";
+}
+
+
 
 // Function to generate paper HTML
 function generatePaperHTML($paper_id, $user_id) {
@@ -1113,5 +1230,3 @@ function generatePaperHTML($paper_id, $user_id) {
         window.onload = initializeSelectedQuestions;
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
-
-

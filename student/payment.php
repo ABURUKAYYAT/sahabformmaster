@@ -11,15 +11,16 @@ if (!isset($_SESSION['student_id'])) {
 }
 
 $studentId = $_SESSION['student_id'];
+$current_school_id = get_current_school_id();
 $student_name = $_SESSION['student_name'];
 $admission_number = $_SESSION['admission_no'];
 $paymentHelper = new PaymentHelper();
 
 // Get student details
 $stmt = $pdo->prepare("SELECT s.*, c.class_name FROM students s
-                      JOIN classes c ON s.class_id = c.id
-                      WHERE s.id = ?");
-$stmt->execute([$studentId]);
+                      JOIN classes c ON s.class_id = c.id AND c.school_id = ?
+                      WHERE s.id = ? AND s.school_id = ?");
+$stmt->execute([$current_school_id, $studentId, $current_school_id]);
 $student = $stmt->fetch();
 
 // Get current term/year
@@ -1220,4 +1221,3 @@ $balance = max(0, $totalFee - $paidAmount);
 
 </body>
 </html>
-

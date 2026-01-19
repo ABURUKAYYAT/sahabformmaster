@@ -1,11 +1,14 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
-if (!isset($_SESSION['user_id'])) {
+// Check if teacher is logged in
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     header("Location: ../index.php");
     exit;
 }
+$current_school_id = require_school_auth();
 
 $question_id = intval($_GET['id'] ?? 0);
 
@@ -14,7 +17,7 @@ if ($question_id <= 0) {
     exit;
 }
 
-// Fetch question with all details
+// Fetch question with all details - school-filtered
 $stmt = $pdo->prepare("
     SELECT q.*, s.subject_name, c.class_name, cat.category_name,
            u.full_name as created_by_name, r.full_name as reviewed_by_name
@@ -24,9 +27,9 @@ $stmt = $pdo->prepare("
     LEFT JOIN question_categories cat ON q.category_id = cat.id
     LEFT JOIN users u ON q.created_by = u.id
     LEFT JOIN users r ON q.reviewed_by = r.id
-    WHERE q.id = ?
+    WHERE q.id = ? AND q.school_id = ?
 ");
-$stmt->execute([$question_id]);
+$stmt->execute([$question_id, $current_school_id]);
 $question = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$question) {
@@ -73,4 +76,3 @@ $usage_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <!-- Implementation would show complete question details -->
 </body>
 </html>
-

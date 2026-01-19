@@ -9,12 +9,14 @@ if ($news_id <= 0) {
     exit;
 }
 
+$current_school_id = get_current_school_id();
+
 // Fetch news details
-$stmt = $pdo->prepare("SELECT sn.*, u.full_name as author_name 
-                      FROM school_news sn 
-                      JOIN users u ON sn.author_id = u.id 
-                      WHERE sn.id = :id");
-$stmt->execute(['id' => $news_id]);
+$stmt = $pdo->prepare("SELECT sn.*, u.full_name as author_name
+                      FROM school_news sn
+                      JOIN users u ON sn.author_id = u.id
+                      WHERE sn.id = :id AND sn.school_id = :school_id");
+$stmt->execute(['id' => $news_id, 'school_id' => $current_school_id]);
 $news = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$news) {
@@ -32,17 +34,18 @@ if ($news['status'] !== 'published' && !$is_principal) {
 }
 
 // Increment view count
-$stmt = $pdo->prepare("UPDATE school_news SET view_count = view_count + 1 WHERE id = :id");
-$stmt->execute(['id' => $news_id]);
+$stmt = $pdo->prepare("UPDATE school_news SET view_count = view_count + 1 WHERE id = :id AND school_id = :school_id");
+$stmt->execute(['id' => $news_id, 'school_id' => $current_school_id]);
 
 // Track view (if user logged in)
 if ($user_id) {
-    $stmt = $pdo->prepare("INSERT IGNORE INTO school_news_views (news_id, user_id, ip_address) 
-                          VALUES (:news_id, :user_id, :ip_address)");
+    $stmt = $pdo->prepare("INSERT IGNORE INTO school_news_views (news_id, user_id, ip_address, school_id)
+                          VALUES (:news_id, :user_id, :ip_address, :school_id)");
     $stmt->execute([
         'news_id' => $news_id,
         'user_id' => $user_id,
-        'ip_address' => $_SERVER['REMOTE_ADDR']
+        'ip_address' => $_SERVER['REMOTE_ADDR'],
+        'school_id' => $current_school_id
     ]);
 }
 
@@ -72,16 +75,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $news['allow_comments']) {
         }
 
         if (empty($errors)) {
-            $stmt = $pdo->prepare("INSERT INTO school_news_comments 
-                                  (news_id, user_id, name, email, comment, status) 
-                                  VALUES (:news_id, :user_id, :name, :email, :comment, :status)");
+            $stmt = $pdo->prepare("INSERT INTO school_news_comments
+                                  (news_id, user_id, name, email, comment, status, school_id)
+                                  VALUES (:news_id, :user_id, :name, :email, :comment, :status, :school_id)");
             $stmt->execute([
                 'news_id' => $news_id,
                 'user_id' => $user_id,
                 'name' => $commenter_name,
                 'email' => $commenter_email,
                 'comment' => $comment_text,
-                'status' => 'pending'
+                'status' => 'pending',
+                'school_id' => $current_school_id
             ]);
             $success = 'Your comment has been submitted and is awaiting moderation.';
             // Refresh page
@@ -93,8 +97,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $news['allow_comments']) {
     if ($action === 'delete_comment' && $is_principal) {
         $comment_id = intval($_POST['comment_id'] ?? 0);
         if ($comment_id > 0) {
-            $stmt = $pdo->prepare("DELETE FROM school_news_comments WHERE id = :id AND news_id = :news_id");
-            $stmt->execute(['id' => $comment_id, 'news_id' => $news_id]);
+            $stmt = $pdo->prepare("DELETE FROM school_news_comments WHERE id = :id AND news_id = :news_id AND school_id = :school_id");
+            $stmt->execute(['id' => $comment_id, 'news_id' => $news_id, 'school_id' => $current_school_id]);
             $success = 'Comment deleted.';
             header("Location: schoolnews-detail.php?id=" . $news_id);
             exit;
@@ -104,8 +108,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $news['allow_comments']) {
     if ($action === 'approve_comment' && $is_principal) {
         $comment_id = intval($_POST['comment_id'] ?? 0);
         if ($comment_id > 0) {
-            $stmt = $pdo->prepare("UPDATE school_news_comments SET status = :status WHERE id = :id AND news_id = :news_id");
-            $stmt->execute(['status' => 'approved', 'id' => $comment_id, 'news_id' => $news_id]);
+            $stmt = $pdo->prepare("UPDATE school_news_comments SET status = :status WHERE id = :id AND news_id = :news_id AND school_id = :school_id");
+            $stmt->execute(['status' => 'approved', 'id' => $comment_id, 'news_id' => $news_id, 'school_id' => $current_school_id]);
             $success = 'Comment approved.';
             header("Location: schoolnews-detail.php?id=" . $news_id);
             exit;
@@ -115,8 +119,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $news['allow_comments']) {
     if ($action === 'reject_comment' && $is_principal) {
         $comment_id = intval($_POST['comment_id'] ?? 0);
         if ($comment_id > 0) {
-            $stmt = $pdo->prepare("UPDATE school_news_comments SET status = :status WHERE id = :id AND news_id = :news_id");
-            $stmt->execute(['status' => 'rejected', 'id' => $comment_id, 'news_id' => $news_id]);
+            $stmt = $pdo->prepare("UPDATE school_news_comments SET status = :status WHERE id = :id AND news_id = :news_id AND school_id = :school_id");
+            $stmt->execute(['status' => 'rejected', 'id' => $comment_id, 'news_id' => $news_id, 'school_id' => $current_school_id]);
             $success = 'Comment rejected.';
             header("Location: schoolnews-detail.php?id=" . $news_id);
             exit;
@@ -125,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $news['allow_comments']) {
 }
 
 // Fetch approved comments (and pending if principal)
-$comment_query = "SELECT * FROM school_news_comments WHERE news_id = :news_id";
+$comment_query = "SELECT * FROM school_news_comments WHERE news_id = :news_id AND school_id = :school_id";
 if ($is_principal) {
     $comment_query .= " ORDER BY created_at DESC";
 } else {
@@ -133,16 +137,16 @@ if ($is_principal) {
 }
 
 $stmt = $pdo->prepare($comment_query);
-$stmt->execute(['news_id' => $news_id]);
+$stmt->execute(['news_id' => $news_id, 'school_id' => $current_school_id]);
 $comments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get related news (same category, excluding current)
-$stmt = $pdo->prepare("SELECT id, title, featured_image, excerpt, published_date 
-                      FROM school_news 
-                      WHERE category = :category AND id != :id AND status = 'published' 
-                      ORDER BY published_date DESC 
+$stmt = $pdo->prepare("SELECT id, title, featured_image, excerpt, published_date
+                      FROM school_news
+                      WHERE category = :category AND id != :id AND status = 'published' AND school_id = :school_id
+                      ORDER BY published_date DESC
                       LIMIT 4");
-$stmt->execute(['category' => $news['category'], 'id' => $news_id]);
+$stmt->execute(['category' => $news['category'], 'id' => $news_id, 'school_id' => $current_school_id]);
 $related_news = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Format content (handle markdown-like formatting)
@@ -490,14 +494,14 @@ $user_role = $_SESSION['role'] ?? 'guest';
         <div class="sidebar-card">
             <h3>📰 Latest News</h3>
             <div class="latest-list">
-                <?php 
-                $stmt = $pdo->prepare("SELECT id, title, published_date FROM school_news 
-                                      WHERE status = 'published' AND id != :id 
+                <?php
+                $stmt = $pdo->prepare("SELECT id, title, published_date FROM school_news
+                                      WHERE status = 'published' AND id != :id AND school_id = :school_id
                                       ORDER BY published_date DESC LIMIT 5");
-                $stmt->execute(['id' => $news_id]);
+                $stmt->execute(['id' => $news_id, 'school_id' => $current_school_id]);
                 $latest = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                foreach ($latest as $item): 
+
+                foreach ($latest as $item):
                 ?>
                     <a href="schoolnews-detail.php?id=<?php echo intval($item['id']); ?>" class="latest-item">
                         <span><?php echo htmlspecialchars(substr($item['title'], 0, 40)); ?></span>

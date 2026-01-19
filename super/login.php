@@ -25,11 +25,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $super_admin = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$super_admin) {
-                // Create default super admin
-                $hashed_password = password_hash('CST/21/com/00833', PASSWORD_DEFAULT);
-                $stmt = $pdo->prepare("INSERT INTO users (username, password, full_name, role, email, school_id) VALUES (?, ?, ?, ?, ?, ?)");
-                $stmt->execute(['superadmin', $hashed_password, 'System Administrator', 'super_admin', 'aburukayyat0@gmail.com', NULL]);
-                $super_admin_id = $pdo->lastInsertId();
+                // Create default super admin - REQUIRE MANUAL SETUP
+                // REMOVED: Automatic creation with hardcoded password for security
+                $errors[] = 'Super admin account not found. Please contact system administrator for setup.';
+                // Log this security event
+                Security::logSecurityEvent('super_admin_setup_required', ['attempted_by' => $email]);
             } else {
                 $super_admin_id = $super_admin['id'];
             }
@@ -334,7 +334,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <div class="login-footer">
-            <p>Default credentials will be created automatically on first login.</p>
+            <p>Super admin account must be manually configured by system administrator.</p>
             <a href="../index.php" class="back-link">
                 <i class="fas fa-arrow-left"></i> Back to Main Site
             </a>

@@ -1,12 +1,17 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Only teachers
 if (!isset($_SESSION['user_id']) || strtolower($_SESSION['role'] ?? '') !== 'teacher') {
     header("Location: ../index.php");
     exit;
 }
+
+// Get current school context
+$current_school_id = require_school_auth();
+
 $teacher_id = intval($_SESSION['user_id']);
 $errors = [];
 $success = '';
@@ -86,9 +91,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($admission_no)) $errors[] = 'Admission number is required.';
     if (empty($class_id)) $errors[] = 'Class is required.';
 
-    // Check if admission number already exists (excluding current student)
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE admission_no = ? AND id != ?");
-    $stmt->execute([$admission_no, $student_id]);
+    // Check if admission number already exists (excluding current student, school-filtered)
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE admission_no = ? AND id != ? AND school_id = ?");
+    $stmt->execute([$admission_no, $student_id, $current_school_id]);
     if ($stmt->fetchColumn() > 0) {
         $errors[] = 'Admission number already exists.';
     }
@@ -491,5 +496,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     });
 </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
-
-

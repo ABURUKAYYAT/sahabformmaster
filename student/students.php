@@ -9,16 +9,18 @@ if (!$uid && !$admission_no) {
     exit;
 }
 
+$current_school_id = get_current_school_id();
+
 // Resolve student record
 $student = null;
 if ($admission_no) {
-    $stmt = $pdo->prepare("SELECT id, full_name, class_id, phone, address FROM students WHERE admission_no=:ad LIMIT 1");
-    $stmt->execute(['ad'=>$admission_no]);
+    $stmt = $pdo->prepare("SELECT id, full_name, class_id, phone, address FROM students WHERE admission_no=:ad AND school_id=:school_id LIMIT 1");
+    $stmt->execute(['ad'=>$admission_no, 'school_id'=>$current_school_id]);
     $student = $stmt->fetch(PDO::FETCH_ASSOC);
 }
 if (!$student && $uid) {
-    $stmt = $pdo->prepare("SELECT id, full_name, class_id, phone, address FROM students WHERE user_id=:uid OR id=:uid LIMIT 1");
-    $stmt->execute(['uid'=>$uid]);
+    $stmt = $pdo->prepare("SELECT id, full_name, class_id, phone, address FROM students WHERE (user_id=:uid OR id=:uid) AND school_id=:school_id LIMIT 1");
+    $stmt->execute(['uid'=>$uid, 'school_id'=>$current_school_id]);
     $student = $stmt->fetch(PDO::FETCH_ASSOC);
 }
 if (!$student) { echo "Student not found"; exit; }
@@ -30,8 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'update_contact') {
         $phone = trim($_POST['phone'] ?? '');
         $address = trim($_POST['address'] ?? '');
-        $stmt = $pdo->prepare("UPDATE students SET phone=:phone,address=:address,updated_at=NOW() WHERE id=:id");
-        $stmt->execute(['phone'=>$phone,'address'=>$address,'id'=>$student['id']]);
+        $stmt = $pdo->prepare("UPDATE students SET phone=:phone,address=:address,updated_at=NOW() WHERE id=:id AND school_id=:school_id");
+        $stmt->execute(['phone'=>$phone,'address'=>$address,'id'=>$student['id'], 'school_id'=>$current_school_id]);
         $success = 'Contact updated.';
     } elseif ($action === 'submit_complaint') {
         $result_id = intval($_POST['result_id'] ?? 0);
@@ -39,12 +41,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($result_id<=0 || $text==='') $errors[]='Please select result and enter complaint.';
         else {
             // ensure result belongs to student
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM results WHERE id=:rid AND student_id=:sid");
-            $stmt->execute(['rid'=>$result_id,'sid'=>$student['id']]);
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM results WHERE id=:rid AND student_id=:sid AND school_id=:school_id");
+            $stmt->execute(['rid'=>$result_id,'sid'=>$student['id'], 'school_id'=>$current_school_id]);
             if ($stmt->fetchColumn()==0) $errors[]='Result not found.';
             else {
-                $pdo->prepare("INSERT INTO results_complaints (result_id, student_id, complaint_text, status, created_at) VALUES (:rid,:sid,:text,'pending',NOW())")
-                    ->execute(['rid'=>$result_id,'sid'=>$student['id'],'text'=>$text]);
+                $pdo->prepare("INSERT INTO results_complaints (result_id, student_id, complaint_text, status, created_at, school_id) VALUES (:rid,:sid,:text,'pending',NOW(), :school_id)")
+                    ->execute(['rid'=>$result_id,'sid'=>$student['id'],'text'=>$text, 'school_id'=>$current_school_id]);
                 $success = 'Complaint submitted.';
             }
         }
@@ -53,8 +55,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Fetch results
 $term = $_GET['term'] ?? null;
-$sql = "SELECT r.*, s.subject_name FROM results r JOIN subjects s ON r.subject_id = s.id WHERE r.student_id = :sid";
-$params = ['sid'=>$student['id']];
+$sql = "SELECT r.*, s.subject_name FROM results r JOIN subjects s ON r.subject_id = s.id WHERE r.student_id = :sid AND r.school_id = :school_id";
+$params = ['sid'=>$student['id'], 'school_id'=>$current_school_id];
 if ($term) { $sql .= " AND r.term = :term"; $params['term']=$term; }
 $sql .= " ORDER BY s.subject_name";
 $stmt = $pdo->prepare($sql);
@@ -62,8 +64,8 @@ $stmt->execute($params);
 $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch complaints
-$stmt = $pdo->prepare("SELECT rc.*, sub.subject_name, r.term FROM results_complaints rc JOIN results r ON rc.result_id=r.id JOIN subjects sub ON r.subject_id=sub.id WHERE rc.student_id=:sid ORDER BY rc.created_at DESC");
-$stmt->execute(['sid'=>$student['id']]);
+$stmt = $pdo->prepare("SELECT rc.*, sub.subject_name, r.term FROM results_complaints rc JOIN results r ON rc.result_id=r.id AND r.school_id=:school_id JOIN subjects sub ON r.subject_id=sub.id WHERE rc.student_id=:sid AND rc.school_id=:school_id ORDER BY rc.created_at DESC");
+$stmt->execute(['sid'=>$student['id'], 'school_id'=>$current_school_id]);
 $complaints = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
@@ -106,7 +108,11 @@ $complaints = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <div class="profile-card">
                     <div class="profile-info">
                         <h3><?php echo htmlspecialchars($student['full_name']); ?></h3>
-                        <p><?php echo htmlspecialchars($pdo->query("SELECT class_name FROM classes WHERE id=".intval($student['class_id']))->fetchColumn() ?: 'N/A'); ?></p>
+                        <p><?php
+                        $stmt = $pdo->prepare("SELECT class_name FROM classes WHERE id = ? AND school_id = ?");
+                        $stmt->execute([intval($student['class_id']), $current_school_id]);
+                        echo htmlspecialchars($stmt->fetchColumn() ?: 'N/A');
+                        ?></p>
                         <span class="class-badge">
                             <i class="fas fa-graduation-cap"></i>
                             Student ID: <?php echo htmlspecialchars($student['id']); ?>
@@ -283,4 +289,3 @@ function toggleComplaint(id){
 </script>
 </body>
 </html>
-

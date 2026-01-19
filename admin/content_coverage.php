@@ -2,12 +2,16 @@
 // admin/content_coverage.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Only allow principals to access this page
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'principal') {
     header("Location: ../index.php");
     exit;
 }
+
+// Get current school for data isolation
+$current_school_id = require_school_auth();
 
 $principal_name = $_SESSION['full_name'] ?? 'Administrator';
 $admin_id = $_SESSION['user_id'];
@@ -76,9 +80,9 @@ $query = "SELECT cc.*,
            t.full_name as teacher_name,
            p.full_name as principal_name
           FROM content_coverage cc
-          JOIN subjects s ON cc.subject_id = s.id
-          JOIN classes cl ON cc.class_id = cl.id
-          JOIN users t ON cc.teacher_id = t.id
+          JOIN subjects s ON cc.subject_id = s.id AND s.school_id = ?
+          JOIN classes cl ON cc.class_id = cl.id AND cl.school_id = ?
+          JOIN users t ON cc.teacher_id = t.id AND t.school_id = ?
           LEFT JOIN users p ON cc.principal_id = p.id
           WHERE 1=1";
 
@@ -128,18 +132,28 @@ if ($filter_date_to !== '') {
 $query .= " ORDER BY cc.date_covered DESC, cc.submitted_at DESC";
 
 try {
+    // Add school_id parameters at the beginning for the JOINs
+    $school_params = [$current_school_id, $current_school_id, $current_school_id];
     $stmt = $pdo->prepare($query);
-    $stmt->execute($params);
+    $stmt->execute(array_merge($school_params, $params));
     $coverage_entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
     $coverage_entries = [];
     $errors[] = 'Failed to load coverage entries: ' . $e->getMessage();
 }
 
-// Get filter options
-$teachers = $pdo->query("SELECT id, full_name FROM users WHERE role = 'teacher' ORDER BY full_name")->fetchAll();
-$subjects = $pdo->query("SELECT id, subject_name FROM subjects ORDER BY subject_name")->fetchAll();
-$classes = $pdo->query("SELECT id, class_name FROM classes ORDER BY class_name")->fetchAll();
+// Get filter options - school filtered
+$teachers_stmt = $pdo->prepare("SELECT id, full_name FROM users WHERE role = 'teacher' AND school_id = ? ORDER BY full_name");
+$teachers_stmt->execute([$current_school_id]);
+$teachers = $teachers_stmt->fetchAll();
+
+$subjects_stmt = $pdo->prepare("SELECT id, subject_name FROM subjects WHERE school_id = ? ORDER BY subject_name");
+$subjects_stmt->execute([$current_school_id]);
+$subjects = $subjects_stmt->fetchAll();
+
+$classes_stmt = $pdo->prepare("SELECT id, class_name FROM classes WHERE school_id = ? ORDER BY class_name");
+$classes_stmt->execute([$current_school_id]);
+$classes = $classes_stmt->fetchAll();
 
 // Statistics
 $stats = [
@@ -791,4 +805,3 @@ $stats = [
     <?php include '../includes/floating-button.php'; ?>
 </body>
 </html>
-

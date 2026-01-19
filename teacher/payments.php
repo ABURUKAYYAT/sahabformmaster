@@ -2,13 +2,18 @@
 // clark/payments.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 require_once '../helpers/payment_helper.php';
 
-// Check if user is clerk/admin
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['principal', 'teacher', 'staff'])) {
-    header('Location: ../login.php');
+// Check if user is teacher (only teachers should access this page)
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
+    header('Location: ../index.php');
     exit();
 }
+
+// Get current school context
+$current_school_id = require_school_auth();
+$teacher_id = intval($_SESSION['user_id']);
 
 $userId = $_SESSION['user_id'];
 $paymentHelper = new PaymentHelper();
@@ -45,15 +50,15 @@ $searchTerm = $_GET['search'] ?? '';
 $statusFilter = $_GET['status'] ?? '';
 $classFilter = $_GET['class_id'] ?? '';
 
-// Build query
+// Build query - school-filtered
 $query = "SELECT sp.*, s.full_name as student_name, s.admission_no, c.class_name, u.full_name as verified_by_name
           FROM student_payments sp
           JOIN students s ON sp.student_id = s.id
           JOIN classes c ON sp.class_id = c.id
           LEFT JOIN users u ON sp.verified_by = u.id
-          WHERE 1=1";
-          
-$params = [];
+          WHERE s.school_id = ?";
+
+$params = [$current_school_id];
 
 if ($searchTerm) {
     $query .= " AND (s.full_name LIKE ? OR s.admission_no LIKE ? OR sp.receipt_number LIKE ?)";
@@ -78,12 +83,17 @@ $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $payments = $stmt->fetchAll();
 
-// Get classes for filter
-$classes = $pdo->query("SELECT * FROM classes ORDER BY class_name")->fetchAll();
+// Get classes for filter - school-filtered
+$classes = get_school_classes($pdo, $current_school_id);
 
-// Statistics
-$totalCollected = $pdo->query("SELECT SUM(amount_paid) FROM student_payments WHERE status = 'completed'")->fetchColumn();
-$pendingPayments = $pdo->query("SELECT COUNT(*) FROM student_payments WHERE status = 'pending'")->fetchColumn();
+// Statistics - school-filtered
+$totalCollectedStmt = $pdo->prepare("SELECT SUM(amount_paid) FROM student_payments sp JOIN students s ON sp.student_id = s.id WHERE sp.status = 'completed' AND s.school_id = ?");
+$totalCollectedStmt->execute([$current_school_id]);
+$totalCollected = $totalCollectedStmt->fetchColumn();
+
+$pendingPaymentsStmt = $pdo->prepare("SELECT COUNT(*) FROM student_payments sp JOIN students s ON sp.student_id = s.id WHERE sp.status = 'pending' AND s.school_id = ?");
+$pendingPaymentsStmt->execute([$current_school_id]);
+$pendingPayments = $pendingPaymentsStmt->fetchColumn();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1069,8 +1079,9 @@ $pendingPayments = $pdo->query("SELECT COUNT(*) FROM student_payments WHERE stat
                 </div>
                 <div class="stat-value-modern">
                     <?php
-                    $today = $pdo->query("SELECT SUM(amount_paid) FROM student_payments
-                                         WHERE DATE(payment_date) = CURDATE() AND status = 'completed'")->fetchColumn();
+                    $todayStmt = $pdo->prepare("SELECT SUM(amount_paid) FROM student_payments sp JOIN students s ON sp.student_id = s.id WHERE DATE(sp.payment_date) = CURDATE() AND sp.status = 'completed' AND s.school_id = ?");
+                    $todayStmt->execute([$current_school_id]);
+                    $today = $todayStmt->fetchColumn();
                     echo $paymentHelper->formatCurrency($today);
                     ?>
                 </div>
@@ -1083,10 +1094,9 @@ $pendingPayments = $pdo->query("SELECT COUNT(*) FROM student_payments WHERE stat
                 </div>
                 <div class="stat-value-modern">
                     <?php
-                    $month = $pdo->query("SELECT SUM(amount_paid) FROM student_payments
-                                         WHERE MONTH(payment_date) = MONTH(CURDATE())
-                                         AND YEAR(payment_date) = YEAR(CURDATE())
-                                         AND status = 'completed'")->fetchColumn();
+                    $monthStmt = $pdo->prepare("SELECT SUM(amount_paid) FROM student_payments sp JOIN students s ON sp.student_id = s.id WHERE MONTH(sp.payment_date) = MONTH(CURDATE()) AND YEAR(sp.payment_date) = YEAR(CURDATE()) AND sp.status = 'completed' AND s.school_id = ?");
+                    $monthStmt->execute([$current_school_id]);
+                    $month = $monthStmt->fetchColumn();
                     echo $paymentHelper->formatCurrency($month);
                     ?>
                 </div>
@@ -1326,5 +1336,3 @@ $pendingPayments = $pdo->query("SELECT COUNT(*) FROM student_payments WHERE stat
         });
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
-
-

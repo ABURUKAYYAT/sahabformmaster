@@ -2,11 +2,14 @@
 // process_grade.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
-if (!isset($_SESSION['user_id'])) {
+// Check if teacher is logged in
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     header('Location: ../index.php');
     exit();
 }
+$current_school_id = require_school_auth();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $submission_id = intval($_POST['submission_id']);
@@ -55,4 +58,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Location: ' . $_SERVER['HTTP_REFERER']);
     exit();
 }
-

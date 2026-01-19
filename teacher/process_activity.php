@@ -2,11 +2,14 @@
 // process_activity.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
-if (!isset($_SESSION['user_id'])) {
+// Check if teacher is logged in
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     header('Location: ../index.php');
     exit();
 }
+$current_school_id = require_school_auth();
 
 $teacher_id = $_SESSION['user_id'];
 
@@ -80,13 +83,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $_SESSION['success'] = 'Activity created successfully!';
         
-        // If published, create submission records for all students in the class
+        // If published, create submission records for all students in the class - school-filtered
         if ($status === 'published') {
             $activity_id = $pdo->lastInsertId();
-            
-            $students_query = "SELECT id FROM students WHERE class_id = ?";
+
+            $students_query = "SELECT id FROM students WHERE class_id = ? AND school_id = ?";
             $students_stmt = $pdo->prepare($students_query);
-            $students_stmt->execute([$class_id]);
+            $students_stmt->execute([$class_id, $current_school_id]);
             $students = $students_stmt->fetchAll();
             
             $insert_submission = $pdo->prepare("
@@ -130,4 +133,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Location: teacher_class_activities.php?action=activities');
     exit();
 }
-

@@ -1,14 +1,17 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
-// Only allow teachers
-if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'teacher') {
-    header("Location: ../index.php");
-    exit;
+// Check if user is logged in as teacher
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
+    header('Location: ../index.php');
+    exit();
 }
 
-$user_id = $_SESSION['user_id'];
+// Get current school context
+$current_school_id = require_school_auth();
+$user_id = intval($_SESSION['user_id']);
 $user_name = $_SESSION['full_name'] ?? 'Teacher';
 $errors = [];
 $success = '';
@@ -163,13 +166,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch dropdowns
-$subjects = $pdo->query("SELECT id, subject_name FROM subjects ORDER BY subject_name ASC")->fetchAll(PDO::FETCH_ASSOC);
-$classes = $pdo->query("SELECT id, class_name FROM classes ORDER BY class_name ASC")->fetchAll(PDO::FETCH_ASSOC);
+// Fetch dropdowns - school-filtered
+$subjects = get_school_subjects($pdo, $current_school_id);
+$classes = get_school_classes($pdo, $current_school_id);
 
-// Fetch teacher's lesson plans
-$stmt = $pdo->prepare("SELECT lp.*, s.subject_name, c.class_name FROM lesson_plans lp JOIN subjects s ON lp.subject_id = s.id JOIN classes c ON lp.class_id = c.id WHERE lp.teacher_id = :teacher_id ORDER BY lp.date_planned DESC, lp.created_at DESC");
-$stmt->execute(['teacher_id' => $user_id]);
+// Fetch teacher's lesson plans - school-filtered
+$stmt = $pdo->prepare("SELECT lp.*, s.subject_name, c.class_name FROM lesson_plans lp JOIN subjects s ON lp.subject_id = s.id JOIN classes c ON lp.class_id = c.id WHERE lp.teacher_id = :teacher_id AND s.school_id = :school_id AND c.school_id = :school_id2 ORDER BY lp.date_planned DESC, lp.created_at DESC");
+$stmt->execute(['teacher_id' => $user_id, 'school_id' => $current_school_id, 'school_id2' => $current_school_id]);
 $lesson_plans = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // If editing, fetch single plan
@@ -1782,5 +1785,3 @@ function getStatusBadge($status) {
     });
 </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
-
-

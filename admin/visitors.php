@@ -1,15 +1,17 @@
 <?php
 session_start();
-// Simulate principal authentication - In real system, use proper authentication
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'principal') {
+require_once '../config/db.php';
+require_once '../includes/functions.php';
+
+// Check if user is principal with school authentication
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'principal') {
     header('Location: login.php');
     exit();
 }
 
-$principal_name = $_SESSION['full_name'];
+$current_school_id = require_school_auth();
 
-// Database connection
-require_once '../config/db.php';
+$principal_name = $_SESSION['full_name'];
 
 // Handle CRUD Operations
 $action = $_POST['action'] ?? '';
@@ -17,8 +19,8 @@ $message = '';
 $message_type = '';
 
 if ($action === 'create') {
-    $stmt = $pdo->prepare("INSERT INTO visitors (full_name, contact_number, email, purpose, person_to_meet, department, expected_arrival, expected_duration, vehicle_number, id_proof_type, status, notes) 
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'expected', ?)");
+    $stmt = $pdo->prepare("INSERT INTO visitors (full_name, contact_number, email, purpose, person_to_meet, department, expected_arrival, expected_duration, vehicle_number, id_proof_type, status, notes, school_id)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'expected', ?, ?)");
     if ($stmt->execute([
         $_POST['full_name'],
         $_POST['contact_number'],
@@ -30,26 +32,27 @@ if ($action === 'create') {
         $_POST['expected_duration'],
         $_POST['vehicle_number'],
         $_POST['id_proof_type'],
-        $_POST['notes']
+        $_POST['notes'],
+        $current_school_id
     ])) {
         $message = "Visitor added successfully!";
         $message_type = "success";
     }
 } elseif ($action === 'update') {
-    $stmt = $pdo->prepare("UPDATE visitors SET 
-                          full_name = ?, 
-                          contact_number = ?, 
-                          email = ?, 
-                          purpose = ?, 
-                          person_to_meet = ?, 
-                          department = ?, 
-                          expected_arrival = ?, 
-                          expected_duration = ?, 
-                          vehicle_number = ?, 
-                          id_proof_type = ?, 
-                          status = ?, 
-                          notes = ? 
-                          WHERE id = ?");
+    $stmt = $pdo->prepare("UPDATE visitors SET
+                          full_name = ?,
+                          contact_number = ?,
+                          email = ?,
+                          purpose = ?,
+                          person_to_meet = ?,
+                          department = ?,
+                          expected_arrival = ?,
+                          expected_duration = ?,
+                          vehicle_number = ?,
+                          id_proof_type = ?,
+                          status = ?,
+                          notes = ?
+                          WHERE id = ? AND school_id = ?");
     if ($stmt->execute([
         $_POST['full_name'],
         $_POST['contact_number'],
@@ -63,50 +66,53 @@ if ($action === 'create') {
         $_POST['id_proof_type'],
         $_POST['status'],
         $_POST['notes'],
-        $_POST['id']
+        $_POST['id'],
+        $current_school_id
     ])) {
         $message = "Visitor updated successfully!";
         $message_type = "success";
     }
 } elseif ($action === 'delete') {
-    $stmt = $pdo->prepare("DELETE FROM visitors WHERE id = ?");
-    if ($stmt->execute([$_POST['id']])) {
+    $stmt = $pdo->prepare("DELETE FROM visitors WHERE id = ? AND school_id = ?");
+    if ($stmt->execute([$_POST['id'], $current_school_id])) {
         $message = "Visitor deleted successfully!";
         $message_type = "success";
     }
 } elseif ($action === 'checkin') {
-    $stmt = $pdo->prepare("UPDATE visitors SET status = 'checked_in', actual_arrival = NOW() WHERE id = ?");
-    if ($stmt->execute([$_POST['id']])) {
+    $stmt = $pdo->prepare("UPDATE visitors SET status = 'checked_in', actual_arrival = NOW() WHERE id = ? AND school_id = ?");
+    if ($stmt->execute([$_POST['id'], $current_school_id])) {
         $message = "Visitor checked in!";
         $message_type = "success";
     }
 } elseif ($action === 'checkout') {
-    $stmt = $pdo->prepare("UPDATE visitors SET status = 'checked_out', check_out = NOW() WHERE id = ?");
-    if ($stmt->execute([$_POST['id']])) {
+    $stmt = $pdo->prepare("UPDATE visitors SET status = 'checked_out', check_out = NOW() WHERE id = ? AND school_id = ?");
+    if ($stmt->execute([$_POST['id'], $current_school_id])) {
         $message = "Visitor checked out!";
         $message_type = "success";
     }
 }
 
-// Fetch all visitors
-$stmt = $pdo->query("SELECT * FROM visitors ORDER BY created_at DESC");
+// Fetch all visitors - filtered by school
+$stmt = $pdo->prepare("SELECT * FROM visitors WHERE school_id = ? ORDER BY created_at DESC");
+$stmt->execute([$current_school_id]);
 $visitors = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch visitor for editing
+// Fetch visitor for editing - filtered by school
 $edit_visitor = null;
 if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
-    $stmt = $pdo->prepare("SELECT * FROM visitors WHERE id = ?");
-    $stmt->execute([$_GET['edit']]);
+    $stmt = $pdo->prepare("SELECT * FROM visitors WHERE id = ? AND school_id = ?");
+    $stmt->execute([$_GET['edit'], $current_school_id]);
     $edit_visitor = $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
-// Get statistics
-$stats_stmt = $pdo->query("SELECT 
+// Get statistics - filtered by school
+$stats_stmt = $pdo->prepare("SELECT
     COUNT(*) as total,
     SUM(CASE WHEN status = 'checked_in' THEN 1 ELSE 0 END) as currently_in,
     SUM(CASE WHEN status = 'expected' THEN 1 ELSE 0 END) as expected_today,
     SUM(CASE WHEN DATE(created_at) = CURDATE() THEN 1 ELSE 0 END) as today_total
-    FROM visitors");
+    FROM visitors WHERE school_id = ?");
+$stats_stmt->execute([$current_school_id]);
 $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
@@ -712,4 +718,3 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
         }, 5000);
     </script><?php include '../includes/floating-button.php'; ?></body>
 </html>
-

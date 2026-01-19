@@ -11,14 +11,15 @@ if (!isset($_SESSION['student_id'])) {
 
 $student_id = $_SESSION['student_id'];
 $student_name = $_SESSION['student_name'];
+$current_school_id = get_current_school_id();
 $message = '';
 $subjects = [];
 $class_name = '';
 
 try {
     // First, get the student's class ID from the students table
-    $stmt = $pdo->prepare("SELECT class_id FROM students WHERE id = ?");
-    $stmt->execute([$student_id]);
+    $stmt = $pdo->prepare("SELECT class_id FROM students WHERE id = ? AND school_id = ?");
+    $stmt->execute([$student_id, $current_school_id]);
     
     if ($stmt->rowCount() === 0) {
         $message = "Student profile not found. Please contact administration.";
@@ -27,8 +28,8 @@ try {
         $class_id = $student_data['class_id'];
         
         // Get class name
-        $class_stmt = $pdo->prepare("SELECT class_name FROM classes WHERE id = ?");
-        $class_stmt->execute([$class_id]);
+        $class_stmt = $pdo->prepare("SELECT class_name FROM classes WHERE id = ? AND school_id = ?");
+        $class_stmt->execute([$class_id, $current_school_id]);
         
         if ($class_stmt->rowCount() > 0) {
             $class_data = $class_stmt->fetch();
@@ -39,7 +40,7 @@ try {
         
         // Fetch subjects assigned to the student's class along with teacher information
         $query = "
-            SELECT 
+            SELECT
                 s.id AS subject_id,
                 s.subject_name,
                 s.subject_code,
@@ -49,14 +50,14 @@ try {
                 u.email AS teacher_email,
                 sa.assigned_at
             FROM subjects s
-            LEFT JOIN subject_assignments sa ON s.id = sa.subject_id AND sa.class_id = :class_id
+            LEFT JOIN subject_assignments sa ON s.id = sa.subject_id AND sa.class_id = :class_id AND sa.school_id = :school_id
             LEFT JOIN users u ON sa.teacher_id = u.id
-            WHERE sa.class_id = :class_id
+            WHERE sa.class_id = :class_id AND s.school_id = :school_id
             ORDER BY s.subject_name
         ";
-        
+
         $stmt = $pdo->prepare($query);
-        $stmt->execute([':class_id' => $class_id]);
+        $stmt->execute([':class_id' => $class_id, ':school_id' => $current_school_id]);
         
         if ($stmt->rowCount() > 0) {
             $subjects = $stmt->fetchAll();
@@ -246,4 +247,3 @@ try {
 
 </body>
 </html>
-

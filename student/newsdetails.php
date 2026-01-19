@@ -14,6 +14,7 @@ $user_id = $_SESSION['student_name'];
 $user_name = $_SESSION['student_name'] ?? 'Student';
 $student_name = $_SESSION['student_name'];
 $admission_number = $_SESSION['admission_no'];
+$current_school_id = get_current_school_id();
 
 // Get news ID from URL
 $news_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -24,9 +25,9 @@ if ($news_id <= 0) {
 }
 
 // Fetch specific news item
-$query = "SELECT * FROM school_news WHERE id = :id AND status = 'published'";
+$query = "SELECT * FROM school_news WHERE id = :id AND status = 'published' AND school_id = :school_id";
 $stmt = $pdo->prepare($query);
-$stmt->execute(['id' => $news_id]);
+$stmt->execute(['id' => $news_id, 'school_id' => $current_school_id]);
 $news_item = $stmt->fetch(PDO::FETCH_ASSOC);
 
 // Check if student can view this news (target audience check)
@@ -39,26 +40,27 @@ if (!$news_item ||
 }
 
 // Increment view count
-$stmt = $pdo->prepare("UPDATE school_news SET view_count = view_count + 1 WHERE id = :id");
-$stmt->execute(['id' => $news_id]);
+$stmt = $pdo->prepare("UPDATE school_news SET view_count = view_count + 1 WHERE id = :id AND school_id = :school_id");
+$stmt->execute(['id' => $news_id, 'school_id' => $current_school_id]);
 
 // Handle comment submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'comment') {
     $comment = trim($_POST['comment'] ?? '');
 
     if (!empty($comment)) {
-        $stmt = $pdo->prepare("INSERT INTO school_news_comments (news_id, user_id, name, comment)
-                               VALUES (:news_id, :user_id, :name, :comment)");
+        $stmt = $pdo->prepare("INSERT INTO school_news_comments (news_id, user_id, name, comment, school_id)
+                               VALUES (:news_id, :user_id, :name, :comment, :school_id)");
         $stmt->execute([
             'news_id' => $news_id,
             'user_id' => $user_id,
             'name' => $user_name,
-            'comment' => $comment
+            'comment' => $comment,
+            'school_id' => $current_school_id
         ]);
 
         // Update comment count
-        $stmt = $pdo->prepare("UPDATE school_news SET comment_count = comment_count + 1 WHERE id = :id");
-        $stmt->execute(['id' => $news_id]);
+        $stmt = $pdo->prepare("UPDATE school_news SET comment_count = comment_count + 1 WHERE id = :id AND school_id = :school_id");
+        $stmt->execute(['id' => $news_id, 'school_id' => $current_school_id]);
 
         // Redirect to avoid form resubmission
         header("Location: newsdetails.php?id=" . $news_id);
@@ -67,8 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 // Fetch comments for this news item
-$stmt = $pdo->prepare("SELECT * FROM school_news_comments WHERE news_id = :news_id ORDER BY created_at DESC");
-$stmt->execute(['news_id' => $news_id]);
+$stmt = $pdo->prepare("SELECT * FROM school_news_comments WHERE news_id = :news_id AND school_id = :school_id ORDER BY created_at DESC");
+$stmt->execute(['news_id' => $news_id, 'school_id' => $current_school_id]);
 $comments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
@@ -685,4 +687,3 @@ $comments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 </body>
 </html>
-

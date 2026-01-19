@@ -3,6 +3,8 @@
 session_start();
 require_once '../config/db.php';
 
+$current_school_id = get_current_school_id();
+
 // Check if student is logged in
 if (!isset($_SESSION['student_id'])) {
     header('Location: ../student_login.php');
@@ -24,11 +26,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $activity_check = "
             SELECT ca.* FROM class_activities ca
             WHERE ca.id = ? AND ca.class_id = (
-                SELECT class_id FROM students WHERE id = ?
-            ) AND ca.status = 'published'
+                SELECT class_id FROM students WHERE id = ? AND school_id = ?
+            ) AND ca.status = 'published' AND ca.school_id = ?
         ";
         $check_stmt = $pdo->prepare($activity_check);
-        $check_stmt->execute([$activity_id, $student_id]);
+        $check_stmt->execute([$activity_id, $student_id, $current_school_id, $current_school_id]);
         $activity = $check_stmt->fetch();
 
         if (!$activity) {
@@ -98,10 +100,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Get student info
 $student_query = "SELECT s.*, c.class_name FROM students s
-                  JOIN classes c ON s.class_id = c.id
-                  WHERE s.id = ?";
+                  JOIN classes c ON s.class_id = c.id AND c.school_id = ?
+                  WHERE s.id = ? AND s.school_id = ?";
 $student_stmt = $pdo->prepare($student_query);
-$student_stmt->execute([$student_id]);
+$student_stmt->execute([$current_school_id, $student_id, $current_school_id]);
 $student = $student_stmt->fetch();
 
 if (!$student) {
@@ -304,11 +306,11 @@ $student_name = $student['full_name'];
                 SELECT ss.*, ca.title as activity_title, ca.total_marks,
                        ca.activity_type, ca.due_date
                 FROM student_submissions ss
-                JOIN class_activities ca ON ss.activity_id = ca.id
-                WHERE ss.id = ? AND ss.student_id = ?
+                JOIN class_activities ca ON ss.activity_id = ca.id AND ca.school_id = ss.school_id
+                WHERE ss.id = ? AND ss.student_id = ? AND ss.school_id = ?
             ";
             $feedback_stmt = $pdo->prepare($feedback_query);
-            $feedback_stmt->execute([$feedback_id, $student_id]);
+            $feedback_stmt->execute([$feedback_id, $student_id, $current_school_id]);
             $feedback = $feedback_stmt->fetch();
 
             if (!$feedback) {
@@ -378,13 +380,13 @@ $student_name = $student['full_name'];
                        ss.marks_obtained, ss.feedback, ss.status as submission_status,
                        ss.graded_at
                 FROM class_activities ca
-                JOIN subjects s ON ca.subject_id = s.id
+                JOIN subjects s ON ca.subject_id = s.id AND s.school_id = ?
                 JOIN users u ON ca.teacher_id = u.id
-                LEFT JOIN student_submissions ss ON ca.id = ss.activity_id AND ss.student_id = ?
-                WHERE ca.id = ? AND ca.class_id = ?
+                LEFT JOIN student_submissions ss ON ca.id = ss.activity_id AND ss.student_id = ? AND ss.school_id = ?
+                WHERE ca.id = ? AND ca.class_id = ? AND ca.school_id = ?
             ";
             $activity_stmt = $pdo->prepare($activity_query);
-            $activity_stmt->execute([$student_id, $activity_id, $student_class_id]);
+            $activity_stmt->execute([$current_school_id, $student_id, $current_school_id, $activity_id, $student_class_id, $current_school_id]);
             $activity = $activity_stmt->fetch();
 
             if (!$activity):
@@ -551,12 +553,12 @@ $student_name = $student['full_name'];
             $submit_query = "
                 SELECT ca.*, s.subject_name, u.full_name as teacher_name
                 FROM class_activities ca
-                JOIN subjects s ON ca.subject_id = s.id
+                JOIN subjects s ON ca.subject_id = s.id AND s.school_id = ?
                 JOIN users u ON ca.teacher_id = u.id
-                WHERE ca.id = ? AND ca.class_id = ? AND ca.status = 'published'
+                WHERE ca.id = ? AND ca.class_id = ? AND ca.status = 'published' AND ca.school_id = ?
             ";
             $submit_stmt = $pdo->prepare($submit_query);
-            $submit_stmt->execute([$activity_id, $student_class_id]);
+            $submit_stmt->execute([$current_school_id, $activity_id, $student_class_id, $current_school_id]);
             $activity = $submit_stmt->fetch();
 
             if (!$activity):
@@ -650,41 +652,41 @@ $student_name = $student['full_name'];
                 $pending_query = "
                     SELECT COUNT(DISTINCT ca.id) as count
                     FROM class_activities ca
-                    LEFT JOIN student_submissions ss ON ca.id = ss.activity_id AND ss.student_id = ?
-                    WHERE ca.class_id = ?
+                    LEFT JOIN student_submissions ss ON ca.id = ss.activity_id AND ss.student_id = ? AND ss.school_id = ?
+                    WHERE ca.class_id = ? AND ca.school_id = ?
                     AND ca.status = 'published'
                     AND (ss.id IS NULL OR ss.status IN ('pending', 'late'))
                     AND (ca.due_date IS NULL OR ca.due_date > NOW())
                 ";
                 $pending_stmt = $pdo->prepare($pending_query);
-                $pending_stmt->execute([$student_id, $student_class_id]);
+                $pending_stmt->execute([$student_id, $current_school_id, $student_class_id, $current_school_id]);
                 $pending_count = $pending_stmt->fetch()['count'];
 
                 $due_week_query = "
                     SELECT COUNT(*) as count FROM class_activities
-                    WHERE class_id = ?
+                    WHERE class_id = ? AND school_id = ?
                     AND status = 'published'
                     AND due_date BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY)
                 ";
                 $due_week_stmt = $pdo->prepare($due_week_query);
-                $due_week_stmt->execute([$student_class_id]);
+                $due_week_stmt->execute([$student_class_id, $current_school_id]);
                 $due_week_count = $due_week_stmt->fetch()['count'];
 
                 $submitted_query = "
                     SELECT COUNT(*) as count FROM student_submissions
-                    WHERE student_id = ? AND status IN ('submitted', 'graded')
+                    WHERE student_id = ? AND school_id = ? AND status IN ('submitted', 'graded')
                 ";
                 $submitted_stmt = $pdo->prepare($submitted_query);
-                $submitted_stmt->execute([$student_id]);
+                $submitted_stmt->execute([$student_id, $current_school_id]);
                 $submitted_count = $submitted_stmt->fetch()['count'];
 
                 $avg_query = "
                     SELECT AVG(marks_obtained) as avg_score
                     FROM student_submissions
-                    WHERE student_id = ? AND status = 'graded' AND marks_obtained IS NOT NULL
+                    WHERE student_id = ? AND school_id = ? AND status = 'graded' AND marks_obtained IS NOT NULL
                 ";
                 $avg_stmt = $pdo->prepare($avg_query);
-                $avg_stmt->execute([$student_id]);
+                $avg_stmt->execute([$student_id, $current_school_id]);
                 $avg_result = $avg_stmt->fetch();
                 $avg_score = $avg_result['avg_score'] ? number_format($avg_result['avg_score'], 1) : '0';
                 ?>
@@ -768,10 +770,10 @@ $student_name = $student['full_name'];
                        ss.marks_obtained, ss.feedback, ss.submitted_at,
                        ss.id as submission_db_id
                 FROM class_activities ca
-                JOIN subjects s ON ca.subject_id = s.id
+                JOIN subjects s ON ca.subject_id = s.id AND s.school_id = ?
                 JOIN users u ON ca.teacher_id = u.id
-                LEFT JOIN student_submissions ss ON ca.id = ss.activity_id AND ss.student_id = ?
-                WHERE ca.class_id = ? AND ca.status = 'published'
+                LEFT JOIN student_submissions ss ON ca.id = ss.activity_id AND ss.student_id = ? AND ss.school_id = ?
+                WHERE ca.class_id = ? AND ca.status = 'published' AND ca.school_id = ?
             ";
 
             if ($action === 'submitted') {
@@ -785,7 +787,7 @@ $student_name = $student['full_name'];
             $activities_query .= " ORDER BY ca.due_date ASC";
 
             $activities_stmt = $pdo->prepare($activities_query);
-            $activities_stmt->execute([$student_id, $student_class_id]);
+            $activities_stmt->execute([$current_school_id, $student_id, $current_school_id, $student_class_id, $current_school_id]);
             $activities = $activities_stmt->fetchAll();
 
             if (count($activities) > 0):
@@ -933,4 +935,3 @@ $student_name = $student['full_name'];
 
 </body>
 </html>
-

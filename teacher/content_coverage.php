@@ -2,12 +2,16 @@
 // teacher/content_coverage.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Only allow teachers to access this page
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'teacher') {
     header("Location: ../index.php");
     exit;
 }
+
+// Get current school context
+$current_school_id = require_school_auth();
 
 $teacher_id = $_SESSION['user_id'];
 $teacher_name = $_SESSION['full_name'] ?? 'Teacher';
@@ -44,12 +48,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($errors)) {
             try {
                 $stmt = $pdo->prepare("INSERT INTO content_coverage
-                    (teacher_id, subject_id, class_id, term, week, date_covered, time_start, time_end, period,
+                    (school_id, teacher_id, subject_id, class_id, term, week, date_covered, time_start, time_end, period,
                      topics_covered, objectives_achieved, resources_used, assessment_done, challenges, notes)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
                 $stmt->execute([
-                    $teacher_id, $subject_id, $class_id, $term, $week, $date_covered,
+                    $current_school_id, $teacher_id, $subject_id, $class_id, $term, $week, $date_covered,
                     $time_start ?: null, $time_end ?: null, $period ?: null,
                     $topics_covered, $objectives_achieved ?: null, $resources_used ?: null,
                     $assessment_done ?: null, $challenges ?: null, $notes ?: null
@@ -66,22 +70,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Get teacher's assigned subjects and classes
+// Get teacher's assigned subjects and classes (school-filtered)
 $stmt = $pdo->prepare("
     SELECT DISTINCT
         s.id as subject_id, s.subject_name,
         c.id as class_id, c.class_name,
         sa.assigned_at
     FROM subject_assignments sa
-    JOIN subjects s ON sa.subject_id = s.id
-    JOIN classes c ON sa.class_id = c.id
+    JOIN subjects s ON sa.subject_id = s.id AND s.school_id = ?
+    JOIN classes c ON sa.class_id = c.id AND c.school_id = ?
     WHERE sa.teacher_id = ?
     ORDER BY s.subject_name, c.class_name
 ");
-$stmt->execute([$teacher_id]);
+$stmt->execute([$current_school_id, $current_school_id, $teacher_id]);
 $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get existing coverage entries for this teacher
+// Get existing coverage entries for this teacher (school-filtered)
 $stmt = $pdo->prepare("
     SELECT cc.*,
            s.subject_name, cl.class_name,
@@ -90,10 +94,10 @@ $stmt = $pdo->prepare("
     JOIN subjects s ON cc.subject_id = s.id
     JOIN classes cl ON cc.class_id = cl.id
     LEFT JOIN users u ON cc.principal_id = u.id
-    WHERE cc.teacher_id = ?
+    WHERE cc.teacher_id = ? AND cc.school_id = ?
     ORDER BY cc.date_covered DESC, cc.submitted_at DESC
 ");
-$stmt->execute([$teacher_id]);
+$stmt->execute([$teacher_id, $current_school_id]);
 $coverage_entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get current academic year
@@ -743,4 +747,3 @@ $current_year = date('Y') . '/' . (date('Y') + 1);
     <?php include '../includes/floating-button.php'; ?>
 </body>
 </html>
-

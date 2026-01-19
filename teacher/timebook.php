@@ -9,6 +9,8 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'teacher') {
     exit;
 }
 
+// School authentication and context
+$current_school_id = require_school_auth();
 $user_id = $_SESSION['user_id'];
 
 // Ensure system_settings table exists
@@ -30,19 +32,30 @@ $signinEnabledStmt->execute(['teacher_signin_enabled']);
 $signin_enabled = $signinEnabledStmt->fetchColumn();
 $signin_enabled = $signin_enabled !== false ? (bool)$signin_enabled : true; // Default to true if not set
 
+// Generate CSRF token
+$csrf_token = generate_csrf_token();
+
 // Handle sign in/out
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $signin_enabled) {
+    // Validate CSRF token
+    if (!validate_csrf_token($_POST['csrf_token'] ?? '')) {
+        $_SESSION['error'] = "Security validation failed. Please refresh the page.";
+        Security::logSecurityEvent('csrf_violation', ['action' => 'timebook_signin', 'user_id' => $user_id]);
+        header("Location: timebook.php");
+        exit;
+    }
+
     if (isset($_POST['sign_in'])) {
         $current_time = date('Y-m-d H:i:s');
         $notes = $_POST['notes'] ?? '';
 
         // Check if already signed in today
-        $checkStmt = $pdo->prepare("SELECT id FROM time_records WHERE user_id = ? AND DATE(sign_in_time) = CURDATE()");
-        $checkStmt->execute([$user_id]);
+        $checkStmt = $pdo->prepare("SELECT id FROM time_records WHERE user_id = ? AND school_id = ? AND DATE(sign_in_time) = CURDATE()");
+        $checkStmt->execute([$user_id, $current_school_id]);
 
         if ($checkStmt->rowCount() === 0) {
-            $stmt = $pdo->prepare("INSERT INTO time_records (user_id, sign_in_time, notes) VALUES (?, ?, ?)");
-            $stmt->execute([$user_id, $current_time, $notes]);
+            $stmt = $pdo->prepare("INSERT INTO time_records (user_id, school_id, sign_in_time, notes) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$user_id, $current_school_id, $current_time, $notes]);
             $_SESSION['success'] = "Successfully signed in!";
         } else {
             $_SESSION['message'] = "You have already signed in today.";
@@ -54,18 +67,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $signin_enabled) {
 }
 
 // Get user info
-$userStmt = $pdo->prepare("SELECT full_name, email, expected_arrival FROM users WHERE id = ?");
-$userStmt->execute([$user_id]);
+$userStmt = $pdo->prepare("SELECT full_name, email, expected_arrival FROM users WHERE id = ? AND school_id = ?");
+$userStmt->execute([$user_id, $current_school_id]);
 $user = $userStmt->fetch();
 
 // Get today's record
-$todayStmt = $pdo->prepare("SELECT * FROM time_records WHERE user_id = ? AND DATE(sign_in_time) = CURDATE()");
-$todayStmt->execute([$user_id]);
+$todayStmt = $pdo->prepare("SELECT * FROM time_records WHERE user_id = ? AND school_id = ? AND DATE(sign_in_time) = CURDATE()");
+$todayStmt->execute([$user_id, $current_school_id]);
 $todayRecord = $todayStmt->fetch();
 
 // Get this month's records
-$monthStmt = $pdo->prepare("SELECT * FROM time_records WHERE user_id = ? AND MONTH(sign_in_time) = MONTH(CURDATE()) ORDER BY sign_in_time DESC");
-$monthStmt->execute([$user_id]);
+$monthStmt = $pdo->prepare("SELECT * FROM time_records WHERE user_id = ? AND school_id = ? AND MONTH(sign_in_time) = MONTH(CURDATE()) ORDER BY sign_in_time DESC");
+$monthStmt->execute([$user_id, $current_school_id]);
 $monthRecords = $monthStmt->fetchAll();
 
 // Calculate statistics
@@ -75,8 +88,8 @@ $statsStmt = $pdo->prepare("SELECT
     SUM(CASE WHEN status = 'not_agreed' THEN 1 ELSE 0 END) as not_agreed_days,
     SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_days
     FROM time_records
-    WHERE user_id = ? AND MONTH(sign_in_time) = MONTH(CURDATE())");
-$statsStmt->execute([$user_id]);
+    WHERE user_id = ? AND school_id = ? AND MONTH(sign_in_time) = MONTH(CURDATE())");
+$statsStmt->execute([$user_id, $current_school_id]);
 $stats = $statsStmt->fetch();
 ?>
 
@@ -950,6 +963,7 @@ $stats = $statsStmt->fetch();
                         </div>
                     <?php else: ?>
                         <form method="POST" id="signInForm">
+                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                             <div class="mb-4">
                                 <textarea class="form-input-modern" name="notes" rows="3"
                                           placeholder="Add any notes for today (optional)"></textarea>
@@ -968,14 +982,21 @@ $stats = $statsStmt->fetch();
         <?php if(isset($_SESSION['success'])): ?>
             <div class="alert-modern alert-success-modern animate-fade-in-up">
                 <i class="fas fa-check-circle"></i>
-                <span><?php echo $_SESSION['success']; unset($_SESSION['success']); ?></span>
+                <span><?php safe_echo($_SESSION['success']); unset($_SESSION['success']); ?></span>
             </div>
         <?php endif; ?>
 
         <?php if(isset($_SESSION['message'])): ?>
             <div class="alert-modern alert-info-modern animate-fade-in-up">
                 <i class="fas fa-info-circle"></i>
-                <span><?php echo $_SESSION['message']; unset($_SESSION['message']); ?></span>
+                <span><?php safe_echo($_SESSION['message']); unset($_SESSION['message']); ?></span>
+            </div>
+        <?php endif; ?>
+
+        <?php if(isset($_SESSION['error'])): ?>
+            <div class="alert-modern alert-error-modern animate-fade-in-up">
+                <i class="fas fa-exclamation-circle"></i>
+                <span><?php safe_echo($_SESSION['error']); unset($_SESSION['error']); ?></span>
             </div>
         <?php endif; ?>
 
@@ -1250,5 +1271,3 @@ $stats = $statsStmt->fetch();
         document.head.appendChild(style);
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
-
-

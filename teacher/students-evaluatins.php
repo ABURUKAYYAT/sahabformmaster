@@ -1,19 +1,20 @@
 <?php
 session_start();
-require_once 'config/database.php';
-require_once 'includes/auth_check.php';
+require_once '../config/db.php';
+require_once '../includes/functions.php';
 
-// Check if user is principal/admin
-if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'principal') {
-    header("Location: login.php");
+// Check if teacher is logged in
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
+    header("Location: ../index.php");
     exit();
 }
+$current_school_id = require_school_auth();
 
 // Handle CRUD operations
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['add_evaluation'])) {
         // Add new evaluation
-        $student_id = $_POST['student_id'];
+        $student_id = intval($_POST['student_id']);
         $term = $_POST['term'];
         $year = $_POST['year'];
         $academic = $_POST['academic'];
@@ -22,35 +23,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $psychomotor = $_POST['psychomotor'];
         $affective = $_POST['affective'];
         $comments = $_POST['comments'];
-        
-        $stmt = $pdo->prepare("INSERT INTO evaluations (student_id, term, year, academic, non_academic, cognitive, psychomotor, affective, comments, evaluated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$student_id, $term, $year, $academic, $non_academic, $cognitive, $psychomotor, $affective, $comments, $_SESSION['user_id']]);
-        
-        $_SESSION['success'] = "Evaluation added successfully!";
+
+        // Validate student ownership
+        if (!validate_record_ownership('students', $student_id, $current_school_id)) {
+            $_SESSION['error'] = "Access denied. Student not found in your school.";
+        } else {
+            $stmt = $pdo->prepare("INSERT INTO evaluations (student_id, term, year, academic, non_academic, cognitive, psychomotor, affective, comments, evaluated_by, school_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$student_id, $term, $year, $academic, $non_academic, $cognitive, $psychomotor, $affective, $comments, $_SESSION['user_id'], $current_school_id]);
+
+            $_SESSION['success'] = "Evaluation added successfully!";
+        }
     }
     
     if (isset($_POST['update_evaluation'])) {
         // Update evaluation
-        $evaluation_id = $_POST['evaluation_id'];
+        $evaluation_id = intval($_POST['evaluation_id']);
         $academic = $_POST['academic'];
         $non_academic = $_POST['non_academic'];
         $cognitive = $_POST['cognitive'];
         $psychomotor = $_POST['psychomotor'];
         $affective = $_POST['affective'];
         $comments = $_POST['comments'];
-        
-        $stmt = $pdo->prepare("UPDATE evaluations SET academic = ?, non_academic = ?, cognitive = ?, psychomotor = ?, affective = ?, comments = ?, updated_at = NOW() WHERE id = ?");
-        $stmt->execute([$academic, $non_academic, $cognitive, $psychomotor, $affective, $comments, $evaluation_id]);
-        
-        $_SESSION['success'] = "Evaluation updated successfully!";
+
+        // Validate evaluation ownership
+        if (!validate_record_ownership('evaluations', $evaluation_id, $current_school_id)) {
+            $_SESSION['error'] = "Access denied. Evaluation not found in your school.";
+        } else {
+            $stmt = $pdo->prepare("UPDATE evaluations SET academic = ?, non_academic = ?, cognitive = ?, psychomotor = ?, affective = ?, comments = ?, updated_at = NOW() WHERE id = ? AND school_id = ?");
+            $stmt->execute([$academic, $non_academic, $cognitive, $psychomotor, $affective, $comments, $evaluation_id, $current_school_id]);
+
+            $_SESSION['success'] = "Evaluation updated successfully!";
+        }
     }
     
     if (isset($_GET['delete_id'])) {
         // Delete evaluation
-        $stmt = $pdo->prepare("DELETE FROM evaluations WHERE id = ?");
-        $stmt->execute([$_GET['delete_id']]);
-        
-        $_SESSION['success'] = "Evaluation deleted successfully!";
+        $evaluation_id = intval($_GET['delete_id']);
+
+        // Validate evaluation ownership
+        if (!validate_record_ownership('evaluations', $evaluation_id, $current_school_id)) {
+            $_SESSION['error'] = "Access denied. Evaluation not found in your school.";
+        } else {
+            $stmt = $pdo->prepare("DELETE FROM evaluations WHERE id = ? AND school_id = ?");
+            $stmt->execute([$evaluation_id, $current_school_id]);
+
+            $_SESSION['success'] = "Evaluation deleted successfully!";
+        }
         header("Location: students-evaluations.php");
         exit();
     }
@@ -63,17 +81,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // }
 }
 
-// Fetch evaluations
-$stmt = $pdo->query("
-    SELECT e.*, s.first_name, s.last_name, s.class, s.roll_number 
-    FROM evaluations e 
-    JOIN students s ON e.student_id = s.id 
+// Fetch evaluations - school-filtered
+$stmt = $pdo->prepare("
+    SELECT e.*, s.first_name, s.last_name, s.class, s.roll_number
+    FROM evaluations e
+    JOIN students s ON e.student_id = s.id
+    WHERE s.school_id = ?
     ORDER BY e.created_at DESC
 ");
+$stmt->execute([$current_school_id]);
 $evaluations = $stmt->fetchAll();
 
-// Fetch students for dropdown
-$students = $pdo->query("SELECT id, first_name, last_name, class FROM students ORDER BY class, first_name")->fetchAll();
+// Fetch students for dropdown - school-filtered
+$stmt = $pdo->prepare("SELECT id, first_name, last_name, class FROM students WHERE school_id = ? ORDER BY class, first_name");
+$stmt->execute([$current_school_id]);
+$students = $stmt->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -180,6 +202,15 @@ $students = $pdo->query("SELECT id, first_name, last_name, class FROM students O
     <div class="container-fluid mt-4">
         <div class="row">
             <div class="col-lg-12">
+                <!-- Error Message -->
+                <?php if (isset($_SESSION['error'])): ?>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <?= $_SESSION['error']; ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    <?php unset($_SESSION['error']); ?>
+                <?php endif; ?>
+
                 <!-- Success Message -->
                 <?php if (isset($_SESSION['success'])): ?>
                     <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -526,4 +557,3 @@ $students = $pdo->query("SELECT id, first_name, last_name, class FROM students O
         });
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
-

@@ -16,37 +16,29 @@ $success = '';
 
 // Handle file uploads
 function uploadFile($file, $type) {
+    require_once '../includes/security.php';
+
     $uploadDir = '../uploads/students/' . $type . '/';
-    
+
     // Create directory if it doesn't exist
     if (!file_exists($uploadDir)) {
         mkdir($uploadDir, 0777, true);
     }
-    
+
+    // Use centralized security validation
+    $validation = Security::validateFileUpload($file, SecurityConfig::ALLOWED_DOCUMENT_TYPES);
+
+    if (!$validation['valid']) {
+        return ['error' => $validation['error']];
+    }
+
     $fileName = time() . '_' . basename($file['name']);
     $targetPath = $uploadDir . $fileName;
-    
-    // Allowed file types
-    $allowedTypes = [
-        'image/jpeg', 'image/jpg', 'image/png', 'image/gif',
-        'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ];
-    
-    // Max file size 5MB
-    $maxSize = 5 * 1024 * 1024;
-    
-    if (!in_array($file['type'], $allowedTypes)) {
-        return ['error' => 'Invalid file type. Only JPG, PNG, GIF, PDF, DOC, DOCX allowed.'];
-    }
-    
-    if ($file['size'] > $maxSize) {
-        return ['error' => 'File size too large. Maximum 5MB allowed.'];
-    }
-    
+
     if (move_uploaded_file($file['tmp_name'], $targetPath)) {
         return ['success' => $targetPath];
     }
-    
+
     return ['error' => 'File upload failed.'];
 }
 

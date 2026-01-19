@@ -2,8 +2,16 @@
 // teacher/receipt.php - PDF Receipt Generation using TCPDF
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 require_once '../helpers/payment_helper.php';
 require_once '../TCPDF-main/TCPDF-main/tcpdf.php';
+
+// Check if teacher is logged in
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
+    header("Location: ../index.php");
+    exit;
+}
+$current_school_id = require_school_auth();
 
 if (!isset($_GET['id'])) {
     die("Receipt ID required");
@@ -12,7 +20,7 @@ if (!isset($_GET['id'])) {
 $paymentId = $_GET['id'];
 $paymentHelper = new PaymentHelper();
 
-// Get payment details
+// Get payment details - school-filtered
 $stmt = $pdo->prepare("SELECT sp.*, s.full_name, s.admission_no, s.phone, s.address,
                        c.class_name, u.full_name as verified_by_name,
                        (SELECT SUM(amount_due) FROM payment_installments WHERE payment_id = sp.id) as total_installments
@@ -20,8 +28,8 @@ $stmt = $pdo->prepare("SELECT sp.*, s.full_name, s.admission_no, s.phone, s.addr
                        JOIN students s ON sp.student_id = s.id
                        JOIN classes c ON sp.class_id = c.id
                        LEFT JOIN users u ON sp.verified_by = u.id
-                       WHERE sp.id = ?");
-$stmt->execute([$paymentId]);
+                       WHERE sp.id = ? AND s.school_id = ?");
+$stmt->execute([$paymentId, $current_school_id]);
 $payment = $stmt->fetch();
 
 if (!$payment) {
@@ -311,5 +319,3 @@ $filename = 'Receipt_' . preg_replace('/[^A-Za-z0-9\-_]/', '_', $payment['receip
 $pdf->Output($filename, 'I');
 exit;
 ?>
-
-

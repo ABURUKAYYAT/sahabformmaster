@@ -1,12 +1,14 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Only teachers
-if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'teacher') {
+if (!isset($_SESSION['user_id']) || strtolower($_SESSION['role'] ?? '') !== 'teacher') {
     header("Location: ../index.php");
     exit;
 }
+$current_school_id = require_school_auth();
 $uid = $_SESSION['user_id'];
 $teacher_name = $_SESSION['full_name'] ?? 'Teacher';
 $errors = [];
@@ -20,8 +22,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $code = trim($_POST['code'] ?? '');
         if ($name === '') $errors[] = 'Subject name required.';
         if (empty($errors)) {
-            $stmt = $pdo->prepare("INSERT INTO subjects (subject_name, subject_code, description, created_by, created_at) VALUES (:name,:code,:desc,:uid,NOW())");
-            $stmt->execute(['name'=>$name,'code'=>$code,'desc'=>trim($_POST['description'] ?? ''),'uid'=>$uid]);
+            $stmt = $pdo->prepare("INSERT INTO subjects (subject_name, subject_code, description, created_by, school_id, created_at) VALUES (:name,:code,:desc,:uid,:school_id,NOW())");
+            $stmt->execute(['name'=>$name,'code'=>$code,'desc'=>trim($_POST['description'] ?? ''),'uid'=>$uid,'school_id'=>$current_school_id]);
             $success = 'Subject created successfully!';
             header("Location: subjects.php");
             exit;
@@ -61,8 +63,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch subjects: show all subjects and mark which are assigned to teacher's classes
-$all_subjects = $pdo->query("SELECT * FROM subjects ORDER BY subject_name")->fetchAll(PDO::FETCH_ASSOC);
+// Fetch subjects: show all subjects in the school and mark which are assigned to teacher's classes
+$all_subjects = $pdo->prepare("SELECT * FROM subjects WHERE school_id = ? ORDER BY subject_name");
+$all_subjects->execute([$current_school_id]);
+$all_subjects = $all_subjects->fetchAll(PDO::FETCH_ASSOC);
 $my_assignments = $pdo->prepare("SELECT sa.id, sa.subject_id, sa.class_id, c.class_name FROM subject_assignments sa JOIN classes c ON sa.class_id = c.id WHERE sa.teacher_id = :uid ORDER BY c.class_name");
 $my_assignments->execute(['uid'=>$uid]);
 $assignments = $my_assignments->fetchAll(PDO::FETCH_ASSOC);
@@ -1206,14 +1210,14 @@ $total_assignments = count($assignments);
         <?php if(isset($_SESSION['success'])): ?>
             <div class="alert-modern alert-success-modern animate-fade-in-up">
                 <i class="fas fa-check-circle"></i>
-                <span><?php echo $_SESSION['success']; unset($_SESSION['success']); ?></span>
+                <span><?php safe_echo($_SESSION['success']); unset($_SESSION['success']); ?></span>
             </div>
         <?php endif; ?>
 
         <?php if(isset($_SESSION['error'])): ?>
             <div class="alert-modern alert-error-modern animate-fade-in-up">
                 <i class="fas fa-exclamation-circle"></i>
-                <span><?php echo $_SESSION['error']; unset($_SESSION['error']); ?></span>
+                <span><?php safe_echo($_SESSION['error']); unset($_SESSION['error']); ?></span>
             </div>
         <?php endif; ?>
 
@@ -1458,5 +1462,3 @@ $total_assignments = count($assignments);
         });
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
-
-

@@ -7,11 +7,9 @@ error_reporting(E_ALL);
 session_start();
 require_once '../config/db.php';
 
-// Check authorization
-if (!isset($_SESSION['user_id'])) {
-    header("Location: ../index.php");
-    exit;
-}
+// Check authorization and get school context
+require_once '../includes/functions.php';
+$current_school_id = require_school_auth();
 
 // Only allow teachers and principal
 $allowed_roles = ['principal', 'teacher'];
@@ -20,20 +18,7 @@ if (!in_array(strtolower($_SESSION['role'] ?? ''), $allowed_roles)) {
     exit;
 }
 
-// Get user's school_id
-$user_school_id = $_SESSION['school_id'] ?? null;
-if (!$user_school_id) {
-    // Fetch from database if not in session
-    $stmt = $pdo->prepare("SELECT school_id FROM users WHERE id = ?");
-    $stmt->execute([$_SESSION['user_id']]);
-    $user_school_id = $stmt->fetchColumn();
-    $_SESSION['school_id'] = $user_school_id;
-}
-
-// Ensure user has a valid school_id
-if (!$user_school_id) {
-    die("Error: User is not associated with any school. Please contact administrator.");
-}
+$user_school_id = $current_school_id; // For backward compatibility
 
 $errors = [];
 $success = '';
@@ -53,7 +38,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_question_details' && isse
             LEFT JOIN users u ON q.created_by = u.id
             WHERE q.id = ? AND q.school_id = ?
         ");
-        $stmt->execute([$question_id, $user_school_id]);
+        $stmt->execute([$question_id, $current_school_id]);
         $question = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($question) {
@@ -122,13 +107,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 // Insert question
                 $stmt = $pdo->prepare("
-                    INSERT INTO questions_bank 
-                    (question_code, question_text, question_type, subject_id, class_id, 
-                     difficulty_level, marks, topic, sub_topic, category_id, cognitive_level, 
-                     created_by, status)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')
+                    INSERT INTO questions_bank
+                    (question_code, question_text, question_type, subject_id, class_id,
+                     difficulty_level, marks, topic, sub_topic, category_id, cognitive_level,
+                     created_by, status, school_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)
                 ");
-                
+
                 $stmt->execute([
                     $question_code,
                     $question_text,
@@ -141,7 +126,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $sub_topic,
                     $category_id ?: null,
                     $cognitive_level,
-                    $_SESSION['user_id']
+                    $_SESSION['user_id'],
+                    $current_school_id
                 ]);
                 
                 $question_id = $pdo->lastInsertId();
@@ -322,7 +308,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     // Delete the question
                     $stmt = $pdo->prepare("DELETE FROM questions_bank WHERE id = ? AND school_id = ?");
-                    $stmt->execute([$question_id, $user_school_id]);
+        $stmt->execute([$question_id, $current_school_id]);
 
                     if ($stmt->rowCount() > 0) {
                         $pdo->commit();
@@ -385,8 +371,13 @@ if (isset($_GET['edit'])) {
 }
 
 // Fetch data for filters and dropdowns
-$subjects = $pdo->query("SELECT id, subject_name FROM subjects ORDER BY subject_name")->fetchAll(PDO::FETCH_ASSOC);
-$classes = $pdo->query("SELECT id, class_name FROM classes ORDER BY class_name")->fetchAll(PDO::FETCH_ASSOC);
+$subjects = $pdo->prepare("SELECT id, subject_name FROM subjects WHERE school_id = ? ORDER BY subject_name");
+$subjects->execute([$user_school_id]);
+$subjects = $subjects->fetchAll(PDO::FETCH_ASSOC);
+
+$classes = $pdo->prepare("SELECT id, class_name FROM classes WHERE school_id = ? ORDER BY class_name");
+$classes->execute([$user_school_id]);
+$classes = $classes->fetchAll(PDO::FETCH_ASSOC);
 $categories = $pdo->query("SELECT id, category_name FROM question_categories WHERE is_active = 1 ORDER BY category_name")->fetchAll(PDO::FETCH_ASSOC);
 
 // Handle search and filters
@@ -2564,5 +2555,3 @@ $my_questions = $my_questions->fetch(PDO::FETCH_ASSOC)['total'];
         });
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
-
-

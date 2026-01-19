@@ -32,27 +32,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_action'])) {
 
             switch ($bulk_action) {
                 case 'publish':
-                    $stmt = $pdo->prepare("UPDATE school_news SET status = 'published', published_date = NOW() WHERE id IN ($placeholders) AND status = 'draft'");
-                    $stmt->execute($selected_ids);
+                    $stmt = $pdo->prepare("UPDATE school_news SET status = 'published', published_date = NOW() WHERE id IN ($placeholders) AND status = 'draft' AND school_id = ?");
+                    $params = array_merge($selected_ids, [$current_school_id]);
+                    $stmt->execute($params);
                     $success = 'Selected news items published successfully.';
                     break;
 
                 case 'unpublish':
-                    $stmt = $pdo->prepare("UPDATE school_news SET status = 'draft' WHERE id IN ($placeholders) AND status = 'published'");
-                    $stmt->execute($selected_ids);
+                    $stmt = $pdo->prepare("UPDATE school_news SET status = 'draft' WHERE id IN ($placeholders) AND status = 'published' AND school_id = ?");
+                    $params = array_merge($selected_ids, [$current_school_id]);
+                    $stmt->execute($params);
                     $success = 'Selected news items unpublished.';
                     break;
 
                 case 'archive':
-                    $stmt = $pdo->prepare("UPDATE school_news SET status = 'archived' WHERE id IN ($placeholders)");
-                    $stmt->execute($selected_ids);
+                    $stmt = $pdo->prepare("UPDATE school_news SET status = 'archived' WHERE id IN ($placeholders) AND school_id = ?");
+                    $params = array_merge($selected_ids, [$current_school_id]);
+                    $stmt->execute($params);
                     $success = 'Selected news items archived.';
                     break;
 
                 case 'delete':
                     if ($bulk_action === 'delete') {
-                        $stmt = $pdo->prepare("DELETE FROM school_news WHERE id IN ($placeholders)");
-                        $stmt->execute($selected_ids);
+                        $stmt = $pdo->prepare("DELETE FROM school_news WHERE id IN ($placeholders) AND school_id = ?");
+                        $params = array_merge($selected_ids, [$current_school_id]);
+                        $stmt->execute($params);
                         $success = 'Selected news items permanently deleted.';
                     }
                     break;
@@ -65,9 +69,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_action'])) {
 
 // Handle individual operations
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['bulk_action'])) {
-    $action = $_POST['action'] ?? '';
+    // Validate CSRF token
+    if (!validate_csrf_token($_POST['csrf_token'] ?? '')) {
+        $errors[] = 'Security token validation failed. Please refresh the page and try again.';
+    } else {
+        $action = $_POST['action'] ?? '';
 
-    if ($action === 'add' || $action === 'edit') {
+        if ($action === 'add' || $action === 'edit') {
         // Handle news creation/editing
         $title = trim($_POST['title'] ?? '');
         $excerpt = trim($_POST['excerpt'] ?? '');
@@ -148,13 +156,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['bulk_action'])) {
                         title=?, slug=?, excerpt=?, content=?, category=?, featured_image=?,
                         priority=?, target_audience=?, status=?, allow_comments=?, featured=?,
                         tags=?, published_date=?, scheduled_date=?, updated_at=NOW()
-                        WHERE id=?");
+                        WHERE id=? AND school_id=?");
                     $stmt->execute([
                         $title, $slug, $excerpt, $content, $category,
                         $featured_image ?: $_POST['current_image'], $priority, $target_audience,
                         $status, $allow_comments, $featured, $tags,
                         $status === 'published' ? $published_date : null,
-                        !empty($scheduled_date) ? $scheduled_date : null, $id
+                        !empty($scheduled_date) ? $scheduled_date : null, $id, $current_school_id
                     ]);
                     $success = 'News item updated successfully.';
                 }
@@ -175,28 +183,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['bulk_action'])) {
             try {
                 switch ($action) {
                     case 'publish':
-                        $pdo->prepare("UPDATE school_news SET status='published', published_date=NOW() WHERE id=?")
-                             ->execute([$id]);
+                        $pdo->prepare("UPDATE school_news SET status='published', published_date=NOW() WHERE id=? AND school_id=?")
+                             ->execute([$id, $current_school_id]);
                         $success = 'News published successfully.';
                         break;
                     case 'unpublish':
-                        $pdo->prepare("UPDATE school_news SET status='draft' WHERE id=?")->execute([$id]);
+                        $pdo->prepare("UPDATE school_news SET status='draft' WHERE id=? AND school_id=?")->execute([$id, $current_school_id]);
                         $success = 'News unpublished.';
                         break;
                     case 'archive':
-                        $pdo->prepare("UPDATE school_news SET status='archived' WHERE id=?")->execute([$id]);
+                        $pdo->prepare("UPDATE school_news SET status='archived' WHERE id=? AND school_id=?")->execute([$id, $current_school_id]);
                         $success = 'News archived.';
                         break;
                     case 'delete':
-                        $pdo->prepare("DELETE FROM school_news WHERE id=?")->execute([$id]);
+                        $pdo->prepare("DELETE FROM school_news WHERE id=? AND school_id=?")->execute([$id, $current_school_id]);
                         $success = 'News permanently deleted.';
                         break;
                     case 'feature':
-                        $pdo->prepare("UPDATE school_news SET featured=1 WHERE id=?")->execute([$id]);
+                        $pdo->prepare("UPDATE school_news SET featured=1 WHERE id=? AND school_id=?")->execute([$id, $current_school_id]);
                         $success = 'News marked as featured.';
                         break;
                     case 'unfeature':
-                        $pdo->prepare("UPDATE school_news SET featured=0 WHERE id=?")->execute([$id]);
+                        $pdo->prepare("UPDATE school_news SET featured=0 WHERE id=? AND school_id=?")->execute([$id, $current_school_id]);
                         $success = 'News unmarked as featured.';
                         break;
                 }
@@ -276,8 +284,8 @@ $categories = $categories_query->fetchAll(PDO::FETCH_COLUMN);
 $edit_news = null;
 if (isset($_GET['edit'])) {
     $edit_id = intval($_GET['edit']);
-    $stmt = $pdo->prepare("SELECT * FROM school_news WHERE id = ?");
-    $stmt->execute([$edit_id]);
+    $stmt = $pdo->prepare("SELECT * FROM school_news WHERE id = ? AND school_id = ?");
+    $stmt->execute([$edit_id, $current_school_id]);
     $edit_news = $stmt->fetch();
 }
 
@@ -1764,6 +1772,7 @@ function getPriorityBadge($priority) {
                 <h3><?php echo $edit_news ? '✏️ Edit News Item' : '➕ Create New News Item'; ?></h3>
 
                 <form method="POST" enctype="multipart/form-data" class="news-form">
+                    <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
                     <input type="hidden" name="action" value="<?php echo $edit_news ? 'edit' : 'add'; ?>">
                     <?php if ($edit_news): ?>
                         <input type="hidden" name="id" value="<?php echo intval($edit_news['id']); ?>">

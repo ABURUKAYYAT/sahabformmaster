@@ -1,11 +1,14 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
-if (!isset($_SESSION['user_id'])) {
+// Check if teacher is logged in
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     header("Location: ../index.php");
     exit;
 }
+$current_school_id = require_school_auth();
 
 $paper_id = intval($_GET['id'] ?? 0);
 
@@ -224,4 +227,3 @@ $pdf_path = !empty($paper['pdf_file_path']) ? $paper['pdf_file_path'] : $paper['
         }
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
-

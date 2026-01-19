@@ -6,31 +6,19 @@ error_reporting(E_ALL);
 
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Only allow class teachers to access this page
-if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'teacher') {
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     header("Location: ../index.php");
     exit;
 }
 
-$teacher_id = $_SESSION['user_id'];
+// Get current school context
+$current_school_id = require_school_auth();
+$teacher_id = intval($_SESSION['user_id']);
 
 $class_id = $_GET['id'] ?? $_GET['class_id'] ?? $_REQUEST['class'] ?? $_POST['class_id'] ?? null;
-
-// Get user's school_id
-$user_school_id = $_SESSION['school_id'] ?? null;
-if (!$user_school_id) {
-    // Fetch from database if not in session
-    $stmt = $pdo->prepare("SELECT school_id FROM users WHERE id = ?");
-    $stmt->execute([$_SESSION['user_id']]);
-    $user_school_id = $stmt->fetchColumn();
-    $_SESSION['school_id'] = $user_school_id;
-}
-
-// Ensure user has a valid school_id
-if (!$user_school_id) {
-    die("Error: User is not associated with any school. Please contact administrator.");
-}
 
 function normalize_term(string $t): string {
     $map = [
@@ -66,15 +54,15 @@ if (!$class_id) {
     }
 }
 
-// Fetch teacher's classes
+// Fetch teacher's classes - school-filtered
 $stmt = $pdo->prepare("
     SELECT DISTINCT c.id, c.class_name
     FROM classes c
     JOIN subject_assignments sa ON c.id = sa.class_id
-    WHERE sa.teacher_id = :teacher_id
+    WHERE sa.teacher_id = :teacher_id AND c.school_id = :school_id
     ORDER BY c.class_name
 ");
-$stmt->execute(['teacher_id' => $teacher_id]);
+$stmt->execute(['teacher_id' => $teacher_id, 'school_id' => $current_school_id]);
 $teacher_classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Filter class
@@ -88,40 +76,41 @@ if ($filter_class_id) {
     $filter_class_id = $class_id;
 }
 
-// Ensure teacher is assigned to this class
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM subject_assignments WHERE class_id = :class_id AND teacher_id = :teacher_id");
-$stmt->execute(['class_id' => $class_id, 'teacher_id' => $teacher_id]);
+// Ensure teacher is assigned to this class and class belongs to school
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM subject_assignments sa JOIN classes c ON sa.class_id = c.id WHERE sa.class_id = :class_id AND sa.teacher_id = :teacher_id AND c.school_id = :school_id");
+$stmt->execute(['class_id' => $class_id, 'teacher_id' => $teacher_id, 'school_id' => $current_school_id]);
 if ((int)$stmt->fetchColumn() === 0) {
-    die("Access denied. You are not assigned to this class.");
+    die("Access denied. You are not assigned to this class or the class does not belong to your school.");
 }
 
-// Fetch class information
-$stmt = $pdo->prepare("SELECT * FROM classes WHERE id = :id");
-$stmt->execute(['id' => $class_id]);
+// Fetch class information - school-filtered
+$stmt = $pdo->prepare("SELECT * FROM classes WHERE id = :id AND school_id = :school_id");
+$stmt->execute(['id' => $class_id, 'school_id' => $current_school_id]);
 $class = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$class) {
     header("Location: index.php?error=Class not found.");
     exit;
 }
 
-// Fetch students in the class
-$stmt = $pdo->prepare("SELECT * FROM students WHERE class_id = :class_id ORDER BY full_name ASC");
-$stmt->execute(['class_id' => $class_id]);
+// Fetch students in the class - school-filtered
+$stmt = $pdo->prepare("SELECT * FROM students WHERE class_id = :class_id AND school_id = :school_id ORDER BY full_name ASC");
+$stmt->execute(['class_id' => $class_id, 'school_id' => $current_school_id]);
 $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch subjects assigned to this teacher for this class
+// Fetch subjects assigned to this teacher for this class - school-filtered
 $stmt = $pdo->prepare("
-    SELECT s.* 
-    FROM subjects s 
-    JOIN subject_assignments sa ON s.id = sa.subject_id 
-    WHERE sa.class_id = :class_id AND sa.teacher_id = :teacher_id 
+    SELECT s.*
+    FROM subjects s
+    JOIN subject_assignments sa ON s.id = sa.subject_id
+    WHERE sa.class_id = :class_id AND sa.teacher_id = :teacher_id AND s.school_id = :school_id
     ORDER BY s.subject_name ASC
 ");
-$stmt->execute(['class_id' => $class_id, 'teacher_id' => $teacher_id]);
+$stmt->execute(['class_id' => $class_id, 'teacher_id' => $teacher_id, 'school_id' => $current_school_id]);
 $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch academic sessions
-$stmt = $pdo->prepare("SELECT DISTINCT academic_session FROM results ORDER BY academic_session DESC");
+// Fetch academic sessions - school-filtered (from results that belong to school)
+$stmt = $pdo->prepare("SELECT DISTINCT r.academic_session FROM results r JOIN students s ON r.student_id = s.id WHERE s.school_id = ? ORDER BY r.academic_session DESC");
+$stmt->execute([$current_school_id]);
 $academic_sessions = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
 // Handle CRUD operations
@@ -144,9 +133,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach ($selected_student_ids as $student_id) {
                 $student_id = intval($student_id);
                 
-                // Check if student belongs to class
-                $stmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE id = :id AND class_id = :class_id");
-                $stmt->execute(['id' => $student_id, 'class_id' => $class_id]);
+                // Check if student belongs to class and school
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE id = :id AND class_id = :class_id AND school_id = :school_id");
+                $stmt->execute(['id' => $student_id, 'class_id' => $class_id, 'school_id' => $current_school_id]);
                 if ((int)$stmt->fetchColumn() === 0) {
                     continue; // Skip invalid student
                 }
@@ -169,11 +158,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $total_ca = $first_ca + $second_ca;
                     
                     // Check if result already exists
-                    $stmt = $pdo->prepare("SELECT id FROM results WHERE student_id = :student_id AND subject_id = :subject_id AND term = :term");
+                    $stmt = $pdo->prepare("SELECT id FROM results WHERE student_id = :student_id AND subject_id = :subject_id AND term = :term AND school_id = :school_id");
                     $stmt->execute([
                         'student_id' => $student_id,
                         'subject_id' => $subject_id,
-                        'term' => $term
+                        'term' => $term,
+                        'school_id' => $current_school_id
                     ]);
                     $existing_result = $stmt->fetch(PDO::FETCH_ASSOC);
                     
@@ -196,10 +186,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
                         // Insert new
                         $stmt = $pdo->prepare("
-                            INSERT INTO results 
-                              (student_id, subject_id, term, academic_session, total_ca, first_ca, second_ca, exam, created_at)
-                            VALUES 
-                              (:student_id, :subject_id, :term, :academic_session, :total_ca, :first_ca, :second_ca, :exam, NOW())
+                            INSERT INTO results
+                              (student_id, subject_id, term, academic_session, total_ca, first_ca, second_ca, exam, school_id, created_at)
+                            VALUES
+                              (:student_id, :subject_id, :term, :academic_session, :total_ca, :first_ca, :second_ca, :exam, :school_id, NOW())
                         ");
                         $stmt->execute([
                             'student_id' => $student_id,
@@ -209,7 +199,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             'total_ca' => $total_ca,
                             'first_ca' => $first_ca,
                             'second_ca' => $second_ca,
-                            'exam' => $exam
+                            'exam' => $exam,
+                            'school_id' => $current_school_id
                         ]);
                     }
                 }
@@ -239,11 +230,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $total_ca = $first_ca + $second_ca;
             
             // Check if result exists
-            $stmt = $pdo->prepare("SELECT id FROM results WHERE student_id = :student_id AND subject_id = :subject_id AND term = :term");
+            $stmt = $pdo->prepare("SELECT id FROM results WHERE student_id = :student_id AND subject_id = :subject_id AND term = :term AND school_id = :school_id");
             $stmt->execute([
                 'student_id' => $student_id,
                 'subject_id' => $subject_id,
-                'term' => $term
+                'term' => $term,
+                'school_id' => $current_school_id
             ]);
             $existing_result = $stmt->fetch(PDO::FETCH_ASSOC);
             
@@ -267,10 +259,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 // Insert
                 $stmt = $pdo->prepare("
-                    INSERT INTO results 
-                      (student_id, subject_id, term, academic_session, total_ca, first_ca, second_ca, exam, created_at)
-                    VALUES 
-                      (:student_id, :subject_id, :term, :academic_session, :total_ca, :first_ca, :second_ca, :exam, NOW())
+                    INSERT INTO results
+                      (student_id, subject_id, term, academic_session, total_ca, first_ca, second_ca, exam, school_id, created_at)
+                    VALUES
+                      (:student_id, :subject_id, :term, :academic_session, :total_ca, :first_ca, :second_ca, :exam, :school_id, NOW())
                 ");
                 $stmt->execute([
                     'student_id' => $student_id,
@@ -280,7 +272,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'total_ca' => $total_ca,
                     'first_ca' => $first_ca,
                     'second_ca' => $second_ca,
-                    'exam' => $exam
+                    'exam' => $exam,
+                    'school_id' => $current_school_id
                 ]);
                 $success = "Result added successfully.";
             }
@@ -300,9 +293,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = "Academic session is required.";
         }
         
-        // Check if student belongs to class
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE id = :id AND class_id = :class_id");
-        $stmt->execute(['id' => $student_id, 'class_id' => $class_id]);
+        // Check if student belongs to class and school
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE id = :id AND class_id = :class_id AND school_id = :school_id");
+        $stmt->execute(['id' => $student_id, 'class_id' => $class_id, 'school_id' => $current_school_id]);
         if ((int)$stmt->fetchColumn() === 0) {
             $errors[] = "Invalid student selected.";
         }
@@ -334,11 +327,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $total_ca = $first_ca + $second_ca;
                 
                 // Check if result already exists
-                $stmt = $pdo->prepare("SELECT id FROM results WHERE student_id = :student_id AND subject_id = :subject_id AND term = :term");
+                $stmt = $pdo->prepare("SELECT id FROM results WHERE student_id = :student_id AND subject_id = :subject_id AND term = :term AND school_id = :school_id");
                 $stmt->execute([
                     'student_id' => $student_id,
                     'subject_id' => $subject_id,
-                    'term' => $term
+                    'term' => $term,
+                    'school_id' => $current_school_id
                 ]);
                 $existing_result = $stmt->fetch(PDO::FETCH_ASSOC);
                 
@@ -362,10 +356,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     // Insert new
                     $stmt = $pdo->prepare("
-                        INSERT INTO results 
-                          (student_id, subject_id, term, academic_session, total_ca, first_ca, second_ca, exam, created_at)
-                        VALUES 
-                          (:student_id, :subject_id, :term, :academic_session, :total_ca, :first_ca, :second_ca, :exam, NOW())
+                        INSERT INTO results
+                          (student_id, subject_id, term, academic_session, total_ca, first_ca, second_ca, exam, school_id, created_at)
+                        VALUES
+                          (:student_id, :subject_id, :term, :academic_session, :total_ca, :first_ca, :second_ca, :exam, :school_id, NOW())
                     ");
                     $stmt->execute([
                         'student_id' => $student_id,
@@ -375,7 +369,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'total_ca' => $total_ca,
                         'first_ca' => $first_ca,
                         'second_ca' => $second_ca,
-                        'exam' => $exam
+                        'exam' => $exam,
+                        'school_id' => $current_school_id
                     ]);
                     $saved_count++;
                 }
@@ -2074,5 +2069,3 @@ $default_academic_session = "{$current_year}/{$next_year}";
         });
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
-
-

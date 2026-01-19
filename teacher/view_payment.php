@@ -4,12 +4,13 @@ session_start();
 require_once '../config/db.php';
 require_once '../helpers/payment_helper.php';
 
-// Check if user is authorized (principal, teacher, or staff)
-$allowed_roles = ['principal', 'teacher', 'staff'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header("Location: ../login.php");
+// Check if teacher is logged in
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
+    header("Location: ../index.php");
     exit;
 }
+require_once '../includes/functions.php';
+$current_school_id = require_school_auth();
 
 $userId = $_SESSION['user_id'];
 $userRole = $_SESSION['role'];
@@ -35,8 +36,8 @@ $stmt = $pdo->prepare("SELECT sp.*,
                       JOIN classes c ON sp.class_id = c.id
                       LEFT JOIN users u ON sp.verified_by = u.id
                       LEFT JOIN school_bank_accounts b ON sp.bank_account_id = b.id
-                      WHERE sp.id = ?");
-$stmt->execute([$paymentId]);
+                      WHERE sp.id = ? AND sp.school_id = ?");
+$stmt->execute([$paymentId, $current_school_id]);
 $payment = $stmt->fetch();
 
 if (!$payment) {
@@ -68,8 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                       verified_by = ?,
                                       verified_at = NOW(),
                                       notes = CONCAT(IFNULL(notes, ''), '\n[Verified by admin: ', ?, ' - ', NOW(), ']')
-                                  WHERE id = ?");
-            $stmt->execute([$userId, $notes, $paymentId]);
+                                  WHERE id = ? AND school_id = ?");
+            $stmt->execute([$userId, $notes, $paymentId, $current_school_id]);
 
             // Update installment status if it's an installment payment
             if ($payment['payment_type'] === 'installment') {
@@ -91,8 +92,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                       verified_by = ?,
                                       verified_at = NOW(),
                                       notes = CONCAT(IFNULL(notes, ''), '\n[Rejected by admin: ', ?, ' - ', NOW(), ']')
-                                  WHERE id = ?");
-            $stmt->execute([$userId, $rejection_reason, $paymentId]);
+                                  WHERE id = ? AND school_id = ?");
+            $stmt->execute([$userId, $rejection_reason, $paymentId, $current_school_id]);
 
             $success = "Payment rejected!";
 
@@ -102,8 +103,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmt = $pdo->prepare("UPDATE student_payments
                                   SET notes = CONCAT(IFNULL(notes, ''), '\n[Admin note: ', ?, ' - ', ?, ' - ', NOW(), ']')
-                                  WHERE id = ?");
-            $stmt->execute([$note, $_SESSION['full_name'] ?? 'Admin', $paymentId]);
+                                  WHERE id = ? AND school_id = ?");
+            $stmt->execute([$note, $_SESSION['full_name'] ?? 'Admin', $paymentId, $current_school_id]);
 
             $success = "Note added successfully!";
 
@@ -144,8 +145,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                               JOIN classes c ON sp.class_id = c.id
                               LEFT JOIN users u ON sp.verified_by = u.id
                               LEFT JOIN school_bank_accounts b ON sp.bank_account_id = b.id
-                              WHERE sp.id = ?");
-        $stmt->execute([$paymentId]);
+                              WHERE sp.id = ? AND sp.school_id = ?");
+        $stmt->execute([$paymentId, $current_school_id]);
         $payment = $stmt->fetch();
 
         // Refresh attachments
@@ -161,16 +162,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Get student's other payments for context
 $studentPayments = $pdo->prepare("SELECT * FROM student_payments
-                                 WHERE student_id = ? AND id != ?
+                                 WHERE student_id = ? AND id != ? AND school_id = ?
                                  ORDER BY payment_date DESC LIMIT 5");
-$studentPayments->execute([$payment['student_id'], $paymentId]);
+$studentPayments->execute([$payment['student_id'], $paymentId, $current_school_id]);
 $studentPayments = $studentPayments->fetchAll();
 
 // Get class teacher if any
 $classTeacher = $pdo->prepare("SELECT u.full_name FROM class_teachers ct
                               JOIN users u ON ct.teacher_id = u.id
-                              WHERE ct.class_id = ? LIMIT 1");
-$classTeacher->execute([$payment['class_id']]);
+                              WHERE ct.class_id = ? AND ct.school_id = ? LIMIT 1");
+$classTeacher->execute([$payment['class_id'], $current_school_id]);
 $classTeacher = $classTeacher->fetch();
 
 // Calculate payment statistics
@@ -2262,5 +2263,3 @@ $paymentStats = [
         });
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
-
-

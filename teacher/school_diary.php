@@ -3,10 +3,12 @@ session_start();
 require_once '../config/db.php';
 
 // Check if teacher is logged in
-if (!isset($_SESSION['user_id'])) {
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     header("Location: ../index.php");
     exit;
 }
+require_once '../includes/functions.php';
+$current_school_id = require_school_auth();
 
 $teacher_id = $_SESSION['user_id'];
 
@@ -16,12 +18,12 @@ $type_filter = $_GET['type'] ?? '';
 $date_from = $_GET['date_from'] ?? '';
 $date_to = $_GET['date_to'] ?? '';
 
-// Build query - teachers see all activities
+// Build query - teachers see all activities - school-filtered
 $query = "SELECT sd.*, u.full_name as coordinator_name
           FROM school_diary sd
           LEFT JOIN users u ON sd.coordinator_id = u.id
-          WHERE 1=1";
-$params = [];
+          WHERE sd.school_id = ?";
+$params = [$current_school_id];
 
 if ($search) {
     $query .= " AND (sd.activity_title LIKE ? OR sd.description LIKE ?)";
@@ -2515,4 +2517,3 @@ $teacher_name = $_SESSION['full_name'] ?? 'Teacher';
 
 </body>
 </html>
-

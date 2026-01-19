@@ -8,6 +8,8 @@ if (!isset($_SESSION['student_id'])) {
     exit();
 }
 
+$current_school_id = get_current_school_id();
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $student_id = $_SESSION['student_id'];
     $activity_id = intval($_POST['activity_id']);
@@ -15,13 +17,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Verify student can submit to this activity
     $verify_query = "
-        SELECT ca.id, ca.due_date 
-        FROM class_activities ca 
-        JOIN students s ON ca.class_id = s.class_id 
-        WHERE ca.id = ? AND s.id = ? AND ca.status = 'published'
+        SELECT ca.id, ca.due_date
+        FROM class_activities ca
+        JOIN students s ON ca.class_id = s.class_id AND ca.school_id = s.school_id
+        WHERE ca.id = ? AND s.id = ? AND ca.status = 'published' AND ca.school_id = ?
     ";
     $verify_stmt = $pdo->prepare($verify_query);
-    $verify_stmt->execute([$activity_id, $student_id]);
+    $verify_stmt->execute([$activity_id, $student_id, $current_school_id]);
     $activity = $verify_stmt->fetch();
     
     if (!$activity) {
@@ -31,9 +33,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     // Check if already submitted
-    $check_query = "SELECT id FROM student_submissions WHERE activity_id = ? AND student_id = ?";
+    $check_query = "SELECT id FROM student_submissions WHERE activity_id = ? AND student_id = ? AND school_id = ?";
     $check_stmt = $pdo->prepare($check_query);
-    $check_stmt->execute([$activity_id, $student_id]);
+    $check_stmt->execute([$activity_id, $student_id, $current_school_id]);
     
     if ($check_stmt->rowCount()) {
         $_SESSION['error'] = 'You have already submitted this activity.';
@@ -81,14 +83,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Insert submission
     $query = "
-        INSERT INTO student_submissions (activity_id, student_id, submission_text, 
-                 attachment_path, status, submitted_at) 
-        VALUES (?, ?, ?, ?, ?, NOW())
+        INSERT INTO student_submissions (activity_id, student_id, submission_text,
+                 attachment_path, status, submitted_at, school_id)
+        VALUES (?, ?, ?, ?, ?, NOW(), ?)
     ";
     $stmt = $pdo->prepare($query);
-    
+
     try {
-        $stmt->execute([$activity_id, $student_id, $submission_text, $attachment_path, $status]);
+        $stmt->execute([$activity_id, $student_id, $submission_text, $attachment_path, $status, $current_school_id]);
         $_SESSION['success'] = 'Submission successful!';
     } catch (PDOException $e) {
         $_SESSION['error'] = 'Failed to submit. Please try again.';

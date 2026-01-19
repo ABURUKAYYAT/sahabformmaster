@@ -8,6 +8,8 @@ if (!isset($_SESSION['student_id']) && !isset($_SESSION['user_id'])) {
     exit;
 }
 
+$current_school_id = get_current_school_id();
+
 // Check if event ID is provided
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     header("Location: school_diary.php");
@@ -21,35 +23,35 @@ $student_id = isset($_SESSION['student_id']) ? $_SESSION['student_id'] : $_SESSI
 try {
     // Get student details for filtering
     $student_stmt = $pdo->prepare("
-        SELECT s.*, c.class_name 
-        FROM students s 
-        LEFT JOIN classes c ON s.class_id = c.id 
-        WHERE s.id = ? OR s.user_id = ?
+        SELECT s.*, c.class_name
+        FROM students s
+        LEFT JOIN classes c ON s.class_id = c.id AND c.school_id = ?
+        WHERE s.id = ? OR s.user_id = ? AND s.school_id = ?
     ");
-    $student_stmt->execute([$student_id, $student_id]);
+    $student_stmt->execute([$current_school_id, $student_id, $student_id, $current_school_id]);
     $student = $student_stmt->fetch(PDO::FETCH_ASSOC);
     
     // Get event details
     $event_stmt = $pdo->prepare("
-        SELECT sd.*, 
-               ac.category_name, ac.color, ac.icon, 
+        SELECT sd.*,
+               ac.category_name, ac.color, ac.icon,
                u.full_name as coordinator_name, u.email as coordinator_email, u.phone as coordinator_phone,
                DATE_FORMAT(sd.activity_date, '%W, %M %e, %Y') as formatted_date,
                DATE_FORMAT(sd.activity_date, '%Y-%m-%d') as iso_date,
                TIME_FORMAT(sd.start_time, '%h:%i %p') as formatted_start,
                TIME_FORMAT(sd.end_time, '%h:%i %p') as formatted_end,
                TIMEDIFF(sd.end_time, sd.start_time) as duration
-        FROM school_diary sd 
+        FROM school_diary sd
         LEFT JOIN activity_categories ac ON sd.category_id = ac.id
-        LEFT JOIN users u ON sd.coordinator_id = u.id 
-        WHERE sd.id = ?
-        AND (sd.target_audience = 'All' 
-             OR sd.target_audience = 'Secondary Only' 
+        LEFT JOIN users u ON sd.coordinator_id = u.id
+        WHERE sd.id = ? AND sd.school_id = ?
+        AND (sd.target_audience = 'All'
+             OR sd.target_audience = 'Secondary Only'
              OR (sd.target_audience = 'Specific Classes' AND FIND_IN_SET(?, REPLACE(sd.target_classes, ', ', ','))))
         AND sd.status != 'Cancelled'
     ");
-    
-    $event_stmt->execute([$event_id, $student['class_name'] ?: '']);
+
+    $event_stmt->execute([$event_id, $current_school_id, $student['class_name'] ?: '']);
     $event = $event_stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$event) {
@@ -58,41 +60,42 @@ try {
     
     // Get all attachments
     $attachments_stmt = $pdo->prepare("
-        SELECT * FROM school_diary_attachments 
-        WHERE diary_id = ? 
+        SELECT * FROM school_diary_attachments
+        WHERE diary_id = ? AND school_id = ?
         ORDER BY FIELD(file_type, 'image', 'video', 'document')
     ");
-    $attachments_stmt->execute([$event_id]);
+    $attachments_stmt->execute([$event_id, $current_school_id]);
     $attachments = $attachments_stmt->fetchAll(PDO::FETCH_ASSOC);
-    
+
     // Get activity participants count
     $participants_stmt = $pdo->prepare("
-        SELECT COUNT(*) as count FROM activity_participants 
-        WHERE activity_id = ?
+        SELECT COUNT(*) as count FROM activity_participants
+        WHERE activity_id = ? AND school_id = ?
     ");
-    $participants_stmt->execute([$event_id]);
+    $participants_stmt->execute([$event_id, $current_school_id]);
     $participant_count = $participants_stmt->fetch(PDO::FETCH_ASSOC)['count'];
-    
+
     // Get student registration status if applicable
     $registration_stmt = $pdo->prepare("
-        SELECT status FROM activity_registrations 
-        WHERE activity_id = ? AND (student_id = ? OR user_id = ?)
+        SELECT status FROM activity_registrations
+        WHERE activity_id = ? AND (student_id = ? OR user_id = ?) AND school_id = ?
     ");
-    $registration_stmt->execute([$event_id, $student_id, $student_id]);
+    $registration_stmt->execute([$event_id, $student_id, $student_id, $current_school_id]);
     $registration = $registration_stmt->fetch(PDO::FETCH_ASSOC);
-    
+
     // Get similar events (same category)
     $similar_events_stmt = $pdo->prepare("
         SELECT sd.id, sd.activity_title, sd.activity_date, sd.start_time, sd.venue
         FROM school_diary sd
-        WHERE sd.category_id = ? 
+        WHERE sd.category_id = ?
         AND sd.id != ?
         AND sd.status != 'Cancelled'
         AND sd.activity_date >= CURDATE()
+        AND sd.school_id = ?
         ORDER BY sd.activity_date ASC
         LIMIT 3
     ");
-    $similar_events_stmt->execute([$event['category_id'], $event_id]);
+    $similar_events_stmt->execute([$event['category_id'], $event_id, $current_school_id]);
     $similar_events = $similar_events_stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Determine event status
@@ -134,28 +137,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register'])) {
         
         // Check if already registered
         $check_stmt = $pdo->prepare("
-            SELECT id FROM activity_registrations 
-            WHERE activity_id = ? AND (student_id = ? OR user_id = ?)
+            SELECT id FROM activity_registrations
+            WHERE activity_id = ? AND (student_id = ? OR user_id = ?) AND school_id = ?
         ");
-        $check_stmt->execute([$event_id, $student_id, $student_id]);
+        $check_stmt->execute([$event_id, $student_id, $student_id, $current_school_id]);
         
         if ($check_stmt->fetch()) {
             $_SESSION['warning'] = "You are already registered for this event!";
         } else {
             // Insert registration
             $insert_stmt = $pdo->prepare("
-                INSERT INTO activity_registrations 
-                (activity_id, student_id, full_name, email, phone, class, registration_type, status, registration_date)
-                VALUES (?, ?, ?, ?, ?, ?, 'student', 'pending', NOW())
+                INSERT INTO activity_registrations
+                (activity_id, student_id, full_name, email, phone, class, registration_type, status, registration_date, school_id)
+                VALUES (?, ?, ?, ?, ?, ?, 'student', 'pending', NOW(), ?)
             ");
-            
+
             $insert_stmt->execute([
                 $event_id,
                 $student_id,
                 $student['full_name'],
                 $student['guardian_email'] ?: '',
                 $student['phone'] ?: $student['guardian_phone'],
-                $student['class_name']
+                $student['class_name'],
+                $current_school_id
             ]);
             
             $pdo->commit();
@@ -178,16 +182,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['set_reminder'])) {
     
     try {
         $stmt = $pdo->prepare("
-            INSERT INTO activity_reminders 
-            (activity_id, reminder_type, reminder_time, sent_to, status, created_at)
-            VALUES (?, ?, ?, ?, 'pending', NOW())
+            INSERT INTO activity_reminders
+            (activity_id, reminder_type, reminder_time, sent_to, status, created_at, school_id)
+            VALUES (?, ?, ?, ?, 'pending', NOW(), ?)
         ");
-        
+
         $stmt->execute([
             $event_id,
             $reminder_type,
             $reminder_time,
-            $student_id
+            $student_id,
+            $current_school_id
         ]);
         
         $_SESSION['success'] = "Reminder set successfully! You will be notified before the event.";

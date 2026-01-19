@@ -1,7 +1,15 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 require_once '../TCPDF-main/TCPDF-main/tcpdf.php';
+
+// Check if teacher is logged in
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
+    header("Location: ../index.php");
+    exit;
+}
+$current_school_id = require_school_auth();
 
 // Validate POST data
 $student_id = $_POST['student_id'] ?? null;
@@ -12,32 +20,33 @@ if (!$student_id || !$class_id || !$term) {
     die("Invalid request parameters.");
 }
 
-// Fetch school profile
-$stmt = $pdo->query("SELECT * FROM school_profile WHERE id = 1");
+// Fetch school profile - filtered by school_id
+$stmt = $pdo->prepare("SELECT * FROM school_profile WHERE school_id = ?");
+$stmt->execute([$current_school_id]);
 $school = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// Fetch class information
-$stmt = $pdo->prepare("SELECT * FROM classes WHERE id = :class_id");
-$stmt->execute(['class_id' => $class_id]);
+// Fetch class information - filtered by school_id
+$stmt = $pdo->prepare("SELECT * FROM classes WHERE id = :class_id AND school_id = :school_id");
+$stmt->execute(['class_id' => $class_id, 'school_id' => $current_school_id]);
 $class = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// Fetch student information
-$stmt = $pdo->prepare("SELECT * FROM students WHERE id = :student_id");
-$stmt->execute(['student_id' => $student_id]);
+// Fetch student information - filtered by school_id
+$stmt = $pdo->prepare("SELECT * FROM students WHERE id = :student_id AND school_id = :school_id");
+$stmt->execute(['student_id' => $student_id, 'school_id' => $current_school_id]);
 $student = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// Fetch results for the student
+// Fetch results for the student - filtered by school_id
 $stmt = $pdo->prepare("
     SELECT r.*, sub.subject_name
     FROM results r
     JOIN subjects sub ON r.subject_id = sub.id
-    WHERE r.student_id = :student_id AND r.term = :term
+    WHERE r.student_id = :student_id AND r.term = :term AND sub.school_id = :school_id
     ORDER BY sub.subject_name
 ");
-$stmt->execute(['student_id' => $student_id, 'term' => $term]);
+$stmt->execute(['student_id' => $student_id, 'term' => $term, 'school_id' => $current_school_id]);
 $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Calculate class statistics
+// Calculate class statistics - filtered by school_id
 $stmt = $pdo->prepare("
     SELECT COUNT(DISTINCT r.student_id) as total_students,
            AVG(r.total_ca + r.exam) as class_average,
@@ -45,9 +54,9 @@ $stmt = $pdo->prepare("
            MIN(r.total_ca + r.exam) as lowest_score
     FROM results r
     JOIN students s ON r.student_id = s.id
-    WHERE s.class_id = :class_id AND r.term = :term
+    WHERE s.class_id = :class_id AND r.term = :term AND s.school_id = :school_id
 ");
-$stmt->execute(['class_id' => $class_id, 'term' => $term]);
+$stmt->execute(['class_id' => $class_id, 'term' => $term, 'school_id' => $current_school_id]);
 $class_stats = $stmt->fetch(PDO::FETCH_ASSOC);
 
 // Calculate student's position in class
@@ -346,5 +355,3 @@ function calculateGrade($score) {
     return ['grade' => 'F', 'remark' => 'Fail'];
 }
 ?>
-
-

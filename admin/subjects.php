@@ -47,8 +47,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($id <= 0) $errors[] = 'Invalid subject.';
         if ($name === '') $errors[] = 'Subject name required.';
         if (empty($errors)) {
-            $stmt = $pdo->prepare("UPDATE subjects SET subject_name = :name, subject_code = :code, description = :desc, updated_at = NOW() WHERE id = :id");
-            $stmt->execute(['name'=>$name,'code'=>$code,'desc'=>$desc,'id'=>$id]);
+            $stmt = $pdo->prepare("UPDATE subjects SET subject_name = :name, subject_code = :code, description = :desc, updated_at = NOW() WHERE id = :id AND school_id = :school_id");
+            $stmt->execute(['name'=>$name,'code'=>$code,'desc'=>$desc,'id'=>$id, 'school_id'=>$current_school_id]);
             $success = 'Subject updated successfully.';
             header("Location: subjects.php");
             exit;
@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 // safe to remove assignments and subject
                 $pdo->prepare("DELETE FROM subject_assignments WHERE subject_id = :id")->execute(['id' => $id]);
-                $pdo->prepare("DELETE FROM subjects WHERE id = :id")->execute(['id' => $id]);
+                $pdo->prepare("DELETE FROM subjects WHERE id = :id AND school_id = :school_id")->execute(['id' => $id, 'school_id' => $current_school_id]);
                 $success = 'Subject deleted successfully.';
                 header("Location: subjects.php");
                 exit;

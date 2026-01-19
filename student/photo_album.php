@@ -12,10 +12,11 @@ if (!isset($_SESSION['student_id'])) {
 $student_id = $_SESSION['student_id'];
 $student_name = $_SESSION['student_name'];
 $admission_number = $_SESSION['admission_no'];
+$current_school_id = get_current_school_id();
 
 // Get current student's class information
-$stmt = $pdo->prepare("SELECT s.class_id, c.class_name FROM students s JOIN classes c ON s.class_id = c.id WHERE s.id = ?");
-$stmt->execute([$student_id]);
+$stmt = $pdo->prepare("SELECT s.class_id, c.class_name FROM students s JOIN classes c ON s.class_id = c.id AND c.school_id = ? WHERE s.id = ? AND s.school_id = ?");
+$stmt->execute([$current_school_id, $student_id, $current_school_id]);
 $current_student = $stmt->fetch();
 
 if (!$current_student) {
@@ -30,10 +31,10 @@ $class_name = $current_student['class_name'];
 $teachers_query = "SELECT id, full_name, designation, department, qualification, profile_image,
                           date_of_birth, date_employed, phone, address, emergency_contact, emergency_phone
                    FROM users
-                   WHERE role = 'teacher' AND is_active = 1
+                   WHERE role = 'teacher' AND is_active = 1 AND school_id = ?
                    ORDER BY full_name ASC";
 $teachers_stmt = $pdo->prepare($teachers_query);
-$teachers_stmt->execute();
+$teachers_stmt->execute([$current_school_id]);
 $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get all active students in the same class with full details
@@ -41,11 +42,11 @@ $query = "SELECT id, full_name, admission_no, passport_photo, gender, phone, add
                  guardian_name, guardian_phone, guardian_email, guardian_relation,
                  dob, enrollment_date, student_type, blood_group, medical_conditions, allergies
           FROM students
-          WHERE class_id = ? AND is_active = 1
+          WHERE class_id = ? AND is_active = 1 AND school_id = ?
           ORDER BY full_name ASC";
 
 $stmt = $pdo->prepare($query);
-$stmt->execute([$class_id]);
+$stmt->execute([$class_id, $current_school_id]);
 $classmates = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
@@ -782,4 +783,3 @@ $classmates = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 </body>
 </html>
-

@@ -4,10 +4,12 @@ session_start();
 require_once '../config/db.php';
 
 // Check if teacher is logged in
-if (!isset($_SESSION['user_id'])) {
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     header("Location: ../index.php");
     exit;
 }
+require_once '../includes/functions.php';
+$current_school_id = require_school_auth();
 
 $teacher_id = $_SESSION['user_id'];
 $action = isset($_GET['action']) ? $_GET['action'] : 'dashboard';
@@ -32,10 +34,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'create') {
             // Insert new activity
-            $sql = "INSERT INTO class_activities (title, activity_type, subject_id, class_id, description, instructions, due_date, total_marks, status, teacher_id, created_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            $sql = "INSERT INTO class_activities (school_id, title, activity_type, subject_id, class_id, description, instructions, due_date, total_marks, status, teacher_id, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
+                $current_school_id,
                 $activity_data['title'],
                 $activity_data['activity_type'],
                 $activity_data['subject_id'],
@@ -53,11 +56,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
         } elseif ($action === 'edit' && $activity_id > 0) {
             // Update existing activity
-            $sql = "UPDATE class_activities 
-                    SET title = ?, activity_type = ?, subject_id = ?, class_id = ?, 
-                        description = ?, instructions = ?, due_date = ?, total_marks = ?, 
-                        status = ?, updated_at = NOW() 
-                    WHERE id = ? AND teacher_id = ?";
+            $sql = "UPDATE class_activities
+                    SET title = ?, activity_type = ?, subject_id = ?, class_id = ?,
+                        description = ?, instructions = ?, due_date = ?, total_marks = ?,
+                        status = ?, updated_at = NOW()
+                    WHERE id = ? AND teacher_id = ? AND school_id = ?";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
                 $activity_data['title'],
@@ -70,7 +73,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $activity_data['total_marks'],
                 $activity_data['status'],
                 $activity_id,
-                $teacher_id
+                $teacher_id,
+                $current_school_id
             ]);
             
             header("Location: teacher_class_activities.php?action=activities&success=updated");
@@ -84,12 +88,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $feedback = $_POST['feedback'] ?? '';
         
         // Get max marks from activity
-        $check_sql = "SELECT ca.total_marks 
-                      FROM student_submissions ss 
-                      JOIN class_activities ca ON ss.activity_id = ca.id 
-                      WHERE ss.id = ? AND ca.teacher_id = ?";
+        $check_sql = "SELECT ca.total_marks
+                      FROM student_submissions ss
+                      JOIN class_activities ca ON ss.activity_id = ca.id
+                      WHERE ss.id = ? AND ca.teacher_id = ? AND ca.school_id = ?";
         $check_stmt = $pdo->prepare($check_sql);
-        $check_stmt->execute([$submission_id, $teacher_id]);
+        $check_stmt->execute([$submission_id, $teacher_id, $current_school_id]);
         $result = $check_stmt->fetch();
         
         if ($result) {
@@ -109,9 +113,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
     } elseif ($action === 'delete' && $activity_id > 0) {
         // Handle deletion
-        $delete_sql = "DELETE FROM class_activities WHERE id = ? AND teacher_id = ?";
+        $delete_sql = "DELETE FROM class_activities WHERE id = ? AND teacher_id = ? AND school_id = ?";
         $delete_stmt = $pdo->prepare($delete_sql);
-        $delete_stmt->execute([$activity_id, $teacher_id]);
+        $delete_stmt->execute([$activity_id, $teacher_id, $current_school_id]);
         
         header("Location: teacher_class_activities.php?action=activities&success=deleted");
         exit;
@@ -122,22 +126,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $assigned_classes = [];
 $assigned_subjects = [];
 
-// Get assigned classes
-$class_query = "SELECT DISTINCT c.id, c.class_name 
-                FROM class_teachers ct 
-                JOIN classes c ON ct.class_id = c.id 
-                WHERE ct.teacher_id = ?";
+// Get assigned classes - school-filtered
+$class_query = "SELECT DISTINCT c.id, c.class_name
+                FROM class_teachers ct
+                JOIN classes c ON ct.class_id = c.id
+                WHERE ct.teacher_id = ? AND c.school_id = ?";
 $class_stmt = $pdo->prepare($class_query);
-$class_stmt->execute([$teacher_id]);
+$class_stmt->execute([$teacher_id, $current_school_id]);
 $assigned_classes = $class_stmt->fetchAll();
 
-// Get assigned subjects
-$subject_query = "SELECT DISTINCT s.id, s.subject_name 
-                  FROM subject_assignments sa 
-                  JOIN subjects s ON sa.subject_id = s.id 
-                  WHERE sa.teacher_id = ?";
+// Get assigned subjects - school-filtered
+$subject_query = "SELECT DISTINCT s.id, s.subject_name
+                  FROM subject_assignments sa
+                  JOIN subjects s ON sa.subject_id = s.id
+                  WHERE sa.teacher_id = ? AND s.school_id = ?";
 $subject_stmt = $pdo->prepare($subject_query);
-$subject_stmt->execute([$teacher_id]);
+$subject_stmt->execute([$teacher_id, $current_school_id]);
 $assigned_subjects = $subject_stmt->fetchAll();
 ?>
 
@@ -1126,9 +1130,9 @@ $assigned_subjects = $subject_stmt->fetchAll();
             <?php
             $activity = null;
             if ($action === 'edit' && $activity_id > 0) {
-                $activity_query = "SELECT * FROM class_activities WHERE id = ? AND teacher_id = ?";
+                $activity_query = "SELECT * FROM class_activities WHERE id = ? AND teacher_id = ? AND school_id = ?";
                 $activity_stmt = $pdo->prepare($activity_query);
-                $activity_stmt->execute([$activity_id, $teacher_id]);
+                $activity_stmt->execute([$activity_id, $teacher_id, $current_school_id]);
                 $activity = $activity_stmt->fetch();
 
                 if (!$activity) {
@@ -1266,10 +1270,10 @@ $assigned_subjects = $subject_stmt->fetchAll();
                 FROM student_submissions ss
                 JOIN students st ON ss.student_id = st.id
                 JOIN class_activities ca ON ss.activity_id = ca.id
-                WHERE ss.id = ? AND ca.teacher_id = ?
+                WHERE ss.id = ? AND ca.teacher_id = ? AND ca.school_id = ? AND st.school_id = ?
             ";
             $submission_stmt = $pdo->prepare($submission_query);
-            $submission_stmt->execute([$submission_id, $teacher_id]);
+            $submission_stmt->execute([$submission_id, $teacher_id, $current_school_id, $current_school_id]);
             $submission = $submission_stmt->fetch();
 
             if (!$submission) {
@@ -1684,11 +1688,11 @@ $assigned_subjects = $subject_stmt->fetchAll();
                                         FROM class_activities ca
                                         JOIN subjects s ON ca.subject_id = s.id
                                         JOIN classes c ON ca.class_id = c.id
-                                        WHERE ca.teacher_id = ?
+                                        WHERE ca.teacher_id = ? AND ca.school_id = ?
                                         ORDER BY ca.created_at DESC
                                     ";
                                     $activities_stmt = $pdo->prepare($activities_query);
-                                    $activities_stmt->execute([$teacher_id]);
+                                    $activities_stmt->execute([$teacher_id, $current_school_id]);
                                     $activities = $activities_stmt->fetchAll();
 
                                     foreach ($activities as $activity):
@@ -1772,10 +1776,10 @@ $assigned_subjects = $subject_stmt->fetchAll();
                             FROM class_activities ca
                             JOIN subjects s ON ca.subject_id = s.id
                             JOIN classes c ON ca.class_id = c.id
-                            WHERE ca.id = ? AND ca.teacher_id = ?
+                            WHERE ca.id = ? AND ca.teacher_id = ? AND ca.school_id = ?
                         ";
                         $activity_stmt = $pdo->prepare($activity_query);
-                        $activity_stmt->execute([$activity_id, $teacher_id]);
+                        $activity_stmt->execute([$activity_id, $teacher_id, $current_school_id]);
                         $activity = $activity_stmt->fetch();
 
                         if (!$activity) {
@@ -2331,5 +2335,3 @@ $assigned_subjects = $subject_stmt->fetchAll();
         }
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
-
-

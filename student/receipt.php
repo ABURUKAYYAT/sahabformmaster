@@ -9,18 +9,19 @@ if (!isset($_GET['id'])) {
 }
 
 $paymentId = $_GET['id'];
+$current_school_id = get_current_school_id();
 $paymentHelper = new PaymentHelper();
 
 // Get payment details
 $stmt = $pdo->prepare("SELECT sp.*, s.full_name, s.admission_no, s.phone, s.address,
                        c.class_name, u.full_name as verified_by_name,
-                       (SELECT SUM(amount_due) FROM payment_installments WHERE payment_id = sp.id) as total_installments
+                       (SELECT SUM(amount_due) FROM payment_installments WHERE payment_id = sp.id AND school_id = ?) as total_installments
                        FROM student_payments sp
-                       JOIN students s ON sp.student_id = s.id
-                       JOIN classes c ON sp.class_id = c.id
+                       JOIN students s ON sp.student_id = s.id AND s.school_id = ?
+                       JOIN classes c ON sp.class_id = c.id AND c.school_id = ?
                        LEFT JOIN users u ON sp.verified_by = u.id
-                       WHERE sp.id = ?");
-$stmt->execute([$paymentId]);
+                       WHERE sp.id = ? AND sp.school_id = ?");
+$stmt->execute([$current_school_id, $current_school_id, $current_school_id, $paymentId, $current_school_id]);
 $payment = $stmt->fetch();
 
 if (!$payment) {
@@ -28,8 +29,8 @@ if (!$payment) {
 }
 
 // Get installments if any
-$installments = $pdo->prepare("SELECT * FROM payment_installments WHERE payment_id = ? ORDER BY installment_number");
-$installments->execute([$paymentId]);
+$installments = $pdo->prepare("SELECT * FROM payment_installments WHERE payment_id = ? AND school_id = ? ORDER BY installment_number");
+$installments->execute([$paymentId, $current_school_id]);
 $installments = $installments->fetchAll();
 
 // Get school info

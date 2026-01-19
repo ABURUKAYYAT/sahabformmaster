@@ -9,18 +9,19 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['teacher', 'pr
     exit();
 }
 
+$current_school_id = require_school_auth();
 $teacher_id = $_SESSION['user_id'];
 $teacher_name = $_SESSION['full_name'];
 $current_date = date('Y-m-d');
 $selected_date = isset($_GET['date']) ? $_GET['date'] : $current_date;
 
-// Get teacher's assigned classes
-$assigned_classes_sql = "SELECT c.id, c.class_name 
-                        FROM class_teachers ct 
-                        JOIN classes c ON ct.class_id = c.id 
-                        WHERE ct.teacher_id = :teacher_id";
+// Get teacher's assigned classes - school-filtered
+$assigned_classes_sql = "SELECT c.id, c.class_name
+                        FROM class_teachers ct
+                        JOIN classes c ON ct.class_id = c.id
+                        WHERE ct.teacher_id = :teacher_id AND c.school_id = :school_id";
 $assigned_stmt = $pdo->prepare($assigned_classes_sql);
-$assigned_stmt->execute([':teacher_id' => $teacher_id]);
+$assigned_stmt->execute([':teacher_id' => $teacher_id, ':school_id' => $current_school_id]);
 $assigned_classes = $assigned_stmt->fetchAll();
 
 $assigned_class_ids = array_column($assigned_classes, 'id');
@@ -44,9 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_attendance']))
         
         foreach ($_POST['attendance'] as $student_id => $status) {
             $remarks = $_POST['remarks'][$student_id] ?? '';
-            
-            $sql = "INSERT INTO attendance (student_id, date, status, recorded_by, notes) 
-                    VALUES (:student_id, :date, :status, :recorded_by, :notes)
+
+            $sql = "INSERT INTO attendance (student_id, date, status, recorded_by, notes, school_id)
+                    VALUES (:student_id, :date, :status, :recorded_by, :notes, :school_id)
                     ON DUPLICATE KEY UPDATE status = :status_update, recorded_by = :recorded_by_update, notes = :notes_update";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
@@ -55,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_attendance']))
                 ':status' => $status,
                 ':recorded_by' => $teacher_id,
                 ':notes' => $remarks,
+                ':school_id' => $current_school_id,
                 ':status_update' => $status,
                 ':recorded_by_update' => $teacher_id,
                 ':notes_update' => $remarks
@@ -1209,7 +1211,7 @@ $monthly_data = $monthly_stmt->fetchAll();
         <?php if(isset($_SESSION['success'])): ?>
             <div class="alert-modern alert-success-modern animate-fade-in-up">
                 <i class="fas fa-check-circle"></i>
-                <span><?php echo $_SESSION['success']; unset($_SESSION['success']); ?></span>
+                <span><?php echo Security::secureOutput($_SESSION['success']); unset($_SESSION['success']); ?></span>
             </div>
         <?php endif; ?>
 
@@ -1516,5 +1518,3 @@ $monthly_data = $monthly_stmt->fetchAll();
         });
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
-
-

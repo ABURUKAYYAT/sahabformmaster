@@ -2,6 +2,7 @@
 // admin/ajax/get_coverage_details.php
 session_start();
 require_once '../../config/db.php';
+require_once '../../includes/functions.php';
 
 // Only allow principals to access this
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'principal') {
@@ -9,6 +10,9 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'principal') {
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit;
 }
+
+// Get current school for data isolation
+$current_school_id = require_school_auth();
 
 $coverage_id = intval($_GET['id'] ?? 0);
 
@@ -24,17 +28,17 @@ try {
                t.full_name as teacher_name,
                p.full_name as principal_name
         FROM content_coverage cc
-        JOIN subjects s ON cc.subject_id = s.id
-        JOIN classes cl ON cc.class_id = cl.id
-        JOIN users t ON cc.teacher_id = t.id
+        JOIN subjects s ON cc.subject_id = s.id AND s.school_id = ?
+        JOIN classes cl ON cc.class_id = cl.id AND cl.school_id = ?
+        JOIN users t ON cc.teacher_id = t.id AND t.school_id = ?
         LEFT JOIN users p ON cc.principal_id = p.id
         WHERE cc.id = ?
     ");
-    $stmt->execute([$coverage_id]);
+    $stmt->execute([$current_school_id, $current_school_id, $current_school_id, $coverage_id]);
     $coverage = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$coverage) {
-        echo json_encode(['success' => false, 'message' => 'Coverage entry not found']);
+        echo json_encode(['success' => false, 'message' => 'Coverage entry not found or access denied']);
         exit;
     }
 

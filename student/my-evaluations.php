@@ -12,21 +12,22 @@ if (!isset($_SESSION['student_id'])) {
 $student_id = $_SESSION['student_id'];
 $student_name = $_SESSION['student_name'];
 $admission_number = $_SESSION['admission_no'];
+$current_school_id = get_current_school_id();
 
 // Fetch student's evaluations
 $stmt = $pdo->prepare("
     SELECT e.*, t.full_name as teacher_fname
     FROM evaluations e
     JOIN users t ON e.teacher_id = t.id
-    WHERE e.student_id = ?
+    WHERE e.student_id = ? AND e.school_id = ?
     ORDER BY e.academic_year DESC, e.term DESC
 ");
-$stmt->execute([$student_id]);
+$stmt->execute([$student_id, $current_school_id]);
 $evaluations = $stmt->fetchAll();
 
 // Fetch student details
-$student = $pdo->prepare("SELECT * FROM students WHERE id = ?");
-$student->execute([$student_id]);
+$student = $pdo->prepare("SELECT * FROM students WHERE id = ? AND school_id = ?");
+$student->execute([$student_id, $current_school_id]);
 $student_data = $student->fetch();
 ?>
 
@@ -378,4 +379,3 @@ $student_data = $student->fetch();
 
 </body>
 </html>
-

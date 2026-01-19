@@ -11,16 +11,17 @@ if (!isset($_SESSION['student_id']) && !isset($_SESSION['user_id'])) {
 $student_id = isset($_SESSION['student_id']) ? $_SESSION['student_id'] : $_SESSION['user_id'];
 $student_name = $_SESSION['student_name'];
 $admission_number = $_SESSION['admission_no'];
+$current_school_id = get_current_school_id();
 
 // Get student details including class
 try {
     $student_stmt = $pdo->prepare("
         SELECT s.*, c.class_name
         FROM students s
-        LEFT JOIN classes c ON s.class_id = c.id
-        WHERE s.id = ? OR s.user_id = ?
+        LEFT JOIN classes c ON s.class_id = c.id AND c.school_id = ?
+        WHERE s.id = ? OR s.user_id = ? AND s.school_id = ?
     ");
-    $student_stmt->execute([$student_id, $student_id]);
+    $student_stmt->execute([$current_school_id, $student_id, $student_id, $current_school_id]);
     $student = $student_stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$student) {
@@ -41,9 +42,10 @@ $query = "SELECT sd.*, ac.category_name, ac.color, ac.icon, u.full_name as coord
           FROM school_diary sd
           LEFT JOIN activity_categories ac ON sd.category_id = ac.id
           LEFT JOIN users u ON sd.coordinator_id = u.id
-          WHERE (sd.target_audience = 'All'
-                 OR sd.target_audience = 'Secondary Only'
-                 OR (sd.target_audience = 'Specific Classes' AND FIND_IN_SET(?, REPLACE(sd.target_classes, ', ', ','))))
+          WHERE sd.school_id = ?
+          AND (sd.target_audience = 'All'
+               OR sd.target_audience = 'Secondary Only'
+               OR (sd.target_audience = 'Specific Classes' AND FIND_IN_SET(?, REPLACE(sd.target_classes, ', ', ','))))
           AND sd.status != 'Cancelled'
           ORDER BY
             CASE
@@ -57,15 +59,16 @@ $query = "SELECT sd.*, ac.category_name, ac.color, ac.icon, u.full_name as coord
 // If student has class, search for it in target_classes
 $class_param = $student['class_name'] ?: '';
 $stmt = $pdo->prepare($query);
-$stmt->execute([$class_param, $current_date]);
+$stmt->execute([$current_school_id, $class_param, $current_date]);
 $activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get today's activities
 $today_query = "SELECT COUNT(*) as count FROM school_diary
                 WHERE activity_date = ?
-                AND status != 'Cancelled'";
+                AND status != 'Cancelled'
+                AND school_id = ?";
 $today_stmt = $pdo->prepare($today_query);
-$today_stmt->execute([$current_date]);
+$today_stmt->execute([$current_date, $current_school_id]);
 $today_count = $today_stmt->fetch(PDO::FETCH_ASSOC)['count'];
 
 // Get upcoming activities (next 7 days)
@@ -73,9 +76,10 @@ $next_week = date('Y-m-d', strtotime('+7 days'));
 $upcoming_query = "SELECT COUNT(*) as count FROM school_diary
                    WHERE activity_date BETWEEN ? AND ?
                    AND status != 'Cancelled'
-                   AND status = 'Upcoming'";
+                   AND status = 'Upcoming'
+                   AND school_id = ?";
 $upcoming_stmt = $pdo->prepare($upcoming_query);
-$upcoming_stmt->execute([$current_date, $next_week]);
+$upcoming_stmt->execute([$current_date, $next_week, $current_school_id]);
 $upcoming_count = $upcoming_stmt->fetch(PDO::FETCH_ASSOC)['count'];
 ?>
 
@@ -1027,4 +1031,3 @@ $upcoming_count = $upcoming_stmt->fetch(PDO::FETCH_ASSOC)['count'];
 
 </body>
 </html>
-

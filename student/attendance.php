@@ -9,6 +9,7 @@ if (!isset($_SESSION['student_id'])) {
 }
 
 $student_user_id = $_SESSION['student_id'];
+$current_school_id = get_current_school_id();
 $current_month = date('Y-m');
 $selected_month = isset($_GET['month']) ? $_GET['month'] : $current_month;
 
@@ -21,10 +22,10 @@ $today = date('Y-m-d');
 // Get student information
 $student_sql = "SELECT s.*, c.class_name
                 FROM students s
-                JOIN classes c ON s.class_id = c.id
-                WHERE s.id = :id";
+                JOIN classes c ON s.class_id = c.id AND c.school_id = :school_id
+                WHERE s.id = :id AND s.school_id = :school_id";
 $student_stmt = $pdo->prepare($student_sql);
-$student_stmt->execute([':id' => $student_user_id]);
+$student_stmt->execute([':id' => $student_user_id, ':school_id' => $current_school_id]);
 $student = $student_stmt->fetch();
 
 if (!$student) {
@@ -34,12 +35,13 @@ if (!$student) {
 // Fetch attendance for selected month
 $attendance_sql = "SELECT date, status, notes
                    FROM attendance
-                   WHERE student_id = :id
+                   WHERE student_id = :id AND school_id = :school_id
                    AND DATE_FORMAT(date, '%Y-%m') = :selected_month
                    ORDER BY date DESC";
 $attendance_stmt = $pdo->prepare($attendance_sql);
 $attendance_stmt->execute([
     ':id' => $student['id'],
+    ':school_id' => $current_school_id,
     ':selected_month' => $selected_month
 ]);
 $attendance_records = $attendance_stmt->fetchAll();
@@ -58,19 +60,19 @@ $stats_sql = "SELECT
     SUM(CASE WHEN status = 'late' THEN 1 ELSE 0 END) as late_days,
     SUM(CASE WHEN status = 'leave' THEN 1 ELSE 0 END) as leave_days
     FROM attendance
-    WHERE student_id = :id
+    WHERE student_id = :id AND school_id = :school_id
     AND date >= DATE_SUB(NOW(), INTERVAL 3 MONTH)";
 $stats_stmt = $pdo->prepare($stats_sql);
-$stats_stmt->execute([':id' => $student['id']]);
+$stats_stmt->execute([':id' => $student['id'], ':school_id' => $current_school_id]);
 $stats = $stats_stmt->fetch();
 
 // Get recent months for dropdown
 $months_sql = "SELECT DISTINCT DATE_FORMAT(date, '%Y-%m') as month
               FROM attendance
-              WHERE student_id = :id
+              WHERE student_id = :id AND school_id = :school_id
               ORDER BY month DESC";
 $months_stmt = $pdo->prepare($months_sql);
-$months_stmt->execute([':id' => $student['id']]);
+$months_stmt->execute([':id' => $student['id'], ':school_id' => $current_school_id]);
 $months = $months_stmt->fetchAll();
 ?>
 
@@ -792,4 +794,3 @@ $months = $months_stmt->fetchAll();
     <?php include '../includes/floating-button.php'; ?>
 </body>
 </html>
-

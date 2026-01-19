@@ -2,27 +2,22 @@
 session_start();
 require_once '../config/db.php';
 
-// Check authorization
-if (!isset($_SESSION['user_id'])) {
+// Check if teacher is logged in
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     header("Location: ../index.php");
     exit;
 }
-
-// Only allow teachers and principal
-$allowed_roles = ['principal', 'teacher'];
-if (!in_array(strtolower($_SESSION['role'] ?? ''), $allowed_roles)) {
-    header("Location: ../index.php");
-    exit;
-}
+require_once '../includes/functions.php';
+$current_school_id = require_school_auth();
 
 // Include TCPDF
 require_once '../TCPDF-main/TCPDF-main/tcpdf.php';
 
 // Function to generate final exam paper PDF
-function generateFinalExamPaperPDF($paper_id, $user_id) {
+function generateFinalExamPaperPDF($paper_id, $user_id, $current_school_id) {
     global $pdo;
 
-    // Fetch paper details with school info
+    // Fetch paper details with school info - school-filtered
     $stmt = $pdo->prepare("
         SELECT ep.*, s.subject_name, c.class_name, u.full_name as teacher_name,
                si.school_name, si.motto, si.address as school_address,
@@ -32,9 +27,9 @@ function generateFinalExamPaperPDF($paper_id, $user_id) {
         LEFT JOIN classes c ON ep.class_id = c.id
         LEFT JOIN users u ON ep.created_by = u.id
         LEFT JOIN school_info si ON 1=1
-        WHERE ep.id = ?
+        WHERE ep.id = ? AND ep.school_id = ?
     ");
-    $stmt->execute([$paper_id]);
+    $stmt->execute([$paper_id, $current_school_id]);
     $paper = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$paper) {
@@ -424,7 +419,7 @@ if ($paper_id <= 0) {
 }
 
 // Generate PDF
-$pdf_content = generateFinalExamPaperPDF($paper_id, $_SESSION['user_id']);
+$pdf_content = generateFinalExamPaperPDF($paper_id, $_SESSION['user_id'], $current_school_id);
 
 // Create directory if it doesn't exist
 $pdf_dir = '../generated_papers/';
@@ -462,5 +457,3 @@ header('Accept-Ranges: bytes');
 readfile($filepath);
 exit;
 ?>
-
-

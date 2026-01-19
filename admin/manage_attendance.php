@@ -1,12 +1,15 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
-// Check if user is logged in as principal
+// Check if user is logged in as principal with school authentication
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'principal') {
     header('Location: login.php');
     exit();
 }
+
+$current_school_id = require_school_auth();
 
 $principal_id = $_SESSION['user_id'];
 $current_date = date('Y-m-d');
@@ -55,14 +58,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_holiday'])) {
     $description = $_POST['description'];
 
     try {
-        $sql = "INSERT INTO holidays (holiday_name, holiday_date, holiday_type, description)
-                VALUES (:holiday_name, :holiday_date, :holiday_type, :description)";
+        $sql = "INSERT INTO holidays (holiday_name, holiday_date, holiday_type, description, school_id)
+                VALUES (:holiday_name, :holiday_date, :holiday_type, :description, :school_id)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
             ':holiday_name' => $holiday_name,
             ':holiday_date' => $holiday_date,
             ':holiday_type' => $holiday_type,
-            ':description' => $description
+            ':description' => $description,
+            ':school_id' => $current_school_id
         ]);
 
         $_SESSION['success'] = "Holiday added successfully!";
@@ -74,61 +78,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_holiday'])) {
     }
 }
 
-// Fetch attendance summary
+// Fetch attendance summary - filtered by school
 $summary_sql = "SELECT
-    (SELECT COUNT(DISTINCT date) FROM attendance WHERE date >= DATE_SUB(NOW(), INTERVAL 30 DAY)) as total_days,
-    (SELECT COUNT(*) FROM attendance WHERE status = 'present' AND date >= DATE_SUB(NOW(), INTERVAL 30 DAY)) as present_count,
-    (SELECT COUNT(*) FROM attendance WHERE status = 'absent' AND date >= DATE_SUB(NOW(), INTERVAL 30 DAY)) as absent_count,
-    (SELECT COUNT(*) FROM attendance WHERE status = 'late' AND date >= DATE_SUB(NOW(), INTERVAL 30 DAY)) as late_count";
-$summary_stmt = $pdo->query($summary_sql);
+    (SELECT COUNT(DISTINCT date) FROM attendance a JOIN students s ON a.student_id = s.id WHERE a.date >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND s.school_id = ?) as total_days,
+    (SELECT COUNT(*) FROM attendance a JOIN students s ON a.student_id = s.id WHERE a.status = 'present' AND a.date >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND s.school_id = ?) as present_count,
+    (SELECT COUNT(*) FROM attendance a JOIN students s ON a.student_id = s.id WHERE a.status = 'absent' AND a.date >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND s.school_id = ?) as absent_count,
+    (SELECT COUNT(*) FROM attendance a JOIN students s ON a.student_id = s.id WHERE a.status = 'late' AND a.date >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND s.school_id = ?) as late_count";
+$summary_stmt = $pdo->prepare($summary_sql);
+$summary_stmt->execute([$current_school_id, $current_school_id, $current_school_id, $current_school_id]);
 $summary = $summary_stmt->fetch();
 
-// Fetch all classes
-$classes_sql = "SELECT * FROM classes ORDER BY id";
-$classes_result = $pdo->query($classes_sql);
-$classes = $classes_result->fetchAll();
+// Fetch classes - filtered by school
+$classes_sql = "SELECT * FROM classes WHERE school_id = ? ORDER BY id";
+$classes_stmt = $pdo->prepare($classes_sql);
+$classes_stmt->execute([$current_school_id]);
+$classes = $classes_stmt->fetchAll();
 
-// Fetch attendance for selected date and class
+// Fetch attendance for selected date and class - filtered by school
 if ($class_filter === 'all') {
     $attendance_sql = "SELECT s.id, s.full_name, s.admission_no, c.class_name, a.status
                        FROM students s
                        JOIN classes c ON s.class_id = c.id
                        LEFT JOIN attendance a ON s.id = a.student_id AND a.date = :selected_date
+                       WHERE s.school_id = :school_id AND c.school_id = :school_id
                        ORDER BY c.class_name, s.full_name";
     $attendance_stmt = $pdo->prepare($attendance_sql);
-    $attendance_stmt->execute([':selected_date' => $selected_date]);
+    $attendance_stmt->execute([':selected_date' => $selected_date, ':school_id' => $current_school_id]);
 } else {
     $attendance_sql = "SELECT s.id, s.full_name, s.admission_no, c.class_name, a.status
                        FROM students s
                        JOIN classes c ON s.class_id = c.id
                        LEFT JOIN attendance a ON s.id = a.student_id AND a.date = :selected_date
-                       WHERE s.class_id = :class_id
+                       WHERE s.class_id = :class_id AND s.school_id = :school_id AND c.school_id = :school_id
                        ORDER BY s.full_name";
     $attendance_stmt = $pdo->prepare($attendance_sql);
     $attendance_stmt->execute([
         ':selected_date' => $selected_date,
-        ':class_id' => $class_filter
+        ':class_id' => $class_filter,
+        ':school_id' => $current_school_id
     ]);
 }
 $attendance_records = $attendance_stmt->fetchAll();
 
-// Fetch upcoming holidays
-$holidays_sql = "SELECT * FROM holidays WHERE holiday_date >= CURDATE() ORDER BY holiday_date LIMIT 5";
-$holidays_stmt = $pdo->query($holidays_sql);
+// Fetch upcoming holidays - filtered by school (assuming holidays table has school_id)
+$holidays_sql = "SELECT * FROM holidays WHERE holiday_date >= CURDATE() AND school_id = ? ORDER BY holiday_date LIMIT 5";
+$holidays_stmt = $pdo->prepare($holidays_sql);
+$holidays_stmt->execute([$current_school_id]);
 $holidays = $holidays_stmt->fetchAll();
 
-// Fetch class-wise statistics
+// Fetch class-wise statistics - filtered by school
 $class_stats_sql = "SELECT
     c.class_name,
     COUNT(DISTINCT s.id) as total_students,
     AVG(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) * 100 as attendance_percentage
     FROM classes c
-    LEFT JOIN students s ON c.id = s.class_id
+    LEFT JOIN students s ON c.id = s.class_id AND s.school_id = ?
     LEFT JOIN attendance a ON s.id = a.student_id AND a.date = :current_date
+    WHERE c.school_id = ?
     GROUP BY c.id
     ORDER BY c.id";
 $class_stats_stmt = $pdo->prepare($class_stats_sql);
-$class_stats_stmt->execute([':current_date' => $current_date]);
+$class_stats_stmt->execute([$current_school_id, $current_school_id, ':current_date' => $current_date]);
 $class_stats = $class_stats_stmt->fetchAll();
 
 $principal_name = $_SESSION['full_name'];
@@ -291,14 +301,14 @@ $principal_name = $_SESSION['full_name'];
                 <?php if(isset($_SESSION['success'])): ?>
                     <div class="alert alert-success" role="alert">
                         <i class="fas fa-check-circle"></i>
-                        <?php echo $_SESSION['success']; unset($_SESSION['success']); ?>
+                        <?php safe_echo($_SESSION['success']); unset($_SESSION['success']); ?>
                     </div>
                 <?php endif; ?>
 
                 <?php if(isset($_SESSION['error'])): ?>
                     <div class="alert alert-error" role="alert">
                         <i class="fas fa-exclamation-triangle"></i>
-                        <?php echo $_SESSION['error']; unset($_SESSION['error']); ?>
+                        <?php safe_echo($_SESSION['error']); unset($_SESSION['error']); ?>
                     </div>
                 <?php endif; ?>
 

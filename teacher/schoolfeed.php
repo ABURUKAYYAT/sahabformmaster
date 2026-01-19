@@ -9,20 +9,23 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     exit;
 }
 
+// School authentication and context
+$current_school_id = require_school_auth();
 $user_id = $_SESSION['user_id'];
 $user_name = $_SESSION['full_name'] ?? 'Teacher';
 $teacher_subject = $_SESSION['subject'] ?? '';
 
-// Fetch all published news (teachers can see all)
-$query = "SELECT id, title, excerpt, content, category, target_audience, 
-                 view_count, published_date, featured_image, allow_comments, 
-                 priority, status 
-          FROM school_news 
-          WHERE status = 'published' 
-          ORDER BY published_date DESC 
+// Fetch school-specific published news (teachers can only see their school's news)
+$query = "SELECT id, title, excerpt, content, category, target_audience,
+                 view_count, published_date, featured_image, allow_comments,
+                 priority, status
+          FROM school_news
+          WHERE status = 'published' AND school_id = ?
+          ORDER BY published_date DESC
           LIMIT 20";
 
-$stmt = $pdo->query($query);
+$stmt = $pdo->prepare($query);
+$stmt->execute([$current_school_id]);
 $news_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Count total comments for stats
@@ -978,5 +981,3 @@ if (!empty($news_items)) {
     </style>
 </body>
 </html>
-
-

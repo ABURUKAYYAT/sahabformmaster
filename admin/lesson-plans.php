@@ -18,15 +18,8 @@ $user_role = $_SESSION['role'];
 $user_name = $_SESSION['full_name'] ?? 'User';
 $is_principal = ($user_role === 'principal');
 
-// Get user's school_id
-$user_school_id = $_SESSION['school_id'] ?? null;
-if (!$user_school_id) {
-    // Fetch from database if not in session
-    $stmt = $pdo->prepare("SELECT school_id FROM users WHERE id = ?");
-    $stmt->execute([$user_id]);
-    $user_school_id = $stmt->fetchColumn();
-    $_SESSION['school_id'] = $user_school_id;
-}
+// Get current school for data isolation
+$current_school_id = require_school_auth();
 
 $errors = [];
 $success = '';
@@ -91,14 +84,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($stmt->fetchColumn() > 0) {
                 $errors[] = 'A lesson plan for this topic already exists for this class on this date.';
             } else {
-                $stmt = $pdo->prepare("INSERT INTO lesson_plans 
-                                      (subject_id, class_id, teacher_id, topic, duration, learning_objectives, 
-                                       teaching_methods, resources, lesson_content, assessment_method, assessment_tasks, 
-                                       differentiation, homework, date_planned, status, principal_remarks) 
-                                      VALUES (:subject_id, :class_id, :teacher_id, :topic, :duration, :learning_objectives, 
-                                              :teaching_methods, :resources, :lesson_content, :assessment_method, :assessment_tasks, 
+                $stmt = $pdo->prepare("INSERT INTO lesson_plans
+                                      (school_id, subject_id, class_id, teacher_id, topic, duration, learning_objectives,
+                                       teaching_methods, resources, lesson_content, assessment_method, assessment_tasks,
+                                       differentiation, homework, date_planned, status, principal_remarks)
+                                      VALUES (:school_id, :subject_id, :class_id, :teacher_id, :topic, :duration, :learning_objectives,
+                                              :teaching_methods, :resources, :lesson_content, :assessment_method, :assessment_tasks,
                                               :differentiation, :homework, :date_planned, :status, :principal_remarks)");
                 $stmt->execute([
+                    'school_id' => $current_school_id,
                     'subject_id' => $subject_id,
                     'class_id' => $class_id,
                     'teacher_id' => $teacher_id,
@@ -238,7 +232,7 @@ $teacher_performance = [];
 for ($i = 5; $i >= 0; $i--) {
     $month = date('Y-m', strtotime("-$i months"));
     $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM lesson_plans WHERE DATE_FORMAT(created_at, '%Y-%m') = ? AND school_id = ?");
-    $stmt->execute([$month, $user_school_id]);
+    $stmt->execute([$month, $current_school_id]);
     $monthly_submissions[] = $stmt->fetch()['count'];
 }
 
@@ -246,7 +240,7 @@ for ($i = 5; $i >= 0; $i--) {
 $statuses = ['draft', 'submitted', 'scheduled', 'completed'];
 foreach ($statuses as $status) {
     $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM lesson_plans WHERE status = ? AND school_id = ?");
-    $stmt->execute([$status, $user_school_id]);
+    $stmt->execute([$status, $current_school_id]);
     $status_distribution[] = $stmt->fetch()['count'];
 }
 
@@ -254,7 +248,7 @@ foreach ($statuses as $status) {
 $approval_statuses = ['approved', 'rejected', 'pending'];
 foreach ($approval_statuses as $status) {
     $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM lesson_plans WHERE approval_status = ? AND school_id = ?");
-    $stmt->execute([$status, $user_school_id]);
+    $stmt->execute([$status, $current_school_id]);
     $approval_rates[] = $stmt->fetch()['count'];
 }
 
@@ -270,9 +264,17 @@ $teacher_performance = $pdo->query("
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch data for dropdowns
-$subjects = $pdo->query("SELECT id, subject_name FROM subjects ORDER BY subject_name ASC")->fetchAll(PDO::FETCH_ASSOC);
-$classes = $pdo->query("SELECT id, class_name FROM classes ORDER BY class_name ASC")->fetchAll(PDO::FETCH_ASSOC);
-$teachers = $pdo->query("SELECT id, full_name FROM users WHERE role = 'teacher' ORDER BY full_name ASC")->fetchAll(PDO::FETCH_ASSOC);
+$stmt = $pdo->prepare("SELECT id, subject_name FROM subjects WHERE school_id = ? ORDER BY subject_name ASC");
+$stmt->execute([$current_school_id]);
+$subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$stmt = $pdo->prepare("SELECT id, class_name FROM classes WHERE school_id = ? ORDER BY class_name ASC");
+$stmt->execute([$current_school_id]);
+$classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$stmt = $pdo->prepare("SELECT id, full_name FROM users WHERE role = 'teacher' AND school_id = ? ORDER BY full_name ASC");
+$stmt->execute([$current_school_id]);
+$teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Search and filter
 $search = trim($_GET['search'] ?? '');
@@ -286,7 +288,7 @@ $query = "SELECT lp.*, s.subject_name as subject_name, c.class_name, u.full_name
           JOIN classes c ON lp.class_id = c.id
           JOIN users u ON lp.teacher_id = u.id
           WHERE lp.school_id = ?";
-$params = [$user_school_id];
+$params = [$current_school_id];
 
 // Teachers see only their own plans
 if ($user_role === 'teacher') {
@@ -1681,4 +1683,3 @@ function getStatusBadge($status) {
     });
 </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
-

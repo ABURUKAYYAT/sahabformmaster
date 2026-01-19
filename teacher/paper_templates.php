@@ -1,5 +1,14 @@
 <?php
 // Professional paper templates for TCPDF
+session_start();
+require_once '../includes/functions.php';
+
+// Check if teacher is logged in
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
+    header("Location: ../index.php");
+    exit;
+}
+$current_school_id = require_school_auth();
 
 class PaperTemplates {
     
@@ -128,4 +137,3 @@ class PaperTemplates {
     }
 }
 ?>
-

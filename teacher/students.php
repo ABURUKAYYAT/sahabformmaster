@@ -1,12 +1,15 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Only teachers
 if (!isset($_SESSION['user_id']) || strtolower($_SESSION['role'] ?? '') !== 'teacher') {
     header("Location: ../index.php");
     exit;
 }
+$current_school_id = require_school_auth();
+$teacher_id = intval($_SESSION['user_id']);
 $teacher_id = intval($_SESSION['user_id']);
 $errors = [];
 $success = '';
@@ -16,18 +19,18 @@ $stmt = $pdo->prepare("
     SELECT DISTINCT c.id, c.class_name, 'subject' as assignment_type
     FROM classes c
     JOIN subject_assignments sa ON c.id = sa.class_id
-    WHERE sa.teacher_id = :tid
+    WHERE sa.teacher_id = :tid AND c.school_id = :school_id
 
     UNION
 
     SELECT DISTINCT c.id, c.class_name, 'form_master' as assignment_type
     FROM classes c
     JOIN class_teachers ct ON c.id = ct.class_id
-    WHERE ct.teacher_id = :tid2
+    WHERE ct.teacher_id = :tid2 AND c.school_id = :school_id2
 
     ORDER BY class_name
 ");
-$stmt->execute(['tid'=>$teacher_id, 'tid2'=>$teacher_id]);
+$stmt->execute(['tid'=>$teacher_id, 'school_id'=>$current_school_id, 'tid2'=>$teacher_id, 'school_id2'=>$current_school_id]);
 $assigned_classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get total student count across assigned classes
@@ -47,9 +50,9 @@ $stmt = $pdo->prepare("
 $stmt->execute([$teacher_id, $teacher_id]);
 $student_count = $stmt->fetchColumn();
 
-// Fetch ALL classes for the dropdown
-$stmt = $pdo->prepare("SELECT id, class_name FROM classes ORDER BY class_name");
-$stmt->execute();
+// Fetch ALL classes for the dropdown - school-filtered
+$stmt = $pdo->prepare("SELECT id, class_name FROM classes WHERE school_id = ? ORDER BY class_name");
+$stmt->execute([$current_school_id]);
 $all_classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Handle actions: add_note, attendance, CRUD operations, bulk upload
@@ -143,8 +146,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($class_id)) $errors[] = 'Class is required.';
 
         // Check if admission number already exists
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE admission_no = ?");
-        $stmt->execute([$admission_no]);
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE admission_no = ? AND school_id = ?");
+        $stmt->execute([$admission_no, $current_school_id]);
         if ($stmt->fetchColumn() > 0) {
             $errors[] = 'Admission number already exists.';
         }
@@ -169,12 +172,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->beginTransaction();
 
                 $stmt = $pdo->prepare("
-                    INSERT INTO students (class_id, full_name, admission_no, gender, dob, phone,
+                    INSERT INTO students (school_id, class_id, full_name, admission_no, gender, dob, phone,
                                          guardian_name, guardian_phone, address, student_type, enrollment_date)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 ");
                 $stmt->execute([
-                    $class_id, $full_name, $admission_no, $gender, $dob ?: null,
+                    $current_school_id, $class_id, $full_name, $admission_no, $gender, $dob ?: null,
                     $phone, $guardian_name, $guardian_phone, $address, $student_type
                 ]);
 
@@ -212,8 +215,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($class_id)) $errors[] = 'Class is required.';
 
         // Check if admission number already exists (excluding current student)
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE admission_no = ? AND id != ?");
-        $stmt->execute([$admission_no, $student_id]);
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE admission_no = ? AND id != ? AND school_id = ?");
+        $stmt->execute([$admission_no, $student_id, $current_school_id]);
         if ($stmt->fetchColumn() > 0) {
             $errors[] = 'Admission number already exists.';
         }
@@ -360,8 +363,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
 
                             // Check if admission number exists
-                            $stmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE admission_no = ?");
-                            $stmt->execute([$admission_no]);
+                            $stmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE admission_no = ? AND school_id = ?");
+                            $stmt->execute([$admission_no, $current_school_id]);
                             if ($stmt->fetchColumn() > 0) {
                                 $skipped++;
                                 $errors_list[] = "Skipped: Admission no '$admission_no' already exists";
@@ -370,12 +373,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             try {
                                 $stmt = $pdo->prepare("
-                                    INSERT INTO students (class_id, full_name, admission_no, gender, dob, phone,
+                                    INSERT INTO students (school_id, class_id, full_name, admission_no, gender, dob, phone,
                                                          guardian_name, guardian_phone, address, student_type, enrollment_date)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                                 ");
                                 $stmt->execute([
-                                    $class_id, $full_name, $admission_no, $gender,
+                                    $current_school_id, $class_id, $full_name, $admission_no, $gender,
                                     !empty($dob) ? date('Y-m-d', strtotime($dob)) : null,
                                     $phone, $guardian_name, $guardian_phone, $address, $student_type
                                 ]);
@@ -1537,5 +1540,3 @@ if ($class_id > 0) {
         }, 5000);
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
-
-

@@ -2,18 +2,13 @@
 session_start();
 require_once '../config/db.php';
 
-// Check authorization
-if (!isset($_SESSION['user_id'])) {
+// Check if teacher is logged in
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     header("Location: ../index.php");
     exit;
 }
-
-// Only allow teachers and principal
-$allowed_roles = ['principal', 'teacher'];
-if (!in_array(strtolower($_SESSION['role'] ?? ''), $allowed_roles)) {
-    header("Location: ../index.php");
-    exit;
-}
+require_once '../includes/functions.php';
+$current_school_id = require_school_auth();
 
 // Include TCPDF
 require_once '../TCPDF-main/TCPDF-main/tcpdf.php';
@@ -21,7 +16,7 @@ require_once '../TCPDF-main/TCPDF-main/tcpdf.php';
 // Function to generate answer key PDF
 function generateAnswerKeyPDF($selected_questions, $school_name, $school_motto, $school_address,
                             $paper_title, $exam_type, $subject_name, $class_name, $term,
-                            $time_allotted, $total_marks) {
+                            $time_allotted, $total_marks, $current_school_id) {
     global $pdo;
 
     if (empty($selected_questions) || !is_array($selected_questions)) {
@@ -37,12 +32,12 @@ function generateAnswerKeyPDF($selected_questions, $school_name, $school_motto, 
                GROUP_CONCAT(CASE WHEN qo.is_correct = 1 THEN qo.option_letter END SEPARATOR ', ') as correct_answers,
                GROUP_CONCAT(CASE WHEN qo.is_correct = 1 THEN qo.option_text END SEPARATOR ' | ') as correct_answer_texts
         FROM questions_bank q
-        LEFT JOIN question_options qo ON q.id = qo.question_id
-        WHERE q.id IN ($placeholders)
+        LEFT JOIN question_options qo ON q.id = qo.question_id AND qo.school_id = ?
+        WHERE q.id IN ($placeholders) AND q.school_id = ?
         GROUP BY q.id
         ORDER BY FIELD(q.id, " . implode(',', $selected_questions) . ")
     ");
-    $stmt->execute($selected_questions);
+    $stmt->execute(array_merge([$current_school_id], $selected_questions, [$current_school_id]));
     $questions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Create new PDF document
@@ -285,15 +280,15 @@ $subject_name = '';
 $class_name = '';
 
 if ($subject_id > 0) {
-    $stmt = $pdo->prepare("SELECT subject_name FROM subjects WHERE id = ?");
-    $stmt->execute([$subject_id]);
+    $stmt = $pdo->prepare("SELECT subject_name FROM subjects WHERE id = ? AND school_id = ?");
+    $stmt->execute([$subject_id, $current_school_id]);
     $subject = $stmt->fetch(PDO::FETCH_ASSOC);
     $subject_name = $subject['subject_name'] ?? '';
 }
 
 if ($class_id > 0) {
-    $stmt = $pdo->prepare("SELECT class_name FROM classes WHERE id = ?");
-    $stmt->execute([$class_id]);
+    $stmt = $pdo->prepare("SELECT class_name FROM classes WHERE id = ? AND school_id = ?");
+    $stmt->execute([$class_id, $current_school_id]);
     $class = $stmt->fetch(PDO::FETCH_ASSOC);
     $class_name = $class['class_name'] ?? '';
 }
@@ -310,7 +305,8 @@ $pdf_content = generateAnswerKeyPDF(
     $class_name,
     $term,
     $time_allotted,
-    $total_marks
+    $total_marks,
+    $current_school_id
 );
 
 // Output PDF to browser
@@ -321,5 +317,3 @@ header('Accept-Ranges: bytes');
 echo $pdf_content;
 exit;
 ?>
-
-

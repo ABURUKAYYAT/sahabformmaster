@@ -1,40 +1,83 @@
 <?php
 // index.php
 session_start();
+
+// Load security framework
+define('SECURE_ACCESS', true);
+require_once 'includes/security.php';
 require_once 'config/db.php';
 
+// Check session timeout
+if (!Security::checkSessionTimeout()) {
+    header("Location: logout.php");
+    exit;
+}
+
 $error = '';
+$csrf_token = Security::generateCsrfToken();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $username = trim($_POST['username']);
-    $password = trim($_POST['password']);
-
-    if (empty($username) || empty($password)) {
-        $error = "Please enter both username and password.";
+    // Validate CSRF token
+    if (!Security::validateCsrfToken($_POST['csrf_token'] ?? '')) {
+        $error = "Security validation failed. Please refresh the page.";
+        Security::logSecurityEvent('csrf_violation', ['action' => 'login_attempt']);
     } else {
-        // Prepare SQL to find user
-        $stmt = $pdo->prepare("SELECT * FROM users WHERE username = :username");
-        $stmt->execute(['username' => $username]);
-        $user = $stmt->fetch();
+        $username = Security::sanitizeString($_POST['username'] ?? '', 100);
+        $password = $_POST['password'] ?? '';
 
-        // Verify user exists and password is correct
-        if ($user && password_verify($password, $user['password'])) {
-        // Login Success
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['role'] = $user['role'];
-            $_SESSION['full_name'] = $user['full_name'];
-            $_SESSION['school_id'] = $user['school_id'];
-            $_SESSION['email'] = $user['email'];
-
-            // Redirect based on Role
-            if ($user['role'] === 'principal') {
-                header("Location: admin/index.php");
-            } else {
-                header("Location: teacher/index.php");
-            }
-            exit;
+        if (empty($username) || empty($password)) {
+            $error = "Please enter both username and password.";
         } else {
-            $error = "Invalid username or password.";
+            // Check rate limiting
+            $rateLimit = Security::checkLoginAttempts($username);
+            if (!$rateLimit['allowed']) {
+                $error = "Too many login attempts. Please wait " . ($rateLimit['wait_time'] / 60) . " minutes.";
+                Security::logSecurityEvent('rate_limit_exceeded', ['username' => $username]);
+            } else {
+                try {
+                    // Prepare SQL to find user
+                    $stmt = $pdo->prepare("SELECT id, username, password, role, full_name, school_id, email, is_active FROM users WHERE username = :username AND is_active = 1");
+                    $stmt->execute(['username' => $username]);
+                    $user = $stmt->fetch();
+
+                    // Verify user exists and password is correct
+                    if ($user && password_verify($password, $user['password'])) {
+                        // Reset login attempts on successful login
+                        Security::resetLoginAttempts($username);
+
+                        // Login Success
+                        $_SESSION['user_id'] = $user['id'];
+                        $_SESSION['role'] = $user['role'];
+                        $_SESSION['full_name'] = $user['full_name'];
+                        $_SESSION['school_id'] = $user['school_id'];
+                        $_SESSION['email'] = $user['email'];
+                        $_SESSION['last_activity'] = time();
+
+                        // Regenerate session for security
+                        Security::regenerateSession();
+
+                        Security::logSecurityEvent('successful_login', ['user_id' => $user['id'], 'role' => $user['role']]);
+
+                        // Redirect based on Role
+                        if ($user['role'] === 'principal') {
+                            header("Location: admin/index.php");
+                        } elseif ($user['role'] === 'teacher') {
+                            header("Location: teacher/index.php");
+                        } elseif ($user['role'] === 'student') {
+                            header("Location: student/index.php");
+                        } else {
+                            $error = "Invalid user role.";
+                        }
+                        exit;
+                    } else {
+                        $error = "Invalid username or password.";
+                        Security::logSecurityEvent('failed_login', ['username' => $username]);
+                    }
+                } catch (Exception $e) {
+                    $error = "System error. Please try again later.";
+                    Security::logSecurityEvent('login_error', ['error' => $e->getMessage()]);
+                }
+            }
         }
     }
 }
@@ -424,6 +467,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <?php endif; ?>
 
             <form action="index.php" method="POST" class="fade-in">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                 <div class="form-group">
                     <label for="username">Username</label>
                     <input type="text" name="username" id="username" class="form-control" placeholder="Enter your username" required>

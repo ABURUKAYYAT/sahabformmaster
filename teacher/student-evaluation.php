@@ -3,11 +3,9 @@
 session_start();
 require_once '../config/db.php';
 
-// Check if teacher is logged in
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
-    header("Location: ../index.php");
-    exit;
-}
+// Check authorization and get school context
+require_once '../includes/functions.php';
+$current_school_id = require_school_auth();
 
 $teacher_id = $_SESSION['user_id'];
 $teacher_name = $_SESSION['full_name'];
@@ -61,16 +59,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch evaluations created by this teacher
+// Fetch evaluations created by this teacher - school-filtered
 $stmt = $pdo->prepare("
     SELECT e.*, s.full_name, s.class_id, s.admission_no, c.class_name
     FROM evaluations e
     JOIN students s ON e.student_id = s.id
     JOIN classes c ON e.class_id = c.id
-    WHERE e.teacher_id = ?
+    WHERE e.teacher_id = ? AND s.school_id = ?
     ORDER BY e.created_at DESC
 ");
-$stmt->execute([$teacher_id]);
+$stmt->execute([$teacher_id, $current_school_id]);
 $evaluations = $stmt->fetchAll();
 
 // Fetch students that this teacher can evaluate (students in classes they teach)
@@ -1175,14 +1173,14 @@ foreach ($evaluations as $eval) {
         <?php if(isset($_SESSION['success'])): ?>
             <div class="alert-modern alert-success-modern animate-fade-in-up">
                 <i class="fas fa-check-circle"></i>
-                <span><?php echo $_SESSION['success']; unset($_SESSION['success']); ?></span>
+                <span><?php safe_echo($_SESSION['success']); unset($_SESSION['success']); ?></span>
             </div>
         <?php endif; ?>
 
         <?php if(isset($_SESSION['error'])): ?>
             <div class="alert-modern alert-error-modern animate-fade-in-up">
                 <i class="fas fa-exclamation-circle"></i>
-                <span><?php echo $_SESSION['error']; unset($_SESSION['error']); ?></span>
+                <span><?php safe_echo($_SESSION['error']); unset($_SESSION['error']); ?></span>
             </div>
         <?php endif; ?>
 
@@ -1730,5 +1728,3 @@ foreach ($evaluations as $eval) {
         });
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
-
-

@@ -7,6 +7,9 @@ if (!isset($_SESSION['user_id']) || strtolower($_SESSION['role'] ?? '') !== 'tea
     header("Location: ../index.php");
     exit;
 }
+
+// School authentication and context
+$current_school_id = require_school_auth();
 $teacher_id = intval($_SESSION['user_id']);
 
 // Get student ID from URL
@@ -21,11 +24,11 @@ $stmt = $pdo->prepare("
     SELECT s.*, c.class_name, sp.school_name, sp.school_address,
            sp.school_phone, sp.school_email, sp.school_logo as logo_path
     FROM students s
-    JOIN classes c ON s.class_id = c.id
+    JOIN classes c ON s.class_id = c.id AND c.school_id = ?
     CROSS JOIN school_profile sp
-    WHERE s.id = ?
+    WHERE s.id = ? AND s.school_id = ?
 ");
-$stmt->execute([$student_id]);
+$stmt->execute([$current_school_id, $student_id, $current_school_id]);
 $student = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$student) {
@@ -37,13 +40,13 @@ if (!$student) {
 $stmt = $pdo->prepare("
     SELECT COUNT(*)
     FROM students s
-    WHERE s.id = ?
+    WHERE s.id = ? AND s.school_id = ?
     AND (
-        EXISTS (SELECT 1 FROM subject_assignments sa WHERE sa.class_id = s.class_id AND sa.teacher_id = ?)
-        OR EXISTS (SELECT 1 FROM class_teachers ct WHERE ct.class_id = s.class_id AND ct.teacher_id = ?)
+        EXISTS (SELECT 1 FROM subject_assignments sa WHERE sa.class_id = s.class_id AND sa.teacher_id = ? AND sa.school_id = ?)
+        OR EXISTS (SELECT 1 FROM class_teachers ct WHERE ct.class_id = s.class_id AND ct.teacher_id = ? AND ct.school_id = ?)
     )
 ");
-$stmt->execute([$student_id, $teacher_id, $teacher_id]);
+$stmt->execute([$student_id, $current_school_id, $teacher_id, $current_school_id, $teacher_id, $current_school_id]);
 if ($stmt->fetchColumn() == 0) {
     header("Location: students.php");
     exit;
@@ -54,22 +57,22 @@ $stmt = $pdo->prepare("
     SELECT sn.*, u.full_name as teacher_name
     FROM student_notes sn
     JOIN users u ON sn.teacher_id = u.id
-    WHERE sn.student_id = ?
+    WHERE sn.student_id = ? AND sn.school_id = ?
     ORDER BY sn.created_at DESC
     LIMIT 10
 ");
-$stmt->execute([$student_id]);
+$stmt->execute([$student_id, $current_school_id]);
 $notes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch attendance records (last 30 days)
 $stmt = $pdo->prepare("
     SELECT *
     FROM attendance
-    WHERE student_id = ?
+    WHERE student_id = ? AND school_id = ?
     AND date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
     ORDER BY date DESC
 ");
-$stmt->execute([$student_id]);
+$stmt->execute([$student_id, $current_school_id]);
 $attendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Calculate attendance stats
@@ -603,5 +606,3 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
     });
 </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
-
-

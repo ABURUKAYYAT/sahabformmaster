@@ -2,20 +2,22 @@
 // get_calendar_activities.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 header('Content-Type: application/json');
 
-if (!isset($_SESSION['student_id'])) {
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     echo json_encode([]);
     exit();
 }
+$current_school_id = require_school_auth();
 
 $student_id = $_SESSION['student_id'];
 
 // Get student's class
-$student_query = "SELECT class_id FROM students WHERE id = ?";
+$student_query = "SELECT class_id FROM students WHERE id = ? AND school_id = ?";
 $student_stmt = $pdo->prepare($student_query);
-$student_stmt->execute([$student_id]);
+$student_stmt->execute([$student_id, $current_school_id]);
 $student = $student_stmt->fetch();
 
 if (!$student) {
@@ -26,17 +28,17 @@ if (!$student) {
 // Get activities with due dates
 $query = "
     SELECT ca.id as activity_id, ca.title, ca.activity_type as type, ca.due_date,
-           s.subject_name 
-    FROM class_activities ca 
-    JOIN subjects s ON ca.subject_id = s.id 
-    WHERE ca.class_id = ? 
+           s.subject_name
+    FROM class_activities ca
+    JOIN subjects s ON ca.subject_id = s.id AND s.school_id = ?
+    WHERE ca.class_id = ? AND ca.school_id = ?
     AND ca.status = 'published'
     AND ca.due_date IS NOT NULL
     ORDER BY ca.due_date ASC
 ";
 
 $stmt = $pdo->prepare($query);
-$stmt->execute([$student['class_id']]);
+$stmt->execute([$current_school_id, $student['class_id'], $current_school_id]);
 $activities = $stmt->fetchAll();
 
 $events = [];

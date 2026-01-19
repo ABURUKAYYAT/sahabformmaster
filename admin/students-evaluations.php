@@ -8,7 +8,14 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'principal') {
     exit;
 }
 
+$user_id = $_SESSION['user_id'];
+$user_role = $_SESSION['role'];
+$user_name = $_SESSION['full_name'] ?? 'User';
+$is_principal = ($user_role === 'principal');
 $principal_name = $_SESSION['full_name'];
+
+// Get current school for data isolation
+$current_school_id = require_school_auth();
 
 
 // Handle CRUD operations
@@ -26,8 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $affective = $_POST['affective'];
         $comments = $_POST['comments'];
         
-        $stmt = $pdo->prepare("INSERT INTO evaluations (student_id, class_id, term, academic_year, academic, non_academic, cognitive, psychomotor, affective, comments, teacher_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$student_id, $class_id, $term, $year, $academic, $non_academic, $cognitive, $psychomotor, $affective, $comments, $_SESSION['user_id']]);
+        $stmt = $pdo->prepare("INSERT INTO evaluations (school_id, student_id, class_id, term, academic_year, academic, non_academic, cognitive, psychomotor, affective, comments, teacher_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$current_school_id, $student_id, $class_id, $term, $year, $academic, $non_academic, $cognitive, $psychomotor, $affective, $comments, $_SESSION['user_id']]);
         
         $_SESSION['success'] = "Evaluation added successfully!";
     }
@@ -67,16 +74,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Fetch evaluations
-$stmt = $pdo->query("
-    SELECT e.*, s.full_name, s.class_id, s.admission_no 
-    FROM evaluations e 
-    JOIN students s ON e.student_id = s.id 
+$stmt = $pdo->prepare("
+    SELECT e.*, s.full_name, s.class_id, s.admission_no
+    FROM evaluations e
+    JOIN students s ON e.student_id = s.id
+    WHERE e.school_id = ?
     ORDER BY e.created_at DESC
 ");
+$stmt->execute([$current_school_id]);
 $evaluations = $stmt->fetchAll();
 
 // Fetch students for dropdown
-$students = $pdo->query("SELECT id, full_name, class_id FROM students ORDER BY class_id, full_name")->fetchAll();
+$stmt = $pdo->prepare("SELECT id, full_name, class_id FROM students WHERE school_id = ? ORDER BY class_id, full_name");
+$stmt->execute([$current_school_id]);
+$students = $stmt->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -329,7 +340,7 @@ $students = $pdo->query("SELECT id, full_name, class_id FROM students ORDER BY c
             <?php if (isset($_SESSION['success'])): ?>
                 <div class="alert alert-success">
                     <i class="fas fa-check-circle"></i>
-                    <?php echo $_SESSION['success']; ?>
+                    <?php echo htmlspecialchars($_SESSION['success']); ?>
                 </div>
                 <?php unset($_SESSION['success']); ?>
             <?php endif; ?>
@@ -567,7 +578,9 @@ $students = $pdo->query("SELECT id, full_name, class_id FROM students ORDER BY c
                             <select class="form-control" name="class_id" required>
                                 <option value="">Select Class</option>
                                 <?php
-                                $classes = $pdo->query("SELECT id, class_name FROM classes ORDER BY class_name")->fetchAll();
+                                $stmt = $pdo->prepare("SELECT id, class_name FROM classes WHERE school_id = ? ORDER BY class_name");
+                                $stmt->execute([$user_school_id]);
+                                $classes = $stmt->fetchAll();
                                 foreach ($classes as $class): ?>
                                     <option value="<?php echo $class['id']; ?>">
                                         <?php echo htmlspecialchars($class['class_name']); ?>
@@ -889,4 +902,3 @@ $students = $pdo->query("SELECT id, full_name, class_id FROM students ORDER BY c
 
 
 </body>
-

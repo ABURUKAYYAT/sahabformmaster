@@ -1,13 +1,17 @@
 <?php
-// filepath: c:\xampp\htdocs\sahabformmaster\admin\lesson-plans-detail.php
+// filepath: c:\xampp\htdocs\sahabformmaster\teacher\lesson-plans-detail.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Only allow principal (admin) and teachers to access
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'] ?? '', ['principal', 'teacher'])) {
     header("Location: ../index.php");
     exit;
 }
+
+// School authentication and context
+$current_school_id = require_school_auth();
 
 $user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['role'];
@@ -24,16 +28,16 @@ if ($plan_id <= 0) {
     exit;
 }
 
-// Fetch lesson plan details
-$stmt = $pdo->prepare("SELECT lp.*, s.subject_name, c.class_name, u.full_name as teacher_name, 
+// Fetch lesson plan details - filtered by school_id
+$stmt = $pdo->prepare("SELECT lp.*, s.subject_name, c.class_name, u.full_name as teacher_name,
                              u2.full_name as approved_by_name
-                      FROM lesson_plans lp 
-                      JOIN subjects s ON lp.subject_id = s.id 
-                      JOIN classes c ON lp.class_id = c.id 
-                      JOIN users u ON lp.teacher_id = u.id 
-                      LEFT JOIN users u2 ON lp.approved_by = u2.id 
-                      WHERE lp.id = :id");
-$stmt->execute(['id' => $plan_id]);
+                      FROM lesson_plans lp
+                      JOIN subjects s ON lp.subject_id = s.id
+                      JOIN classes c ON lp.class_id = c.id
+                      JOIN users u ON lp.teacher_id = u.id
+                      LEFT JOIN users u2 ON lp.approved_by = u2.id
+                      WHERE lp.id = :id AND s.school_id = :school_id AND c.school_id = :school_id2");
+$stmt->execute(['id' => $plan_id, 'school_id' => $current_school_id, 'school_id2' => $current_school_id]);
 $plan = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$plan) {
@@ -1220,5 +1224,3 @@ function getApprovalBadge($status) {
 
 </body>
 </html>
-
-

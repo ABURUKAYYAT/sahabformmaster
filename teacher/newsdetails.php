@@ -2,12 +2,16 @@
 
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Check if user is logged in as teacher
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     header("Location: index.php");
     exit;
 }
+
+// School authentication and context
+$current_school_id = require_school_auth();
 
 $user_id = $_SESSION['user_id'];
 $user_name = $_SESSION['full_name'] ?? 'Teacher';
@@ -21,9 +25,9 @@ if ($news_id <= 0) {
     exit;
 }
 
-// Fetch the specific news item
-$stmt = $pdo->prepare("SELECT * FROM school_news WHERE id = :id AND status = 'published'");
-$stmt->execute(['id' => $news_id]);
+// Fetch the specific news item - filtered by school_id
+$stmt = $pdo->prepare("SELECT * FROM school_news WHERE id = :id AND status = 'published' AND school_id = :school_id");
+$stmt->execute(['id' => $news_id, 'school_id' => $current_school_id]);
 $news_item = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$news_item) {
@@ -31,9 +35,9 @@ if (!$news_item) {
     exit;
 }
 
-// Update view count
-$stmt = $pdo->prepare("UPDATE school_news SET view_count = view_count + 1 WHERE id = :id");
-$stmt->execute(['id' => $news_id]);
+// Update view count - filtered by school_id
+$stmt = $pdo->prepare("UPDATE school_news SET view_count = view_count + 1 WHERE id = :id AND school_id = :school_id");
+$stmt->execute(['id' => $news_id, 'school_id' => $current_school_id]);
 
 // Handle comment submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -62,10 +66,11 @@ $stmt = $pdo->prepare("SELECT * FROM school_news_comments WHERE news_id = :news_
 $stmt->execute(['news_id' => $news_id]);
 $comments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch recent news for sidebar
-$recent_stmt = $pdo->query("SELECT id, title, published_date, featured_image FROM school_news 
-                           WHERE status = 'published' AND id != $news_id 
-                           ORDER BY published_date DESC LIMIT 5");
+// Fetch recent news for sidebar - filtered by school_id
+$recent_stmt = $pdo->prepare("SELECT id, title, published_date, featured_image FROM school_news
+                              WHERE status = 'published' AND id != :news_id AND school_id = :school_id
+                              ORDER BY published_date DESC LIMIT 5");
+$recent_stmt->execute(['news_id' => $news_id, 'school_id' => $current_school_id]);
 $recent_news = $recent_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
@@ -816,4 +821,3 @@ $recent_news = $recent_stmt->fetchAll(PDO::FETCH_ASSOC);
         });
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
-

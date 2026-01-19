@@ -9,6 +9,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     exit();
 }
 
+// School authentication and context
+$current_school_id = require_school_auth();
+
 $user_id = $_SESSION['user_id'];
 $message = '';
 $error = '';
@@ -53,14 +56,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Insert permission request
             $stmt = $pdo->prepare("
                 INSERT INTO permissions (
-                    staff_id, request_type, title, description,
+                    school_id, staff_id, request_type, title, description,
                     start_date, end_date, duration_hours, priority,
                     attachment_path, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
             ");
 
             $stmt->execute([
-                $user_id, $request_type, $title, $description,
+                $current_school_id, $user_id, $request_type, $title, $description,
                 $start_date, $end_date ?: null, $duration_hours ?: null,
                 $priority, $attachment_path
             ]);
@@ -79,10 +82,10 @@ try {
         SELECT p.*, u.full_name as approved_by_name
         FROM permissions p
         LEFT JOIN users u ON p.approved_by = u.id
-        WHERE p.staff_id = ?
+        WHERE p.staff_id = ? AND p.school_id = ?
         ORDER BY p.created_at DESC
     ");
-    $stmt->execute([$user_id]);
+    $stmt->execute([$user_id, $current_school_id]);
     $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $error = "Error fetching requests: " . $e->getMessage();
@@ -1548,5 +1551,3 @@ try {
         });
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
-
-

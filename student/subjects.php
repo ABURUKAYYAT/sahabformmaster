@@ -2,6 +2,8 @@
 session_start();
 require_once '../config/db.php';
 
+$current_school_id = get_current_school_id();
+
 $uid = $_SESSION['user_id'] ?? null;
 $role = strtolower($_SESSION['role'] ?? '');
 $admission_no = $_SESSION['admission_no'] ?? null;
@@ -30,14 +32,14 @@ if ($role && $role !== 'student') {
 // Resolve student record using admission_no first, fallback to user_id/id
 $student = null;
 if ($admission_no) {
-    $stmt = $pdo->prepare("SELECT id, class_id, admission_no FROM students WHERE admission_no = :admission_no LIMIT 1");
-    $stmt->execute(['admission_no' => $admission_no]);
+    $stmt = $pdo->prepare("SELECT id, class_id, admission_no FROM students WHERE admission_no = :admission_no AND school_id = :school_id LIMIT 1");
+    $stmt->execute(['admission_no' => $admission_no, 'school_id' => $current_school_id]);
     $student = $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
 if (!$student && $uid) {
-    $stmt = $pdo->prepare("SELECT id, class_id, admission_no FROM students WHERE user_id = :uid OR id = :uid LIMIT 1");
-    $stmt->execute(['uid' => $uid]);
+    $stmt = $pdo->prepare("SELECT id, class_id, admission_no FROM students WHERE (user_id = :uid OR id = :uid) AND school_id = :school_id LIMIT 1");
+    $stmt->execute(['uid' => $uid, 'school_id' => $current_school_id]);
     $student = $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
@@ -54,9 +56,9 @@ $stmt = $pdo->prepare("SELECT s.id, s.subject_name, s.subject_code, u.full_name 
     FROM subject_assignments sa
     JOIN subjects s ON sa.subject_id = s.id
     LEFT JOIN users u ON sa.teacher_id = u.id
-    WHERE sa.class_id = :class_id
+    WHERE sa.class_id = :class_id AND sa.school_id = :school_id
     ORDER BY s.subject_name");
-$stmt->execute(['class_id' => $class_id]);
+$stmt->execute(['class_id' => $class_id, 'school_id' => $current_school_id]);
 $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!doctype html>
@@ -68,8 +70,8 @@ $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <main class="main-content">
     <h2>My Subjects</h2>
     <p>Class: <?php
-        $c = $pdo->prepare("SELECT class_name FROM classes WHERE id = :id");
-        $c->execute(['id' => $class_id]);
+        $c = $pdo->prepare("SELECT class_name FROM classes WHERE id = :id AND school_id = :school_id");
+        $c->execute(['id' => $class_id, 'school_id' => $current_school_id]);
         echo htmlspecialchars($c->fetchColumn() ?: 'N/A');
     ?></p>
 

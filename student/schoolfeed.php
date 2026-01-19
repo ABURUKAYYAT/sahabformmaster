@@ -11,10 +11,12 @@ if (!isset($_SESSION['student_id'])) {
 
 $student_name = $_SESSION['student_name'];
 $admission_number = $_SESSION['admission_no'];
+$current_school_id = get_current_school_id();
 
 // Fetch news relevant to student (All + Students + their specific class)
 $query = "SELECT * FROM school_news
           WHERE status = 'published'
+          AND school_id = :school_id
           AND (target_audience = 'All'
                OR target_audience = 'Students'
                OR target_audience LIKE :class)
@@ -23,7 +25,7 @@ $query = "SELECT * FROM school_news
 
 $stmt = $pdo->prepare($query);
 $class_param = isset($_SESSION['class']) ? '%' . $_SESSION['class'] . '%' : '%';
-$stmt->execute(['class' => $class_param]);
+$stmt->execute(['school_id' => $current_school_id, 'class' => $class_param]);
 $news_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
@@ -1678,4 +1680,3 @@ $news_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 </body>
 </html>
-
