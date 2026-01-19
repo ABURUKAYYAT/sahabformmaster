@@ -89,71 +89,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login | SahabFormMaster</title>
+    <link rel="stylesheet" href="assets/css/education-theme-main.css">
     <style>
-        /* Glassmorphic CSS Variables */
-        :root {
-            --glass-bg: rgba(255, 255, 255, 0.25);
-            --glass-border: rgba(255, 255, 255, 0.18);
-            --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-            --glass-shadow-hover: 0 12px 40px 0 rgba(31, 38, 135, 0.45);
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255, 255, 255, 0.8);
-            --input-bg: rgba(255, 255, 255, 0.15);
-            --input-border: rgba(255, 255, 255, 0.3);
-            --error-bg: rgba(239, 68, 68, 0.2);
-            --error-border: rgba(239, 68, 68, 0.3);
-            --success-bg: rgba(34, 197, 94, 0.2);
-            --success-border: rgba(34, 197, 94, 0.3);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        /* ===== LOGIN PAGE SPECIFIC STYLES ===== */
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-            background-attachment: fixed;
+            background: linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
-            color: var(--text-primary);
-            overflow-x: hidden;
-        }
-
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="80" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="40" cy="60" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="60" cy="30" r="1" fill="rgba(255,255,255,0.1)"/></svg>') repeat;
-            pointer-events: none;
-            z-index: -1;
+            padding: 2rem;
+            font-family: var(--font-family-primary);
         }
 
         .login-container {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            box-shadow: var(--glass-shadow);
+            background: var(--white);
+            border-radius: var(--border-radius-2xl);
+            box-shadow: var(--shadow-2xl);
             width: 100%;
-            max-width: 420px;
+            max-width: 480px;
             overflow: hidden;
-            transition: var(--transition);
             position: relative;
-            z-index: 1;
         }
 
         .login-container::before {
@@ -162,291 +119,271 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             top: 0;
             left: 0;
             right: 0;
-            height: 4px;
-            background: var(--accent-gradient);
-            border-radius: 20px 20px 0 0;
-        }
-
-        .login-container:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: var(--glass-shadow-hover);
+            height: 6px;
+            background: linear-gradient(90deg, var(--primary-800), var(--primary-600));
         }
 
         .login-header {
-            background: var(--primary-gradient);
-            color: var(--text-primary);
-            padding: 2.5rem 2rem 2rem;
+            background: linear-gradient(135deg, var(--primary-800), var(--primary-900));
+            color: var(--white);
+            padding: 3rem 2.5rem 2.5rem;
             text-align: center;
             position: relative;
-            overflow: hidden;
-        }
-
-        .login-header::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-            animation: shimmer 6s ease-in-out infinite;
-        }
-
-        @keyframes shimmer {
-            0%, 100% { transform: scale(1) rotate(0deg); }
-            50% { transform: scale(1.05) rotate(180deg); }
         }
 
         .login-header h2 {
-            font-family: 'Poppins', sans-serif;
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            position: relative;
-            z-index: 1;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-            background: linear-gradient(45deg, #ffffff, rgba(255, 255, 255, 0.8));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            font-family: var(--font-family-heading);
+            font-size: var(--text-3xl);
+            font-weight: var(--font-bold);
+            margin-bottom: var(--space-2);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .login-header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-            position: relative;
-            z-index: 1;
-            font-weight: 500;
-            color: var(--text-secondary);
+            font-size: var(--text-lg);
+            opacity: 0.95;
+            font-weight: var(--font-medium);
+            line-height: var(--leading-relaxed);
         }
 
         .login-body {
-            padding: 2.5rem 2rem;
+            padding: 3rem 2.5rem;
         }
 
         .form-group {
-            margin-bottom: 1.5rem;
-            position: relative;
+            margin-bottom: var(--space-6);
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 0.5rem;
-            color: var(--text-primary);
-            font-weight: 600;
-            font-size: 0.9rem;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
+            font-size: var(--text-sm);
+            font-weight: var(--font-semibold);
+            color: var(--gray-700);
+            margin-bottom: var(--space-2);
+            letter-spacing: 0.025em;
         }
 
         .form-control {
             width: 100%;
-            padding: 1rem;
-            border: 1px solid var(--input-border);
-            border-radius: 12px;
-            font-size: 1rem;
-            transition: var(--transition);
-            background: var(--input-bg);
-            backdrop-filter: blur(10px);
-            color: var(--text-primary);
+            padding: var(--space-4);
+            border: var(--border-width-2) solid var(--gray-300);
+            border-radius: var(--border-radius-lg);
+            font-size: var(--text-base);
+            transition: all var(--transition-normal);
+            background: var(--white);
+            color: var(--gray-900);
             font-family: inherit;
             outline: none;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: var(--shadow-sm);
         }
 
         .form-control:focus {
-            border-color: rgba(255, 255, 255, 0.5);
-            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
+            border-color: var(--primary-800);
+            box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+            transform: translateY(-1px);
         }
 
         .form-control::placeholder {
-            color: rgba(255, 255, 255, 0.7);
-            font-weight: 400;
+            color: var(--gray-400);
         }
 
         .btn-primary {
             width: 100%;
-            padding: 1rem 1.5rem;
-            background: var(--accent-gradient);
-            color: var(--text-primary);
+            padding: var(--space-4) var(--space-6);
+            background: var(--primary-800);
+            color: var(--white);
             border: none;
-            border-radius: 12px;
-            font-size: 1.1rem;
-            font-weight: 600;
+            border-radius: var(--border-radius-lg);
+            font-size: var(--text-base);
+            font-weight: var(--font-semibold);
             cursor: pointer;
-            transition: var(--transition);
+            transition: all var(--transition-normal);
             text-transform: uppercase;
-            letter-spacing: 1px;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            backdrop-filter: blur(10px);
-        }
-
-        .btn-primary::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-            transition: left 0.6s;
-        }
-
-        .btn-primary:hover::before {
-            left: 100%;
+            letter-spacing: 0.05em;
+            box-shadow: var(--shadow-md);
+            min-height: 56px;
         }
 
         .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            background: var(--primary-900);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
         }
 
         .btn-primary:active {
-            transform: translateY(-1px);
+            transform: translateY(0);
         }
 
         .alert {
-            padding: 1rem 1.25rem;
-            margin-bottom: 1.5rem;
-            border-radius: 12px;
-            font-size: 0.9rem;
+            padding: var(--space-4);
+            margin-bottom: var(--space-6);
+            border-radius: var(--border-radius-lg);
+            font-size: var(--text-sm);
             text-align: center;
-            font-weight: 500;
-            position: relative;
-            border: 1px solid transparent;
-            backdrop-filter: blur(10px);
+            font-weight: var(--font-medium);
+            border: var(--border-width-1) solid transparent;
         }
 
         .alert-error {
-            background: var(--error-bg);
-            color: #ff6b6b;
-            border-color: var(--error-border);
-            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.2);
+            background: var(--error-50);
+            color: var(--error-700);
+            border-color: var(--error-200);
+            box-shadow: 0 0 0 1px var(--error-200);
         }
 
-        .alert::before {
+        .alert-error::before {
             content: '⚠️';
-            margin-right: 0.5rem;
-            font-size: 1.2rem;
+            margin-right: var(--space-2);
+            font-size: var(--text-lg);
         }
 
         .login-links {
             text-align: center;
-            margin-top: 2rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid var(--glass-border);
+            margin-top: var(--space-8);
+            padding-top: var(--space-6);
+            border-top: var(--border-width-1) solid var(--gray-200);
         }
 
         .student-link {
-            display: inline-block;
-            color: var(--text-primary);
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            color: var(--primary-800);
             text-decoration: none;
-            font-weight: 500;
-            font-size: 0.9rem;
-            transition: var(--transition);
-            padding: 0.75rem 1.5rem;
-            border-radius: 25px;
-            border: 1px solid var(--glass-border);
-            background: var(--glass-bg);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            font-weight: var(--font-medium);
+            font-size: var(--text-sm);
+            transition: all var(--transition-normal);
+            padding: var(--space-3) var(--space-6);
+            border-radius: var(--border-radius-full);
+            border: var(--border-width-2) solid var(--primary-200);
+            background: var(--primary-50);
+            box-shadow: var(--shadow-sm);
         }
 
         .student-link:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px) scale(1.05);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-            color: var(--text-primary);
+            background: var(--primary-100);
+            border-color: var(--primary-300);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+            color: var(--primary-900);
         }
 
         .fade-in {
-            animation: fadeInGlass 0.8s ease-out;
+            animation: fadeInProfessional 0.8s ease-out;
         }
 
-        @keyframes fadeInGlass {
+        @keyframes fadeInProfessional {
             from {
                 opacity: 0;
-                transform: translateY(30px) scale(0.95);
-                filter: blur(10px);
+                transform: translateY(20px);
             }
             to {
                 opacity: 1;
-                transform: translateY(0) scale(1);
-                filter: blur(0);
+                transform: translateY(0);
             }
         }
 
-        @media (max-width: 768px) {
+        /* ===== RESPONSIVE DESIGN ===== */
+
+        @media (max-width: 640px) {
             body {
-                padding: 1rem;
+                padding: var(--space-4);
             }
 
             .login-container {
-                margin: 1rem;
+                margin: var(--space-2);
                 max-width: none;
-                border-radius: 15px;
+                border-radius: var(--border-radius-xl);
             }
 
             .login-header {
-                padding: 2rem 1.5rem 1.5rem;
+                padding: 2.5rem var(--space-6) 2rem;
             }
 
             .login-header h2 {
-                font-size: 1.5rem;
+                font-size: var(--text-2xl);
             }
 
             .login-header p {
-                font-size: 1rem;
+                font-size: var(--text-base);
             }
 
             .login-body {
-                padding: 2rem 1.5rem;
+                padding: 2.5rem var(--space-6);
             }
 
             .form-control {
-                padding: 0.875rem;
-                font-size: 0.9rem;
+                padding: var(--space-3);
+                font-size: var(--text-sm);
             }
 
             .btn-primary {
-                padding: 0.875rem 1.25rem;
-                font-size: 1rem;
+                padding: var(--space-3) var(--space-4);
+                font-size: var(--text-sm);
+                min-height: 48px;
             }
         }
 
         @media (max-width: 480px) {
             .login-container {
-                border-radius: 12px;
+                border-radius: var(--border-radius-lg);
             }
 
             .login-header {
-                padding: 1.5rem 1.25rem 1.25rem;
+                padding: 2rem var(--space-4) 1.5rem;
             }
 
             .login-header h2 {
-                font-size: 1.25rem;
+                font-size: var(--text-xl);
             }
 
             .login-body {
-                padding: 1.5rem 1.25rem;
+                padding: 2rem var(--space-4);
             }
 
             .form-group {
-                margin-bottom: 1.25rem;
+                margin-bottom: var(--space-4);
             }
 
             .login-links {
-                margin-top: 1.5rem;
-                padding-top: 1.25rem;
+                margin-top: var(--space-6);
+                padding-top: var(--space-4);
             }
 
             .student-link {
-                font-size: 0.85rem;
-                padding: 0.5rem 1rem;
+                font-size: var(--text-xs);
+                padding: var(--space-2) var(--space-4);
+            }
+        }
+
+        /* ===== ACCESSIBILITY ENHANCEMENTS ===== */
+
+        @media (prefers-contrast: high) {
+            .login-container {
+                border: 2px solid #000000;
+            }
+
+            .btn-primary {
+                background: #000000;
+                border: 2px solid #000000;
+            }
+
+            .student-link {
+                border: 2px solid #000000;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .login-container,
+            .btn-primary,
+            .student-link {
+                animation: none;
+                transition: none;
+            }
+
+            .btn-primary:hover,
+            .student-link:hover {
+                transform: none;
             }
         }
     </style>
