@@ -23,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $_SESSION['student_id'] = $student['id'];
             $_SESSION['admission_no'] = $student['admission_no'];
             $_SESSION['student_name'] = $student['name'];
+            $_SESSION['school_id'] = $student['school_id'];
 
             // Redirect to student dashboard
             header("Location: dashboard.php");
@@ -439,4 +440,3 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 </body>
 </html>
-

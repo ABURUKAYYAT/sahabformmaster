@@ -2,14 +2,19 @@
 // config/db.php
 
 // Load security framework for environment variables
-define('SECURE_ACCESS', true);
-require_once '../includes/security.php';
+if (!defined('SECURE_ACCESS')) {
+    define('SECURE_ACCESS', true);
+}
+
+if (!class_exists('Security')) {
+    require_once '../includes/security.php';
+}
 
 // Database configuration from environment variables
-$host = Env::get('DB_HOST', 'localhost');
-$db_name = Env::get('DB_NAME', 'sahabformmaster');
-$username = Env::get('DB_USER', 'root');
-$password = Env::get('DB_PASS', '');
+$host = getenv('DB_HOST') ?: 'localhost';
+$db_name = getenv('DB_NAME') ?: 'sahabformmaster';
+$username = getenv('DB_USER') ?: 'root';
+$password = getenv('DB_PASS') ?: '';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$db_name;charset=utf8mb4", $username, $password, [
@@ -25,10 +30,10 @@ try {
 
 } catch(PDOException $e) {
     // Log security event without exposing details
-    Security::logSecurityEvent('database_connection_failed', [
-        'host' => $host,
-        'database' => $db_name
-    ]);
+    // Security::logSecurityEvent('database_connection_failed', [
+    //     'host' => $host,
+    //     'database' => $db_name
+    // ]);
 
     // Generic error message for security
     die("Database connection error. Please contact administrator.");
