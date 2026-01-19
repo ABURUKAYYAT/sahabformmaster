@@ -18,13 +18,18 @@
   font-family: var(--font-family-primary);
   line-height: var(--leading-normal);
   text-decoration: none;
-  border: var(--border-width-2) solid transparent;
+  border: var(--border-width-1) solid var(--glass-border);
   cursor: pointer;
   transition: all var(--transition-normal);
   min-height: 44px; /* Accessibility: minimum touch target */
   white-space: nowrap;
   position: relative;
   overflow: hidden;
+  background: var(--glass-white);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--gray-900);
+  box-shadow: var(--glass-shadow-light);
 }
 
 .btn:focus {
@@ -32,101 +37,102 @@
 }
 
 .btn:focus-visible {
-  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.3);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.2), var(--glass-shadow-light);
 }
 
-/* ===== BUTTON VARIANTS ===== */
+/* ===== GLASSMORPHISM BUTTON VARIANTS ===== */
 
-/* Primary Button */
+/* Primary Button - Glass with darker background */
 .btn-primary {
-  background: var(--primary-800);
-  color: var(--white);
-  border-color: var(--primary-800);
+  background: var(--glass-white-dark);
+  color: var(--gray-900);
+  border-color: rgba(255, 255, 255, 0.3);
+  font-weight: var(--font-semibold);
 }
 
 .btn-primary:hover {
-  background: var(--primary-900);
-  border-color: var(--primary-900);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  background: rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow);
 }
 
 .btn-primary:active {
   transform: translateY(0);
 }
 
-/* Secondary Button */
+/* Secondary Button - Lighter glass */
 .btn-secondary {
-  background: var(--white);
-  color: var(--gray-700);
-  border-color: var(--gray-300);
+  background: var(--glass-white-light);
+  color: var(--gray-800);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .btn-secondary:hover {
-  background: var(--gray-50);
-  border-color: var(--gray-400);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  background: var(--glass-white);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow);
 }
 
 .btn-secondary:active {
   transform: translateY(0);
 }
 
-/* Success Button */
+/* Success Button - Glass with gray accent */
 .btn-success {
-  background: var(--success-600);
-  color: var(--white);
-  border-color: var(--success-600);
+  background: var(--success-light);
+  color: var(--success-dark);
+  border-color: rgba(82, 82, 82, 0.2);
 }
 
 .btn-success:hover {
-  background: var(--success-700);
-  border-color: var(--success-700);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  background: rgba(82, 82, 82, 0.15);
+  border-color: rgba(82, 82, 82, 0.3);
+  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow);
 }
 
-/* Warning Button */
+/* Warning Button - Glass with gray accent */
 .btn-warning {
-  background: var(--warning-600);
-  color: var(--white);
-  border-color: var(--warning-600);
+  background: var(--warning-light);
+  color: var(--warning-dark);
+  border-color: rgba(115, 115, 115, 0.2);
 }
 
 .btn-warning:hover {
-  background: var(--warning-700);
-  border-color: var(--warning-700);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  background: rgba(115, 115, 115, 0.15);
+  border-color: rgba(115, 115, 115, 0.3);
+  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow);
 }
 
-/* Error Button */
+/* Error Button - Glass with gray accent */
 .btn-error {
-  background: var(--error-600);
-  color: var(--white);
-  border-color: var(--error-600);
+  background: var(--error-light);
+  color: var(--error-dark);
+  border-color: rgba(64, 64, 64, 0.2);
 }
 
 .btn-error:hover {
-  background: var(--error-700);
-  border-color: var(--error-700);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  background: rgba(64, 64, 64, 0.15);
+  border-color: rgba(64, 64, 64, 0.3);
+  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow);
 }
 
-/* Info Button */
+/* Info Button - Glass with gray accent */
 .btn-info {
-  background: var(--info-600);
-  color: var(--white);
-  border-color: var(--info-600);
+  background: var(--info-light);
+  color: var(--info-dark);
+  border-color: rgba(82, 82, 82, 0.2);
 }
 
 .btn-info:hover {
-  background: var(--info-700);
-  border-color: var(--info-700);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  background: rgba(82, 82, 82, 0.15);
+  border-color: rgba(82, 82, 82, 0.3);
+  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow);
 }
 
 /* ===== BUTTON SIZES ===== */

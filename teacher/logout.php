@@ -1,3 +1,4 @@
+<?php
 // teacher/logout.php
 session_start();
 require_once '../config/db.php';
@@ -12,6 +13,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
 // School authentication and context
 $current_school_id = require_school_auth();
 
+// Destroy session after all session operations
 session_destroy();
 header("Location: ../index.php");
 exit;

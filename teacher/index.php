@@ -407,31 +407,31 @@ $subject_count = $subject_stmt->fetch()['subject_count'];
                     <span class="section-badge">Frequently Used</span>
                 </div>
                 <div class="quick-actions-grid">
-                    <a href="lesson-plan.php" class="quick-action-card">
+                    <a href="lesson-plan.php" class="quick-action-card academic">
                         <i class="fas fa-plus-circle"></i>
                         <span>Create Lesson Plan</span>
                     </a>
-                    <a href="class_attendance.php" class="quick-action-card">
+                    <a href="class_attendance.php" class="quick-action-card attendance">
                         <i class="fas fa-calendar-check"></i>
                         <span>Mark Attendance</span>
                     </a>
-                    <a href="results.php" class="quick-action-card">
+                    <a href="results.php" class="quick-action-card academic">
                         <i class="fas fa-chart-bar"></i>
                         <span>Enter Results</span>
                     </a>
-                    <a href="teacher_class_activities.php" class="quick-action-card">
+                    <a href="teacher_class_activities.php" class="quick-action-card academic">
                         <i class="fas fa-tasks"></i>
                         <span>Class Activities</span>
                     </a>
-                    <a href="permissions.php" class="quick-action-card">
+                    <a href="permissions.php" class="quick-action-card admin">
                         <i class="fas fa-key"></i>
                         <span>Request Permission</span>
                     </a>
-                    <a href="timebook.php" class="quick-action-card">
+                    <a href="timebook.php" class="quick-action-card attendance">
                         <i class="fas fa-clock"></i>
                         <span>Time Book</span>
                     </a>
-                    <a href="https://www.sahabdata.com.ng" target="_blank" class="quick-action-card">
+                    <a href="https://www.sahabdata.com.ng" target="_blank" class="quick-action-card general">
                         <i class="fas fa-mobile-alt"></i>
                         <span>Buy VTU Services</span>
                     </a>

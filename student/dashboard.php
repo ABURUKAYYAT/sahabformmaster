@@ -314,35 +314,35 @@ $pending_activities = $activities_stmt->fetch()['pending_activities'];
                     <span class="section-badge">Most Used</span>
                 </div>
                 <div class="quick-actions-grid">
-                    <a href="myresults.php" class="quick-action-card">
+                    <a href="myresults.php" class="quick-action-card academic">
                         <i class="fas fa-chart-bar"></i>
                         <span>Check Results</span>
                     </a>
-                    <a href="student_class_activities.php" class="quick-action-card">
+                    <a href="student_class_activities.php" class="quick-action-card academic">
                         <i class="fas fa-tasks"></i>
                         <span>Submit Assignment</span>
                     </a>
-                    <a href="attendance.php" class="quick-action-card">
+                    <a href="attendance.php" class="quick-action-card attendance">
                         <i class="fas fa-calendar-check"></i>
                         <span>View Attendance</span>
                     </a>
-                    <a href="payment.php" class="quick-action-card">
+                    <a href="payment.php" class="quick-action-card admin">
                         <i class="fas fa-credit-card"></i>
                         <span>Pay School Fees</span>
                     </a>
-                    <a href="schoolfeed.php" class="quick-action-card">
+                    <a href="schoolfeed.php" class="quick-action-card general">
                         <i class="fas fa-newspaper"></i>
                         <span>School News</span>
                     </a>
-                    <a href="school_diary.php" class="quick-action-card">
+                    <a href="school_diary.php" class="quick-action-card general">
                         <i class="fas fa-book"></i>
                         <span>School Events</span>
                     </a>
-                    <a href="photo_album.php" class="quick-action-card">
+                    <a href="photo_album.php" class="quick-action-card general">
                         <i class="fas fa-images"></i>
                         <span>Class Photos</span>
                     </a>
-                    <a href="https://www.sahabdata.com.ng" target="_blank" class="quick-action-card">
+                    <a href="https://www.sahabdata.com.ng" target="_blank" class="quick-action-card general">
                         <i class="fas fa-mobile-alt"></i>
                         <span>Buy VTU Services</span>
                     </a>

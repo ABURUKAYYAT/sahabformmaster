@@ -91,26 +91,46 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <title>Login | SahabFormMaster</title>
     <link rel="stylesheet" href="assets/css/education-theme-main.css">
     <style>
-        /* ===== LOGIN PAGE SPECIFIC STYLES ===== */
+        /* ===== MONOCHROMATIC GLASSMORPHISM LOGIN ===== */
 
         body {
-            background: linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%);
+            font-family: var(--font-family-primary);
+            background: linear-gradient(135deg, var(--gray-100) 0%, var(--gray-200) 50%, var(--gray-50) 100%);
+            background-attachment: fixed;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 2rem;
-            font-family: var(--font-family-primary);
+            color: var(--gray-900);
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="1" fill="rgba(0,0,0,0.03)"/><circle cx="80" cy="80" r="1" fill="rgba(0,0,0,0.03)"/><circle cx="40" cy="60" r="1" fill="rgba(0,0,0,0.03)"/><circle cx="60" cy="30" r="1" fill="rgba(0,0,0,0.03)"/><circle cx="10" cy="70" r="0.5" fill="rgba(0,0,0,0.02)"/><circle cx="90" cy="40" r="0.5" fill="rgba(0,0,0,0.02)"/></svg>') repeat;
+            pointer-events: none;
+            z-index: -1;
         }
 
         .login-container {
-            background: var(--white);
+            background: var(--glass-white);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: var(--border-width-1) solid var(--glass-border);
             border-radius: var(--border-radius-2xl);
-            box-shadow: var(--shadow-2xl);
+            box-shadow: var(--glass-shadow);
             width: 100%;
             max-width: 480px;
             overflow: hidden;
             position: relative;
+            z-index: 1;
+            transition: all var(--transition-normal);
         }
 
         .login-container::before {
@@ -120,15 +140,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             left: 0;
             right: 0;
             height: 6px;
-            background: linear-gradient(90deg, var(--primary-800), var(--primary-600));
+            background: linear-gradient(90deg, var(--gray-800), var(--gray-600));
+        }
+
+        .login-container:hover {
+            background: var(--glass-white-dark);
+            box-shadow: var(--glass-shadow-hover);
+            transform: translateY(-2px);
         }
 
         .login-header {
-            background: linear-gradient(135deg, var(--primary-800), var(--primary-900));
-            color: var(--white);
+            background: var(--glass-gray-medium);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            color: var(--gray-900);
             padding: 3rem 2.5rem 2.5rem;
             text-align: center;
             position: relative;
+            overflow: hidden;
+            border-bottom: var(--border-width-1) solid var(--glass-border-dark);
         }
 
         .login-header h2 {
@@ -136,12 +166,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             font-size: var(--text-3xl);
             font-weight: var(--font-bold);
             margin-bottom: var(--space-2);
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         }
 
         .login-header p {
             font-size: var(--text-lg);
-            opacity: 0.95;
+            opacity: 0.8;
             font-weight: var(--font-medium);
             line-height: var(--leading-relaxed);
         }
@@ -166,33 +196,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         .form-control {
             width: 100%;
             padding: var(--space-4);
-            border: var(--border-width-2) solid var(--gray-300);
+            border: var(--border-width-1) solid var(--glass-border);
             border-radius: var(--border-radius-lg);
             font-size: var(--text-base);
             transition: all var(--transition-normal);
-            background: var(--white);
+            background: var(--glass-white-light);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             color: var(--gray-900);
             font-family: inherit;
             outline: none;
-            box-shadow: var(--shadow-sm);
+            box-shadow: var(--glass-shadow-light);
         }
 
         .form-control:focus {
-            border-color: var(--primary-800);
-            box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+            border-color: var(--glass-border);
+            box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1), var(--glass-shadow-light);
+            background: var(--white);
             transform: translateY(-1px);
         }
 
         .form-control::placeholder {
-            color: var(--gray-400);
+            color: var(--gray-500);
         }
 
         .btn-primary {
             width: 100%;
             padding: var(--space-4) var(--space-6);
-            background: var(--primary-800);
-            color: var(--white);
-            border: none;
+            background: var(--glass-white-dark);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            color: var(--gray-900);
+            border: var(--border-width-1) solid rgba(255, 255, 255, 0.3);
             border-radius: var(--border-radius-lg);
             font-size: var(--text-base);
             font-weight: var(--font-semibold);
@@ -200,14 +235,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             transition: all var(--transition-normal);
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            box-shadow: var(--shadow-md);
+            box-shadow: var(--glass-shadow);
             min-height: 56px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.6s;
+        }
+
+        .btn-primary:hover::before {
+            left: 100%;
         }
 
         .btn-primary:hover {
-            background: var(--primary-900);
+            background: rgba(255, 255, 255, 0.4);
+            border-color: rgba(255, 255, 255, 0.4);
             transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
+            box-shadow: var(--glass-shadow-hover);
         }
 
         .btn-primary:active {
@@ -221,14 +274,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             font-size: var(--text-sm);
             text-align: center;
             font-weight: var(--font-medium);
-            border: var(--border-width-1) solid transparent;
-        }
-
-        .alert-error {
-            background: var(--error-50);
-            color: var(--error-700);
-            border-color: var(--error-200);
-            box-shadow: 0 0 0 1px var(--error-200);
+            background: var(--error-light);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: var(--border-width-1) solid rgba(64, 64, 64, 0.2);
+            color: var(--error-dark);
+            box-shadow: var(--glass-shadow-light);
         }
 
         .alert-error::before {
@@ -241,45 +292,49 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             text-align: center;
             margin-top: var(--space-8);
             padding-top: var(--space-6);
-            border-top: var(--border-width-1) solid var(--gray-200);
+            border-top: var(--border-width-1) solid var(--glass-border-dark);
         }
 
         .student-link {
             display: inline-flex;
             align-items: center;
             gap: var(--space-2);
-            color: var(--primary-800);
+            color: var(--gray-700);
             text-decoration: none;
             font-weight: var(--font-medium);
             font-size: var(--text-sm);
             transition: all var(--transition-normal);
             padding: var(--space-3) var(--space-6);
             border-radius: var(--border-radius-full);
-            border: var(--border-width-2) solid var(--primary-200);
-            background: var(--primary-50);
-            box-shadow: var(--shadow-sm);
+            border: var(--border-width-1) solid var(--glass-border);
+            background: var(--glass-white-light);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: var(--glass-shadow-light);
         }
 
         .student-link:hover {
-            background: var(--primary-100);
-            border-color: var(--primary-300);
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-md);
-            color: var(--primary-900);
+            background: var(--glass-white);
+            border-color: var(--glass-border);
+            transform: translateY(-2px);
+            box-shadow: var(--glass-shadow);
+            color: var(--gray-900);
         }
 
         .fade-in {
-            animation: fadeInProfessional 0.8s ease-out;
+            animation: fadeInGlass 0.8s ease-out;
         }
 
-        @keyframes fadeInProfessional {
+        @keyframes fadeInGlass {
             from {
                 opacity: 0;
-                transform: translateY(20px);
+                transform: translateY(30px) scale(0.98);
+                filter: blur(5px);
             }
             to {
                 opacity: 1;
-                transform: translateY(0);
+                transform: translateY(0) scale(1);
+                filter: blur(0);
             }
         }
 
@@ -360,30 +415,60 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         @media (prefers-contrast: high) {
             .login-container {
-                border: 2px solid #000000;
+                background: var(--white);
+                border: 2px solid var(--black);
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+            }
+
+            .login-header {
+                background: var(--gray-100);
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
             }
 
             .btn-primary {
-                background: #000000;
-                border: 2px solid #000000;
+                background: var(--black);
+                border: 2px solid var(--black);
+                color: var(--white);
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
             }
 
             .student-link {
-                border: 2px solid #000000;
+                background: var(--white);
+                border: 2px solid var(--black);
+                color: var(--black);
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+            }
+
+            .form-control {
+                background: var(--white);
+                border: 2px solid var(--black);
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
             }
         }
 
         @media (prefers-reduced-motion: reduce) {
             .login-container,
             .btn-primary,
-            .student-link {
+            .student-link,
+            .form-control {
                 animation: none;
                 transition: none;
             }
 
+            .login-container:hover,
             .btn-primary:hover,
-            .student-link:hover {
+            .student-link:hover,
+            .form-control:focus {
                 transform: none;
+            }
+
+            .btn-primary::before {
+                display: none;
             }
         }
     </style>
