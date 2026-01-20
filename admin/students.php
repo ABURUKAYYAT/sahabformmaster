@@ -304,8 +304,7 @@ $transfer_students = $transfer_students->fetch(PDO::FETCH_ASSOC)['total'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Students Management | SahabFormMaster</title>
-    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
-    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
+    <link rel="stylesheet" href="../assets/css/education-theme-main.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -313,10 +312,8 @@ $transfer_students = $transfer_students->fetch(PDO::FETCH_ASSOC)['total'];
 </head>
 <body>
 
-    <!-- Mobile Menu Toggle -->
-    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
-        <i class="fas fa-bars"></i>
-    </button>
+    <!-- Mobile Navigation Component -->
+    <?php include '../includes/mobile_navigation.php'; ?>
 
     <!-- Header -->
     <header class="dashboard-header">

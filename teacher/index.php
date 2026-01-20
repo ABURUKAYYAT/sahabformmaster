@@ -69,80 +69,8 @@ $subject_count = $subject_stmt->fetch()['subject_count'];
 </head>
 <body>
 
-    <!-- Mobile Menu Toggle -->
-    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
-        <i class="fas fa-bars"></i>
-    </button>
-
-    <!-- Mobile Navigation Dropdown -->
-    <div class="mobile-nav-dropdown" id="mobileNavDropdown">
-        <div class="mobile-nav-header">
-            <h3>Navigation</h3>
-            <button class="mobile-nav-close" id="mobileNavClose">&times;</button>
-        </div>
-        <nav class="mobile-nav-menu">
-            <a href="index.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'index.php' ? 'active' : ''; ?>">
-                <i class="fas fa-tachometer-alt"></i>
-                <span>Dashboard</span>
-            </a>
-            <a href="schoolfeed.php" class="mobile-nav-link">
-                <i class="fas fa-newspaper"></i>
-                <span>School Feeds</span>
-            </a>
-            <a href="school_diary.php" class="mobile-nav-link">
-                <i class="fas fa-book"></i>
-                <span>School Diary</span>
-            </a>
-            <a href="students.php" class="mobile-nav-link">
-                <i class="fas fa-users"></i>
-                <span>Students</span>
-            </a>
-            <a href="results.php" class="mobile-nav-link">
-                <i class="fas fa-chart-line"></i>
-                <span>Results</span>
-            </a>
-            <a href="subjects.php" class="mobile-nav-link">
-                <i class="fas fa-book-open"></i>
-                <span>Subjects</span>
-            </a>
-            <a href="questions.php" class="mobile-nav-link">
-                <i class="fas fa-question-circle"></i>
-                <span>Questions</span>
-            </a>
-            <a href="lesson-plan.php" class="mobile-nav-link">
-                <i class="fas fa-clipboard-list"></i>
-                <span>Lesson Plans</span>
-            </a>
-            <a href="curricullum.php" class="mobile-nav-link">
-                <i class="fas fa-graduation-cap"></i>
-                <span>Curriculum</span>
-            </a>
-            <a href="teacher_class_activities.php" class="mobile-nav-link">
-                <i class="fas fa-tasks"></i>
-                <span>Class Activities</span>
-            </a>
-            <a href="student-evaluation.php" class="mobile-nav-link">
-                <i class="fas fa-star"></i>
-                <span>Evaluations</span>
-            </a>
-            <a href="class_attendance.php" class="mobile-nav-link">
-                <i class="fas fa-calendar-check"></i>
-                <span>Attendance</span>
-            </a>
-            <a href="timebook.php" class="mobile-nav-link">
-                <i class="fas fa-clock"></i>
-                <span>Time Book</span>
-            </a>
-            <a href="permissions.php" class="mobile-nav-link">
-                <i class="fas fa-key"></i>
-                <span>Permissions</span>
-            </a>
-            <a href="payments.php" class="mobile-nav-link">
-                <i class="fas fa-money-bill-wave"></i>
-                <span>Payments</span>
-            </a>
-        </nav>
-    </div>
+    <!-- Mobile Navigation Component -->
+    <?php include '../includes/mobile_navigation.php'; ?>
 
     <!-- Header -->
     <header class="dashboard-header">
@@ -487,39 +415,6 @@ $subject_count = $subject_stmt->fetch()['subject_count'];
     </div>
 
     <script>
-        // Mobile Menu Toggle - Dropdown Navigation
-        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-        const mobileNavDropdown = document.getElementById('mobileNavDropdown');
-        const mobileNavClose = document.getElementById('mobileNavClose');
-
-        // Toggle dropdown menu
-        mobileMenuToggle.addEventListener('click', (e) => {
-            e.stopPropagation();
-            mobileNavDropdown.classList.toggle('active');
-            mobileMenuToggle.classList.toggle('active');
-        });
-
-        // Close dropdown when clicking close button
-        mobileNavClose.addEventListener('click', () => {
-            mobileNavDropdown.classList.remove('active');
-            mobileMenuToggle.classList.remove('active');
-        });
-
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!mobileNavDropdown.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
-                mobileNavDropdown.classList.remove('active');
-                mobileMenuToggle.classList.remove('active');
-            }
-        });
-
-        // Close dropdown when clicking on a navigation link
-        document.querySelectorAll('.mobile-nav-link').forEach(link => {
-            link.addEventListener('click', () => {
-                mobileNavDropdown.classList.remove('active');
-                mobileMenuToggle.classList.remove('active');
-            });
-        });
 
         // Smooth scroll for internal links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {

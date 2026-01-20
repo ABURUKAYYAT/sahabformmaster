@@ -317,8 +317,8 @@ try {
         <main class="main-content">
             <div class="content-header">
                 <div class="welcome-section">
-                    <h2>Welcome back, <?php echo htmlspecialchars($principal_name); ?>! 👋</h2>
-                    <p>Here's what's happening with your school today</p>
+                    <h2 style="font-size: 2.5rem; font-weight: 800;">Welcome back, <?php echo htmlspecialchars($principal_name); ?>! 👋</h2>
+                    <p style="font-size: 1.25rem; font-weight: 500;">Here's what's happening with your school today</p>
                 </div>
                 <div class="header-stats">
                     <div class="quick-stat">
@@ -499,15 +499,15 @@ try {
                 <div class="charts-grid">
                     <div class="chart-card">
                         <h4>Student Enrollment Trend</h4>
-                        <canvas id="enrollmentChart" width="300" height="200"></canvas>
+                        <canvas id="enrollmentChart" role="img" aria-label="Student enrollment trend chart"></canvas>
                     </div>
                     <div class="chart-card">
                         <h4>Attendance Overview</h4>
-                        <canvas id="attendanceChart" width="300" height="200"></canvas>
+                        <canvas id="attendanceChart" role="img" aria-label="Attendance overview chart"></canvas>
                     </div>
                     <div class="chart-card">
                         <h4>Fee Collection Status</h4>
-                        <canvas id="feesChart" width="300" height="200"></canvas>
+                        <canvas id="feesChart" role="img" aria-label="Fee collection status chart"></canvas>
                     </div>
                 </div>
             </div>

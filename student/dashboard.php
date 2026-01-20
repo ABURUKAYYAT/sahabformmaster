@@ -75,10 +75,8 @@ $pending_activities = $activities_stmt->fetch()['pending_activities'];
 </head>
 <body>
 
-    <!-- Mobile Menu Toggle -->
-    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
-        <i class="fas fa-bars"></i>
-    </button>
+    <!-- Mobile Navigation Component -->
+    <?php include '../includes/mobile_navigation.php'; ?>
 
     <!-- Header -->
     <header class="dashboard-header">
@@ -400,30 +398,6 @@ $pending_activities = $activities_stmt->fetch()['pending_activities'];
     
 
     <script>
-        // Mobile Menu Toggle
-        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-        const sidebar = document.getElementById('sidebar');
-        const sidebarClose = document.getElementById('sidebarClose');
-
-        mobileMenuToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('active');
-            mobileMenuToggle.classList.toggle('active');
-        });
-
-        sidebarClose.addEventListener('click', () => {
-            sidebar.classList.remove('active');
-            mobileMenuToggle.classList.remove('active');
-        });
-
-        // Close sidebar when clicking outside on mobile
-        document.addEventListener('click', (e) => {
-            if (window.innerWidth <= 768) {
-                if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
-                    sidebar.classList.remove('active');
-                    mobileMenuToggle.classList.remove('active');
-                }
-            }
-        });
 
         // Smooth scroll for internal links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {

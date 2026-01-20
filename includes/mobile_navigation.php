@@ -1,7 +1,75 @@
 <?php
-// Mobile Navigation Component
-// This component provides a standardized mobile navigation menu for all admin pages
+// Unified Mobile Navigation Component
+// This component provides a standardized mobile navigation menu for all user roles
+
+// Detect user role and set appropriate navigation
+$user_role = $_SESSION['role'] ?? '';
+$current_page = basename($_SERVER['PHP_SELF']);
+
+// Determine navigation items based on role
+$nav_items = [];
+
+if ($user_role === 'principal') {
+    // Admin/Principal Navigation
+    $nav_items = [
+        ['url' => 'index.php', 'icon' => 'fas fa-chart-line', 'text' => 'Dashboard'],
+        ['url' => 'schoolnews.php', 'icon' => 'fas fa-newspaper', 'text' => 'School News'],
+        ['url' => 'school_diary.php', 'icon' => 'fas fa-book', 'text' => 'School Diary'],
+        ['url' => 'students.php', 'icon' => 'fas fa-users', 'text' => 'Students Registration'],
+        ['url' => 'students-evaluations.php', 'icon' => 'fas fa-star', 'text' => 'Students Evaluations'],
+        ['url' => 'manage_class.php', 'icon' => 'fas fa-graduation-cap', 'text' => 'Manage Classes'],
+        ['url' => 'manage_results.php', 'icon' => 'fas fa-chart-bar', 'text' => 'Manage Results'],
+        ['url' => 'lesson-plans.php', 'icon' => 'fas fa-edit', 'text' => 'Lesson Plans'],
+        ['url' => 'manage_curriculum.php', 'icon' => 'fas fa-book-open', 'text' => 'Curriculum'],
+        ['url' => 'content_coverage.php', 'icon' => 'fas fa-check', 'text' => 'Content Coverage'],
+        ['url' => 'manage-school.php', 'icon' => 'fas fa-cog', 'text' => 'Manage School'],
+        ['url' => 'subjects.php', 'icon' => 'fas fa-list', 'text' => 'Subjects'],
+        ['url' => 'manage_user.php', 'icon' => 'fas fa-users-cog', 'text' => 'Manage Users'],
+        ['url' => 'visitors.php', 'icon' => 'fas fa-user-friends', 'text' => 'Visitors'],
+        ['url' => 'manage_timebook.php', 'icon' => 'fas fa-clock', 'text' => 'Teachers Time Book'],
+        ['url' => 'permissions.php', 'icon' => 'fas fa-key', 'text' => 'Permissions'],
+        ['url' => 'manage_attendance.php', 'icon' => 'fas fa-calendar-check', 'text' => 'Attendance Register'],
+        ['url' => 'payments_dashboard.php', 'icon' => 'fas fa-money-bill-wave', 'text' => 'School Fees'],
+        ['url' => 'sessions.php', 'icon' => 'fas fa-calendar-alt', 'text' => 'School Sessions'],
+        ['url' => 'school_calendar.php', 'icon' => 'fas fa-calendar', 'text' => 'School Calendar'],
+        ['url' => 'applicants.php', 'icon' => 'fas fa-file-alt', 'text' => 'Applicants']
+    ];
+} elseif ($user_role === 'teacher') {
+    // Teacher Navigation
+    $nav_items = [
+        ['url' => 'index.php', 'icon' => 'fas fa-tachometer-alt', 'text' => 'Dashboard'],
+        ['url' => 'schoolfeed.php', 'icon' => 'fas fa-newspaper', 'text' => 'School Feeds'],
+        ['url' => 'school_diary.php', 'icon' => 'fas fa-book', 'text' => 'School Diary'],
+        ['url' => 'students.php', 'icon' => 'fas fa-users', 'text' => 'Students'],
+        ['url' => 'results.php', 'icon' => 'fas fa-chart-line', 'text' => 'Results'],
+        ['url' => 'subjects.php', 'icon' => 'fas fa-book-open', 'text' => 'Subjects'],
+        ['url' => 'questions.php', 'icon' => 'fas fa-question-circle', 'text' => 'Questions'],
+        ['url' => 'lesson-plan.php', 'icon' => 'fas fa-clipboard-list', 'text' => 'Lesson Plans'],
+        ['url' => 'curricullum.php', 'icon' => 'fas fa-graduation-cap', 'text' => 'Curriculum'],
+        ['url' => 'teacher_class_activities.php', 'icon' => 'fas fa-tasks', 'text' => 'Class Activities'],
+        ['url' => 'student-evaluation.php', 'icon' => 'fas fa-star', 'text' => 'Evaluations'],
+        ['url' => 'class_attendance.php', 'icon' => 'fas fa-calendar-check', 'text' => 'Attendance'],
+        ['url' => 'timebook.php', 'icon' => 'fas fa-clock', 'text' => 'Time Book'],
+        ['url' => 'permissions.php', 'icon' => 'fas fa-key', 'text' => 'Permissions'],
+        ['url' => 'payments.php', 'icon' => 'fas fa-money-bill-wave', 'text' => 'Payments']
+    ];
+} elseif ($user_role === 'student') {
+    // Student Navigation
+    $nav_items = [
+        ['url' => 'dashboard.php', 'icon' => 'fas fa-tachometer-alt', 'text' => 'Dashboard'],
+        ['url' => 'myresults.php', 'icon' => 'fas fa-chart-line', 'text' => 'My Results'],
+        ['url' => 'student_class_activities.php', 'icon' => 'fas fa-tasks', 'text' => 'Class Activities'],
+        ['url' => 'mysubjects.php', 'icon' => 'fas fa-book-open', 'text' => 'My Subjects'],
+        ['url' => 'my-evaluations.php', 'icon' => 'fas fa-star', 'text' => 'My Evaluations'],
+        ['url' => 'attendance.php', 'icon' => 'fas fa-calendar-check', 'text' => 'Attendance'],
+        ['url' => 'payment.php', 'icon' => 'fas fa-money-bill-wave', 'text' => 'School Fees'],
+        ['url' => 'schoolfeed.php', 'icon' => 'fas fa-newspaper', 'text' => 'School Feeds'],
+        ['url' => 'school_diary.php', 'icon' => 'fas fa-book', 'text' => 'School Diary'],
+        ['url' => 'photo_album.php', 'icon' => 'fas fa-images', 'text' => 'Photo Album']
+    ];
+}
 ?>
+
 <!-- Mobile Menu Toggle -->
 <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
     <i class="fas fa-bars"></i>
@@ -17,145 +85,14 @@
     </div>
     <nav class="mobile-nav-menu">
         <ul class="nav-list">
-            <li class="nav-item">
-                <a href="index.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'index.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-chart-line nav-icon"></i>
-                    <span class="nav-text">Dashboard</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="schoolnews.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'schoolnews.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-newspaper nav-icon"></i>
-                    <span class="nav-text">School News</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="school_diary.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'school_diary.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-book nav-icon"></i>
-                    <span class="nav-text">School Diary</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="students.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'students.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-users nav-icon"></i>
-                    <span class="nav-text">Students Registration</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="students-evaluations.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'students-evaluations.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-star nav-icon"></i>
-                    <span class="nav-text">Students Evaluations</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="manage_class.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'manage_class.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-graduation-cap nav-icon"></i>
-                    <span class="nav-text">Manage Classes</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="manage_results.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'manage_results.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-chart-bar nav-icon"></i>
-                    <span class="nav-text">Manage Results</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="lesson-plans.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'lesson-plans.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-edit nav-icon"></i>
-                    <span class="nav-text">Lesson Plans</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="manage_curriculum.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'manage_curriculum.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-book-open nav-icon"></i>
-                    <span class="nav-text">Curriculum</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="manage-school.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'manage-school.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-cog nav-icon"></i>
-                    <span class="nav-text">Manage School</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="subjects.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'subjects.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-list nav-icon"></i>
-                    <span class="nav-text">Subjects</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="manage_user.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'manage_user.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-users-cog nav-icon"></i>
-                    <span class="nav-text">Manage Users</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="visitors.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'visitors.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-user-friends nav-icon"></i>
-                    <span class="nav-text">Visitors</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="manage_timebook.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'manage_timebook.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-clock nav-icon"></i>
-                    <span class="nav-text">Teachers Time Book</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="permissions.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'permissions.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-key nav-icon"></i>
-                    <span class="nav-text">Permissions</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="manage_attendance.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'manage_attendance.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-calendar-check nav-icon"></i>
-                    <span class="nav-text">Attendance Register</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="payments_dashboard.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'payments_dashboard.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-money-bill-wave nav-icon"></i>
-                    <span class="nav-text">School Fees</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="sessions.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'sessions.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-calendar-alt nav-icon"></i>
-                    <span class="nav-text">School Sessions</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="school_calendar.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'school_calendar.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-calendar nav-icon"></i>
-                    <span class="nav-text">School Calendar</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="applicants.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'applicants.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-file-alt nav-icon"></i>
-                    <span class="nav-text">Applicants</span>
-                </a>
-            </li>
+            <?php foreach ($nav_items as $item): ?>
+                <li class="nav-item">
+                    <a href="<?php echo htmlspecialchars($item['url']); ?>" class="mobile-nav-link <?php echo $current_page === $item['url'] ? 'active' : ''; ?>">
+                        <i class="<?php echo htmlspecialchars($item['icon']); ?> nav-icon"></i>
+                        <span class="nav-text"><?php echo htmlspecialchars($item['text']); ?></span>
+                    </a>
+                </li>
+            <?php endforeach; ?>
         </ul>
     </nav>
 </div>

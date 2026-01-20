@@ -706,6 +706,10 @@ try {
     </style>
 </head>
 <body>
+
+    <!-- Mobile Navigation Component -->
+    <?php include '../includes/mobile_navigation.php'; ?>
+
     <!-- Header -->
     <header class="dashboard-header">
         <div class="header-container">
@@ -1075,4 +1079,3 @@ try {
 
 </body>
 </html>
-
