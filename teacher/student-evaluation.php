@@ -5,6 +5,7 @@ require_once '../config/db.php';
 
 // Check authorization and get school context
 require_once '../includes/functions.php';
+require_once '../includes/auth-check.php';
 $current_school_id = require_school_auth();
 
 $teacher_id = $_SESSION['user_id'];
@@ -28,6 +29,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("INSERT INTO evaluations (student_id, class_id, term, academic_year, academic, non_academic, cognitive, psychomotor, affective, comments, teacher_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([$student_id, $class_id, $term, $year, $academic, $non_academic, $cognitive, $psychomotor, $affective, $comments, $teacher_id]);
 
+        $evaluation_id = $pdo->lastInsertId();
+
+        // Log evaluation creation
+        log_teacher_action('create_evaluation', 'evaluation', $evaluation_id, "Created evaluation for student ID: {$student_id}, Term: {$term}, Year: {$year}");
+
         $_SESSION['success'] = "Evaluation added successfully!";
     }
 
@@ -44,6 +50,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("UPDATE evaluations SET academic = ?, non_academic = ?, cognitive = ?, psychomotor = ?, affective = ?, comments = ?, updated_at = NOW() WHERE id = ? AND teacher_id = ?");
         $stmt->execute([$academic, $non_academic, $cognitive, $psychomotor, $affective, $comments, $evaluation_id, $teacher_id]);
 
+        // Log evaluation update
+        log_teacher_action('update_evaluation', 'evaluation', $evaluation_id, "Updated evaluation ratings and comments");
+
         $_SESSION['success'] = "Evaluation updated successfully!";
     }
 
@@ -52,6 +61,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $evaluation_id = $_POST['evaluation_id'];
         $stmt = $pdo->prepare("DELETE FROM evaluations WHERE id = ? AND teacher_id = ?");
         $stmt->execute([$evaluation_id, $teacher_id]);
+
+        // Log evaluation deletion
+        log_teacher_action('delete_evaluation', 'evaluation', $evaluation_id, "Deleted evaluation record");
 
         $_SESSION['success'] = "Evaluation deleted successfully!";
         header("Location: student-evaluation.php");

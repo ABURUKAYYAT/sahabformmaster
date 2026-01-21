@@ -1161,10 +1161,10 @@ $roles = $pdo->query("SELECT DISTINCT role FROM users ORDER BY role")->fetchAll(
                                         <td><?php echo date('M j, Y', strtotime($user['created_at'])); ?></td>
                                         <td>
                                             <div class="action-buttons">
-                                                <button class="action-btn action-btn-edit" onclick="editUser(<?php echo $user['id']; ?>)">
+                                                <a href="edit_user.php?id=<?php echo $user['id']; ?>" class="action-btn action-btn-edit">
                                                     <i class="fas fa-edit"></i>
                                                     Edit
-                                                </button>
+                                                </a>
                                                 <button class="action-btn action-btn-view" onclick="resetPassword(<?php echo $user['id']; ?>)">
                                                     <i class="fas fa-key"></i>
                                                     Reset
@@ -1334,40 +1334,7 @@ $roles = $pdo->query("SELECT DISTINCT role FROM users ORDER BY role")->fetchAll(
             document.getElementById('userModal').classList.add('show');
         }
 
-        function editUser(id) {
-            fetch(`ajax/get_user_details.php?id=${id}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const user = data.user;
-                        document.getElementById('modalTitle').textContent = 'Edit User';
-                        document.getElementById('formAction').value = 'edit_user';
-                        document.getElementById('userId').value = user.id;
-                        document.getElementById('submitText').textContent = 'Update User';
-                        document.getElementById('passwordGroup').style.display = 'none';
-                        document.getElementById('activeGroup').style.display = 'block';
 
-                        // Fill form fields
-                        document.getElementById('username').value = user.username || '';
-                        document.getElementById('full_name').value = user.full_name || '';
-                        document.getElementById('email').value = user.email || '';
-                        document.getElementById('role').value = user.role || 'teacher';
-                        document.getElementById('school_id').value = user.school_id || '';
-                        document.getElementById('phone').value = user.phone || '';
-                        document.getElementById('designation').value = user.designation || '';
-                        document.getElementById('department').value = user.department || '';
-                        document.getElementById('is_active').checked = user.is_active == 1;
-
-                        document.getElementById('userModal').classList.add('show');
-                    } else {
-                        alert('Failed to load user details: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Failed to load user details');
-                });
-        }
 
         function resetPassword(id) {
             document.getElementById('resetUserId').value = id;
@@ -1476,7 +1443,14 @@ $roles = $pdo->query("SELECT DISTINCT role FROM users ORDER BY role")->fetchAll(
             if (school) url += '&school=' + encodeURIComponent(school);
             if (status !== '') url += '&status=' + encodeURIComponent(status);
 
-            window.open(url, '_blank');
+            // Create a temporary link and click it to trigger download without opening a new window
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'users_export_' + new Date().toISOString().split('T')[0] + '.csv';
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         // Bulk import modal

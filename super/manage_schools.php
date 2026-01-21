@@ -305,6 +305,7 @@ $status_counts = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
             font-family: 'Inter', sans-serif;
             background: #f8fafc;
             color: #334155;
+            overflow-x: hidden;
         }
 
         .dashboard-container {
@@ -1111,7 +1112,7 @@ $status_counts = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
                                                     <i class="fas fa-eye"></i>
                                                     View
                                                 </button>
-                                                <button class="action-btn action-btn-edit" onclick="editSchool(<?php echo $school['id']; ?>)">
+                                                <button class="action-btn action-btn-edit" onclick="window.open('edit_school.php?id=<?php echo $school['id']; ?>', '_blank')">
                                                     <i class="fas fa-edit"></i>
                                                     Edit
                                                 </button>
@@ -1246,49 +1247,7 @@ $status_counts = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
             document.getElementById('schoolModal').classList.add('show');
         }
 
-        function editSchool(id) {
-            fetch(`ajax/get_school_details.php?id=${id}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const school = data.school;
-                        document.getElementById('modalTitle').textContent = 'Edit School';
-                        document.getElementById('formAction').value = 'edit_school';
-                        document.getElementById('schoolId').value = school.id;
-                        document.getElementById('submitText').textContent = 'Update School';
 
-                        // Fill form fields
-                        document.getElementById('school_name').value = school.school_name || '';
-                        document.getElementById('school_code').value = school.school_code || '';
-                        document.getElementById('address').value = school.address || '';
-                        document.getElementById('phone').value = school.phone || '';
-                        document.getElementById('email').value = school.email || '';
-                        document.getElementById('established_date').value = school.established_date || '';
-                        document.getElementById('principal_name').value = school.principal_name || '';
-                        document.getElementById('motto').value = school.motto || '';
-
-                        // Show current logo
-                        if (school.logo) {
-                            document.getElementById('currentLogo').innerHTML = `
-                                <div style="display: flex; align-items: center; gap: 12px; padding: 8px; background: #f8fafc; border-radius: 8px;">
-                                    <img src="../${school.logo}" alt="Current logo" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">
-                                    <span style="font-size: 12px; color: #64748b;">Current logo will be replaced if you upload a new one.</span>
-                                </div>
-                            `;
-                        } else {
-                            document.getElementById('currentLogo').innerHTML = '';
-                        }
-
-                        document.getElementById('schoolModal').classList.add('show');
-                    } else {
-                        alert('Failed to load school details: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Failed to load school details');
-                });
-        }
 
         function closeModal() {
             document.getElementById('schoolModal').classList.remove('show');

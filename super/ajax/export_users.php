@@ -1,6 +1,34 @@
 <?php
-require_once '../auth_check.php';
-require_once '../../config/db.php';
+require_once __DIR__ . '/../../config/db.php';
+
+// Simple authentication check for AJAX requests
+session_start();
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'super_admin') {
+    header('Content-Type: application/json');
+    echo json_encode(['error' => 'Unauthorized access']);
+    exit;
+}
+
+// Function to log super admin actions (copied from auth_check.php)
+function log_super_action($action, $resource_type = null, $resource_id = null, $details = null) {
+    global $pdo;
+    if (!isset($_SESSION['user_id'])) return;
+
+    try {
+        $stmt = $pdo->prepare("INSERT INTO access_logs (user_id, action, resource_type, resource_id, status, ip_address, user_agent, message) VALUES (?, ?, ?, ?, 'success', ?, ?, ?)");
+        $stmt->execute([
+            $_SESSION['user_id'],
+            $action,
+            $resource_type,
+            $resource_id,
+            $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+            $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
+            $details
+        ]);
+    } catch (Exception $e) {
+        error_log("Failed to log super admin action: " . $e->getMessage());
+    }
+}
 
 // Get filters from GET parameters
 $search = $_GET['search'] ?? '';

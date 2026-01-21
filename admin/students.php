@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/db.php';
 require_once '../includes/functions.php';
+require_once '../includes/auth-check.php';
 
 // Only principal/admin with school authentication
 if (!isset($_SESSION['user_id']) || strtolower($_SESSION['role'] ?? '') !== 'principal') {
@@ -188,6 +189,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     
                     $pdo->commit();
+
+                    // Log student registration
+                    log_admin_action('create_student', 'student', $student_id, "Registered student: {$name} (Admission: {$ad})");
+
                     $success = 'Student registered successfully!';
                 } else {
                     $pdo->rollBack();
@@ -223,6 +228,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     if ($stmt->rowCount() > 0) {
                         $success = 'Student deleted successfully.';
+
+                        // Get student details for logging
+                        $stmt = $pdo->prepare("SELECT full_name, admission_no FROM students WHERE id = ?");
+                        $stmt->execute([$id]);
+                        $deleted_student = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                        // Log student deletion
+                        log_admin_action('delete_student', 'student', $id, "Deleted student: {$deleted_student['full_name']} (Admission: {$deleted_student['admission_no']})");
                     }
 
                     $pdo->commit();

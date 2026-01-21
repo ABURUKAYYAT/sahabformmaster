@@ -468,7 +468,7 @@ try {
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="assign_school_data.php" class="nav-link">
+                        <a href="audit_logs.php" class="nav-link">
                             <span class="nav-icon"><i class="fas fa-history"></i></span>
                             <span>Audit Logs</span>
                         </a>

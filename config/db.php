@@ -7,7 +7,7 @@ if (!defined('SECURE_ACCESS')) {
 }
 
 if (!class_exists('Security')) {
-    require_once '../includes/security.php';
+    require_once __DIR__ . '/../includes/security.php';
 }
 
 // Database configuration from environment variables
