@@ -2,6 +2,7 @@
 // mysubjects.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Check if student is logged in
 if (!isset($_SESSION['student_id'])) {
@@ -49,10 +50,10 @@ try {
                 u.full_name AS teacher_name,
                 u.email AS teacher_email,
                 sa.assigned_at
-            FROM subjects s
-            LEFT JOIN subject_assignments sa ON s.id = sa.subject_id AND sa.class_id = :class_id AND sa.school_id = :school_id
+            FROM subject_assignments sa
+            JOIN subjects s ON sa.subject_id = s.id AND s.school_id = :school_id
             LEFT JOIN users u ON sa.teacher_id = u.id
-            WHERE sa.class_id = :class_id AND s.school_id = :school_id
+            WHERE sa.class_id = :class_id
             ORDER BY s.subject_name
         ";
 

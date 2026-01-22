@@ -247,6 +247,7 @@ foreach ($defaults as $key => $value) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/mobile-navigation.css">
     <style>
         * {
             margin: 0;
@@ -663,7 +664,7 @@ foreach ($defaults as $key => $value) {
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="assign_school_data.php" class="nav-link">
+                        <a href="audit_logs.php" class="nav-link">
                             <span class="nav-icon"><i class="fas fa-history"></i></span>
                             <span>Audit Logs</span>
                         </a>
@@ -689,6 +690,9 @@ foreach ($defaults as $key => $value) {
                 </ul>
             </nav>
         </aside>
+
+        <!-- Mobile Navigation -->
+        <?php include '../includes/mobile_navigation.php'; ?>
 
         <!-- Main Content -->
         <main class="main-content">

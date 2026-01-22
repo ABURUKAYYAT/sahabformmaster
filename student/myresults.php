@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Student access using admission_no or user_id
 $uid = $_SESSION['user_id'] ?? null;
@@ -75,10 +76,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 try {
     $stmt = $pdo->prepare("SELECT r.*, sub.subject_name
         FROM results r
-        JOIN subjects sub ON r.subject_id = sub.id AND sub.school_id = :school_id
+        JOIN subjects sub ON r.subject_id = sub.id AND sub.school_id = :school_id_join
         WHERE r.student_id = :student_id AND r.school_id = :school_id AND LOWER(TRIM(r.term)) = LOWER(TRIM(:term))
         ORDER BY sub.subject_name");
-    $stmt->execute(['student_id' => $student_id, 'school_id' => $current_school_id, 'term' => $term]);
+    $stmt->execute(['student_id' => $student_id, 'school_id_join' => $current_school_id, 'school_id' => $current_school_id, 'term' => $term]);
     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $errors[] = "Database error while fetching results.";
@@ -87,8 +88,8 @@ try {
 }
 
 // Fetch existing complaints by student
-$stmt = $pdo->prepare("SELECT rc.*, sub.subject_name, r.term FROM results_complaints rc JOIN results r ON rc.result_id = r.id AND r.school_id = :school_id JOIN subjects sub ON r.subject_id = sub.id AND sub.school_id = :school_id WHERE rc.student_id = :student_id ORDER BY rc.created_at DESC");
-$stmt->execute(['student_id' => $student_id, 'school_id' => $current_school_id]);
+$stmt = $pdo->prepare("SELECT rc.*, sub.subject_name, r.term FROM results_complaints rc JOIN results r ON rc.result_id = r.id AND r.school_id = :school_id_results JOIN subjects sub ON r.subject_id = sub.id AND sub.school_id = :school_id_subjects WHERE rc.student_id = :student_id ORDER BY rc.created_at DESC");
+$stmt->execute(['student_id' => $student_id, 'school_id_results' => $current_school_id, 'school_id_subjects' => $current_school_id]);
 $complaints = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get class name
@@ -308,37 +309,43 @@ $class_name = $stmt->fetchColumn() ?: 'N/A';
             </div>
 
             <!-- Results Controls -->
-            <div class="results-controls">
-                <div class="results-controls-item">
-                    <div class="term-selector">
-                        <div class="term-selector-label">Select Term</div>
-                        <select class="term-selector-select" name="term" form="termForm" id="termSelector">
-                            <option value="1st Term" <?php echo $term === '1st Term' ? 'selected' : ''; ?>>1st Term</option>
-                            <option value="2nd Term" <?php echo $term === '2nd Term' ? 'selected' : ''; ?>>2nd Term</option>
-                            <option value="3rd Term" <?php echo $term === '3rd Term' ? 'selected' : ''; ?>>3rd Term</option>
-                        </select>
+            <form id="termForm" method="GET" action="myresults.php">
+                <div class="results-controls">
+                    <div class="results-controls-item">
+                        <div class="term-selector">
+                            <div class="term-selector-label">Select Term</div>
+                            <select class="term-selector-select" name="term" id="termSelector">
+                                <option value="1st Term" <?php echo $term === '1st Term' ? 'selected' : ''; ?>>1st Term</option>
+                                <option value="2nd Term" <?php echo $term === '2nd Term' ? 'selected' : ''; ?>>2nd Term</option>
+                                <option value="3rd Term" <?php echo $term === '3rd Term' ? 'selected' : ''; ?>>3rd Term</option>
+                            </select>
+                        </div>
                     </div>
-                </div>
-                <div class="results-controls-item">
-                    <button type="submit" class="load-btn" form="termForm">
-                        <i class="fas fa-search"></i>
-                        <span>Load Results</span>
-                    </button>
-                </div>
-                <?php if (!empty($results)): ?>
-                <div class="results-controls-item">
-                    <form method="POST" action="../teacher/generate-result-pdf.php" style="display: inline;">
-                        <input type="hidden" name="student_id" value="<?php echo intval($student_id); ?>">
-                        <input type="hidden" name="class_id" value="<?php echo intval($class_id); ?>">
-                        <input type="hidden" name="term" value="<?php echo htmlspecialchars($term); ?>">
-                        <button type="submit" class="download-btn">
+                    <div class="results-controls-item">
+                        <button type="submit" class="load-btn">
+                            <i class="fas fa-search"></i>
+                            <span>Load Results</span>
+                        </button>
+                    </div>
+                    <?php if (!empty($results)): ?>
+                    <div class="results-controls-item">
+                        <button type="button" class="download-btn" onclick="downloadPDF()">
                             <i class="fas fa-download"></i>
                             <span>Download PDF</span>
                         </button>
-                    </form>
+                    </div>
+                    <?php endif; ?>
                 </div>
-                <?php endif; ?>
-            </div>
+            </form>
+
+            <?php if (!empty($results)): ?>
+            <!-- Hidden form for PDF download -->
+            <form id="pdfForm" method="POST" action="../teacher/generate-result-pdf.php" style="display: none;">
+                <input type="hidden" name="student_id" value="<?php echo intval($student_id); ?>">
+                <input type="hidden" name="class_id" value="<?php echo intval($class_id); ?>">
+                <input type="hidden" name="term" value="<?php echo htmlspecialchars($term); ?>">
+            </form>
+            <?php endif; ?>
 
             <!-- Alerts -->
             <?php if(isset($success)): ?>
@@ -355,8 +362,8 @@ $class_name = $stmt->fetchColumn() ?: 'N/A';
                 </div>
             <?php endif; ?>
 
-            <!-- Results Grid -->
-            <div class="results-grid">
+            <!-- Results Table -->
+            <div class="results-table-container">
                 <?php if (empty($results)): ?>
                     <div class="empty-state">
                         <div class="empty-icon">📊</div>
@@ -364,68 +371,68 @@ $class_name = $stmt->fetchColumn() ?: 'N/A';
                         <p class="empty-text">No results found for <?php echo htmlspecialchars($term); ?> term.</p>
                     </div>
                 <?php else: ?>
-                    <?php foreach ($results as $r):
-                        $first_ca = floatval($r['first_ca'] ?? 0);
-                        $second_ca = floatval($r['second_ca'] ?? 0);
-                        $ca_total = $first_ca + $second_ca;
-                        $exam = floatval($r['exam'] ?? 0);
-                        $grand_total = $ca_total + $exam;
+                    <div class="results-table-wrapper">
+                        <table class="results-table">
+                            <thead>
+                                <tr>
+                                    <th>Subject</th>
+                                    <th>First CA</th>
+                                    <th>Second CA</th>
+                                    <th>Exam</th>
+                                    <th>Total Score</th>
+                                    <th>Grade</th>
+                                    <th>Remark</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($results as $r):
+                                    $first_ca = floatval($r['first_ca'] ?? 0);
+                                    $second_ca = floatval($r['second_ca'] ?? 0);
+                                    $ca_total = $first_ca + $second_ca;
+                                    $exam = floatval($r['exam'] ?? 0);
+                                    $grand_total = $ca_total + $exam;
 
-                        if ($grand_total >= 90) { $grade = ['A','Excellent']; $grade_class = 'grade-a'; }
-                        elseif ($grand_total >= 80) { $grade = ['B','Very Good']; $grade_class = 'grade-b'; }
-                        elseif ($grand_total >= 70) { $grade = ['C','Good']; $grade_class = 'grade-c'; }
-                        elseif ($grand_total >= 60) { $grade = ['D','Fair']; $grade_class = 'grade-d'; }
-                        elseif ($grand_total >= 50) { $grade = ['E','Pass']; $grade_class = 'grade-e'; }
-                        else { $grade = ['F','Fail']; $grade_class = 'grade-f'; }
-                    ?>
-                    <div class="result-card">
-                        <div class="subject-header">
-                            <div class="subject-name"><?php echo htmlspecialchars($r['subject_name']); ?></div>
-                            <div class="subject-grade <?php echo $grade_class; ?>"><?php echo $grade[0]; ?></div>
-                        </div>
+                                    if ($grand_total >= 90) { $grade = ['A','Excellent']; $grade_class = 'grade-a'; }
+                                    elseif ($grand_total >= 80) { $grade = ['B','Very Good']; $grade_class = 'grade-b'; }
+                                    elseif ($grand_total >= 70) { $grade = ['C','Good']; $grade_class = 'grade-c'; }
+                                    elseif ($grand_total >= 60) { $grade = ['D','Fair']; $grade_class = 'grade-d'; }
+                                    elseif ($grand_total >= 50) { $grade = ['E','Pass']; $grade_class = 'grade-e'; }
+                                    else { $grade = ['F','Fail']; $grade_class = 'grade-f'; }
+                                ?>
+                                <tr>
+                                    <td class="subject-cell"><?php echo htmlspecialchars($r['subject_name']); ?></td>
+                                    <td class="score-cell"><?php echo number_format($first_ca, 1); ?></td>
+                                    <td class="score-cell"><?php echo number_format($second_ca, 1); ?></td>
+                                    <td class="score-cell"><?php echo number_format($exam, 1); ?></td>
+                                    <td class="total-cell"><?php echo number_format($grand_total, 1); ?></td>
+                                    <td class="grade-cell">
+                                        <span class="grade-badge <?php echo $grade_class; ?>"><?php echo $grade[0]; ?></span>
+                                    </td>
+                                    <td class="remark-cell"><?php echo $grade[1]; ?></td>
+                                    <td class="action-cell">
+                                        <button type="button" class="complaint-btn" onclick="toggleComplaintForm(<?php echo intval($r['id']); ?>)">
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                            <span>Submit Complaint</span>
+                                        </button>
 
-                        <div class="scores-grid">
-                            <div class="score-item">
-                                <div class="score-label">First CA</div>
-                                <div class="score-value"><?php echo number_format($first_ca, 1); ?></div>
-                            </div>
-                            <div class="score-item">
-                                <div class="score-label">Second CA</div>
-                                <div class="score-value"><?php echo number_format($second_ca, 1); ?></div>
-                            </div>
-                            <div class="score-item">
-                                <div class="score-label">Exam</div>
-                                <div class="score-value"><?php echo number_format($exam, 1); ?></div>
-                            </div>
-                        </div>
-
-                        <div class="total-score">
-                            <div class="total-label">Total Score</div>
-                            <div class="total-value"><?php echo number_format($grand_total, 1); ?></div>
-                        </div>
-
-                        <div class="remark">
-                            <?php echo $grade[1]; ?>
-                        </div>
-
-                        <button type="button" class="complaint-btn" onclick="toggleComplaintForm(<?php echo intval($r['id']); ?>)">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <span>Submit Complaint</span>
-                        </button>
-
-                        <div id="complaint-<?php echo intval($r['id']); ?>" class="complaint-form">
-                            <form method="POST" action="myresults.php">
-                                <input type="hidden" name="action" value="submit_complaint">
-                                <input type="hidden" name="result_id" value="<?php echo intval($r['id']); ?>">
-                                <textarea name="complaint_text" rows="3" placeholder="Enter your complaint regarding this result..." class="complaint-textarea" required></textarea>
-                                <div class="form-actions">
-                                    <button class="submit-btn" type="submit">Submit Complaint</button>
-                                    <button class="cancel-btn" type="button" onclick="toggleComplaintForm(<?php echo intval($r['id']); ?>)">Cancel</button>
-                                </div>
-                            </form>
-                        </div>
+                                        <div id="complaint-<?php echo intval($r['id']); ?>" class="complaint-form">
+                                            <form method="POST" action="myresults.php">
+                                                <input type="hidden" name="action" value="submit_complaint">
+                                                <input type="hidden" name="result_id" value="<?php echo intval($r['id']); ?>">
+                                                <textarea name="complaint_text" rows="3" placeholder="Enter your complaint regarding this result..." class="complaint-textarea" required></textarea>
+                                                <div class="form-actions">
+                                                    <button class="submit-btn" type="submit">Submit Complaint</button>
+                                                    <button class="cancel-btn" type="button" onclick="toggleComplaintForm(<?php echo intval($r['id']); ?>)">Cancel</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     </div>
-                    <?php endforeach; ?>
                 <?php endif; ?>
             </div>
 
@@ -482,13 +489,21 @@ $class_name = $stmt->fetchColumn() ?: 'N/A';
 
     <script>
 
+        // PDF download function
+        function downloadPDF() {
+            const pdfForm = document.getElementById('pdfForm');
+            if (pdfForm) {
+                pdfForm.submit();
+            }
+        }
+
         // Enhanced complaint form toggle with animation
         function toggleComplaintForm(resultId) {
             const form = document.getElementById('complaint-' + resultId);
             const isActive = form.classList.contains('active');
-            
+
             form.classList.toggle('active');
-            
+
             // Add animation classes for better UX
             if (!isActive) {
                 form.style.maxHeight = form.scrollHeight + 'px';
@@ -501,22 +516,8 @@ $class_name = $stmt->fetchColumn() ?: 'N/A';
             }
         }
 
-        // Add hover effects to result cards
+        // Add click animation to buttons
         document.addEventListener('DOMContentLoaded', () => {
-            const resultCards = document.querySelectorAll('.result-card');
-            resultCards.forEach(card => {
-                card.addEventListener('mouseenter', () => {
-                    card.style.transform = 'translateY(-5px)';
-                    card.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
-                });
-                
-                card.addEventListener('mouseleave', () => {
-                    card.style.transform = 'translateY(0)';
-                    card.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
-                });
-            });
-
-            // Add click animation to buttons
             const complaintButtons = document.querySelectorAll('.complaint-btn');
             complaintButtons.forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -559,14 +560,14 @@ $class_name = $stmt->fetchColumn() ?: 'N/A';
         const termSelector = document.getElementById('termSelector');
         if (termSelector) {
             termSelector.addEventListener('change', () => {
-                // Add a subtle animation to the results grid
-                const resultsGrid = document.querySelector('.results-grid');
-                if (resultsGrid) {
-                    resultsGrid.style.opacity = '0.5';
-                    resultsGrid.style.transform = 'translateY(10px)';
+                // Add a subtle animation to the results table
+                const resultsTable = document.querySelector('.results-table-wrapper');
+                if (resultsTable) {
+                    resultsTable.style.opacity = '0.5';
+                    resultsTable.style.transform = 'translateY(10px)';
                     setTimeout(() => {
-                        resultsGrid.style.opacity = '1';
-                        resultsGrid.style.transform = 'translateY(0)';
+                        resultsTable.style.opacity = '1';
+                        resultsTable.style.transform = 'translateY(0)';
                     }, 300);
                 }
             });

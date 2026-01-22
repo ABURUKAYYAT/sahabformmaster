@@ -2,6 +2,7 @@
 // filepath: c:\xampp\htdocs\sahabformmaster\student\schoolfeed.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Check if student is logged in
 if (!isset($_SESSION['student_id'])) {

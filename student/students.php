@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 $uid = $_SESSION['user_id'] ?? null;
 $admission_no = $_SESSION['admission_no'] ?? null;

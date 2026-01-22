@@ -67,6 +67,18 @@ if ($user_role === 'principal') {
         ['url' => 'school_diary.php', 'icon' => 'fas fa-book', 'text' => 'School Diary'],
         ['url' => 'photo_album.php', 'icon' => 'fas fa-images', 'text' => 'Photo Album']
     ];
+} elseif ($user_role === 'super_admin') {
+    // Super Admin Navigation
+    $nav_items = [
+        ['url' => 'dashboard.php', 'icon' => 'fas fa-tachometer-alt', 'text' => 'Dashboard'],
+        ['url' => 'manage_schools.php', 'icon' => 'fas fa-school', 'text' => 'Manage Schools'],
+        ['url' => 'manage_users.php', 'icon' => 'fas fa-users', 'text' => 'Manage Users'],
+        ['url' => 'system_settings.php', 'icon' => 'fas fa-cogs', 'text' => 'System Settings'],
+        ['url' => 'audit_logs.php', 'icon' => 'fas fa-history', 'text' => 'Audit Logs'],
+        ['url' => 'database_tools.php', 'icon' => 'fas fa-database', 'text' => 'Database Tools'],
+        ['url' => 'analytics.php', 'icon' => 'fas fa-chart-line', 'text' => 'Analytics'],
+        ['url' => 'reports.php', 'icon' => 'fas fa-file-alt', 'text' => 'Reports']
+    ];
 }
 ?>
 
@@ -75,65 +87,27 @@ if ($user_role === 'principal') {
     <i class="fas fa-bars"></i>
 </button>
 
-<!-- Mobile Navigation Dropdown -->
-<div class="mobile-nav-dropdown" id="mobileNavDropdown">
-    <div class="mobile-nav-header">
-        <h3>Navigation</h3>
-        <button class="mobile-nav-close" id="mobileNavClose" aria-label="Close Menu">
-            <i class="fas fa-times"></i>
-        </button>
-    </div>
-    <nav class="mobile-nav-menu">
-        <ul class="nav-list">
-            <?php foreach ($nav_items as $item): ?>
-                <li class="nav-item">
-                    <a href="<?php echo htmlspecialchars($item['url']); ?>" class="mobile-nav-link <?php echo $current_page === $item['url'] ? 'active' : ''; ?>">
-                        <i class="<?php echo htmlspecialchars($item['icon']); ?> nav-icon"></i>
-                        <span class="nav-text"><?php echo htmlspecialchars($item['text']); ?></span>
-                    </a>
-                </li>
-            <?php endforeach; ?>
-        </ul>
-    </nav>
-</div>
-
 <!-- Mobile Navigation JavaScript -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Mobile Navigation Elements
     const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-    const mobileNavDropdown = document.getElementById('mobileNavDropdown');
-    const mobileNavClose = document.getElementById('mobileNavClose');
     const sidebar = document.getElementById('sidebar');
 
-    // Toggle mobile navigation
+    // Toggle mobile navigation (sidebar only)
     mobileMenuToggle.addEventListener('click', function() {
-        mobileNavDropdown.classList.toggle('active');
         mobileMenuToggle.classList.toggle('active');
         document.body.classList.toggle('mobile-nav-open');
 
-        // Also toggle sidebar for mobile devices
+        // Toggle sidebar for mobile devices
         if (sidebar) {
             sidebar.classList.toggle('active');
         }
     });
 
-    // Close mobile navigation
-    mobileNavClose.addEventListener('click', function() {
-        mobileNavDropdown.classList.remove('active');
-        mobileMenuToggle.classList.remove('active');
-        document.body.classList.remove('mobile-nav-open');
-
-        // Also close sidebar
-        if (sidebar) {
-            sidebar.classList.remove('active');
-        }
-    });
-
     // Close when clicking outside
     document.addEventListener('click', function(e) {
-        if (!mobileNavDropdown.contains(e.target) && !mobileMenuToggle.contains(e.target) && (!sidebar || !sidebar.contains(e.target))) {
-            mobileNavDropdown.classList.remove('active');
+        if (!mobileMenuToggle.contains(e.target) && (!sidebar || !sidebar.contains(e.target))) {
             mobileMenuToggle.classList.remove('active');
             document.body.classList.remove('mobile-nav-open');
 
@@ -146,8 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Close when pressing escape key
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && (mobileNavDropdown.classList.contains('active') || (sidebar && sidebar.classList.contains('active')))) {
-            mobileNavDropdown.classList.remove('active');
+        if (e.key === 'Escape' && (sidebar && sidebar.classList.contains('active'))) {
             mobileMenuToggle.classList.remove('active');
             document.body.classList.remove('mobile-nav-open');
 
@@ -156,26 +129,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 sidebar.classList.remove('active');
             }
         }
-    });
-
-    // Smooth scrolling for mobile links
-    document.querySelectorAll('.mobile-nav-link[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                target.scrollIntoView({ behavior: 'smooth' });
-                // Close mobile menu after clicking a link
-                mobileNavDropdown.classList.remove('active');
-                mobileMenuToggle.classList.remove('active');
-                document.body.classList.remove('mobile-nav-open');
-
-                // Also close sidebar
-                if (sidebar) {
-                    sidebar.classList.remove('active');
-                }
-            }
-        });
     });
 
     // Add click handlers for sidebar close button if it exists

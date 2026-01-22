@@ -2,6 +2,7 @@
 // student_class_activities.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 $current_school_id = get_current_school_id();
 
@@ -306,11 +307,11 @@ $student_name = $student['full_name'];
                 SELECT ss.*, ca.title as activity_title, ca.total_marks,
                        ca.activity_type, ca.due_date
                 FROM student_submissions ss
-                JOIN class_activities ca ON ss.activity_id = ca.id AND ca.school_id = ss.school_id
-                WHERE ss.id = ? AND ss.student_id = ? AND ss.school_id = ?
+                JOIN class_activities ca ON ss.activity_id = ca.id
+                WHERE ss.id = ? AND ss.student_id = ?
             ";
             $feedback_stmt = $pdo->prepare($feedback_query);
-            $feedback_stmt->execute([$feedback_id, $student_id, $current_school_id]);
+            $feedback_stmt->execute([$feedback_id, $student_id]);
             $feedback = $feedback_stmt->fetch();
 
             if (!$feedback) {
@@ -382,11 +383,11 @@ $student_name = $student['full_name'];
                 FROM class_activities ca
                 JOIN subjects s ON ca.subject_id = s.id AND s.school_id = ?
                 JOIN users u ON ca.teacher_id = u.id
-                LEFT JOIN student_submissions ss ON ca.id = ss.activity_id AND ss.student_id = ? AND ss.school_id = ?
+                LEFT JOIN student_submissions ss ON ca.id = ss.activity_id AND ss.student_id = ?
                 WHERE ca.id = ? AND ca.class_id = ? AND ca.school_id = ?
             ";
             $activity_stmt = $pdo->prepare($activity_query);
-            $activity_stmt->execute([$current_school_id, $student_id, $current_school_id, $activity_id, $student_class_id, $current_school_id]);
+            $activity_stmt->execute([$current_school_id, $student_id, $activity_id, $student_class_id, $current_school_id]);
             $activity = $activity_stmt->fetch();
 
             if (!$activity):
@@ -652,14 +653,14 @@ $student_name = $student['full_name'];
                 $pending_query = "
                     SELECT COUNT(DISTINCT ca.id) as count
                     FROM class_activities ca
-                    LEFT JOIN student_submissions ss ON ca.id = ss.activity_id AND ss.student_id = ? AND ss.school_id = ?
+                    LEFT JOIN student_submissions ss ON ca.id = ss.activity_id AND ss.student_id = ?
                     WHERE ca.class_id = ? AND ca.school_id = ?
                     AND ca.status = 'published'
                     AND (ss.id IS NULL OR ss.status IN ('pending', 'late'))
                     AND (ca.due_date IS NULL OR ca.due_date > NOW())
                 ";
                 $pending_stmt = $pdo->prepare($pending_query);
-                $pending_stmt->execute([$student_id, $current_school_id, $student_class_id, $current_school_id]);
+                $pending_stmt->execute([$student_id, $student_class_id, $current_school_id]);
                 $pending_count = $pending_stmt->fetch()['count'];
 
                 $due_week_query = "
@@ -772,7 +773,7 @@ $student_name = $student['full_name'];
                 FROM class_activities ca
                 JOIN subjects s ON ca.subject_id = s.id AND s.school_id = ?
                 JOIN users u ON ca.teacher_id = u.id
-                LEFT JOIN student_submissions ss ON ca.id = ss.activity_id AND ss.student_id = ? AND ss.school_id = ?
+                LEFT JOIN student_submissions ss ON ca.id = ss.activity_id AND ss.student_id = ?
                 WHERE ca.class_id = ? AND ca.status = 'published' AND ca.school_id = ?
             ";
 
@@ -787,7 +788,7 @@ $student_name = $student['full_name'];
             $activities_query .= " ORDER BY ca.due_date ASC";
 
             $activities_stmt = $pdo->prepare($activities_query);
-            $activities_stmt->execute([$current_school_id, $student_id, $current_school_id, $student_class_id, $current_school_id]);
+            $activities_stmt->execute([$current_school_id, $student_id, $student_class_id, $current_school_id]);
             $activities = $activities_stmt->fetchAll();
 
             if (count($activities) > 0):

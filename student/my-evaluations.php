@@ -2,6 +2,7 @@
 // student/my-evaluations.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Check if student is logged in
 if (!isset($_SESSION['student_id'])) {
@@ -19,7 +20,8 @@ $stmt = $pdo->prepare("
     SELECT e.*, t.full_name as teacher_fname
     FROM evaluations e
     JOIN users t ON e.teacher_id = t.id
-    WHERE e.student_id = ? AND e.school_id = ?
+    JOIN students s ON e.student_id = s.id
+    WHERE e.student_id = ? AND s.school_id = ?
     ORDER BY e.academic_year DESC, e.term DESC
 ");
 $stmt->execute([$student_id, $current_school_id]);

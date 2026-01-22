@@ -78,7 +78,7 @@ body {
     position: fixed;
     top: 20px;
     left: 20px;
-    z-index: 999;
+    z-index: 9999;
     background: var(--primary-color);
     color: white;
     border: none;
@@ -101,6 +101,91 @@ body {
 
 .mobile-menu-toggle.active {
     background: var(--error-color);
+}
+
+/* ===================================================
+   Mobile Navigation Dropdown
+   =================================================== */
+
+.mobile-nav-dropdown {
+    display: none;
+    position: fixed;
+    top: 80px;
+    left: 0;
+    width: 280px;
+    background: var(--white);
+    box-shadow: var(--shadow-lg);
+    z-index: 9998;
+    border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);
+    overflow: hidden;
+    max-height: calc(100vh - 80px);
+}
+
+.mobile-nav-dropdown.active {
+    display: block;
+}
+
+.mobile-nav-header {
+    padding: 1rem 1.5rem;
+    background: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.mobile-nav-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.mobile-nav-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: var(--transition-fast);
+}
+
+.mobile-nav-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.mobile-nav-menu {
+    max-height: calc(100vh - 160px);
+    overflow-y: auto;
+}
+
+.mobile-nav-menu .nav-list {
+    padding: 0;
+}
+
+.mobile-nav-menu .nav-link {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--gray-100);
+    color: var(--gray-700);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: var(--transition-fast);
+}
+
+.mobile-nav-menu .nav-link:hover {
+    background: var(--gray-50);
+}
+
+.mobile-nav-menu .nav-link.active {
+    background: var(--primary-color);
+    color: white;
+}
+
+.mobile-nav-menu .nav-link:last-child {
+    border-bottom: none;
 }
 
 /* ===================================================
@@ -954,7 +1039,7 @@ body {
         position: absolute;
         top: 5px;
         left: 5px;
-        z-index: 999;
+        z-index: 9999;
     }
 
     .school-logo {

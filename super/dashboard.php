@@ -98,7 +98,7 @@ try {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="../assets/css/mobile-navigation.css">
     <style>
         * {
             margin: 0;
@@ -431,6 +431,287 @@ try {
         .stat-security .stat-icon { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
         .stat-database .stat-icon { background: linear-gradient(135deg, #6b7280, #4b5563); color: white; }
         .stat-growth .stat-icon { background: linear-gradient(135deg, #84cc16, #65a30d); color: white; }
+
+        /* CSS Data Visualizations */
+        .system-overview {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .progress-ring-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 20px;
+            justify-items: center;
+        }
+
+        .progress-ring {
+            position: relative;
+            width: 100px;
+            height: 100px;
+        }
+
+        .progress-ring-circle {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(
+                var(--ring-color, #3b82f6) 0deg,
+                var(--ring-color, #3b82f6) calc(var(--percentage) * 3.6deg),
+                #e2e8f0 calc(var(--percentage) * 3.6deg),
+                #e2e8f0 360deg
+            );
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .progress-ring-fill {
+            width: 80%;
+            height: 80%;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 10%;
+            left: 10%;
+        }
+
+        .progress-ring-text {
+            position: absolute;
+            text-align: center;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .progress-ring-text .percentage {
+            font-size: 18px;
+            line-height: 1;
+        }
+
+        .progress-ring-text .label {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        /* Progress ring colors */
+        .progress-ring.schools { --ring-color: #3b82f6; }
+        .progress-ring.users { --ring-color: #10b981; }
+        .progress-ring.students { --ring-color: #f59e0b; }
+        .progress-ring.teachers { --ring-color: #8b5cf6; }
+
+        .system-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 16px;
+            text-align: center;
+        }
+
+        .stat-item {
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .stat-item .stat-number {
+            display: block;
+            font-size: 20px;
+            font-weight: 800;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .stat-item .stat-label {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .growth-trends {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .progress-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .progress-bar-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .progress-bar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .progress-bar-header .month {
+            color: #1e293b;
+        }
+
+        .progress-bar-header .value {
+            color: #3b82f6;
+            font-weight: 700;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 12px;
+            background: #e2e8f0;
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+            border-radius: 6px;
+            transition: width 1s ease-out;
+            position: relative;
+        }
+
+        .progress-bar-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, rgba(255,255,255,0.3), rgba(255,255,255,0));
+            border-radius: 6px;
+        }
+
+        .progress-percentage {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .growth-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .summary-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .summary-item .summary-label {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .summary-item .summary-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        /* Mobile adjustments for data visualizations */
+        @media (max-width: 768px) {
+            .progress-ring-container {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 16px;
+            }
+
+            .progress-ring {
+                width: 80px;
+                height: 80px;
+            }
+
+            .progress-ring-text .percentage {
+                font-size: 14px;
+            }
+
+            .progress-ring-text .label {
+                font-size: 10px;
+            }
+
+            .system-stats {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+
+            .stat-item {
+                padding: 12px;
+            }
+
+            .stat-item .stat-number {
+                font-size: 16px;
+            }
+
+            .stat-item .stat-label {
+                font-size: 11px;
+            }
+
+            .growth-summary {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .progress-ring-container {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+
+            .progress-ring {
+                width: 70px;
+                height: 70px;
+            }
+
+            .progress-ring-text .percentage {
+                font-size: 12px;
+            }
+
+            .progress-ring-text .label {
+                font-size: 9px;
+            }
+
+            .system-stats {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+
+            .stat-item {
+                padding: 8px;
+            }
+
+            .stat-item .stat-number {
+                font-size: 14px;
+            }
+
+            .stat-item .stat-label {
+                font-size: 10px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -494,6 +775,9 @@ try {
                 </ul>
             </nav>
         </aside>
+
+        <!-- Mobile Navigation -->
+        <?php include '../includes/mobile_navigation.php'; ?>
 
         <!-- Main Content -->
         <main class="main-content">
@@ -604,15 +888,120 @@ try {
                 </div>
             </div>
 
-            <!-- Charts Section -->
+            <!-- Data Visualization Section -->
             <div class="charts-section">
                 <div class="chart-card">
                     <h3><i class="fas fa-chart-pie"></i> System Overview</h3>
-                    <canvas id="systemChart"></canvas>
+                    <div class="system-overview">
+                        <?php
+                        $total_entities = $stats['total_schools'] + $stats['total_users'] + $stats['total_students'] + $stats['total_teachers'];
+                        if ($total_entities > 0) {
+                            $schools_percent = round(($stats['total_schools'] / $total_entities) * 100);
+                            $users_percent = round(($stats['total_users'] / $total_entities) * 100);
+                            $students_percent = round(($stats['total_students'] / $total_entities) * 100);
+                            $teachers_percent = round(($stats['total_teachers'] / $total_entities) * 100);
+                        } else {
+                            $schools_percent = $users_percent = $students_percent = $teachers_percent = 0;
+                        }
+                        ?>
+                        <div class="progress-ring-container">
+                            <div class="progress-ring schools" style="--percentage: <?php echo $schools_percent; ?>%">
+                                <div class="progress-ring-circle">
+                                    <div class="progress-ring-fill"></div>
+                                </div>
+                                <div class="progress-ring-text">
+                                    <div class="percentage"><?php echo $schools_percent; ?>%</div>
+                                    <div class="label">Schools</div>
+                                </div>
+                            </div>
+                            <div class="progress-ring users" style="--percentage: <?php echo $users_percent; ?>%">
+                                <div class="progress-ring-circle">
+                                    <div class="progress-ring-fill"></div>
+                                </div>
+                                <div class="progress-ring-text">
+                                    <div class="percentage"><?php echo $users_percent; ?>%</div>
+                                    <div class="label">Users</div>
+                                </div>
+                            </div>
+                            <div class="progress-ring students" style="--percentage: <?php echo $students_percent; ?>%">
+                                <div class="progress-ring-circle">
+                                    <div class="progress-ring-fill"></div>
+                                </div>
+                                <div class="progress-ring-text">
+                                    <div class="percentage"><?php echo $students_percent; ?>%</div>
+                                    <div class="label">Students</div>
+                                </div>
+                            </div>
+                            <div class="progress-ring teachers" style="--percentage: <?php echo $teachers_percent; ?>%">
+                                <div class="progress-ring-circle">
+                                    <div class="progress-ring-fill"></div>
+                                </div>
+                                <div class="progress-ring-text">
+                                    <div class="percentage"><?php echo $teachers_percent; ?>%</div>
+                                    <div class="label">Teachers</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="system-stats">
+                            <div class="stat-item">
+                                <span class="stat-number"><?php echo number_format($stats['total_schools']); ?></span>
+                                <span class="stat-label">Schools</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number"><?php echo number_format($stats['total_users']); ?></span>
+                                <span class="stat-label">Users</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number"><?php echo number_format($stats['total_students']); ?></span>
+                                <span class="stat-label">Students</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number"><?php echo number_format($stats['total_teachers']); ?></span>
+                                <span class="stat-label">Teachers</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
                 <div class="chart-card">
                     <h3><i class="fas fa-chart-bar"></i> Growth Trends</h3>
-                    <canvas id="growthChart"></canvas>
+                    <div class="growth-trends">
+                        <?php
+                        $maxSchools = max(10, $stats['total_schools']);
+                        $growthData = [
+                            ['month' => 'Jan', 'value' => min(1, $maxSchools * 0.1), 'percentage' => min(10, ($maxSchools * 0.1) / $maxSchools * 100)],
+                            ['month' => 'Feb', 'value' => min(2, $maxSchools * 0.2), 'percentage' => min(20, ($maxSchools * 0.2) / $maxSchools * 100)],
+                            ['month' => 'Mar', 'value' => min($maxSchools * 0.6, $maxSchools - 2), 'percentage' => min(60, (($maxSchools * 0.6) / $maxSchools) * 100)],
+                            ['month' => 'Apr', 'value' => min($maxSchools * 0.8, $maxSchools), 'percentage' => min(80, (($maxSchools * 0.8) / $maxSchools) * 100)],
+                            ['month' => 'May', 'value' => min($maxSchools * 0.9, $maxSchools), 'percentage' => min(90, (($maxSchools * 0.9) / $maxSchools) * 100)],
+                            ['month' => 'Jun', 'value' => $maxSchools, 'percentage' => 100]
+                        ];
+                        ?>
+                        <div class="progress-bars">
+                            <?php foreach ($growthData as $data): ?>
+                                <div class="progress-bar-item">
+                                    <div class="progress-bar-header">
+                                        <span class="month"><?php echo $data['month']; ?></span>
+                                        <span class="value"><?php echo number_format($data['value']); ?></span>
+                                    </div>
+                                    <div class="progress-bar-container">
+                                        <div class="progress-bar-fill" style="width: <?php echo $data['percentage']; ?>%"></div>
+                                    </div>
+                                    <div class="progress-percentage"><?php echo round($data['percentage']); ?>%</div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <div class="growth-summary">
+                            <div class="summary-item">
+                                <span class="summary-label">Current Total:</span>
+                                <span class="summary-value"><?php echo number_format($stats['total_schools']); ?> Schools</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Growth Rate:</span>
+                                <span class="summary-value"><?php echo $stats['new_schools_week'] > 0 ? '+' . $stats['new_schools_week'] . ' this week' : 'Stable'; ?></span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -705,94 +1094,26 @@ try {
     </div>
 
     <script>
-        // Initialize Charts
-        document.addEventListener('DOMContentLoaded', function() {
-            // System Overview Chart
-            const systemCtx = document.getElementById('systemChart').getContext('2d');
-            new Chart(systemCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Schools', 'Users', 'Students', 'Teachers'],
-                    datasets: [{
-                        data: [
-                            <?php echo $stats['total_schools']; ?>,
-                            <?php echo $stats['total_users']; ?>,
-                            <?php echo $stats['total_students']; ?>,
-                            <?php echo $stats['total_teachers']; ?>
-                        ],
-                        backgroundColor: [
-                            '#3b82f6',
-                            '#10b981',
-                            '#f59e0b',
-                            '#8b5cf6'
-                        ]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    aspectRatio: 1.5,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
-                }
-            });
-
-            // Growth Chart - Normalize data to prevent massive scaling
-            const growthCtx = document.getElementById('growthChart').getContext('2d');
-            const maxSchools = Math.max(10, <?php echo $stats['total_schools']; ?>); // Ensure minimum scale
-            const normalizedData = [
-                Math.min(1, maxSchools * 0.1), // Jan
-                Math.min(2, maxSchools * 0.2), // Feb
-                Math.min(maxSchools * 0.6, maxSchools - 2), // Mar
-                Math.min(maxSchools * 0.8, maxSchools), // Apr
-                Math.min(maxSchools * 0.9, maxSchools), // May
-                maxSchools // Jun (current)
-            ];
-
-            new Chart(growthCtx, {
-                type: 'line',
-                data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-                    datasets: [{
-                        label: 'Schools',
-                        data: normalizedData,
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    aspectRatio: 2,
-                    maintainAspectRatio: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: Math.max(10, maxSchools * 1.2), // Set reasonable max
-                            ticks: {
-                                callback: function(value) {
-                                    return Math.round(value);
-                                }
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    }
-                }
-            });
-        });
-
         // Mobile menu toggle
         function toggleSidebar() {
             document.querySelector('.sidebar').classList.toggle('active');
         }
+
+        // Animate progress bars on scroll
+        document.addEventListener('DOMContentLoaded', function() {
+            const progressBars = document.querySelectorAll('.progress-bar-fill');
+
+            const animateProgressBars = () => {
+                progressBars.forEach((bar, index) => {
+                    setTimeout(() => {
+                        bar.style.width = bar.style.width; // Trigger animation
+                    }, index * 100);
+                });
+            };
+
+            // Animate on load
+            setTimeout(animateProgressBars, 500);
+        });
     </script>
 </body>
 </html>

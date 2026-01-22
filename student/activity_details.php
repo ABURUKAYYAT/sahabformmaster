@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Check if student is logged in
 if (!isset($_SESSION['student_id']) && !isset($_SESSION['user_id'])) {
@@ -153,10 +154,18 @@ try {
 
         .main-content {
             flex: 1;
-            margin-left: 280px;
+            margin-left: 0;
             padding: 2rem;
-            max-width: calc(100vw - 280px);
+            max-width: 100%;
             background: transparent;
+        }
+
+        /* Desktop sidebar layout */
+        @media (min-width: 1024px) {
+            .main-content {
+                margin-left: 280px;
+                max-width: calc(100vw - 280px);
+            }
         }
 
         /* ===================================================

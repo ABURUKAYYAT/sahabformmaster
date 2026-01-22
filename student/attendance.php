@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Check if user is logged in as student
 if (!isset($_SESSION['student_id'])) {
@@ -22,7 +23,7 @@ $today = date('Y-m-d');
 // Get student information
 $student_sql = "SELECT s.*, c.class_name
                 FROM students s
-                JOIN classes c ON s.class_id = c.id AND c.school_id = :school_id
+                JOIN classes c ON s.class_id = c.id
                 WHERE s.id = :id AND s.school_id = :school_id";
 $student_stmt = $pdo->prepare($student_sql);
 $student_stmt->execute([':id' => $student_user_id, ':school_id' => $current_school_id]);
@@ -33,11 +34,12 @@ if (!$student) {
 }
 
 // Fetch attendance for selected month
-$attendance_sql = "SELECT date, status, notes
-                   FROM attendance
-                   WHERE student_id = :id AND school_id = :school_id
-                   AND DATE_FORMAT(date, '%Y-%m') = :selected_month
-                   ORDER BY date DESC";
+$attendance_sql = "SELECT a.date, a.status, a.notes
+                   FROM attendance a
+                   JOIN students s ON a.student_id = s.id
+                   WHERE a.student_id = :id AND s.school_id = :school_id
+                   AND DATE_FORMAT(a.date, '%Y-%m') = :selected_month
+                   ORDER BY a.date DESC";
 $attendance_stmt = $pdo->prepare($attendance_sql);
 $attendance_stmt->execute([
     ':id' => $student['id'],
@@ -55,21 +57,23 @@ foreach ($attendance_records as $record) {
 // Calculate attendance statistics
 $stats_sql = "SELECT
     COUNT(*) as total_days,
-    SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present_days,
-    SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END) as absent_days,
-    SUM(CASE WHEN status = 'late' THEN 1 ELSE 0 END) as late_days,
-    SUM(CASE WHEN status = 'leave' THEN 1 ELSE 0 END) as leave_days
-    FROM attendance
-    WHERE student_id = :id AND school_id = :school_id
-    AND date >= DATE_SUB(NOW(), INTERVAL 3 MONTH)";
+    SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) as present_days,
+    SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) as absent_days,
+    SUM(CASE WHEN a.status = 'late' THEN 1 ELSE 0 END) as late_days,
+    SUM(CASE WHEN a.status = 'leave' THEN 1 ELSE 0 END) as leave_days
+    FROM attendance a
+    JOIN students s ON a.student_id = s.id
+    WHERE a.student_id = :id AND s.school_id = :school_id
+    AND a.date >= DATE_SUB(NOW(), INTERVAL 3 MONTH)";
 $stats_stmt = $pdo->prepare($stats_sql);
 $stats_stmt->execute([':id' => $student['id'], ':school_id' => $current_school_id]);
 $stats = $stats_stmt->fetch();
 
 // Get recent months for dropdown
-$months_sql = "SELECT DISTINCT DATE_FORMAT(date, '%Y-%m') as month
-              FROM attendance
-              WHERE student_id = :id AND school_id = :school_id
+$months_sql = "SELECT DISTINCT DATE_FORMAT(a.date, '%Y-%m') as month
+              FROM attendance a
+              JOIN students s ON a.student_id = s.id
+              WHERE a.student_id = :id AND s.school_id = :school_id
               ORDER BY month DESC";
 $months_stmt = $pdo->prepare($months_sql);
 $months_stmt->execute([':id' => $student['id'], ':school_id' => $current_school_id]);

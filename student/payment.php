@@ -2,6 +2,7 @@
 // student/payment.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 require_once '../helpers/payment_helper.php';
 
 // Check if student is logged in
@@ -1181,8 +1182,8 @@ $balance = max(0, $totalFee - $paidAmount);
         });
 
         function viewPayment(paymentId) {
-            // Simple alert for now - can be expanded to show modal
-            alert('Payment details for ID: ' + paymentId + '\n\nFeature coming soon!');
+            // Redirect to payment details page
+            window.location.href = 'payment_details.php?id=' + paymentId;
         }
 
         // Form validation enhancement

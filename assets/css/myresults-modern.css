@@ -32,6 +32,10 @@
     --gradient-result-card: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
     --gradient-complaint: var(--gradient-5);
 
+    /* Button Gradients */
+    --primary-gradient: var(--gradient-1);
+    --secondary-gradient: var(--gradient-4);
+
     /* Neutral Colors */
     --white: #ffffff;
     --gray-50: #f9fafb;
@@ -391,72 +395,97 @@
 }
 
 /* ===================================================
-   Results Grid
+   Results Table
    =================================================== */
 
-.results-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 1.5rem;
+.results-table-container {
     margin-bottom: 3rem;
 }
 
-.result-card {
-    background: var(--gradient-result-card);
+.results-table-wrapper {
+    background: var(--white);
     border-radius: var(--border-radius-xl);
-    padding: 2rem;
     box-shadow: var(--shadow-md);
     border: 1px solid var(--gray-200);
-    transition: var(--transition-normal);
-    position: relative;
     overflow: hidden;
+    position: relative;
 }
 
-.result-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: var(--gradient-1);
+.results-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--white);
+}
+
+.results-table thead {
+    background: var(--primary-color);
+    color: white;
+}
+
+.results-table th {
+    padding: 1.5rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid var(--gray-200);
+}
+
+.results-table tbody tr {
+    border-bottom: 1px solid var(--gray-200);
     transition: var(--transition-fast);
 }
 
-.result-card:hover {
-    box-shadow: var(--shadow-xl);
-    transform: translateY(-2px);
+.results-table tbody tr:hover {
+    background: var(--gray-50);
 }
 
-.result-card:hover::before {
-    background: var(--gradient-2);
+.results-table tbody tr:last-child {
+    border-bottom: none;
 }
 
-.subject-header {
-    display: flex;
-    justify-content: between;
-    align-items: center;
-    margin-bottom: 1.5rem;
+.results-table td {
+    padding: 1.5rem 1rem;
+    font-size: 0.875rem;
+    color: var(--gray-700);
+    vertical-align: middle;
 }
 
-.subject-name {
-    flex: 1;
-    font-size: 1.25rem;
+.subject-cell {
     font-weight: 600;
     color: var(--gray-900);
-    margin-bottom: 0.25rem;
+    min-width: 200px;
 }
 
-.subject-grade {
+.score-cell {
+    text-align: center;
+    font-weight: 600;
+    color: var(--gray-800);
+    font-family: 'Poppins', sans-serif;
+}
+
+.total-cell {
+    font-weight: 700;
+    color: var(--primary-color);
+    text-align: center;
+    font-size: 1rem;
+    font-family: 'Poppins', sans-serif;
+}
+
+.grade-cell {
+    text-align: center;
+}
+
+.grade-badge {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: center;
     padding: 0.5rem 1rem;
     border-radius: var(--border-radius-lg);
     font-weight: 700;
-    font-size: 1.1rem;
-    min-width: 70px;
-    justify-content: center;
+    font-size: 1rem;
+    min-width: 50px;
     text-align: center;
 }
 
@@ -496,67 +525,16 @@
     border: 2px solid var(--error-color);
 }
 
-.scores-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    border-bottom: 1px solid var(--gray-200);
-    padding-bottom: 1.5rem;
-}
-
-.score-item {
+.remark-cell {
     text-align: center;
-}
-
-.score-label {
-    font-size: 0.75rem;
-    color: var(--gray-500);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.5rem;
-}
-
-.score-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--gray-900);
-    min-height: 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.total-score {
-    text-align: center;
-    margin-bottom: 1rem;
-}
-
-.total-label {
-    font-size: 0.875rem;
-    color: var(--gray-600);
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-}
-
-.total-value {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--primary-color);
-    min-height: 2.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.remark {
-    text-align: center;
-    font-size: 0.875rem;
     font-weight: 600;
     color: var(--gray-700);
-    margin-bottom: 1.5rem;
     text-transform: capitalize;
+}
+
+.action-cell {
+    text-align: center;
+    min-width: 180px;
 }
 
 .complaint-btn {
@@ -574,8 +552,6 @@
     transition: var(--transition-normal);
     position: relative;
     overflow: hidden;
-    width: 100%;
-    justify-content: center;
 }
 
 .complaint-btn:hover {
@@ -592,6 +568,7 @@
     border: 1px solid var(--gray-200);
     display: none;
     animation: slideDown 0.3s ease-out;
+    max-width: 400px;
 }
 
 .complaint-form.active {
@@ -877,18 +854,22 @@
         width: 100%;
     }
 
-    .results-grid {
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 1rem;
+    .results-table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
-    .result-card {
-        padding: 1.5rem;
+    .results-table {
+        min-width: 800px;
     }
 
-    .scores-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: 0.75rem;
+    .complaints-section {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .complaints-table {
+        min-width: 600px;
     }
 
     .total-value {
