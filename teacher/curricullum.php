@@ -46,14 +46,21 @@ $filter_status = $_GET['filter_status'] ?? 'active';
 $query = "SELECT DISTINCT c.*, cl.class_name
           FROM curriculum c
           LEFT JOIN classes cl ON c.class_id = cl.id AND cl.school_id = :school_id
-          WHERE c.status = :status AND c.school_id = :school_id";
-$params = ['status' => $filter_status, 'school_id' => $current_school_id, 'school_id' => $current_school_id];
+          WHERE c.school_id = :school_id_filter";
+$params = [
+    'school_id' => $current_school_id,
+    'school_id_filter' => $current_school_id,
+];
 
-// Add teacher filter only if not viewing all
-if ($filter_status === 'active') {
-    $query .= " AND (c.teacher_id = :teacher_id OR c.teacher_id IS NULL)";
-    $params['teacher_id'] = $teacher_id;
+// Status filter (skip when 'all')
+if ($filter_status !== 'all') {
+    $query .= " AND c.status = :status";
+    $params['status'] = $filter_status;
 }
+
+// Teachers can only view curricula assigned to them or unassigned
+$query .= " AND (c.teacher_id = :teacher_id OR c.teacher_id IS NULL)";
+$params['teacher_id'] = $teacher_id;
 
 if ($search !== '') {
     $query .= " AND (c.subject_name LIKE :search OR c.description LIKE :search OR c.topics LIKE :search)";
@@ -1338,10 +1345,6 @@ function getStatusBadgeClass($status) {
                     <i class="fas fa-print action-icon-modern"></i>
                     <span class="action-text-modern">Print Curriculum</span>
                 </button>
-                <button class="action-btn-modern" onclick="createLessonPlan()">
-                    <i class="fas fa-plus action-icon-modern"></i>
-                    <span class="action-text-modern">Create Lesson</span>
-                </button>
                 <button class="action-btn-modern" onclick="viewAnalytics()">
                     <i class="fas fa-chart-bar action-icon-modern"></i>
                     <span class="action-text-modern">View Analytics</span>
@@ -1443,13 +1446,6 @@ function getStatusBadgeClass($status) {
                                                 <i class="fas fa-print"></i>
                                                 <span>Print</span>
                                             </button>
-                                            <?php if ($curriculum['teacher_id'] == $teacher_id): ?>
-                                                <button class="btn-small-modern btn-edit-modern"
-                                                        onclick="createLessonPlanFromCurriculum(<?php echo intval($curriculum['id']); ?>)">
-                                                    <i class="fas fa-plus"></i>
-                                                    <span>Lesson</span>
-                                                </button>
-                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>
@@ -1601,20 +1597,10 @@ function getStatusBadgeClass($status) {
             window.open(`../admin/print_curriculum.php?${params.toString()}`, '_blank');
         }
 
-        // Create lesson plan from curriculum
-        function createLessonPlanFromCurriculum(curriculumId) {
-            window.location.href = `lesson-plan.php?curriculum_id=${curriculumId}`;
-        }
-
         // Export curriculum
         function exportCurriculum() {
             const params = new URLSearchParams(window.location.search);
             window.open(`../admin/export_curriculum.php?${params.toString()}`, '_blank');
-        }
-
-        // Create lesson plan
-        function createLessonPlan() {
-            window.location.href = 'lesson-plan.php';
         }
 
         // View analytics

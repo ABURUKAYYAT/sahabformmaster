@@ -75,18 +75,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errors[] = 'Subject name and grade level are required.';
             } else {
                 // Check for duplicate
-                $stmt = $pdo->prepare("SELECT COUNT(*) FROM curriculum WHERE subject_id = :subject_id AND grade_level = :grade_level AND term = :term AND week = :week");
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM curriculum WHERE subject_id = :subject_id AND grade_level = :grade_level AND term = :term AND week = :week AND school_id = :school_id");
                 $stmt->execute([
                     'subject_id' => $subject_id,
                     'grade_level' => $grade_level,
                     'term' => $term,
-                    'week' => $week
+                    'week' => $week,
+                    'school_id' => $current_school_id
                 ]);
                 if ($stmt->fetchColumn() > 0) {
                     $errors[] = 'This curriculum already exists for this subject, grade, term, and week.';
                 } else {
-                    $stmt = $pdo->prepare("INSERT INTO curriculum (subject_id, subject_name, grade_level, description, topics, duration, teacher_id, class_id, term, week, status)
-                                          VALUES (:subject_id, :subject_name, :grade_level, :description, :topics, :duration, :teacher_id, :class_id, :term, :week, :status)");
+                    $stmt = $pdo->prepare("INSERT INTO curriculum (subject_id, subject_name, grade_level, description, topics, duration, teacher_id, class_id, term, week, status, school_id)
+                                          VALUES (:subject_id, :subject_name, :grade_level, :description, :topics, :duration, :teacher_id, :class_id, :term, :week, :status, :school_id)");
                    
                    $stmt->execute([
                         'subject_id' => $subject_id,
@@ -99,7 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'class_id' => $class_id,
                         'term' => $term,
                         'week' => $week,
-                        'status' => $status
+                        'status' => $status,
+                        'school_id' => $current_school_id
                     ]);
                     
                         $school_id = $current_school_id;
@@ -116,19 +118,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errors[] = 'Invalid input for update.';
             } else {
                 // Check for duplicate excluding current record
-                $stmt = $pdo->prepare("SELECT COUNT(*) FROM curriculum WHERE subject_id = :subject_id AND grade_level = :grade_level AND term = :term AND week = :week AND id <> :id");
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM curriculum WHERE subject_id = :subject_id AND grade_level = :grade_level AND term = :term AND week = :week AND id <> :id AND school_id = :school_id");
                 $stmt->execute([
                     'subject_id' => $subject_id,
                     'grade_level' => $grade_level,
                     'term' => $term,
                     'week' => $week,
-                    'id' => $id
+                    'id' => $id,
+                    'school_id' => $current_school_id
                 ]);
                 if ($stmt->fetchColumn() > 0) {
                     $errors[] = 'This subject, grade, term, and week combination is already used.';
                 } else {
                     $stmt = $pdo->prepare("UPDATE curriculum SET subject_id = :subject_id, subject_name = :subject_name, grade_level = :grade_level, description = :description,
-                                          topics = :topics, duration = :duration, teacher_id = :teacher_id, class_id = :class_id, term = :term, week = :week, status = :status WHERE id = :id");
+                                          topics = :topics, duration = :duration, teacher_id = :teacher_id, class_id = :class_id, term = :term, week = :week, status = :status WHERE id = :id AND school_id = :school_id");
                     $stmt->execute([
                         'subject_id' => $subject_id,
                         'subject_name' => $subject_name,
@@ -141,7 +144,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'term' => $term,
                         'week' => $week,
                         'status' => $status,
-                        'id' => $id
+                        'id' => $id,
+                        'school_id' => $current_school_id
                     ]);
                     $success = 'Curriculum updated successfully.';
                     header("Location: manage_curriculum.php");
@@ -202,10 +206,14 @@ $filter_class = $_GET['filter_class'] ?? '';
 
 $query = "SELECT c.*, cl.class_name, u.full_name as teacher_name
           FROM curriculum c
-          LEFT JOIN classes cl ON c.class_id = cl.id
-          LEFT JOIN users u ON c.teacher_id = u.id
-          WHERE 1=1";
-$params = [];
+          LEFT JOIN classes cl ON c.class_id = cl.id AND cl.school_id = :school_id_classes
+          LEFT JOIN users u ON c.teacher_id = u.id AND u.school_id = :school_id_users
+          WHERE c.school_id = :school_id_filter";
+$params = [
+    'school_id_classes' => $current_school_id,
+    'school_id_users' => $current_school_id,
+    'school_id_filter' => $current_school_id,
+];
 
 if ($search !== '') {
     $query .= " AND (c.subject_name LIKE :search OR c.grade_level LIKE :search)";
@@ -249,13 +257,14 @@ if (isset($_GET['edit'])) {
 }
 
 // Get unique terms and weeks for filtering
-$stmt = $pdo->query("SELECT DISTINCT term FROM curriculum WHERE term IS NOT NULL ORDER BY
+$stmt = $pdo->prepare("SELECT DISTINCT term FROM curriculum WHERE term IS NOT NULL AND school_id = ? ORDER BY
     CASE term
         WHEN 'first' THEN 1
         WHEN 'second' THEN 2
         WHEN 'third' THEN 3
         ELSE 4
     END");
+$stmt->execute([$current_school_id]);
 $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
 ?>
 <!DOCTYPE html>
@@ -765,8 +774,8 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
                         <button type="button" class="btn btn-danger btn-small" onclick="deleteSelected()">
                             <i class="fas fa-trash"></i> Delete Selected
                         </button>
-                        <button type="button" class="btn btn-success btn-small" onclick="exportToExcel()">
-                            <i class="fas fa-file-excel"></i> Export Excel
+                        <button type="button" class="btn btn-success btn-small" onclick="exportToPDF()">
+                            <i class="fas fa-file-pdf"></i> Export PDF
                         </button>
                     </div>
                 </form>
@@ -812,7 +821,7 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
                                 <?php foreach ($curriculums as $index => $c): ?>
                                     <tr>
                                         <td>
-                                            <!-- <input type="checkbox" name="selected_ids[]" value="<?php echo intval($c['id']); ?>" class="select-checkbox"> -->
+                                            <input type="checkbox" name="selected_ids[]" value="<?php echo intval($c['id']); ?>" class="select-checkbox">
                                         </td>
                                         <td><?php echo $index + 1; ?></td>
                                         <td>
@@ -938,7 +947,17 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
                 return;
             }
             if (confirm(`Are you sure you want to delete ${selected.length} selected item(s)?`)) {
-                document.getElementById('bulkForm').submit();
+                const form = document.getElementById('bulkForm');
+                // Clear any previous hidden inputs
+                form.querySelectorAll('input[name="selected_ids[]"]').forEach(el => el.remove());
+                selected.forEach(checkbox => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'selected_ids[]';
+                    input.value = checkbox.value;
+                    form.appendChild(input);
+                });
+                form.submit();
             }
         }
 
@@ -980,10 +999,10 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
             }
         });
 
-        // Export functions (placeholder)
-        function exportToExcel() {
-            alert('Excel export feature would be implemented here');
-            // Implement Excel export using SheetJS or server-side generation
+        // Export PDF
+        function exportToPDF() {
+            const params = new URLSearchParams(window.location.search);
+            window.open(`export_curriculum.php?${params.toString()}`, '_blank');
         }
 
         // Add active class on scroll
