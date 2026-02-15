@@ -1,0 +1,373 @@
+<?php
+session_start();
+require_once '../config/db.php';
+
+// Redirect if already logged in as super admin
+if (isset($_SESSION['user_id']) && $_SESSION['role'] === 'super_admin') {
+    header('Location: dashboard.php');
+    exit;
+}
+
+$errors = [];
+$success = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+
+    if (empty($email) || empty($password)) {
+        $errors[] = 'Please enter both email and password.';
+    } else {
+        try {
+            // Check if super admin exists, if not create with default credentials
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE role = 'super_admin' LIMIT 1");
+            $stmt->execute();
+            $super_admin = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$super_admin) {
+                // Create default super admin - REQUIRE MANUAL SETUP
+                // REMOVED: Automatic creation with hardcoded password for security
+                $errors[] = 'Super admin account not found. Please contact system administrator for setup.';
+                // Log this security event
+                Security::logSecurityEvent('super_admin_setup_required', ['attempted_by' => $email]);
+            } else {
+                $super_admin_id = $super_admin['id'];
+            }
+
+            // Now authenticate
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ? AND role = 'super_admin'");
+            $stmt->execute([$email]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($user && password_verify($password, $user['password'])) {
+                // Set session variables
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['username'] = $user['username'];
+                $_SESSION['full_name'] = $user['full_name'];
+                $_SESSION['role'] = $user['role'];
+                $_SESSION['email'] = $user['email'];
+                $_SESSION['school_id'] = $user['school_id'];
+
+                // Log login activity
+                $stmt = $pdo->prepare("INSERT INTO access_logs (user_id, action, resource_type, status, ip_address, user_agent) VALUES (?, 'login', 'system', 'success', ?, ?)");
+                $stmt->execute([
+                    $user['id'],
+                    $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+                    $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
+                ]);
+
+                $success = 'Login successful! Redirecting...';
+                header('Location: dashboard.php');
+                exit;
+            } else {
+                $errors[] = 'Invalid email or password.';
+
+                // Log failed login
+                $stmt = $pdo->prepare("INSERT INTO access_logs (user_id, action, resource_type, status, ip_address, user_agent, message) VALUES (?, 'login', 'system', 'denied', ?, ?, ?)");
+                $stmt->execute([
+                    $super_admin_id ?? 0,
+                    $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+                    $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
+                    'Invalid credentials'
+                ]);
+            }
+        } catch (PDOException $e) {
+            $errors[] = 'Database error: ' . $e->getMessage();
+        }
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Admin Login | SahabFormMaster</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            width: 100%;
+            max-width: 450px;
+            position: relative;
+        }
+
+        .login-header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .login-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .login-header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .login-form {
+            padding: 40px 30px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert-danger {
+            background: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+        }
+
+        .alert-success {
+            background: #efe;
+            color: #363;
+            border: 1px solid #cfc;
+        }
+
+        .login-footer {
+            text-align: center;
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-top: 1px solid #e1e5e9;
+        }
+
+        .login-footer p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .back-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .admin-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #ff6b6b;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .security-notice {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+
+        .security-notice i {
+            margin-right: 8px;
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                margin: 10px;
+                max-width: none;
+            }
+
+            .login-header {
+                padding: 30px 20px;
+            }
+
+            .login-form {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="admin-badge">
+            <i class="fas fa-crown"></i> Super Admin
+        </div>
+
+        <div class="login-header">
+            <h1><i class="fas fa-shield-alt"></i> Super Admin Portal</h1>
+            <p>System-wide Administration Access</p>
+        </div>
+
+        <div class="login-form">
+            <div class="security-notice">
+                <i class="fas fa-lock"></i>
+                <strong>Secure Access:</strong> This portal provides system-wide administrative privileges. Access is restricted and monitored.
+            </div>
+
+            <?php if (!empty($errors)): ?>
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <?php foreach ($errors as $error): ?>
+                        <?php echo htmlspecialchars($error); ?><br>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($success): ?>
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    <?php echo htmlspecialchars($success); ?>
+                </div>
+            <?php endif; ?>
+
+            <form method="POST">
+                <div class="form-group">
+                    <label for="email">
+                        <i class="fas fa-envelope"></i> Email Address
+                    </label>
+                    <input type="email" id="email" name="email" class="form-control"
+                           placeholder="Enter your email address" required
+                           value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">
+                        <i class="fas fa-lock"></i> Password
+                    </label>
+                    <input type="password" id="password" name="password" class="form-control"
+                           placeholder="Enter your password" required>
+                </div>
+
+                <button type="submit" class="btn-login">
+                    <i class="fas fa-sign-in-alt"></i> Access Super Admin Panel
+                </button>
+            </form>
+        </div>
+
+        <div class="login-footer">
+            <p>Super admin account must be manually configured by system administrator.</p>
+            <a href="../index.php" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Main Site
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Auto-focus email field
+        document.getElementById('email').focus();
+
+        // Form validation
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            if (!email || !password) {
+                e.preventDefault();
+                alert('Please fill in both email and password fields.');
+                return false;
+            }
+
+            // Show loading state
+            const button = document.querySelector('.btn-login');
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
+            button.disabled = true;
+        });
+
+        // Enter key support
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.querySelector('form').submit();
+            }
+        });
+    </script>
+</body>
+</html>

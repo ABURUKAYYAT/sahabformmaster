@@ -1,0 +1,55 @@
+# Git
+.git
+.gitignore
+.github
+
+# Documentation
+*.md
+*.docx
+*.pdf
+readme.txt
+UI_UX_DESIGN_README.md
+AI_SETUP_README.md
+
+# Development files
+.env
+.env.local
+.env.*.local
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+~$*
+
+# Logs
+*.log
+
+# Node modules (if any)
+node_modules/
+
+# Database dumps (keep only schema files)
+database/*.sql
+!database/sahabformmaster.sql
+
+# Uploads (will be mounted as volumes)
+uploads/
+exports/
+generated_papers/
+
+# Cache
+cache/

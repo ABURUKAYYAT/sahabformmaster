@@ -1,0 +1,377 @@
+/* ===================================================
+   BUTTON COMPONENTS
+   ===================================================
+   Professional button styles for educational interface
+   =================================================== */
+
+/* ===== BUTTON BASE STYLES ===== */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--border-radius-lg);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  font-family: var(--font-family-primary);
+  line-height: var(--leading-normal);
+  text-decoration: none;
+  border: var(--border-width-1) solid var(--glass-border);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  min-height: 44px; /* Accessibility: minimum touch target */
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+  background: var(--glass-white);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--gray-900);
+  box-shadow: var(--glass-shadow-light);
+}
+
+.btn:focus {
+  outline: none;
+}
+
+.btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.2), var(--glass-shadow-light);
+}
+
+/* ===== GLASSMORPHISM BUTTON VARIANTS ===== */
+
+/* Primary Button - Glass with darker background */
+.btn-primary {
+  background: var(--glass-white-dark);
+  color: var(--gray-900);
+  border-color: rgba(255, 255, 255, 0.3);
+  font-weight: var(--font-semibold);
+}
+
+.btn-primary:hover {
+  background: rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Secondary Button - Lighter glass */
+.btn-secondary {
+  background: var(--glass-white-light);
+  color: var(--gray-800);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-secondary:hover {
+  background: var(--glass-white);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow);
+}
+
+.btn-secondary:active {
+  transform: translateY(0);
+}
+
+/* Success Button - Glass with gray accent */
+.btn-success {
+  background: var(--success-light);
+  color: var(--success-dark);
+  border-color: rgba(82, 82, 82, 0.2);
+}
+
+.btn-success:hover {
+  background: rgba(82, 82, 82, 0.15);
+  border-color: rgba(82, 82, 82, 0.3);
+  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow);
+}
+
+/* Warning Button - Glass with gray accent */
+.btn-warning {
+  background: var(--warning-light);
+  color: var(--warning-dark);
+  border-color: rgba(115, 115, 115, 0.2);
+}
+
+.btn-warning:hover {
+  background: rgba(115, 115, 115, 0.15);
+  border-color: rgba(115, 115, 115, 0.3);
+  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow);
+}
+
+/* Error Button - Glass with gray accent */
+.btn-error {
+  background: var(--error-light);
+  color: var(--error-dark);
+  border-color: rgba(64, 64, 64, 0.2);
+}
+
+.btn-error:hover {
+  background: rgba(64, 64, 64, 0.15);
+  border-color: rgba(64, 64, 64, 0.3);
+  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow);
+}
+
+/* Info Button - Glass with gray accent */
+.btn-info {
+  background: var(--info-light);
+  color: var(--info-dark);
+  border-color: rgba(82, 82, 82, 0.2);
+}
+
+.btn-info:hover {
+  background: rgba(82, 82, 82, 0.15);
+  border-color: rgba(82, 82, 82, 0.3);
+  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow);
+}
+
+/* ===== BUTTON SIZES ===== */
+
+.btn-sm {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-xs);
+  min-height: 36px;
+  border-radius: var(--border-radius-md);
+}
+
+.btn-lg {
+  padding: var(--space-4) var(--space-8);
+  font-size: var(--text-base);
+  min-height: 52px;
+  border-radius: var(--border-radius-xl);
+}
+
+/* ===== BUTTON STATES ===== */
+
+.btn:disabled,
+.btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.btn.loading {
+  position: relative;
+  color: transparent;
+  pointer-events: none;
+}
+
+.btn.loading::after {
+  content: '';
+  position: absolute;
+  width: 1rem;
+  height: 1rem;
+  top: 50%;
+  left: 50%;
+  margin-left: -0.5rem;
+  margin-top: -0.5rem;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ===== BUTTON WITH ICONS ===== */
+
+.btn-icon-only {
+  padding: var(--space-3);
+  width: 44px;
+  min-width: 44px;
+}
+
+.btn .btn-icon {
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+
+.btn .btn-text {
+  flex: 1;
+  text-align: center;
+}
+
+/* ===== BUTTON GROUPS ===== */
+
+.btn-group {
+  display: inline-flex;
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-group .btn {
+  border-radius: 0;
+  border-right-width: 1px;
+  margin: 0;
+}
+
+.btn-group .btn:first-child {
+  border-radius: var(--border-radius-lg) 0 0 var(--border-radius-lg);
+}
+
+.btn-group .btn:last-child {
+  border-radius: 0 var(--border-radius-lg) var(--border-radius-lg) 0;
+  border-right-width: 0;
+}
+
+.btn-group .btn:only-child {
+  border-radius: var(--border-radius-lg);
+  border-right-width: 0;
+}
+
+/* ===== SPECIALIZED BUTTONS ===== */
+
+/* Link Button */
+.btn-link {
+  background: transparent;
+  color: var(--primary-800);
+  border-color: transparent;
+  padding: var(--space-2) var(--space-3);
+  min-height: auto;
+  box-shadow: none;
+}
+
+.btn-link:hover {
+  background: var(--primary-50);
+  color: var(--primary-900);
+  transform: none;
+  box-shadow: none;
+  text-decoration: underline;
+}
+
+/* Ghost Button */
+.btn-ghost {
+  background: transparent;
+  color: var(--gray-600);
+  border-color: var(--gray-300);
+}
+
+.btn-ghost:hover {
+  background: var(--gray-50);
+  color: var(--gray-900);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+/* ===== DASHBOARD SPECIFIC BUTTONS ===== */
+
+.btn-dashboard {
+  background: var(--primary-800);
+  color: var(--white);
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--border-radius-lg);
+  font-weight: var(--font-medium);
+  transition: all var(--transition-normal);
+  box-shadow: var(--shadow-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.btn-dashboard:hover {
+  background: var(--primary-900);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-logout {
+  background: var(--error-600);
+  color: var(--white);
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--border-radius-lg);
+  font-weight: var(--font-medium);
+  transition: all var(--transition-normal);
+  box-shadow: var(--shadow-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.btn-logout:hover {
+  background: var(--error-700);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* ===== RESPONSIVE BUTTONS ===== */
+
+@media (max-width: 640px) {
+  .btn {
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-sm);
+    min-height: 40px;
+  }
+
+  .btn-sm {
+    padding: var(--space-2) var(--space-3);
+    min-height: 32px;
+  }
+
+  .btn-lg {
+    padding: var(--space-3) var(--space-6);
+    min-height: 48px;
+  }
+
+  .btn-group {
+    flex-direction: column;
+    border-radius: var(--border-radius-lg);
+  }
+
+  .btn-group .btn {
+    border-right-width: 0;
+    border-bottom-width: 1px;
+  }
+
+  .btn-group .btn:first-child {
+    border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+  }
+
+  .btn-group .btn:last-child {
+    border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);
+    border-bottom-width: 0;
+  }
+}
+
+/* ===== ACCESSIBILITY ENHANCEMENTS ===== */
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .btn-primary {
+    background: #000000;
+    border-color: #000000;
+    color: #ffffff;
+  }
+
+  .btn-secondary {
+    background: #ffffff;
+    border-color: #000000;
+    color: #000000;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .btn {
+    transition: none;
+  }
+
+  .btn:hover {
+    transform: none;
+  }
+}

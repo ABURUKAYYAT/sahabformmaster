@@ -1,0 +1,230 @@
+:root{
+    --white:#ffffff;
+    --gold:#FFD700;
+    --dark-gold:#B8860B;
+    --transparent-gold: rgba(255,215,0,0.12);
+    --muted:#777;
+    --card-shadow: 0 6px 18px rgba(0,0,0,0.06);
+    --border:#ececec;
+}
+
+/* Page container adjustments (works with dashboard layout) */
+.manage-wrap{
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 10px 18px 40px;
+}
+
+/* Alerts */
+.manage-alert {
+    background: var(--transparent-gold);
+    color: var(--dark-gold);
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(184,134,11,0.12);
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+/* Card for form */
+.manage-card{
+    background: var(--white);
+    padding: 18px;
+    border-radius: 10px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 18px;
+}
+
+/* Inline form */
+.form-inline{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    align-items:end;
+}
+
+.form-inline .form-group{
+    flex:1 1 220px;
+    min-width:180px;
+}
+
+/* Input & select inherit .form-control from global styles; ensure consistent sizing here */
+.form-inline .form-control{
+    width:100%;
+}
+
+/* Buttons used in the inline form */
+.form-inline .btn-gold{
+    padding:10px 16px;
+    min-width:140px;
+}
+
+/* Small button styles for table actions */
+.btn-small{
+    display:inline-block;
+    padding:6px 10px;
+    border-radius:6px;
+    font-size:13px;
+    text-decoration:none;
+    cursor:pointer;
+    transition:all .15s ease;
+    border:1px solid transparent;
+}
+
+.btn-edit{
+    background:#fafafa;
+    color:#333;
+    border-color:var(--border);
+}
+
+.btn-edit:hover{
+    transform:translateY(-2px);
+    box-shadow:0 6px 12px rgba(0,0,0,0.04);
+}
+
+.btn-delete{
+    background:#fff6f6;
+    color:#b52b2b;
+    border-color: #f3cfcf;
+}
+
+.btn-delete:hover{
+    transform:translateY(-2px);
+}
+
+/* Users table */
+.table{
+    width:100%;
+    border-collapse:collapse;
+    overflow:hidden;
+    border-radius:8px;
+    box-shadow: var(--card-shadow);
+}
+
+.table thead th{
+    background: linear-gradient(90deg, rgba(255,245,215,0.6), rgba(255,250,230,0.6));
+    color: var(--dark-gold);
+    padding:12px 14px;
+    text-align:left;
+    font-weight:700;
+    border-bottom:1px solid var(--border);
+    font-size:14px;
+}
+
+.table tbody td{
+    padding:12px 14px;
+    border-bottom:1px solid #f4f4f4;
+    vertical-align:middle;
+    font-size:14px;
+    color:#222;
+}
+
+.table tbody tr:last-child td{
+    border-bottom:none;
+}
+
+/* Small muted text */
+.small-muted{
+    color:var(--muted);
+    font-size:13px;
+}
+
+/* Actions cell */
+.manage-actions{
+    display:flex;
+    gap:8px;
+    align-items:center;
+}
+
+/* Responsive table wrapper */
+.table-wrapper{
+    width:100%;
+    overflow:auto;
+    border-radius:8px;
+}
+
+/* Form labels inline styling fallback */
+.form-inline label{
+    display:block;
+    font-weight:600;
+    color:var(--dark-gold);
+    margin-bottom:6px;
+    font-size:13px;
+}
+
+/* Utility */
+.center{
+    text-align:center;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 900px){
+    .form-inline{
+        align-items:stretch;
+    }
+
+    .form-inline .form-group{
+        flex:1 1 100%;
+    }
+
+    .manage-card{
+        padding:14px;
+    }
+
+    .table thead th{
+        font-size:13px;
+        padding:10px 12px;
+    }
+
+    .table tbody td{
+        padding:10px 12px;
+        font-size:13px;
+    }
+
+    .btn-small{
+        padding:6px 8px;
+        font-size:12px;
+    }
+}
+
+@media (max-width:480px){
+    .manage-wrap{
+        padding:8px 12px 24px;
+    }
+
+    .table thead{
+        display:none; /* transform table to list on very small screens */
+    }
+
+    .table tbody, .table tr, .table td{
+        display:block;
+        width:100%;
+    }
+
+    .table tr{
+        margin-bottom:12px;
+        background:var(--white);
+        border-radius:8px;
+        box-shadow:var(--card-shadow);
+        padding:10px;
+    }
+
+    .table td{
+        padding:8px 10px;
+        border-bottom:none;
+    }
+
+    .table td::before{
+        content:attr(data-label);
+        display:block;
+        font-weight:700;
+        color:var(--muted);
+        margin-bottom:6px;
+        font-size:12px;
+    }
+
+    .manage-actions{
+        margin-top:8px;
+        gap:6px;
+    }
+}

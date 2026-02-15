@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hamburger Menu Test</title>
+    <link rel="stylesheet" href="assets/css/admin_dashboard.css">
+    <link rel="stylesheet" href="assets/css/mobile-navigation.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-instructions {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .test-results {
+            background: #e8f5e9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .test-steps {
+            margin: 20px 0;
+            padding-left: 20px;
+        }
+        .test-steps li {
+            margin-bottom: 10px;
+        }
+        .success {
+            color: #2e7d32;
+            font-weight: bold;
+        }
+        .error {
+            color: #c62828;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <!-- Mobile Navigation Component -->
+    <?php include 'includes/mobile_navigation.php'; ?>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Navigation</h3>
+            <button class="sidebar-close" id="sidebarClose">✕</button>
+        </div>
+        <nav class="sidebar-nav">
+            <ul class="nav-list">
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <span class="nav-icon">📊</span>
+                        <span class="nav-text">Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <span class="nav-icon">🏫</span>
+                        <span class="nav-text">Manage Schools</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <span class="nav-icon">👥</span>
+                        <span class="nav-text">Manage Users</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <span class="nav-icon">⚙️</span>
+                        <span class="nav-text">System Settings</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <span class="nav-icon">📝</span>
+                        <span class="nav-text">Audit Logs</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <span class="nav-icon">🗄️</span>
+                        <span class="nav-text">Database Tools</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <span class="nav-icon">📈</span>
+                        <span class="nav-text">Analytics</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <span class="nav-icon">📋</span>
+                        <span class="nav-text">Reports</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </aside>
+
+    <div class="test-container">
+        <h1>Hamburger Menu Test</h1>
+
+        <div class="test-instructions">
+            <h2>Test Instructions</h2>
+            <p>This page tests the hamburger menu functionality. Follow these steps:</p>
+
+            <ol class="test-steps">
+                <li>Resize your browser window to mobile size (less than 1024px width)</li>
+                <li>Look for the hamburger menu icon in the top-left corner</li>
+                <li>Click the hamburger menu icon</li>
+                <li>Verify that the mobile navigation dropdown appears</li>
+                <li>Verify that the sidebar becomes visible</li>
+                <li>Click the close button (X) in the mobile navigation</li>
+                <li>Verify that both the mobile navigation and sidebar close</li>
+                <li>Click outside the menu area to verify it closes</li>
+                <li>Press the Escape key to verify it closes</li>
+            </ol>
+        </div>
+
+        <div class="test-results">
+            <h2>Expected Results</h2>
+            <ul class="test-steps">
+                <li>✅ Hamburger menu icon should be visible on mobile devices</li>
+                <li>✅ Clicking the hamburger icon should open the mobile navigation dropdown</li>
+                <li>✅ Clicking the hamburger icon should also open the sidebar</li>
+                <li>✅ Mobile navigation should have a close button (X)</li>
+                <li>✅ Clicking the close button should close both mobile navigation and sidebar</li>
+                <li>✅ Clicking outside the menu area should close both mobile navigation and sidebar</li>
+                <li>✅ Pressing Escape key should close both mobile navigation and sidebar</li>
+                <li>✅ Sidebar should have a close button that works</li>
+            </ul>
+        </div>
+
+        <div class="test-results">
+            <h2>CSS Verification</h2>
+            <p>Check that the following CSS rules are working:</p>
+            <ul class="test-steps">
+                <li>✅ Mobile menu toggle should be hidden on desktop (>1024px)</li>
+                <li>✅ Mobile menu toggle should be visible on mobile (≤1024px)</li>
+                <li>✅ Sidebar should be positioned correctly on mobile</li>
+                <li>✅ Mobile navigation dropdown should have proper styling</li>
+            </ul>
+        </div>
+
+        <div class="test-results">
+            <h2>JavaScript Verification</h2>
+            <p>Check that the following JavaScript functionality works:</p>
+            <ul class="test-steps">
+                <li>✅ DOMContentLoaded event listener is working</li>
+                <li>✅ All element references (mobileMenuToggle, mobileNavDropdown, sidebar) are found</li>
+                <li>✅ Click event listeners are properly attached</li>
+                <li>✅ Class toggling (active) is working</li>
+                <li>✅ Event delegation for outside clicks is working</li>
+                <li>✅ Escape key listener is working</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Additional test logging
+        console.log('Hamburger Menu Test - JavaScript Loaded');
+
+        // Test element existence
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const mobileNavDropdown = document.getElementById('mobileNavDropdown');
+        const sidebar = document.getElementById('sidebar');
+
+        console.log('Mobile Menu Toggle:', mobileMenuToggle ? 'Found' : 'Not Found');
+        console.log('Mobile Nav Dropdown:', mobileNavDropdown ? 'Found' : 'Not Found');
+        console.log('Sidebar:', sidebar ? 'Found' : 'Not Found');
+
+        // Test responsive behavior
+        function testResponsiveBehavior() {
+            const width = window.innerWidth;
+            const isMobile = width <= 1024;
+
+            console.log(`Window width: ${width}px, Mobile view: ${isMobile}`);
+
+            if (mobileMenuToggle) {
+                const toggleDisplay = window.getComputedStyle(mobileMenuToggle).display;
+                console.log(`Mobile menu toggle display: ${toggleDisplay}`);
+            }
+        }
+
+        // Run test on load and resize
+        testResponsiveBehavior();
+        window.addEventListener('resize', testResponsiveBehavior);
+    </script>
+</body>
+</html>
