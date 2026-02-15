@@ -204,8 +204,12 @@ $filter_grade = $_GET['filter_grade'] ?? '';
 $filter_term = $_GET['filter_term'] ?? '';
 $filter_class = $_GET['filter_class'] ?? '';
 
-$query = "SELECT c.*, cl.class_name, u.full_name as teacher_name
-          FROM curriculum c
+// Pagination
+$per_page = 10;
+$page = max(1, intval($_GET['page'] ?? 1));
+
+// Base query with school filtering
+$base_query = "FROM curriculum c
           LEFT JOIN classes cl ON c.class_id = cl.id AND cl.school_id = :school_id_classes
           LEFT JOIN users u ON c.teacher_id = u.id AND u.school_id = :school_id_users
           WHERE c.school_id = :school_id_filter";
@@ -216,34 +220,60 @@ $params = [
 ];
 
 if ($search !== '') {
-    $query .= " AND (c.subject_name LIKE :search OR c.grade_level LIKE :search)";
+    $base_query .= " AND (c.subject_name LIKE :search OR c.grade_level LIKE :search)";
     $params['search'] = '%' . $search . '%';
 }
 
 if ($filter_status !== '') {
-    $query .= " AND c.status = :status";
+    $base_query .= " AND c.status = :status";
     $params['status'] = $filter_status;
 }
 
 if ($filter_grade !== '') {
-    $query .= " AND c.grade_level = :grade";
+    $base_query .= " AND c.grade_level = :grade";
     $params['grade'] = $filter_grade;
 }
 
 if ($filter_term !== '') {
-    $query .= " AND c.term = :term";
+    $base_query .= " AND c.term = :term";
     $params['term'] = $filter_term;
 }
 
 if ($filter_class !== '') {
-    $query .= " AND c.class_id = :class_id";
+    $base_query .= " AND c.class_id = :class_id";
     $params['class_id'] = $filter_class;
 }
 
-$query .= " ORDER BY c.grade_level, c.term, c.week, c.subject_name";
-$stmt = $pdo->prepare($query);
+// Count for pagination
+$count_query = "SELECT COUNT(*) " . $base_query;
+$stmt = $pdo->prepare($count_query);
 $stmt->execute($params);
+$total_rows = (int) $stmt->fetchColumn();
+$total_pages = max(1, (int) ceil($total_rows / $per_page));
+
+if ($page > $total_pages) {
+    $page = $total_pages;
+}
+$offset = ($page - 1) * $per_page;
+
+// Data query
+$query = "SELECT c.*, cl.class_name, u.full_name as teacher_name " . $base_query .
+         " ORDER BY c.grade_level, c.term, c.week, c.subject_name LIMIT :limit OFFSET :offset";
+$stmt = $pdo->prepare($query);
+foreach ($params as $key => $value) {
+    $stmt->bindValue(':' . $key, $value);
+}
+$stmt->bindValue(':limit', $per_page, PDO::PARAM_INT);
+$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+$stmt->execute();
 $curriculums = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$pagination_params = $_GET;
+unset($pagination_params['page']);
+$start_item = $total_rows > 0 ? ($offset + 1) : 0;
+$end_item = $total_rows > 0 ? min($offset + count($curriculums), $total_rows) : 0;
+$prev_page = max(1, $page - 1);
+$next_page = min($total_pages, $page + 1);
 
 // If editing, fetch curriculum data
 $edit_curriculum = null;
@@ -274,6 +304,7 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Curriculum | Principal Dashboard</title>
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -429,7 +460,7 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
                     </li>
                     <li class="nav-item">
                         <a href="sessions.php" class="nav-link">
-                            <span class="nav-icon">📅</span>
+                            <span class="nav-icon">📆</span>
                             <span class="nav-text">School Sessions</span>
                         </a>
                     </li>
@@ -453,112 +484,70 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
         <main class="main-content">
             <div class="content-header">
                 <div class="welcome-section">
-                    <h2>📚 Manage Curriculum</h2>
-                    <p>Create, update and manage school curriculum across all grades and terms</p>
-                </div>
-                <div class="header-stats">
-                    <div class="quick-stat">
-                        <span class="quick-stat-value"><?php echo number_format(count($curriculums)); ?></span>
-                        <span class="quick-stat-label">Total Items</span>
-                    </div>
-                    <div class="quick-stat">
-                        <span class="quick-stat-value"><?php echo count(array_unique(array_column($curriculums, 'subject_name'))); ?></span>
-                        <span class="quick-stat-label">Subjects</span>
-                    </div>
-                    <div class="quick-stat">
-                        <span class="quick-stat-value"><?php echo count(array_unique(array_column($curriculums, 'grade_level'))); ?></span>
-                        <span class="quick-stat-label">Grades</span>
-                    </div>
+                    <h2>📚 Curriculum Management</h2>
+                    <p>Create, update, and manage school curriculum across all grades and terms</p>
                 </div>
             </div>
 
             <!-- Alerts -->
             <?php if ($errors): ?>
-                <div class="alert alert-error" style="background: rgba(239, 68, 68, 0.1); color: #dc2626; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem; border-left: 4px solid #dc2626;">
-                    <i class="fas fa-exclamation-circle"></i>
+                <div class="alert alert-error">
+                    <i class="fas fa-exclamation-triangle"></i>
                     <?php foreach ($errors as $e) echo htmlspecialchars($e) . '<br>'; ?>
                 </div>
             <?php endif; ?>
 
             <?php if ($success): ?>
-                <div class="alert alert-success" style="background: rgba(16, 185, 129, 0.1); color: #059669; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem; border-left: 4px solid #059669;">
+                <div class="alert alert-success">
                     <i class="fas fa-check-circle"></i>
                     <?php echo htmlspecialchars($success); ?>
                 </div>
             <?php endif; ?>
 
             <!-- Statistics Cards -->
-            <div class="dashboard-cards">
+            <div class="stats-container">
                 <?php
                 $total_curriculum = count($curriculums);
                 $active_curriculum = array_filter($curriculums, fn($c) => $c['status'] === 'active');
                 $inactive_curriculum = array_filter($curriculums, fn($c) => $c['status'] === 'inactive');
                 $unique_subjects = count(array_unique(array_column($curriculums, 'subject_name')));
                 ?>
-                <div class="card card-gradient-1">
-                    <div class="card-icon-wrapper">
-                        <div class="card-icon">📚</div>
-                    </div>
-                    <div class="card-content">
-                        <h3>Total Curriculum</h3>
-                        <p class="card-value"><?php echo number_format($total_curriculum); ?></p>
-                        <div class="card-footer">
-                            <span class="card-badge">All Items</span>
-                            <a href="#curriculum-table" class="card-link">View All →</a>
-                        </div>
-                    </div>
+                <div class="stat-card">
+                    <i class="fas fa-book"></i>
+                    <h3>Total Curriculum</h3>
+                    <div class="count"><?php echo number_format($total_curriculum); ?></div>
+                    <p class="stat-description">All items in this school</p>
                 </div>
-
-                <div class="card card-gradient-2">
-                    <div class="card-icon-wrapper">
-                        <div class="card-icon">✅</div>
-                    </div>
-                    <div class="card-content">
-                        <h3>Active</h3>
-                        <p class="card-value"><?php echo number_format(count($active_curriculum)); ?></p>
-                        <div class="card-footer">
-                            <span class="card-badge">Published</span>
-                            <a href="?filter_status=active" class="card-link">Filter →</a>
-                        </div>
-                    </div>
+                <div class="stat-card">
+                    <i class="fas fa-check-circle"></i>
+                    <h3>Active</h3>
+                    <div class="count"><?php echo number_format(count($active_curriculum)); ?></div>
+                    <p class="stat-description"><a href="?filter_status=active">Filter active</a></p>
                 </div>
-
-                <div class="card card-gradient-3">
-                    <div class="card-icon-wrapper">
-                        <div class="card-icon">⏸️</div>
-                    </div>
-                    <div class="card-content">
-                        <h3>Inactive</h3>
-                        <p class="card-value"><?php echo number_format(count($inactive_curriculum)); ?></p>
-                        <div class="card-footer">
-                            <span class="card-badge">Draft</span>
-                            <a href="?filter_status=inactive" class="card-link">Filter →</a>
-                        </div>
-                    </div>
+                <div class="stat-card">
+                    <i class="fas fa-pause-circle"></i>
+                    <h3>Inactive</h3>
+                    <div class="count"><?php echo number_format(count($inactive_curriculum)); ?></div>
+                    <p class="stat-description"><a href="?filter_status=inactive">Filter inactive</a></p>
                 </div>
-
-                <div class="card card-gradient-4">
-                    <div class="card-icon-wrapper">
-                        <div class="card-icon">📖</div>
-                    </div>
-                    <div class="card-content">
-                        <h3>Subjects</h3>
-                        <p class="card-value"><?php echo number_format($unique_subjects); ?></p>
-                        <div class="card-footer">
-                            <span class="card-badge">Unique</span>
-                            <a href="subjects.php" class="card-link">Manage →</a>
-                        </div>
-                    </div>
+                <div class="stat-card">
+                    <i class="fas fa-layer-group"></i>
+                    <h3>Subjects</h3>
+                    <div class="count"><?php echo number_format($unique_subjects); ?></div>
+                    <p class="stat-description"><a href="subjects.php">Manage subjects</a></p>
                 </div>
             </div>
 
             <!-- Create / Edit form -->
-            <div class="activity-section">
-                <div class="section-header">
-                    <h3><?php echo $edit_curriculum ? '✏️ Edit Curriculum' : '➕ Create New Curriculum'; ?></h3>
-                    <span class="section-badge"><?php echo $edit_curriculum ? 'Update' : 'Add New'; ?></span>
+            <section class="panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-plus-circle"></i> <?php echo $edit_curriculum ? 'Edit Curriculum' : 'Create New Curriculum'; ?></h2>
+                    <button type="button" class="btn small secondary" id="toggleCurriculumForm">
+                        <i class="fas fa-eye-slash"></i> Hide Form
+                    </button>
                 </div>
 
+                <div id="curriculumFormBody">
                 <form method="POST" class="filters-form">
                     <input type="hidden" name="action" value="<?php echo $edit_curriculum ? 'edit' : 'add'; ?>">
                     <?php if ($edit_curriculum): ?>
@@ -683,13 +672,13 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
                         <?php endif; ?>
                     </div>
                 </form>
-            </div>
+                </div>
+            </section>
 
             <!-- Search and Filter -->
-            <div class="activity-section">
-                <div class="section-header">
-                    <h3>🔍 Search & Filter Curriculum</h3>
-                    <span class="section-badge">Refine Results</span>
+            <section class="panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-search"></i> Search & Filter Curriculum</h2>
                 </div>
 
                 <form method="GET" class="filters-form">
@@ -757,13 +746,12 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
                         </a>
                     </div>
                 </form>
-            </div>
+            </section>
 
             <!-- Bulk Actions -->
-            <div class="activity-section">
-                <div class="section-header">
-                    <h3>⚡ Bulk Actions</h3>
-                    <span class="section-badge">Manage Multiple</span>
+            <section class="panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-bolt"></i> Bulk Actions</h2>
                 </div>
 
                 <form method="POST" id="bulkForm" onsubmit="return confirm('Are you sure you want to delete selected curriculum items?');" class="filters-form">
@@ -779,15 +767,15 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
                         </button>
                     </div>
                 </form>
-            </div>
+            </section>
 
             <!-- Curriculum Table -->
-            <div class="activity-section" id="curriculum-table">
-                <div class="section-header">
-                    <h3>📋 All Curriculum Items</h3>
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <span class="section-badge"><?php echo count($curriculums); ?> Items</span>
-                    </div>
+            <section class="panel" id="curriculum-table">
+                <div class="panel-header">
+                    <h2><i class="fas fa-list"></i> All Curriculum Items</h2>
+                    <button class="btn small secondary" onclick="refreshPage()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
                 </div>
 
                 <?php if (empty($curriculums)): ?>
@@ -797,8 +785,8 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
                         <p>No curriculum items match your current filters. Try adjusting your search criteria or create a new curriculum item.</p>
                     </div>
                 <?php else: ?>
-                    <div class="table-responsive">
-                        <table class="students-table">
+                    <div class="table-wrap">
+                        <table class="table">
                             <thead>
                                 <tr>
                                     <th>
@@ -883,8 +871,40 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
                             </tbody>
                         </table>
                     </div>
+                    <?php if ($total_pages > 1): ?>
+                        <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1.5rem;">
+                            <div style="color: var(--gray-600); font-weight: 600;">
+                                Showing <?php echo $start_item; ?>-<?php echo $end_item; ?> of <?php echo $total_rows; ?>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <a class="btn btn-secondary btn-small"
+                                   style="<?php echo $page <= 1 ? 'pointer-events: none; opacity: 0.6;' : ''; ?>"
+                                   href="<?php echo 'manage_curriculum.php?' . http_build_query(array_merge($pagination_params, ['page' => 1])); ?>">
+                                    First
+                                </a>
+                                <a class="btn btn-secondary btn-small"
+                                   style="<?php echo $page <= 1 ? 'pointer-events: none; opacity: 0.6;' : ''; ?>"
+                                   href="<?php echo 'manage_curriculum.php?' . http_build_query(array_merge($pagination_params, ['page' => $prev_page])); ?>">
+                                    Prev
+                                </a>
+                                <span class="btn btn-primary btn-small" style="pointer-events: none;">
+                                    Page <?php echo $page; ?> of <?php echo $total_pages; ?>
+                                </span>
+                                <a class="btn btn-secondary btn-small"
+                                   style="<?php echo $page >= $total_pages ? 'pointer-events: none; opacity: 0.6;' : ''; ?>"
+                                   href="<?php echo 'manage_curriculum.php?' . http_build_query(array_merge($pagination_params, ['page' => $next_page])); ?>">
+                                    Next
+                                </a>
+                                <a class="btn btn-secondary btn-small"
+                                   style="<?php echo $page >= $total_pages ? 'pointer-events: none; opacity: 0.6;' : ''; ?>"
+                                   href="<?php echo 'manage_curriculum.php?' . http_build_query(array_merge($pagination_params, ['page' => $total_pages])); ?>">
+                                    Last
+                                </a>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                 <?php endif; ?>
-            </div>
+            </section>
         </main>
     </div>
 
@@ -911,6 +931,8 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
         const mobileMenuToggle = document.getElementById('mobileMenuToggle');
         const sidebar = document.getElementById('sidebar');
         const sidebarClose = document.getElementById('sidebarClose');
+        const toggleFormBtn = document.getElementById('toggleCurriculumForm');
+        const curriculumFormBody = document.getElementById('curriculumFormBody');
 
         mobileMenuToggle.addEventListener('click', () => {
             sidebar.classList.toggle('active');
@@ -921,6 +943,20 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
             sidebar.classList.remove('active');
             mobileMenuToggle.classList.remove('active');
         });
+
+        if (toggleFormBtn && curriculumFormBody) {
+            const updateToggleLabel = () => {
+                const isHidden = curriculumFormBody.style.display === 'none';
+                toggleFormBtn.innerHTML = isHidden
+                    ? '<i class="fas fa-eye"></i> Show Form'
+                    : '<i class="fas fa-eye-slash"></i> Hide Form';
+            };
+            updateToggleLabel();
+            toggleFormBtn.addEventListener('click', () => {
+                curriculumFormBody.style.display = curriculumFormBody.style.display === 'none' ? 'block' : 'none';
+                updateToggleLabel();
+            });
+        }
 
         // Close sidebar when clicking outside on mobile
         document.addEventListener('click', (e) => {
@@ -992,6 +1028,10 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
             document.getElementById('topicsModal').style.display = 'none';
         }
 
+        function refreshPage() {
+            window.location.reload();
+        }
+
         // Close modal when clicking outside
         document.getElementById('topicsModal').addEventListener('click', function(e) {
             if (e.target === this) {
@@ -1015,8 +1055,6 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
             }
         });
     </script>
-
-    <?php include '../includes/floating-button.php'; ?>
 
 </body>
 </html>

@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Check if principal is logged in
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'principal') {
@@ -9,6 +10,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'principal') {
 }
 
 $principal_name = $_SESSION['full_name'];
+$current_school_id = require_school_auth();
 $errors = [];
 $success = '';
 
@@ -35,6 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Handle logo upload
         $school_logo = null;
+        $remove_logo = isset($_POST['remove_logo']) ? true : false;
         if (isset($_FILES['school_logo']) && $_FILES['school_logo']['error'] === UPLOAD_ERR_OK) {
             $allowed_types = ['image/jpeg', 'image/png', 'image/webp'];
             if (!in_array($_FILES['school_logo']['type'], $allowed_types)) {
@@ -57,25 +60,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if (empty($errors)) {
-            // Update school profile in the database
-            $stmt = $pdo->prepare("UPDATE school_profile SET
-                school_name = :school_name,
-                school_address = :school_address,
-                school_phone = :school_phone,
-                school_email = :school_email,
-                school_website = :school_website,
-                school_motto = :school_motto,
-                school_logo = COALESCE(:school_logo, school_logo)
-                WHERE id = 1");
-            $stmt->execute([
-                'school_name' => $school_name,
-                'school_address' => $school_address,
-                'school_phone' => $school_phone,
-                'school_email' => $school_email,
-                'school_website' => $school_website,
-                'school_motto' => $school_motto,
-                'school_logo' => $school_logo
-            ]);
+            // Ensure profile exists for this school
+            $stmt = $pdo->prepare("SELECT id FROM school_profile WHERE school_id = ? LIMIT 1");
+            $stmt->execute([$current_school_id]);
+            $profile_id = $stmt->fetchColumn();
+
+            if ($profile_id) {
+                $stmt = $pdo->prepare("UPDATE school_profile SET
+                    school_name = :school_name,
+                    school_address = :school_address,
+                    school_phone = :school_phone,
+                    school_email = :school_email,
+                    school_website = :school_website,
+                    school_motto = :school_motto,
+                    school_logo = CASE
+                        WHEN :remove_logo = 1 THEN ''
+                        WHEN :school_logo IS NOT NULL THEN :school_logo
+                        ELSE school_logo
+                    END
+                    WHERE id = :id AND school_id = :school_id");
+                $stmt->execute([
+                    'school_name' => $school_name,
+                    'school_address' => $school_address,
+                    'school_phone' => $school_phone,
+                    'school_email' => $school_email,
+                    'school_website' => $school_website,
+                    'school_motto' => $school_motto,
+                    'school_logo' => $school_logo,
+                    'remove_logo' => $remove_logo ? 1 : 0,
+                    'id' => $profile_id,
+                    'school_id' => $current_school_id
+                ]);
+            } else {
+                $stmt = $pdo->prepare("INSERT INTO school_profile
+                    (profile, school_name, school_address, school_phone, school_email, school_logo, school_id, school_website, school_motto)
+                    VALUES
+                    (:profile, :school_name, :school_address, :school_phone, :school_email, :school_logo, :school_id, :school_website, :school_motto)");
+                $stmt->execute([
+                    'profile' => '',
+                    'school_name' => $school_name,
+                    'school_address' => $school_address,
+                    'school_phone' => $school_phone,
+                    'school_email' => $school_email,
+                    'school_logo' => $school_logo ?? '',
+                    'school_id' => $current_school_id,
+                    'school_website' => $school_website,
+                    'school_motto' => $school_motto
+                ]);
+            }
+
             $success = 'School profile updated successfully.';
         }
     }
@@ -84,7 +117,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Fetch School Profile
-$stmt = $pdo->query("SELECT * FROM school_profile WHERE id = 1");
+$stmt = $pdo->prepare("SELECT * FROM school_profile WHERE school_id = ? LIMIT 1");
+$stmt->execute([$current_school_id]);
 $school = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$school) {
@@ -95,7 +129,7 @@ if (!$school) {
         'school_email' => '',
         'school_website' => '',
         'school_motto' => '',
-        'school_logo' => null
+        'school_logo' => ''
     ];
 }
 ?>
@@ -106,6 +140,7 @@ if (!$school) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage School | SahabFormMaster</title>
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="stylesheet" href="../assets/css/manage-school.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -303,17 +338,84 @@ if (!$school) {
                 </div>
             <?php endif; ?>
 
-            <!-- School Profile Form -->
-            <div class="school-profile-section">
-                <div class="profile-card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-school"></i> School Profile</h3>
-                        <p>Basic information about your school</p>
+            <!-- School Information -->
+            <section class="panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-info-circle"></i> School Information</h2>
+                </div>
+                <div class="panel-body">
+                    <div class="stats-container">
+                        <div class="stat-card">
+                            <i class="fas fa-building"></i>
+                            <h3>School Name</h3>
+                            <div class="count"><?php echo htmlspecialchars($school['school_name'] ?: 'N/A'); ?></div>
+                            <p class="stat-description">Registered name</p>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-phone"></i>
+                            <h3>Phone</h3>
+                            <div class="count"><?php echo htmlspecialchars($school['school_phone'] ?: 'N/A'); ?></div>
+                            <p class="stat-description">Primary contact</p>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-envelope"></i>
+                            <h3>Email</h3>
+                            <div class="count"><?php echo htmlspecialchars($school['school_email'] ?: 'N/A'); ?></div>
+                            <p class="stat-description">Official email</p>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-globe"></i>
+                            <h3>Website</h3>
+                            <div class="count"><?php echo htmlspecialchars($school['school_website'] ?: 'N/A'); ?></div>
+                            <p class="stat-description">Public site</p>
+                        </div>
                     </div>
-                    <form method="POST" enctype="multipart/form-data" class="profile-form">
+                    <div style="margin-top: 1rem; color:#64748b;">
+                        <strong>Address:</strong> <?php echo htmlspecialchars($school['school_address'] ?: 'N/A'); ?><br>
+                        <strong>Motto:</strong> <?php echo htmlspecialchars($school['school_motto'] ?: 'N/A'); ?>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quick Links -->
+            <section class="panel" style="margin-bottom: 2rem;">
+                <div class="panel-header">
+                    <h2><i class="fas fa-link"></i> Quick Links</h2>
+                </div>
+                <div class="panel-body">
+                    <div class="stats-container">
+                        <a href="sessions.php" class="stat-card" style="text-decoration: none;">
+                            <i class="fas fa-calendar-alt"></i>
+                            <h3>Academic Sessions</h3>
+                            <div class="count">Open</div>
+                            <p class="stat-description">Manage sessions</p>
+                        </a>
+                        <a href="school_calendar.php" class="stat-card" style="text-decoration: none;">
+                            <i class="fas fa-calendar-check"></i>
+                            <h3>Term Dates</h3>
+                            <div class="count">Open</div>
+                            <p class="stat-description">Manage calendar</p>
+                        </a>
+                        <a href="manage_class.php" class="stat-card" style="text-decoration: none;">
+                            <i class="fas fa-users"></i>
+                            <h3>Classes</h3>
+                            <div class="count">Open</div>
+                            <p class="stat-description">Manage classes</p>
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- School Profile Form -->
+            <section class="panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-school"></i> School Profile</h2>
+                </div>
+                <div class="panel-body">
+                    <form method="POST" enctype="multipart/form-data" class="filters-form">
                         <input type="hidden" name="action" value="update_school_profile">
 
-                        <div class="form-grid">
+                        <div class="stats-grid">
                             <div class="form-group">
                                 <label for="school_name"><i class="fas fa-building"></i> School Name *</label>
                                 <input type="text" id="school_name" name="school_name" class="form-control"
@@ -351,30 +453,34 @@ if (!$school) {
                             <div class="form-group form-group-full">
                                 <label for="school_logo"><i class="fas fa-image"></i> School Logo</label>
                                 <input type="file" id="school_logo" name="school_logo" class="form-control" accept="image/jpeg,image/png,image/webp">
-                                <?php if ($school['school_logo']): ?>
+                                <?php if (!empty($school['school_logo'])): ?>
                                     <div class="image-preview">
                                         <img src="../<?php echo htmlspecialchars($school['school_logo']); ?>" alt="School Logo">
                                         <p class="image-caption">Current logo</p>
                                     </div>
+                                    <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem;">
+                                        <input type="checkbox" name="remove_logo" value="1">
+                                        Remove current logo
+                                    </label>
                                 <?php endif; ?>
                             </div>
                         </div>
 
-                        <div class="form-actions">
-                            <button type="submit" class="btn-primary">
+                        <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:1.5rem;">
+                            <button type="submit" class="btn primary">
                                 <i class="fas fa-save"></i>
                                 Update Profile
                             </button>
                         </div>
                     </form>
                 </div>
-            </div>
+            </section>
         </main>
     </div>
 
     
 
 
-    </script><?php include '../includes/floating-button.php'; ?></body>
+    <?php include '../includes/floating-button.php'; ?>
+</body>
 </html>
-

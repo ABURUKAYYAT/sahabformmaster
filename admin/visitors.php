@@ -93,9 +93,32 @@ if ($action === 'create') {
 }
 
 // Fetch all visitors - filtered by school
-$stmt = $pdo->prepare("SELECT * FROM visitors WHERE school_id = ? ORDER BY created_at DESC");
-$stmt->execute([$current_school_id]);
+// Pagination
+$per_page = 10;
+$page = max(1, intval($_GET['page'] ?? 1));
+
+$count_stmt = $pdo->prepare("SELECT COUNT(*) FROM visitors WHERE school_id = ?");
+$count_stmt->execute([$current_school_id]);
+$total_rows = (int) $count_stmt->fetchColumn();
+$total_pages = max(1, (int) ceil($total_rows / $per_page));
+if ($page > $total_pages) {
+    $page = $total_pages;
+}
+$offset = ($page - 1) * $per_page;
+
+$stmt = $pdo->prepare("SELECT * FROM visitors WHERE school_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?");
+$stmt->bindValue(1, $current_school_id, PDO::PARAM_INT);
+$stmt->bindValue(2, $per_page, PDO::PARAM_INT);
+$stmt->bindValue(3, $offset, PDO::PARAM_INT);
+$stmt->execute();
 $visitors = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$pagination_params = $_GET;
+unset($pagination_params['page']);
+$start_item = $total_rows > 0 ? ($offset + 1) : 0;
+$end_item = $total_rows > 0 ? min($offset + count($visitors), $total_rows) : 0;
+$prev_page = max(1, $page - 1);
+$next_page = min($total_pages, $page + 1);
 
 // Fetch visitor for editing - filtered by school
 $edit_visitor = null;
@@ -122,6 +145,7 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visitors Management | SahabFormMaster</title>
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="stylesheet" href="../assets/css/visitors.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -302,48 +326,36 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
         <main class="main-content">
             <div class="content-header">
                 <div class="welcome-section">
-                    <h2>Visitors Management 👥</h2>
+                    <h2>👥 Visitors Management</h2>
                     <p>Manage visitor registrations, check-ins, and campus access</p>
                 </div>
             </div>
 
         <!-- Statistics Cards -->
-        <div class="stats-grid">
+        <div class="stats-container" style="margin-bottom: 1.5rem;">
             <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-users"></i>
-                </div>
-                <div class="stat-info">
-                    <h3>Total Visitors</h3>
-                    <p class="stat-number"><?php echo $stats['total'] ?? 0; ?></p>
-                </div>
+                <i class="fas fa-users"></i>
+                <h3>Total Visitors</h3>
+                <div class="count"><?php echo $stats['total'] ?? 0; ?></div>
+                <p class="stat-description">All records</p>
             </div>
             <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-door-open"></i>
-                </div>
-                <div class="stat-info">
-                    <h3>Currently On Campus</h3>
-                    <p class="stat-number"><?php echo $stats['currently_in'] ?? 0; ?></p>
-                </div>
+                <i class="fas fa-door-open"></i>
+                <h3>Currently On Campus</h3>
+                <div class="count"><?php echo $stats['currently_in'] ?? 0; ?></div>
+                <p class="stat-description">Checked in</p>
             </div>
             <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-calendar-check"></i>
-                </div>
-                <div class="stat-info">
-                    <h3>Expected Today</h3>
-                    <p class="stat-number"><?php echo $stats['expected_today'] ?? 0; ?></p>
-                </div>
+                <i class="fas fa-calendar-check"></i>
+                <h3>Expected Today</h3>
+                <div class="count"><?php echo $stats['expected_today'] ?? 0; ?></div>
+                <p class="stat-description">Upcoming</p>
             </div>
             <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-calendar-day"></i>
-                </div>
-                <div class="stat-info">
-                    <h3>Today's Total</h3>
-                    <p class="stat-number"><?php echo $stats['today_total'] ?? 0; ?></p>
-                </div>
+                <i class="fas fa-calendar-day"></i>
+                <h3>Today's Total</h3>
+                <div class="count"><?php echo $stats['today_total'] ?? 0; ?></div>
+                <p class="stat-description">Today</p>
             </div>
         </div>
 
@@ -358,19 +370,23 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
         </div>
         <?php endif; ?>
 
-        <div class="content-grid">
+        <div class="content-grid" style="display:flex; flex-direction:column; gap: 1.5rem;">
             <!-- Form Section -->
-            <div class="form-section">
-                <div class="section-header">
+            <section class="panel">
+                <div class="panel-header">
                     <h2><i class="fas fa-user-plus"></i> <?php echo $edit_visitor ? 'Edit Visitor' : 'Register New Visitor'; ?></h2>
+                    <button type="button" class="btn small secondary" id="toggleVisitorForm">
+                        <i class="fas fa-eye-slash"></i> Hide Form
+                    </button>
                 </div>
-                <form id="visitorForm" method="POST" class="visitor-form">
+                <div class="panel-body" id="visitorFormBody">
+                <form id="visitorForm" method="POST" class="filters-form">
                     <input type="hidden" name="action" value="<?php echo $edit_visitor ? 'update' : 'create'; ?>">
                     <?php if ($edit_visitor): ?>
                     <input type="hidden" name="id" value="<?php echo $edit_visitor['id']; ?>">
                     <?php endif; ?>
                     
-                    <div class="form-grid">
+                    <div class="stats-grid">
                         <div class="form-group">
                             <label for="full_name"><i class="fas fa-user"></i> Full Name *</label>
                             <input type="text" id="full_name" name="full_name" 
@@ -464,37 +480,39 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
                         </div>
                         <?php endif; ?>
                         
-                        <div class="form-group full-width">
+                        <div class="form-group">
                             <label for="notes"><i class="fas fa-sticky-note"></i> Additional Notes</label>
                             <textarea id="notes" name="notes" rows="3"><?php echo $edit_visitor['notes'] ?? ''; ?></textarea>
                         </div>
                     </div>
                     
-                    <div class="form-actions">
-                        <button type="submit" class="btn btn-primary">
+                    <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:1.5rem;">
+                        <button type="submit" class="btn primary">
                             <i class="fas fa-save"></i> <?php echo $edit_visitor ? 'Update Visitor' : 'Register Visitor'; ?>
                         </button>
                         <?php if ($edit_visitor): ?>
-                        <a href="visitors.php" class="btn btn-secondary">
+                        <a href="visitors.php" class="btn secondary">
                             <i class="fas fa-times"></i> Cancel
                         </a>
                         <?php endif; ?>
                     </div>
                 </form>
-            </div>
+                </div>
+            </section>
 
             <!-- Visitors List -->
-            <div class="list-section">
-                <div class="section-header">
+            <section class="panel">
+                <div class="panel-header">
                     <h2><i class="fas fa-list"></i> Recent Visitors</h2>
                     <div class="search-box">
                         <i class="fas fa-search"></i>
                         <input type="text" id="searchInput" placeholder="Search visitors...">
                     </div>
                 </div>
+                <div class="panel-body">
                 
-                <div class="table-container">
-                    <table class="visitors-table">
+                <div class="table-wrap">
+                    <table class="table visitors-table">
                         <thead>
                             <tr>
                                 <th>Name</th>
@@ -593,7 +611,7 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
                             <?php endforeach; ?>
                             <?php if (empty($visitors)): ?>
                             <tr>
-                                <td colspan="6" class="no-data">
+                                <td colspan="6" class="no-data" style="text-align:center; color:#64748b;">
                                     <i class="fas fa-users-slash"></i>
                                     <p>No visitors found</p>
                                 </td>
@@ -601,6 +619,35 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
                             <?php endif; ?>
                         </tbody>
                     </table>
+                </div>
+                <?php if ($total_pages > 1): ?>
+                    <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:1rem; margin-top:1.5rem;">
+                        <div style="color:#64748b; font-weight:600;">
+                            Showing <?php echo $start_item; ?>-<?php echo $end_item; ?> of <?php echo $total_rows; ?>
+                        </div>
+                        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                            <a class="btn secondary" style="<?php echo $page <= 1 ? 'pointer-events:none; opacity:0.6;' : ''; ?>"
+                               href="<?php echo 'visitors.php?' . http_build_query(array_merge($pagination_params, ['page' => 1])); ?>">
+                                First
+                            </a>
+                            <a class="btn secondary" style="<?php echo $page <= 1 ? 'pointer-events:none; opacity:0.6;' : ''; ?>"
+                               href="<?php echo 'visitors.php?' . http_build_query(array_merge($pagination_params, ['page' => $prev_page])); ?>">
+                                Prev
+                            </a>
+                            <span class="btn primary" style="pointer-events:none;">
+                                Page <?php echo $page; ?> of <?php echo $total_pages; ?>
+                            </span>
+                            <a class="btn secondary" style="<?php echo $page >= $total_pages ? 'pointer-events:none; opacity:0.6;' : ''; ?>"
+                               href="<?php echo 'visitors.php?' . http_build_query(array_merge($pagination_params, ['page' => $next_page])); ?>">
+                                Next
+                            </a>
+                            <a class="btn secondary" style="<?php echo $page >= $total_pages ? 'pointer-events:none; opacity:0.6;' : ''; ?>"
+                               href="<?php echo 'visitors.php?' . http_build_query(array_merge($pagination_params, ['page' => $total_pages])); ?>">
+                                Last
+                            </a>
+                        </div>
+                    </div>
+                <?php endif; ?>
                 </div>
                 
                 <!-- Export Options -->
@@ -618,7 +665,7 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
                         </button>
                     </div>
                 </div> -->
-            </div>
+            </section>
         </div>
         </main>
     </div>
@@ -630,6 +677,8 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
         const mobileMenuToggle = document.getElementById('mobileMenuToggle');
         const sidebar = document.getElementById('sidebar');
         const sidebarClose = document.getElementById('sidebarClose');
+        const toggleVisitorForm = document.getElementById('toggleVisitorForm');
+        const visitorFormBody = document.getElementById('visitorFormBody');
 
         mobileMenuToggle.addEventListener('click', () => {
             sidebar.classList.toggle('active');
@@ -640,6 +689,20 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
             sidebar.classList.remove('active');
             mobileMenuToggle.classList.remove('active');
         });
+
+        if (toggleVisitorForm && visitorFormBody) {
+            const updateToggleLabel = () => {
+                const isHidden = visitorFormBody.style.display === 'none';
+                toggleVisitorForm.innerHTML = isHidden
+                    ? '<i class="fas fa-eye"></i> Show Form'
+                    : '<i class="fas fa-eye-slash"></i> Hide Form';
+            };
+            updateToggleLabel();
+            toggleVisitorForm.addEventListener('click', () => {
+                visitorFormBody.style.display = visitorFormBody.style.display === 'none' ? 'block' : 'none';
+                updateToggleLabel();
+            });
+        }
 
         // Close sidebar when clicking outside on mobile
         document.addEventListener('click', (e) => {
@@ -716,5 +779,7 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
                 alert.style.display = 'none';
             }
         }, 5000);
-    </script><?php include '../includes/floating-button.php'; ?></body>
+    </script>
+    <?php include '../includes/floating-button.php'; ?>
+</body>
 </html>

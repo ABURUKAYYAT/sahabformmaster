@@ -40,9 +40,10 @@ $stats_sql = "SELECT
     SUM(CASE WHEN status = 'leave' THEN 1 ELSE 0 END) as leave_days
     FROM attendance 
     WHERE student_id = :id 
+    AND school_id = :school_id
     AND date >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)";
 $stats_stmt = $pdo->prepare($stats_sql);
-$stats_stmt->execute([':id' => $student_id]);
+$stats_stmt->execute([':id' => $student_id, ':school_id' => $current_school_id]);
 $stats = $stats_stmt->fetch();
 
 // Get monthly breakdown
@@ -52,19 +53,21 @@ $monthly_sql = "SELECT
     SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present_days
     FROM attendance 
     WHERE student_id = :id 
+    AND school_id = :school_id
     AND date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
     GROUP BY DATE_FORMAT(date, '%Y-%m')
     ORDER BY month DESC";
 $monthly_stmt = $pdo->prepare($monthly_sql);
-$monthly_stmt->execute([':id' => $student_id]);
+$monthly_stmt->execute([':id' => $student_id, ':school_id' => $current_school_id]);
 $monthly_data = $monthly_stmt->fetchAll();
 
 // Get recent attendance records
 $recent_sql = "SELECT * FROM attendance 
                WHERE student_id = :id 
+               AND school_id = :school_id
                ORDER BY date DESC LIMIT 20";
 $recent_stmt = $pdo->prepare($recent_sql);
-$recent_stmt->execute([':id' => $student_id]);
+$recent_stmt->execute([':id' => $student_id, ':school_id' => $current_school_id]);
 $recent_records = $recent_stmt->fetchAll();
 
 // Calculate attendance rate

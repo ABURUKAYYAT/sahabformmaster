@@ -49,8 +49,11 @@ $sql = "SELECT
     JOIN students s ON a.student_id = s.id
     JOIN classes c ON s.class_id = c.id
     LEFT JOIN users u ON a.recorded_by = u.id
-    WHERE s.school_id = :school_id AND a.school_id = :school_id";
-$params = [':school_id' => $current_school_id];
+    WHERE s.school_id = :student_school_id AND a.school_id = :attendance_school_id";
+$params = [
+    ':student_school_id' => $current_school_id,
+    ':attendance_school_id' => $current_school_id
+];
 
 if ($selected_class !== 'all') {
     $sql .= " AND c.id = :class_id";

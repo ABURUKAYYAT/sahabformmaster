@@ -214,6 +214,28 @@ function processReportData($data, $report_type) {
     return $processed;
 }
 
+// Function to get term dates (guarded to avoid redeclare)
+if (!function_exists('getTermDates')) {
+    function getTermDates($term, $year) {
+        $terms = [
+            '1st Term' => [
+                'start' => $year . '-09-01',
+                'end' => $year . '-12-15'
+            ],
+            '2nd Term' => [
+                'start' => ($year + 1) . '-01-08',
+                'end' => ($year + 1) . '-04-05'
+            ],
+            '3rd Term' => [
+                'start' => ($year + 1) . '-04-23',
+                'end' => ($year + 1) . '-07-20'
+            ]
+        ];
+
+        return $terms[$term] ?? $terms['1st Term'];
+    }
+}
+
 // Function to calculate overall summary
 function calculateSummary($data) {
     $summary = [
@@ -275,6 +297,11 @@ function calculateSummary($data) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Attendance Reports - Admin Panel</title>
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css" rel="stylesheet">
@@ -296,35 +323,21 @@ function calculateSummary($data) {
         }
         
         .sidebar {
-            background: linear-gradient(180deg, var(--primary-color), #3a56d4);
-            min-height: 100vh;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
-        }
-        
-        .sidebar-brand {
-            padding: 20px;
-            color: white;
-            font-weight: 600;
-            font-size: 1.2rem;
-            text-align: center;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            background: white;
+            box-shadow: none;
         }
         
         .nav-link {
-            color: rgba(255,255,255,0.8);
-            padding: 12px 20px;
-            margin: 5px 10px;
-            border-radius: 8px;
-            transition: all 0.3s;
+            color: #475569;
         }
         
         .nav-link:hover, .nav-link.active {
-            background: rgba(255,255,255,0.1);
-            color: white;
+            background: rgba(67, 97, 238, 0.1);
+            color: #1e293b;
         }
         
         .content-wrapper {
-            padding: 20px;
+            padding: 0;
         }
         
         .stat-card {
@@ -482,227 +495,313 @@ function calculateSummary($data) {
         .table-custom td {
             vertical-align: middle;
         }
+
+        .filter-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .date-range {
+            font-size: 0.85rem;
+            color: #64748b;
+        }
     </style>
 </head>
 <body>
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <div class="col-lg-2 col-md-3 sidebar d-none d-md-block">
-            
-                <nav class="nav flex-column mt-4">
-                    <a href="index.php" class="nav-link">
-                        <i class="fas fa-home me-2"></i>Dashboard
-                    </a>
-                    <a href="manage_timebook.php" class="nav-link">
-                        <i class="fas fa-calendar-check me-2"></i>Timebook
-                    </a>
-                
-                </nav>
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <header class="dashboard-header">
+        <div class="header-container">
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Admin Portal</p>
+                    </div>
+                </div>
             </div>
-            
-            <!-- Mobile Header -->
-            <div class="d-md-none bg-white shadow-sm p-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-chart-bar text-primary me-2"></i>Attendance Reports</h5>
-                    <button class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileMenu">
-                        <i class="fas fa-bars"></i>
+            <div class="header-right">
+                <div class="principal-info">
+                    <p class="principal-label">Admin</p>
+                    <span class="principal-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Admin'); ?></span>
+                </div>
+                <a href="logout.php" class="btn-logout">
+                    <span class="logout-icon">🚪</span>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3>Navigation</h3>
+                <button class="sidebar-close" id="sidebarClose">✕</button>
+            </div>
+            <nav class="sidebar-nav">
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="index.php" class="nav-link">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Dashboard</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a href="schoolnews.php" class="nav-link">
+                            <span class="nav-icon">📰</span>
+                            <span class="nav-text">School News</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="school_diary.php" class="nav-link">
+                            <span class="nav-icon">📔</span>
+                            <span class="nav-text">School Diary</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="students.php" class="nav-link">
+                            <span class="nav-icon">👥</span>
+                            <span class="nav-text">Students Registration</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="students-evaluations.php" class="nav-link">
+                            <span class="nav-icon">⭐</span>
+                            <span class="nav-text">Students Evaluations</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_class.php" class="nav-link active">
+                            <span class="nav-icon">🎓</span>
+                            <span class="nav-text">Manage Classes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_results.php" class="nav-link">
+                            <span class="nav-icon">📈</span>
+                            <span class="nav-text">Manage Results</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="lesson-plans.php" class="nav-link">
+                            <span class="nav-icon">📝</span>
+                            <span class="nav-text">Lesson Plans</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_curriculum.php" class="nav-link">
+                            <span class="nav-icon">📚</span>
+                            <span class="nav-text">Curriculum</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage-school.php" class="nav-link">
+                            <span class="nav-icon">🏫</span>
+                            <span class="nav-text">Manage School</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="subjects.php" class="nav-link">
+                            <span class="nav-icon">📖</span>
+                            <span class="nav-text">Subjects</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_user.php" class="nav-link">
+                            <span class="nav-icon">👤</span>
+                            <span class="nav-text">Manage Users</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="visitors.php" class="nav-link">
+                            <span class="nav-icon">🚶</span>
+                            <span class="nav-text">Visitors</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_timebook.php" class="nav-link">
+                            <span class="nav-icon">⏰</span>
+                            <span class="nav-text">Teachers Time Book</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="permissions.php" class="nav-link">
+                            <span class="nav-icon">🔐</span>
+                            <span class="nav-text">Permissions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_attendance.php" class="nav-link">
+                            <span class="nav-icon">📋</span>
+                            <span class="nav-text">Attendance Register</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="payments_dashboard.php" class="nav-link">
+                            <span class="nav-icon">💰</span>
+                            <span class="nav-text">School Fees</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="sessions.php" class="nav-link">
+                            <span class="nav-icon">📅</span>
+                            <span class="nav-text">School Sessions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="school_calendar.php" class="nav-link">
+                            <span class="nav-icon">🗓️</span>
+                            <span class="nav-text">School Calendar</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="applicants.php" class="nav-link">
+                            <span class="nav-icon">📄</span>
+                            <span class="nav-text">Applicants</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="content-header">
+                <div class="welcome-section">
+                    <h2>📊 Attendance Reports</h2>
+                    <p>Generate and analyze teacher attendance reports</p>
+                </div>
+                <div>
+                    <button class="btn success" onclick="exportReport()">
+                        <i class="fas fa-file-export"></i> Export Report
                     </button>
                 </div>
             </div>
-            
-            <!-- Main Content -->
-            <div class="col-lg-10 col-md-9 ms-sm-auto">
-                <div class="content-wrapper">
-                    <!-- Header -->
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <div>
-                            <h2 class="h4 fw-bold text-dark">Attendance Reports</h2>
-                            <p class="text-muted">Generate and analyze teacher attendance reports</p>
-                        </div>
-                        <div>
-                            <button class="btn btn-success btn-export" onclick="exportReport()">
-                                <i class="fas fa-file-export me-2"></i>Export Report
-                            </button>
-                        </div>
-                    </div>
                     
-                    <!-- Filter Section -->
-                    <div class="report-card">
-                        <h5 class="mb-4">Generate Report</h5>
-                        <form method="GET" id="reportForm">
-                            <div class="row g-3">
-                                <!-- Report Type Tabs -->
-                                <div class="col-12">
-                                    <ul class="nav nav-pills filter-tabs mb-4">
-                                        <li class="nav-item">
-                                            <a class="nav-link <?php echo $report_type === 'daily' ? 'active' : ''; ?>" 
-                                               href="#" onclick="setReportType('daily')">Daily</a>
-                                        </li>
-                                        <li class="nav-item">
-                                            <a class="nav-link <?php echo $report_type === 'weekly' ? 'active' : ''; ?>" 
-                                               href="#" onclick="setReportType('weekly')">Weekly</a>
-                                        </li>
-                                        <li class="nav-item">
-                                            <a class="nav-link <?php echo $report_type === 'monthly' ? 'active' : ''; ?>" 
-                                               href="#" onclick="setReportType('monthly')">Monthly</a>
-                                        </li>
-                                        <li class="nav-item">
-                                            <a class="nav-link <?php echo $report_type === 'termly' ? 'active' : ''; ?>" 
-                                               href="#" onclick="setReportType('termly')">Termly</a>
-                                        </li>
-                                        <li class="nav-item">
-                                            <a class="nav-link <?php echo $report_type === 'yearly' ? 'active' : ''; ?>" 
-                                               href="#" onclick="setReportType('yearly')">Yearly</a>
-                                        </li>
+                        <!-- Welcome Message -->
+                        <section class="panel">
+                            <div class="panel-body" style="text-align:center; padding: 40px;">
+                                <i class="fas fa-chart-line" style="font-size: 3rem; color: #4361ee; margin-bottom: 12px;"></i>
+                                <h3>Welcome to Attendance Reports</h3>
+                                <p style="color:#64748b; margin-bottom: 16px;">Select your report criteria and click "Generate Report" to view attendance data.</p>
+                                <div class="alert alert-info" style="max-width: 640px; margin: 0 auto; text-align:left;">
+                                    <h6><i class="fas fa-info-circle"></i> Report Types Available:</h6>
+                                    <ul style="margin: 8px 0 0 16px;">
+                                        <li><strong>Daily:</strong> Today's attendance report</li>
+                                        <li><strong>Weekly:</strong> This week's attendance summary</li>
+                                        <li><strong>Monthly:</strong> Custom date range attendance</li>
+                                        <li><strong>Termly:</strong> Academic term attendance</li>
+                                        <li><strong>Yearly:</strong> Annual attendance overview</li>
                                     </ul>
                                 </div>
-                                
-                                <!-- Teacher Selection -->
-                                <div class="col-md-4">
-                                    <label class="form-label">Select Teacher</label>
-                                    <select class="form-select" name="teacher_id" id="teacherSelect">
-                                        <option value="all">All Teachers</option>
-                                        <?php foreach ($teachers as $teacher): ?>
-                                            <option value="<?php echo $teacher['id']; ?>" 
-                                                <?php echo $teacher_id == $teacher['id'] ? 'selected' : ''; ?>>
-                                                <?php echo htmlspecialchars($teacher['full_name']); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                
-                                <!-- Dynamic Date Fields -->
-                                <div class="col-md-4" id="monthlyFields" style="display: <?php echo $report_type === 'monthly' ? 'block' : 'none'; ?>;">
-                                    <div class="row g-2">
-                                        <div class="col-6">
-                                            <label class="form-label">Start Date</label>
-                                            <input type="text" class="form-control datepicker" name="start_date" 
-                                                   value="<?php echo htmlspecialchars($start_date); ?>">
-                                        </div>
-                                        <div class="col-6">
-                                            <label class="form-label">End Date</label>
-                                            <input type="text" class="form-control datepicker" name="end_date" 
-                                                   value="<?php echo htmlspecialchars($end_date); ?>">
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-md-4" id="termlyFields" style="display: <?php echo $report_type === 'termly' ? 'block' : 'none'; ?>;">
-                                    <div class="row g-2">
-                                        <div class="col-6">
-                                            <label class="form-label">Term</label>
-                                            <select class="form-select" name="term">
-                                                <option value="1st Term" <?php echo $term === '1st Term' ? 'selected' : ''; ?>>1st Term</option>
-                                                <option value="2nd Term" <?php echo $term === '2nd Term' ? 'selected' : ''; ?>>2nd Term</option>
-                                                <option value="3rd Term" <?php echo $term === '3rd Term' ? 'selected' : ''; ?>>3rd Term</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-6">
-                                            <label class="form-label">Year</label>
-                                            <select class="form-select" name="year">
-                                                <?php for ($y = date('Y') - 5; $y <= date('Y') + 1; $y++): ?>
-                                                    <option value="<?php echo $y; ?>" <?php echo $year == $y ? 'selected' : ''; ?>>
-                                                        <?php echo $y; ?>
-                                                    </option>
-                                                <?php endfor; ?>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-md-4" id="yearlyFields" style="display: <?php echo $report_type === 'yearly' ? 'block' : 'none'; ?>;">
-                                    <label class="form-label">Year</label>
-                                    <select class="form-select" name="year">
-                                        <?php for ($y = date('Y') - 5; $y <= date('Y') + 1; $y++): ?>
-                                            <option value="<?php echo $y; ?>" <?php echo $year == $y ? 'selected' : ''; ?>>
-                                                <?php echo $y; ?>
-                                            </option>
-                                        <?php endfor; ?>
-                                    </select>
-                                </div>
-                                
-                                <!-- Hidden Report Type Field -->
-                                <input type="hidden" name="report_type" id="reportType" value="<?php echo $report_type; ?>">
-                                
-                                <div class="col-12 mt-3">
-                                    <button type="submit" name="generate_report" class="btn btn-primary">
-                                        <i class="fas fa-chart-bar me-2"></i>Generate Report
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary" onclick="resetFilters()">
-                                        <i class="fas fa-redo me-2"></i>Reset Filters
-                                    </button>
-                                </div>
                             </div>
-                        </form>
-                    </div>
+                        </section>
+            <!-- Filter Section -->
+            <section class="panel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-filter"></i> Generate Report</h2>
+                </div>
+                <div class="panel-body">
+                    <form method="GET" id="reportForm" class="form-inline">
+                        <div class="filter-tabs">
+                            <a class="btn small <?php echo $report_type === 'daily' ? 'primary' : 'secondary'; ?>" href="#" onclick="setReportType('daily')">Daily</a>
+                            <a class="btn small <?php echo $report_type === 'weekly' ? 'primary' : 'secondary'; ?>" href="#" onclick="setReportType('weekly')">Weekly</a>
+                            <a class="btn small <?php echo $report_type === 'monthly' ? 'primary' : 'secondary'; ?>" href="#" onclick="setReportType('monthly')">Monthly</a>
+                            <a class="btn small <?php echo $report_type === 'termly' ? 'primary' : 'secondary'; ?>" href="#" onclick="setReportType('termly')">Termly</a>
+                            <a class="btn small <?php echo $report_type === 'yearly' ? 'primary' : 'secondary'; ?>" href="#" onclick="setReportType('yearly')">Yearly</a>
+                        </div>
+
+                        <select class="form-control" name="teacher_id" id="teacherSelect">
+                            <option value="all">All Teachers</option>
+                            <?php foreach ($teachers as $teacher): ?>
+                                <option value="<?php echo $teacher['id']; ?>" <?php echo $teacher_id == $teacher['id'] ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($teacher['full_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+
+                        <div id="monthlyFields" style="display: <?php echo $report_type === 'monthly' ? 'block' : 'none'; ?>;">
+                            <input type="text" class="form-control datepicker" name="start_date" value="<?php echo htmlspecialchars($start_date); ?>" placeholder="Start Date">
+                            <input type="text" class="form-control datepicker" name="end_date" value="<?php echo htmlspecialchars($end_date); ?>" placeholder="End Date">
+                        </div>
+
+                        <div id="termlyFields" style="display: <?php echo $report_type === 'termly' ? 'block' : 'none'; ?>;">
+                            <select class="form-control" name="term">
+                                <option value="1st Term" <?php echo $term === '1st Term' ? 'selected' : ''; ?>>1st Term</option>
+                                <option value="2nd Term" <?php echo $term === '2nd Term' ? 'selected' : ''; ?>>2nd Term</option>
+                                <option value="3rd Term" <?php echo $term === '3rd Term' ? 'selected' : ''; ?>>3rd Term</option>
+                            </select>
+                            <select class="form-control" name="year">
+                                <?php for ($y = date('Y') - 5; $y <= date('Y') + 1; $y++): ?>
+                                    <option value="<?php echo $y; ?>" <?php echo $year == $y ? 'selected' : ''; ?>>
+                                        <?php echo $y; ?>
+                                    </option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+
+                        <div id="yearlyFields" style="display: <?php echo $report_type === 'yearly' ? 'block' : 'none'; ?>;">
+                            <select class="form-control" name="year">
+                                <?php for ($y = date('Y') - 5; $y <= date('Y') + 1; $y++): ?>
+                                    <option value="<?php echo $y; ?>" <?php echo $year == $y ? 'selected' : ''; ?>>
+                                        <?php echo $y; ?>
+                                    </option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+
+                        <input type="hidden" name="report_type" id="reportType" value="<?php echo $report_type; ?>">
+                        <button type="submit" name="generate_report" class="btn primary">
+                            <i class="fas fa-chart-bar"></i> Generate Report
+                        </button>
+                        <button type="button" class="btn secondary" onclick="resetFilters()">
+                            <i class="fas fa-redo"></i> Reset Filters
+                        </button>
+                    </form>
+                </div>
+            </section>
                     
                     <?php if (!empty($reportData)): ?>
                         <!-- Summary Cards -->
-                        <div class="row mb-4">
-                            <div class="col-xl-3 col-md-6 mb-3">
-                                <div class="stat-card">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="text-muted mb-1">Total Days</h6>
-                                            <h3 class="mb-0"><?php echo $summary['total_days']; ?></h3>
-                                        </div>
-                                        <div class="stat-icon" style="background: rgba(67, 97, 238, 0.1); color: var(--primary-color);">
-                                            <i class="fas fa-calendar-alt"></i>
-                                        </div>
-                                    </div>
-                                </div>
+                        <div class="stats-container">
+                            <div class="stat-card">
+                                <i class="fas fa-calendar-alt"></i>
+                                <h3>Total Days</h3>
+                                <div class="count"><?php echo $summary['total_days']; ?></div>
+                                <p class="stat-description">Recorded days</p>
                             </div>
-                            <div class="col-xl-3 col-md-6 mb-3">
-                                <div class="stat-card">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="text-muted mb-1">Present Days</h6>
-                                            <h3 class="mb-0 text-success"><?php echo $summary['present_days']; ?></h3>
-                                        </div>
-                                        <div class="stat-icon" style="background: rgba(6, 214, 160, 0.1); color: var(--success-color);">
-                                            <i class="fas fa-check-circle"></i>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div class="stat-card">
+                                <i class="fas fa-check-circle"></i>
+                                <h3>Present Days</h3>
+                                <div class="count"><?php echo $summary['present_days']; ?></div>
+                                <p class="stat-description">On time/Agreed</p>
                             </div>
-                            <div class="col-xl-3 col-md-6 mb-3">
-                                <div class="stat-card">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="text-muted mb-1">Absent Days</h6>
-                                            <h3 class="mb-0 text-danger"><?php echo $summary['absent_days']; ?></h3>
-                                        </div>
-                                        <div class="stat-icon" style="background: rgba(239, 71, 111, 0.1); color: var(--danger-color);">
-                                            <i class="fas fa-times-circle"></i>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div class="stat-card">
+                                <i class="fas fa-times-circle"></i>
+                                <h3>Absent Days</h3>
+                                <div class="count"><?php echo $summary['absent_days']; ?></div>
+                                <p class="stat-description">Not present</p>
                             </div>
-                            <div class="col-xl-3 col-md-6 mb-3">
-                                <div class="stat-card">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="text-muted mb-1">Attendance Rate</h6>
-                                            <h3 class="mb-0 text-info"><?php echo $summary['attendance_rate']; ?>%</h3>
-                                        </div>
-                                        <div class="stat-icon" style="background: rgba(17, 138, 178, 0.1); color: var(--info-color);">
-                                            <i class="fas fa-chart-line"></i>
-                                        </div>
-                                    </div>
-                                    <div class="progress-bar-custom mt-2">
-                                        <div class="progress-fill" style="width: <?php echo $summary['attendance_rate']; ?>%; background: var(--info-color);"></div>
-                                    </div>
-                                </div>
+                            <div class="stat-card">
+                                <i class="fas fa-chart-line"></i>
+                                <h3>Attendance Rate</h3>
+                                <div class="count"><?php echo $summary['attendance_rate']; ?>%</div>
+                                <p class="stat-description">Overall rate</p>
                             </div>
                         </div>
                         
                         <!-- Detailed Report -->
-                        <div class="report-card">
-                            <div class="d-flex justify-content-between align-items-center mb-4">
-                                <h5>Attendance Details</h5>
+                        <section class="panel">
+                            <div class="panel-header">
+                                <h2><i class="fas fa-list"></i> Attendance Details</h2>
                                 <span class="date-range">
-                                    <i class="far fa-calendar-alt me-1"></i>
+                                    <i class="far fa-calendar-alt"></i>
                                     <?php 
                                     switch ($report_type) {
                                         case 'daily':
@@ -724,9 +823,9 @@ function calculateSummary($data) {
                                     ?>
                                 </span>
                             </div>
-                            
-                            <div class="table-responsive">
-                                <table class="table table-hover table-custom" id="attendanceTable">
+                            <div class="panel-body">
+                                <div class="table-wrap">
+                                    <table class="table" id="attendanceTable">
                                     <thead>
                                         <tr>
                                             <th>Teacher</th>
@@ -750,23 +849,16 @@ function calculateSummary($data) {
                                             ?>
                                             <tr>
                                                 <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="bg-light rounded-circle p-2 me-3">
-                                                            <i class="fas fa-user text-primary"></i>
-                                                        </div>
-                                                        <div>
-                                                            <h6 class="mb-1"><?php echo htmlspecialchars($teacher['full_name']); ?></h6>
-                                                            <small class="text-muted"><?php echo htmlspecialchars($teacher['email']); ?></small>
-                                                        </div>
-                                                    </div>
+                                                    <strong><?php echo htmlspecialchars($teacher['full_name']); ?></strong>
+                                                    <small style="color:#64748b; display:block;"><?php echo htmlspecialchars($teacher['email']); ?></small>
                                                 </td>
                                                 <td><?php echo substr($teacher['expected_arrival'], 0, 5); ?></td>
-                                                <td><span class="badge bg-success"><?php echo $teacher['summary']['present_days']; ?></span></td>
-                                                <td><span class="badge bg-danger"><?php echo $teacher['summary']['absent_days']; ?></span></td>
-                                                <td><span class="badge bg-warning"><?php echo $teacher['summary']['late_days']; ?></span></td>
-                                                <td><span class="badge bg-success"><?php echo $teacher['summary']['agreed_days']; ?></span></td>
-                                                <td><span class="badge bg-danger"><?php echo $teacher['summary']['not_agreed_days']; ?></span></td>
-                                                <td><span class="badge bg-secondary"><?php echo $teacher['summary']['pending_days']; ?></span></td>
+                                                <td><span class="badge badge-success"><?php echo $teacher['summary']['present_days']; ?></span></td>
+                                                <td><span class="badge badge-warning"><?php echo $teacher['summary']['absent_days']; ?></span></td>
+                                                <td><span class="badge"><?php echo $teacher['summary']['late_days']; ?></span></td>
+                                                <td><span class="badge badge-success"><?php echo $teacher['summary']['agreed_days']; ?></span></td>
+                                                <td><span class="badge badge-warning"><?php echo $teacher['summary']['not_agreed_days']; ?></span></td>
+                                                <td><span class="badge"><?php echo $teacher['summary']['pending_days']; ?></span></td>
                                                 <td>
                                                     <div class="d-flex align-items-center">
                                                         <span class="me-2"><?php echo $teacherRate; ?>%</span>
@@ -778,32 +870,32 @@ function calculateSummary($data) {
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <button class="btn btn-sm btn-outline-primary" 
-                                                            onclick="viewTeacherDetails(<?php echo $teacher['teacher_id']; ?>)">
-                                                        <i class="fas fa-eye me-1"></i>View Details
+                                                    <button class="btn small secondary" onclick="viewTeacherDetails(<?php echo $teacher['teacher_id']; ?>)">
+                                                        <i class="fas fa-eye"></i> View Details
                                                     </button>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
                                     </tbody>
                                 </table>
+                                </div>
                             </div>
-                        </div>
+                        </section>
                         
                         <!-- Individual Teacher Details (Hidden by default) -->
                         <?php foreach ($reportData as $teacher): ?>
-                            <div class="teacher-card teacher-details" id="teacherDetails-<?php echo $teacher['teacher_id']; ?>" style="display: none;">
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <h6 class="mb-0">Daily Attendance for <?php echo htmlspecialchars($teacher['full_name']); ?></h6>
-                                    <button class="btn btn-sm btn-outline-secondary" 
-                                            onclick="hideTeacherDetails(<?php echo $teacher['teacher_id']; ?>)">
-                                        <i class="fas fa-times"></i>
+                            <section class="panel teacher-details" id="teacherDetails-<?php echo $teacher['teacher_id']; ?>" style="display: none;">
+                                <div class="panel-header">
+                                    <h2><i class="fas fa-user"></i> Daily Attendance for <?php echo htmlspecialchars($teacher['full_name']); ?></h2>
+                                    <button class="btn small secondary" onclick="hideTeacherDetails(<?php echo $teacher['teacher_id']; ?>)">
+                                        <i class="fas fa-times"></i> Close
                                     </button>
                                 </div>
+                                <div class="panel-body">
                                 
                                 <?php if (!empty($teacher['daily_records'])): ?>
-                                    <div class="table-responsive">
-                                        <table class="table table-sm">
+                                    <div class="table-wrap">
+                                        <table class="table">
                                             <thead>
                                                 <tr>
                                                     <th>Date</th>
@@ -852,50 +944,29 @@ function calculateSummary($data) {
                                         </table>
                                     </div>
                                 <?php else: ?>
-                                    <div class="text-center py-4">
-                                        <i class="fas fa-clipboard-list fa-2x text-muted mb-3"></i>
-                                        <p class="text-muted">No attendance records found for this period.</p>
+                                    <div style="text-align:center; padding: 24px; color: #64748b;">
+                                        <i class="fas fa-clipboard-list" style="font-size: 2rem; margin-bottom: 8px;"></i>
+                                        <p>No attendance records found for this period.</p>
                                     </div>
                                 <?php endif; ?>
-                            </div>
+                                </div>
+                            </section>
                         <?php endforeach; ?>
                         
                     <?php elseif (isset($_GET['generate_report'])): ?>
                         <!-- No Data Message -->
-                        <div class="report-card">
-                            <div class="text-center py-5">
-                                <i class="fas fa-chart-pie fa-3x text-muted mb-3"></i>
-                                <h5>No Attendance Data Found</h5>
-                                <p class="text-muted">No attendance records match your selected criteria.</p>
+                        <section class="panel">
+                            <div class="panel-body" style="text-align:center; padding: 40px;">
+                                <i class="fas fa-chart-pie" style="font-size: 3rem; color: #94a3b8; margin-bottom: 12px;"></i>
+                                <h3>No Attendance Data Found</h3>
+                                <p style="color:#64748b;">No attendance records match your selected criteria.</p>
                             </div>
-                        </div>
+                        </section>
                     <?php else: ?>
-                        <!-- Welcome Message -->
-                        <div class="report-card">
-                            <div class="text-center py-5">
-                                <i class="fas fa-chart-line fa-4x text-primary mb-4"></i>
-                                <h3>Welcome to Attendance Reports</h3>
-                                <p class="text-muted mb-4">Select your report criteria and click "Generate Report" to view attendance data.</p>
-                                <div class="row justify-content-center">
-                                    <div class="col-md-8">
-                                        <div class="alert alert-info">
-                                            <h6><i class="fas fa-info-circle me-2"></i>Report Types Available:</h6>
-                                            <ul class="mb-0">
-                                                <li><strong>Daily:</strong> Today's attendance report</li>
-                                                <li><strong>Weekly:</strong> This week's attendance summary</li>
-                                                <li><strong>Monthly:</strong> Custom date range attendance</li>
-                                                <li><strong>Termly:</strong> Academic term attendance</li>
-                                                <li><strong>Yearly:</strong> Annual attendance overview</li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     <?php endif; ?>
                 </div>
             </div>
-        </div>
+        </main>
     </div>
     
     <!-- Scripts -->
@@ -905,6 +976,29 @@ function calculateSummary($data) {
     <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
     <script>
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarClose = document.getElementById('sidebarClose');
+
+        mobileMenuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+            mobileMenuToggle.classList.toggle('active');
+        });
+
+        sidebarClose.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            mobileMenuToggle.classList.remove('active');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 1024) {
+                if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+                    sidebar.classList.remove('active');
+                    mobileMenuToggle.classList.remove('active');
+                }
+            }
+        });
+
         $(document).ready(function() {
             // Initialize datepicker
             $('.datepicker').datepicker({

@@ -1,14 +1,16 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
+require_once 'helpers.php';
 
-// Only allow teachers
-if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'teacher') {
+// Only allow admin/principal/vice_principal
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['principal', 'admin', 'vice_principal'], true)) {
     header("Location: ../index.php");
     exit;
 }
-// Include TCPDF library for PDF export
-require_once('tcpdf/tcpdf.php');
+
+$current_school_id = get_current_school_id();
 
 // Get filter parameters
 $teacher_id = $_GET['teacher_id'] ?? 'all';
@@ -16,49 +18,110 @@ $report_type = $_GET['report_type'] ?? 'monthly';
 $start_date = $_GET['start_date'] ?? date('Y-m-01');
 $end_date = $_GET['end_date'] ?? date('Y-m-t');
 $term = $_GET['term'] ?? '1st Term';
-$year = $_GET['year'] ?? date('Y');
+$year = (int)($_GET['year'] ?? date('Y'));
+$month = (int)($_GET['month'] ?? date('m'));
 
-// Generate report data (similar to attendance_reports.php)
-// ... (include the same report generation logic from attendance_reports.php)
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $start_date)) {
+    $start_date = date('Y-m-01');
+}
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $end_date)) {
+    $end_date = date('Y-m-t');
+}
+if ($start_date > $end_date) {
+    $tmp = $start_date;
+    $start_date = $end_date;
+    $end_date = $tmp;
+}
+if ($month < 1 || $month > 12) {
+    $month = (int)date('m');
+}
+if ($year < 2000 || $year > 2100) {
+    $year = (int)date('Y');
+}
+
+// Build query based on report type
+$query = "SELECT 
+            u.id as teacher_id,
+            u.full_name,
+            u.email,
+            DATE(tr.sign_in_time) as attendance_date,
+            TIME(tr.sign_in_time) as sign_in_time,
+            tr.status,
+            tas.expected_arrival,
+            CASE 
+                WHEN TIME(tr.sign_in_time) > tas.expected_arrival THEN 1 
+                ELSE 0 
+            END as is_late,
+            tr.admin_notes
+          FROM users u
+          LEFT JOIN time_records tr ON u.id = tr.user_id
+          LEFT JOIN teacher_attendance_settings tas ON u.id = tas.user_id
+          WHERE u.school_id = ? AND u.role IN ('teacher', 'principal')";
+
+$params = [$current_school_id];
+
+if ($teacher_id !== 'all') {
+    $query .= " AND u.id = ?";
+    $params[] = $teacher_id;
+}
+
+switch ($report_type) {
+    case 'daily':
+        $query .= " AND DATE(tr.sign_in_time) = ?";
+        $params[] = date('Y-m-d');
+        break;
+    case 'weekly':
+        $week_start = date('Y-m-d', strtotime('monday this week'));
+        $week_end = date('Y-m-d', strtotime('sunday this week'));
+        $query .= " AND DATE(tr.sign_in_time) BETWEEN ? AND ?";
+        $params[] = $week_start;
+        $params[] = $week_end;
+        break;
+    case 'monthly':
+        $query .= " AND DATE(tr.sign_in_time) BETWEEN ? AND ?";
+        $params[] = $start_date;
+        $params[] = $end_date;
+        break;
+    case 'termly':
+        $term_dates = getTermDates($term, $year);
+        $query .= " AND DATE(tr.sign_in_time) BETWEEN ? AND ?";
+        $params[] = $term_dates['start'];
+        $params[] = $term_dates['end'];
+        break;
+    case 'yearly':
+        $query .= " AND YEAR(tr.sign_in_time) = ?";
+        $params[] = $year;
+        break;
+}
+
+$query .= " ORDER BY u.full_name, tr.sign_in_time DESC";
+
+$stmt = $pdo->prepare($query);
+$stmt->execute($params);
+$rawData = $stmt->fetchAll();
+
+$reportData = processReportData($rawData, $report_type);
+$summary = calculateSummary($rawData);
+
+require_once '../TCPDF-main/TCPDF-main/tcpdf.php';
 
 // Create new PDF document
 $pdf = new TCPDF('L', PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
-
-// Set document information
-$pdf->SetCreator('School Management System');
+$pdf->SetCreator('SahabFormMaster');
 $pdf->SetAuthor('School Admin');
 $pdf->SetTitle('Attendance Report');
 $pdf->SetSubject('Teacher Attendance Report');
-
-// Set default header data
-$pdf->SetHeaderData('', 0, 'Teacher Attendance Report', 
-    "Report Type: " . ucfirst($report_type) . "\n" .
-    "Date: " . date('F j, Y'));
-
-// Set header and footer fonts
-$pdf->setHeaderFont(Array(PDF_FONT_NAME_MAIN, '', PDF_FONT_SIZE_MAIN));
-$pdf->setFooterFont(Array(PDF_FONT_NAME_DATA, '', PDF_FONT_SIZE_DATA));
-
-// Set default monospaced font
-$pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
-
-// Set margins
-$pdf->SetMargins(15, 25, 15);
-$pdf->SetHeaderMargin(10);
+$pdf->SetMargins(15, 20, 15);
+$pdf->SetHeaderMargin(5);
 $pdf->SetFooterMargin(10);
-
-// Set auto page breaks
 $pdf->SetAutoPageBreak(TRUE, 15);
-
-// Add a page
 $pdf->AddPage();
 
-// Add content to PDF
 $html = '<h2>Teacher Attendance Report</h2>';
 $html .= '<p><strong>Generated On:</strong> ' . date('F j, Y H:i:s') . '</p>';
-$html .= '<p><strong>Report Period:</strong> ' . getReportPeriodText() . '</p>';
+$html .= '<p><strong>Report Period:</strong> ' . getReportPeriodText($report_type, $start_date, $end_date, $term, $year) . '</p>';
+$html .= '<p><strong>Total Teachers:</strong> ' . count($reportData) . '</p>';
 
-// Add table with report data
 $html .= '<table border="1" cellpadding="5">
             <thead>
                 <tr>
@@ -73,12 +136,11 @@ $html .= '<table border="1" cellpadding="5">
             </thead>
             <tbody>';
 
-// Add rows (you need to populate this with actual data)
 foreach ($reportData as $teacher) {
-    $rate = $teacher['summary']['total_days'] > 0 
-        ? round(($teacher['summary']['present_days'] / $teacher['summary']['total_days']) * 100, 2) 
+    $rate = $teacher['summary']['total_days'] > 0
+        ? round(($teacher['summary']['present_days'] / $teacher['summary']['total_days']) * 100, 2)
         : 0;
-    
+
     $html .= '<tr>
                 <td>' . htmlspecialchars($teacher['full_name']) . '</td>
                 <td>' . $teacher['summary']['present_days'] . '</td>
@@ -92,20 +154,14 @@ foreach ($reportData as $teacher) {
 
 $html .= '</tbody></table>';
 
-// Add summary
 $html .= '<h3 style="margin-top: 20px;">Summary</h3>';
 $html .= '<p><strong>Total Days:</strong> ' . $summary['total_days'] . '</p>';
 $html .= '<p><strong>Overall Attendance Rate:</strong> ' . $summary['attendance_rate'] . '%</p>';
 
-// Output the HTML content
 $pdf->writeHTML($html, true, false, true, false, '');
-
-// Close and output PDF document
 $pdf->Output('attendance_report_' . date('Ymd_His') . '.pdf', 'D');
 
-function getReportPeriodText() {
-    global $report_type, $start_date, $end_date, $term, $year;
-    
+function getReportPeriodText($report_type, $start_date, $end_date, $term, $year) {
     switch ($report_type) {
         case 'daily':
             return date('F j, Y');
@@ -120,5 +176,133 @@ function getReportPeriodText() {
         default:
             return date('F j, Y');
     }
+}
+
+if (!function_exists('getTermDates')) {
+    function getTermDates($term, $year) {
+        $terms = [
+            '1st Term' => [
+                'start' => $year . '-09-01',
+                'end' => $year . '-12-15'
+            ],
+            '2nd Term' => [
+                'start' => ($year + 1) . '-01-08',
+                'end' => ($year + 1) . '-04-05'
+            ],
+            '3rd Term' => [
+                'start' => ($year + 1) . '-04-23',
+                'end' => ($year + 1) . '-07-20'
+            ]
+        ];
+
+        return $terms[$term] ?? $terms['1st Term'];
+    }
+}
+
+function processReportData($data, $report_type) {
+    $processed = [];
+
+    foreach ($data as $row) {
+        $teacher_id = $row['teacher_id'];
+
+        if (!isset($processed[$teacher_id])) {
+            $processed[$teacher_id] = [
+                'teacher_id' => $teacher_id,
+                'full_name' => $row['full_name'],
+                'email' => $row['email'],
+                'expected_arrival' => $row['expected_arrival'] ?? '08:00:00',
+                'daily_records' => [],
+                'summary' => [
+                    'total_days' => 0,
+                    'present_days' => 0,
+                    'absent_days' => 0,
+                    'late_days' => 0,
+                    'agreed_days' => 0,
+                    'not_agreed_days' => 0,
+                    'pending_days' => 0
+                ]
+            ];
+        }
+
+        if ($row['attendance_date']) {
+            $processed[$teacher_id]['daily_records'][] = [
+                'date' => $row['attendance_date'],
+                'sign_in_time' => $row['sign_in_time'],
+                'status' => $row['status'],
+                'is_late' => $row['is_late'],
+                'admin_notes' => $row['admin_notes']
+            ];
+
+            $processed[$teacher_id]['summary']['total_days']++;
+
+            if ($row['status'] === 'agreed') {
+                $processed[$teacher_id]['summary']['agreed_days']++;
+                $processed[$teacher_id]['summary']['present_days']++;
+            } elseif ($row['status'] === 'not_agreed') {
+                $processed[$teacher_id]['summary']['not_agreed_days']++;
+            } else {
+                $processed[$teacher_id]['summary']['pending_days']++;
+            }
+
+            if ($row['is_late']) {
+                $processed[$teacher_id]['summary']['late_days']++;
+            }
+        } else {
+            $processed[$teacher_id]['summary']['absent_days']++;
+        }
+    }
+
+    return $processed;
+}
+
+function calculateSummary($data) {
+    $summary = [
+        'total_days' => 0,
+        'present_days' => 0,
+        'absent_days' => 0,
+        'late_days' => 0,
+        'agreed_days' => 0,
+        'not_agreed_days' => 0,
+        'pending_days' => 0,
+        'attendance_rate' => 0
+    ];
+
+    $uniqueDays = [];
+    $teacherDays = [];
+
+    foreach ($data as $row) {
+        if ($row['attendance_date']) {
+            $dayKey = $row['attendance_date'];
+            $teacherKey = $row['teacher_id'] . '-' . $dayKey;
+
+            if (!in_array($dayKey, $uniqueDays, true)) {
+                $uniqueDays[] = $dayKey;
+                $summary['total_days']++;
+            }
+
+            if (!in_array($teacherKey, $teacherDays, true)) {
+                $teacherDays[] = $teacherKey;
+
+                if ($row['status'] === 'agreed') {
+                    $summary['present_days']++;
+                    $summary['agreed_days']++;
+                } elseif ($row['status'] === 'not_agreed') {
+                    $summary['not_agreed_days']++;
+                } else {
+                    $summary['pending_days']++;
+                }
+
+                if ($row['is_late']) {
+                    $summary['late_days']++;
+                }
+            }
+        }
+    }
+
+    if ($summary['total_days'] > 0) {
+        $summary['attendance_rate'] = round(($summary['present_days'] / $summary['total_days']) * 100, 2);
+    }
+
+    return $summary;
 }
 ?>

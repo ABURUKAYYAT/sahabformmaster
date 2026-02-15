@@ -1,13 +1,13 @@
 :root {
     --white: #ffffff;
-    --gold: #FFD700;
-    --dark-gold: #B8860B;
-    --transparent-gold: rgba(255, 215, 0, 0.2);
-    --gold-shadow: rgba(184, 134, 11, 0.3);
-    --light-gray: #f5f5f5;
-    --medium-gray: #e0e0e0;
-    --dark-gray: #333333;
-    --dark-bg: #2c2c2c;
+    --gold: #4361ee;
+    --dark-gold: #3651d4;
+    --transparent-gold: rgba(67, 97, 238, 0.12);
+    --gold-shadow: rgba(67, 97, 238, 0.25);
+    --light-gray: #f8fafc;
+    --medium-gray: #e2e8f0;
+    --dark-gray: #334155;
+    --dark-bg: #1f2937;
 }
 
 * {
@@ -18,9 +18,17 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, var(--light-gray) 0%, var(--medium-gray) 100%);
+    background: transparent;
     min-height: 100vh;
-    padding: 20px;
+    padding: 0;
+}
+
+.dashboard-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    width: 100%;
+    left: 0;
 }
 
 .container {
@@ -79,7 +87,7 @@ body {
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 20px;
     padding: 25px;
-    background: var(--light-gray);
+    background: transparent;
 }
 
 .stat-card {
@@ -124,9 +132,6 @@ body {
     font-size: 2rem;
     font-weight: 700;
     color: var(--dark-bg);
-    background: linear-gradient(to right, var(--gold), var(--dark-gold));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
 }
 
 /* Alert */
@@ -246,7 +251,7 @@ body {
 }
 
 .form-group label i {
-    color: var(--dark-gold);
+    color: var(--gold);
     width: 20px;
 }
 
@@ -340,7 +345,7 @@ body {
     left: 15px;
     top: 50%;
     transform: translateY(-50%);
-    color: var(--dark-gold);
+    color: var(--gold);
 }
 
 /* Table */
@@ -359,8 +364,8 @@ body {
 }
 
 .visitors-table thead {
-    background: linear-gradient(135deg, var(--dark-bg) 0%, var(--dark-gray) 100%);
-    color: var(--white);
+    background: #f8fafc;
+    color: #1f2937;
     position: sticky;
     top: 0;
 }
@@ -380,7 +385,7 @@ body {
 }
 
 .visitors-table tbody tr:hover {
-    background-color: var(--transparent-gold);
+    background-color: rgba(67, 97, 238, 0.06);
 }
 
 .visitors-table td {
@@ -395,7 +400,7 @@ body {
 }
 
 .contact-info i {
-    color: var(--dark-gold);
+    color: var(--gold);
     margin-right: 5px;
 }
 

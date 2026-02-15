@@ -9,7 +9,7 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['admin', 'prin
     exit;
 }
 
-$current_school_id = get_current_school_id();
+$current_school_id = require_school_auth();
 $user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['role'];
 $principal_name = $_SESSION['full_name'] ?? 'Admin';
@@ -241,7 +241,7 @@ $today_rate = ($today_stats['total_students'] > 0) ? round(($today_stats['presen
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="manage_class.php" class="nav-link active">
+                        <a href="manage_class.php" class="nav-link">
                             <span class="nav-icon">🎓</span>
                             <span class="nav-text">Manage Classes</span>
                         </a>
@@ -301,7 +301,7 @@ $today_rate = ($today_stats['total_students'] > 0) ? round(($today_stats['presen
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="manage_attendance.php" class="nav-link">
+                        <a href="manage_attendance.php" class="nav-link active">
                             <span class="nav-icon">📋</span>
                             <span class="nav-text">Attendance Register</span>
                         </a>

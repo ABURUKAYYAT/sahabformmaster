@@ -41,49 +41,55 @@ $filter_term = $_GET['filter_term'] ?? '';
 $filter_week = $_GET['filter_week'] ?? '';
 $filter_subject = $_GET['filter_subject'] ?? '';
 $filter_status = $_GET['filter_status'] ?? 'active';
+$filter_assigned = $_GET['filter_assigned'] ?? 'mine';
+
+// Pagination
+$per_page = 10;
+$page = max(1, intval($_GET['page'] ?? 1));
 
 // Build query for teacher's curriculum (school-filtered)
-$query = "SELECT DISTINCT c.*, cl.class_name
-          FROM curriculum c
-          LEFT JOIN classes cl ON c.class_id = cl.id AND cl.school_id = :school_id
+$base_query = "FROM curriculum c
+          LEFT JOIN classes cl ON c.class_id = cl.id AND cl.school_id = :school_id_classes
           WHERE c.school_id = :school_id_filter";
 $params = [
-    'school_id' => $current_school_id,
+    'school_id_classes' => $current_school_id,
     'school_id_filter' => $current_school_id,
 ];
 
 // Status filter (skip when 'all')
 if ($filter_status !== 'all') {
-    $query .= " AND c.status = :status";
+    $base_query .= " AND c.status = :status";
     $params['status'] = $filter_status;
 }
 
-// Teachers can only view curricula assigned to them or unassigned
-$query .= " AND (c.teacher_id = :teacher_id OR c.teacher_id IS NULL)";
-$params['teacher_id'] = $teacher_id;
+// Optional filter: only items assigned to this teacher
+if ($filter_assigned === 'mine') {
+    $base_query .= " AND c.teacher_id = :teacher_id";
+    $params['teacher_id'] = $teacher_id;
+}
 
 if ($search !== '') {
-    $query .= " AND (c.subject_name LIKE :search OR c.description LIKE :search OR c.topics LIKE :search)";
+    $base_query .= " AND (c.subject_name LIKE :search OR c.description LIKE :search OR c.topics LIKE :search)";
     $params['search'] = '%' . $search . '%';
 }
 
 if ($filter_class !== '' && $filter_class !== 'all') {
-    $query .= " AND c.class_id = :class_id";
+    $base_query .= " AND c.class_id = :class_id";
     $params['class_id'] = $filter_class;
 }
 
 if ($filter_term !== '' && $filter_term !== 'all') {
-    $query .= " AND c.term = :term";
+    $base_query .= " AND c.term = :term";
     $params['term'] = $filter_term;
 }
 
 if ($filter_week !== '' && $filter_week !== 'all') {
-    $query .= " AND c.week = :week";
+    $base_query .= " AND c.week = :week";
     $params['week'] = $filter_week;
 }
 
 if ($filter_subject !== '' && $filter_subject !== 'all') {
-    $query .= " AND c.subject_id = :subject_id";
+    $base_query .= " AND c.subject_id = :subject_id";
     $params['subject_id'] = $filter_subject;
 }
 
@@ -103,11 +109,36 @@ if (empty($terms)) {
     $terms = ['1st Term', '2nd Term', '3rd Term'];
 }
 
-// Execute main query
-$query .= " ORDER BY c.term, c.week, c.status, c.grade_level, c.subject_name";
-$stmt = $pdo->prepare($query);
+// Count for pagination
+$count_query = "SELECT COUNT(*) " . $base_query;
+$stmt = $pdo->prepare($count_query);
 $stmt->execute($params);
+$total_rows = (int) $stmt->fetchColumn();
+$total_pages = max(1, (int) ceil($total_rows / $per_page));
+
+if ($page > $total_pages) {
+    $page = $total_pages;
+}
+$offset = ($page - 1) * $per_page;
+
+// Execute main query
+$query = "SELECT DISTINCT c.*, cl.class_name " . $base_query .
+         " ORDER BY c.term, c.week, c.status, c.grade_level, c.subject_name LIMIT :limit OFFSET :offset";
+$stmt = $pdo->prepare($query);
+foreach ($params as $key => $value) {
+    $stmt->bindValue(':' . $key, $value);
+}
+$stmt->bindValue(':limit', $per_page, PDO::PARAM_INT);
+$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+$stmt->execute();
 $curriculums = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$pagination_params = $_GET;
+unset($pagination_params['page']);
+$start_item = $total_rows > 0 ? ($offset + 1) : 0;
+$end_item = $total_rows > 0 ? min($offset + count($curriculums), $total_rows) : 0;
+$prev_page = max(1, $page - 1);
+$next_page = min($total_pages, $page + 1);
 
 // Function to count topics
 function countTopics($topics_string) {
@@ -1315,6 +1346,13 @@ function getStatusBadgeClass($status) {
                             <option value="all" <?php echo $filter_status === 'all' ? 'selected' : ''; ?>>All Status</option>
                         </select>
                     </div>
+                    <div class="form-group-modern">
+                        <label class="form-label-modern">Assignment</label>
+                        <select class="form-input-modern" name="filter_assigned">
+                            <option value="all" <?php echo $filter_assigned === 'all' ? 'selected' : ''; ?>>All Curriculum</option>
+                            <option value="mine" <?php echo $filter_assigned === 'mine' ? 'selected' : ''; ?>>Assigned to Me</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div style="display: flex; gap: 1rem; justify-content: flex-end;">
@@ -1453,6 +1491,38 @@ function getStatusBadgeClass($status) {
                         </tbody>
                     </table>
                 </div>
+                <?php if ($total_pages > 1): ?>
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1.5rem;">
+                        <div style="color: var(--gray-600); font-weight: 600;">
+                            Showing <?php echo $start_item; ?>-<?php echo $end_item; ?> of <?php echo $total_rows; ?>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <a class="btn-modern-secondary"
+                               style="<?php echo $page <= 1 ? 'pointer-events: none; opacity: 0.6;' : ''; ?>"
+                               href="<?php echo 'curricullum.php?' . http_build_query(array_merge($pagination_params, ['page' => 1])); ?>">
+                                First
+                            </a>
+                            <a class="btn-modern-secondary"
+                               style="<?php echo $page <= 1 ? 'pointer-events: none; opacity: 0.6;' : ''; ?>"
+                               href="<?php echo 'curricullum.php?' . http_build_query(array_merge($pagination_params, ['page' => $prev_page])); ?>">
+                                Prev
+                            </a>
+                            <span class="btn-modern-primary" style="pointer-events: none;">
+                                Page <?php echo $page; ?> of <?php echo $total_pages; ?>
+                            </span>
+                            <a class="btn-modern-secondary"
+                               style="<?php echo $page >= $total_pages ? 'pointer-events: none; opacity: 0.6;' : ''; ?>"
+                               href="<?php echo 'curricullum.php?' . http_build_query(array_merge($pagination_params, ['page' => $next_page])); ?>">
+                                Next
+                            </a>
+                            <a class="btn-modern-secondary"
+                               style="<?php echo $page >= $total_pages ? 'pointer-events: none; opacity: 0.6;' : ''; ?>"
+                               href="<?php echo 'curricullum.php?' . http_build_query(array_merge($pagination_params, ['page' => $total_pages])); ?>">
+                                Last
+                            </a>
+                        </div>
+                    </div>
+                <?php endif; ?>
             </div>
         <?php endif; ?>
 
