@@ -18,52 +18,13 @@ if (!in_array(strtolower($_SESSION['role'] ?? ''), $allowed_roles)) {
     exit;
 }
 
+$teacher_name = $_SESSION['full_name'] ?? 'Teacher';
 $user_school_id = $current_school_id; // For backward compatibility
 
 $errors = [];
 $success = '';
 $edit_mode = false;
 $edit_question = null;
-
-// Handle AJAX requests for question details
-if (isset($_GET['action']) && $_GET['action'] === 'get_question_details' && isset($_GET['id'])) {
-    $question_id = intval($_GET['id']);
-
-    try {
-        $stmt = $pdo->prepare("
-            SELECT q.*, s.subject_name, c.class_name, u.full_name as creator_name
-            FROM questions_bank q
-            LEFT JOIN subjects s ON q.subject_id = s.id
-            LEFT JOIN classes c ON q.class_id = c.id
-            LEFT JOIN users u ON q.created_by = u.id
-            WHERE q.id = ? AND q.school_id = ?
-        ");
-        $stmt->execute([$question_id, $current_school_id]);
-        $question = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($question) {
-            // Fetch options for MCQ questions
-            if ($question['question_type'] === 'mcq') {
-                $options_stmt = $pdo->prepare("SELECT * FROM question_options WHERE question_id = ? ORDER BY option_letter");
-                $options_stmt->execute([$question_id]);
-                $question['options'] = $options_stmt->fetchAll(PDO::FETCH_ASSOC);
-            }
-
-            // Fetch tags
-            $tags_stmt = $pdo->prepare("SELECT GROUP_CONCAT(tag_name) as tags FROM question_tags WHERE question_id = ?");
-            $tags_stmt->execute([$question_id]);
-            $tags = $tags_stmt->fetch(PDO::FETCH_ASSOC);
-            $question['tags'] = $tags['tags'] ?? '';
-
-            echo json_encode(['success' => true, 'question' => $question]);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Question not found']);
-        }
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
-    }
-    exit;
-}
 
 // Handle POST actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -104,7 +65,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $count = $stmt->fetch(PDO::FETCH_ASSOC)['count'] + 1;
                 
                 $question_code = sprintf('%s%s%02d%04d', $prefix, $year, $month, $count);
-                $school_id = $user_school_id;
                 // Insert question
                 $stmt = $pdo->prepare("
                     INSERT INTO questions_bank
@@ -127,7 +87,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $category_id ?: null,
                     $cognitive_level,
                     $_SESSION['user_id'],
-                    $status,
                     $current_school_id
                 ]);
                 
@@ -142,15 +101,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             
                             $option_stmt = $pdo->prepare("
                                 INSERT INTO question_options 
-                                (question_id, option_text, option_letter, is_correct)
-                                VALUES (?, ?, ?, ?)
+                                (question_id, option_text, option_letter, is_correct, school_id)
+                                VALUES (?, ?, ?, ?, ?)
                             ");
                             
                             $option_stmt->execute([
                                 $question_id,
                                 trim($option_text),
                                 $option_letter,
-                                $is_correct ? 1 : 0
+                                $is_correct ? 1 : 0,
+                                $current_school_id
                             ]);
                         }
                     }
@@ -244,15 +204,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                                 $option_stmt = $pdo->prepare("
                                     INSERT INTO question_options
-                                    (question_id, option_text, option_letter, is_correct)
-                                    VALUES (?, ?, ?, ?)
+                                    (question_id, option_text, option_letter, is_correct, school_id)
+                                    VALUES (?, ?, ?, ?, ?)
                                 ");
 
                                 $option_stmt->execute([
                                     $question_id,
                                     trim($option_text),
                                     $option_letter,
-                                    $is_correct ? 1 : 0
+                                    $is_correct ? 1 : 0,
+                                    $current_school_id
                                 ]);
                             }
                         }
@@ -381,8 +342,7 @@ $classes->execute([$user_school_id]);
 $classes = $classes->fetchAll(PDO::FETCH_ASSOC);
 $categories = $pdo->query("SELECT id, category_name FROM question_categories WHERE is_active = 1 ORDER BY category_name")->fetchAll(PDO::FETCH_ASSOC);
 
-// Handle search and filters
-$search = $_GET['search'] ?? '';
+// Handle filters
 $subject_filter = $_GET['subject_filter'] ?? '';
 $class_filter = $_GET['class_filter'] ?? '';
 $difficulty_filter = $_GET['difficulty_filter'] ?? '';
@@ -427,17 +387,21 @@ if (!empty($status_filter)) {
 
 $query .= " GROUP BY s.subject_name, q.question_type, c.class_name ORDER BY s.subject_name, q.question_type, c.class_name";
 
-// Execute query
-if (!empty($params)) {
-    $stmt = $pdo->prepare($query);
-    $stmt->execute($params);
-    $question_summary = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} else {
-    $question_summary = $pdo->query($query)->fetchAll(PDO::FETCH_ASSOC);
-}
+// Summary pagination
+$summary_page = isset($_GET['summary_page']) ? max(1, intval($_GET['summary_page'])) : 1;
+$summary_per_page = 10;
+$summary_offset = ($summary_page - 1) * $summary_per_page;
 
-// Get total count for display
-$total_summary_count = count($question_summary);
+$summary_count_query = "SELECT COUNT(*) FROM (" . $query . ") as summary_counts";
+$summary_stmt = $pdo->prepare($summary_count_query);
+$summary_stmt->execute($params);
+$total_summary_count = (int)$summary_stmt->fetchColumn();
+$summary_total_pages = max(1, (int)ceil($total_summary_count / $summary_per_page));
+
+$summary_query = $query . " LIMIT " . (int)$summary_per_page . " OFFSET " . (int)$summary_offset;
+$summary_stmt = $pdo->prepare($summary_query);
+$summary_stmt->execute($params);
+$question_summary = $summary_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get statistics
 $total_questions = $pdo->prepare("SELECT COUNT(*) as total FROM questions_bank WHERE school_id = ?");
@@ -462,6 +426,8 @@ $my_questions = $my_questions->fetch(PDO::FETCH_ASSOC)['total'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Questions Bank Management | SahabFormMaster</title>
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -981,185 +947,36 @@ $my_questions = $my_questions->fetch(PDO::FETCH_ASSOC)['total'];
             box-shadow: var(--shadow-soft);
         }
 
-        .table-header-modern {
-            background: var(--gradient-primary);
-            color: white;
-            padding: 1.5rem 2rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .table-title-modern {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 1.25rem;
-            font-weight: 700;
-        }
-
-        .attendance-rate-modern {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: 600;
-        }
 
         .table-wrapper-modern {
             overflow-x: auto;
         }
 
-        .attendance-table-modern {
+        .summary-table-modern {
             width: 100%;
             border-collapse: collapse;
         }
 
-        .attendance-table-modern th {
-            background: var(--gray-50);
-            color: var(--gray-700);
-            font-weight: 600;
-            font-size: 0.875rem;
+        .summary-table-modern th {
+            background: #f1f5f9;
+            color: #0f172a;
+            font-weight: 700;
+            font-size: 0.8rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            padding: 1.25rem 1.5rem;
+            letter-spacing: 0.03em;
+            padding: 0.7rem 0.9rem;
             text-align: left;
-            border-bottom: 2px solid var(--gray-200);
+            border-bottom: 2px solid #e2e8f0;
         }
 
-        .attendance-table-modern td {
-            padding: 1.25rem 1.5rem;
-            border-bottom: 1px solid var(--gray-100);
-            transition: background 0.2s ease;
+        .summary-table-modern td {
+            padding: 0.7rem 0.9rem;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.9rem;
         }
 
-        .attendance-table-modern tr:nth-child(even) {
-            background: var(--gray-50);
-        }
-
-        .attendance-table-modern tr:hover {
-            background: var(--primary-50);
-        }
-
-        .student-number-modern {
-            font-weight: 600;
-            color: var(--gray-900);
-        }
-
-        .admission-number-modern {
-            font-weight: 500;
-            color: var(--gray-600);
-            font-size: 0.875rem;
-        }
-
-        .student-name-modern {
-            font-weight: 600;
-            color: var(--gray-900);
-            font-size: 1.125rem;
-        }
-
-        .status-buttons-modern {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .status-btn-modern {
-            padding: 0.5rem 0.875rem;
-            border: 2px solid transparent;
-            border-radius: 10px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
-            text-transform: uppercase;
-            letter-spacing: 0.025em;
-        }
-
-        .status-present-modern {
-            background: var(--success-100);
-            color: var(--success-700);
-            border-color: var(--success-200);
-        }
-
-        .status-present-modern.active {
-            background: var(--success-500);
-            color: white;
-            border-color: var(--success-500);
-        }
-
-        .status-absent-modern {
-            background: var(--error-100);
-            color: var(--error-700);
-            border-color: var(--error-200);
-        }
-
-        .status-absent-modern.active {
-            background: var(--error-500);
-            color: white;
-            border-color: var(--error-500);
-        }
-
-        .status-late-modern {
-            background: var(--warning-100);
-            color: var(--warning-700);
-            border-color: var(--warning-200);
-        }
-
-        .status-late-modern.active {
-            background: var(--warning-500);
-            color: white;
-            border-color: var(--warning-500);
-        }
-
-        .status-leave-modern {
-            background: var(--accent-100);
-            color: var(--accent-700);
-            border-color: var(--accent-200);
-        }
-
-        .status-leave-modern.active {
-            background: var(--accent-500);
-            color: white;
-            border-color: var(--accent-500);
-        }
-
-        .remarks-input-modern {
-            width: 100%;
-            padding: 0.75rem;
-            border: 2px solid var(--gray-200);
-            border-radius: 10px;
-            font-size: 0.875rem;
-            background: white;
-            transition: all 0.3s ease;
-        }
-
-        .remarks-input-modern:focus {
-            outline: none;
-            border-color: var(--primary-400);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        .history-btn-modern {
-            padding: 0.75rem 1.25rem;
-            background: var(--primary-500);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .history-btn-modern:hover {
-            background: var(--primary-600);
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-medium);
+        .summary-table-modern tr:nth-child(even) td {
+            background: #f9fafb;
         }
 
         /* Submit Section */
@@ -1286,28 +1103,12 @@ $my_questions = $my_questions->fetch(PDO::FETCH_ASSOC)['total'];
                 grid-template-columns: repeat(2, 1fr);
             }
 
-            .table-header-modern {
-                padding: 1rem;
-                flex-direction: column;
-                gap: 0.5rem;
-                text-align: center;
-            }
-
-            .attendance-table-modern th,
-            .attendance-table-modern td {
-                padding: 0.75rem;
+            .summary-table-modern th,
+            .summary-table-modern td {
+                padding: 0.7rem;
                 font-size: 0.8rem;
             }
 
-            .status-buttons-modern {
-                flex-direction: column;
-                gap: 0.25rem;
-            }
-
-            .status-btn-modern {
-                padding: 0.375rem 0.5rem;
-                font-size: 0.7rem;
-            }
         }
 
         @media (max-width: 480px) {
@@ -1400,36 +1201,158 @@ $my_questions = $my_questions->fetch(PDO::FETCH_ASSOC)['total'];
         .gradient-success { background: linear-gradient(135deg, var(--success-500) 0%, var(--success-600) 100%); }
         .gradient-error { background: linear-gradient(135deg, var(--error-500) 0%, var(--error-600) 100%); }
         .gradient-warning { background: linear-gradient(135deg, var(--warning-500) 0%, var(--warning-600) 100%); }
+
+        * {
+            animation: none !important;
+            transition: none !important;
+        }
+
+        body {
+            background: #f5f7fb;
+        }
+
+        .dashboard-container .main-content {
+            width: 100%;
+        }
+
+        .main-container {
+            padding: 1.5rem;
+        }
+
+        .modern-card {
+            border-radius: 18px;
+            margin-bottom: 1.5rem;
+        }
+
+        .modern-card:hover {
+            transform: none;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .card-header-modern {
+            padding: 1.25rem 1.5rem;
+        }
+
+        .card-title-modern {
+            font-size: 1.4rem;
+        }
+
+        .card-subtitle-modern {
+            font-size: 0.95rem;
+        }
+
+        .card-body-modern {
+            padding: 1.5rem;
+        }
+
+        .card-header-modern.with-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .card-header-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .card-header-actions {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .btn-toggle-form {
+            position: relative;
+            z-index: 1;
+            padding: 0.65rem 1rem;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.18);
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+
+        .btn-toggle-form:hover {
+            background: rgba(255, 255, 255, 0.28);
+            transform: translateY(-1px);
+        }
+
+        .btn-toggle-form.is-collapsed {
+            background: rgba(255, 255, 255, 0.35);
+        }
+
+        .preview-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.55);
+            z-index: 2000;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .preview-content {
+            background: #fff;
+            border-radius: 16px;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 24px;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
+            position: relative;
+        }
+
+        .close-preview {
+            position: absolute;
+            right: 16px;
+            top: 12px;
+            font-size: 28px;
+            color: var(--gray-500);
+            cursor: pointer;
+        }
+
+        .question-preview {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+        }
+
     </style>
 </head>
 <body>
-    <!-- Modern Header -->
-    <header class="modern-header">
-        <div class="header-content">
-            <div class="header-brand">
-                <a href="index.php" class="back-btn">
-                    <i class="fas fa-arrow-left"></i>
-                    <span>Back to Dashboard</span>
-                </a>
-                <div class="logo-container">
-                    <i class="fas fa-graduation-cap"></i>
-                </div>
-                <div class="brand-text">
-                    <h1>SahabFormMaster</h1>
-                    <p>Questions Bank</p>
+    <!-- Mobile Navigation Component -->
+    <?php include '../includes/mobile_navigation.php'; ?>
+
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Teacher Portal</p>
+                    </div>
                 </div>
             </div>
-            <div class="header-actions">
-                <div class="user-info">
-                    <div class="user-avatar">
-                        <?php echo strtoupper(substr($_SESSION['full_name'] ?? 'User', 0, 1)); ?>
-                    </div>
-                    <div class="user-details">
-                        <p>Teacher</p>
-                        <span><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'User'); ?></span>
-                    </div>
+            <div class="header-right">
+                <div class="teacher-info">
+                    <p class="teacher-label">Teacher</p>
+                    <span class="teacher-name"><?php echo htmlspecialchars($teacher_name); ?></span>
                 </div>
-                <a href="logout.php" class="logout-btn">
+                <a href="logout.php" class="btn-logout">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </a>
@@ -1439,6 +1362,9 @@ $my_questions = $my_questions->fetch(PDO::FETCH_ASSOC)['total'];
     
         
     <!-- Main Container -->
+    <div class="dashboard-container">
+        <?php include '../includes/teacher_sidebar.php'; ?>
+        <main class="main-content">
     <div class="main-container">
         <!-- Welcome Section -->
         <div class="modern-card animate-fade-in-up">
@@ -1505,16 +1431,22 @@ $my_questions = $my_questions->fetch(PDO::FETCH_ASSOC)['total'];
 
         <!-- Question Editor -->
         <div class="modern-card animate-fade-in-up">
-            <div class="card-header-modern">
-                <h2 class="card-title-modern">
-                    <i class="fas fa-<?php echo $edit_mode ? 'edit' : 'plus'; ?>"></i>
-                    <?php echo $edit_mode ? 'Edit Question' : 'Add New Question'; ?>
-                </h2>
-                <p class="card-subtitle-modern">
-                    <?php echo $edit_mode ? 'Modify existing question details' : 'Create a new question for your question bank'; ?>
-                </p>
+            <div class="card-header-modern with-actions">
+                <div class="card-header-content">
+                    <h2 class="card-title-modern">
+                        <i class="fas fa-<?php echo $edit_mode ? 'edit' : 'plus'; ?>"></i>
+                        <?php echo $edit_mode ? 'Edit Question' : 'Add New Question'; ?>
+                    </h2>
+                    <p class="card-subtitle-modern">
+                        <?php echo $edit_mode ? 'Modify existing question details' : 'Create a new question for your question bank'; ?>
+                    </p>
+                </div>
+                <button type="button" class="btn-toggle-form" id="toggleQuestionForm" aria-expanded="true" aria-controls="questionFormBody">
+                    <i class="fas fa-eye-slash"></i>
+                    <span>Hide Form</span>
+                </button>
             </div>
-            <div class="card-body-modern">
+            <div class="card-body-modern" id="questionFormBody">
                 <form id="questionForm" method="POST">
                 <input type="hidden" name="action" value="<?php echo $edit_mode ? 'update_question' : 'create_question'; ?>">
                 <?php if($edit_mode): ?>
@@ -1729,12 +1661,6 @@ $my_questions = $my_questions->fetch(PDO::FETCH_ASSOC)['total'];
         <div class="controls-modern animate-fade-in-up">
             <div class="form-row-modern">
                 <div class="form-group-modern">
-                    <label class="form-label-modern">Search Questions</label>
-                    <input type="text" name="search" class="form-input-modern" placeholder="Search question text or topic"
-                           value="<?php echo htmlspecialchars($search); ?>" form="searchForm">
-                </div>
-
-                <div class="form-group-modern">
                     <label class="form-label-modern">Subject</label>
                     <select name="subject_filter" class="form-input-modern" form="searchForm">
                         <option value="">All Subjects</option>
@@ -1809,208 +1735,6 @@ $my_questions = $my_questions->fetch(PDO::FETCH_ASSOC)['total'];
             <form method="GET" action="" id="searchForm" style="display: none;"></form>
         </div>
 
-        <!-- Questions List Table -->
-        <div class="modern-card animate-fade-in-up">
-            <div class="card-header-modern">
-                <h2 class="card-title-modern">
-                    <i class="fas fa-list"></i>
-                    Questions Bank (<?php echo $total_questions; ?> questions)
-                </h2>
-                <p class="card-subtitle-modern">
-                    Manage and organize your question collection
-                </p>
-            </div>
-            <div class="card-body-modern">
-
-            <?php
-            // Fetch questions for the main table with pagination
-            $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-            $per_page = 10;
-            $offset = ($page - 1) * $per_page;
-
-            $questions_query = "
-                SELECT q.*, s.subject_name, c.class_name, u.full_name as creator_name
-                FROM questions_bank q
-                LEFT JOIN subjects s ON q.subject_id = s.id
-                LEFT JOIN classes c ON q.class_id = c.id
-                LEFT JOIN users u ON q.created_by = u.id
-                WHERE q.school_id = ?
-            ";
-
-            $questions_params = [$user_school_id];
-
-            if (!empty($subject_filter)) {
-                $questions_query .= " AND q.subject_id = ?";
-                $questions_params[] = $subject_filter;
-            }
-
-            if (!empty($class_filter)) {
-                $questions_query .= " AND q.class_id = ?";
-                $questions_params[] = $class_filter;
-            }
-
-            if (!empty($difficulty_filter)) {
-                $questions_query .= " AND q.difficulty_level = ?";
-                $questions_params[] = $difficulty_filter;
-            }
-
-            if (!empty($type_filter)) {
-                $questions_query .= " AND q.question_type = ?";
-                $questions_params[] = $type_filter;
-            }
-
-            if (!empty($status_filter)) {
-                $questions_query .= " AND q.status = ?";
-                $questions_params[] = $status_filter;
-            }
-
-            if (!empty($search)) {
-                $questions_query .= " AND (q.question_text LIKE ? OR q.topic LIKE ? OR q.question_code LIKE ?)";
-                $search_param = '%' . $search . '%';
-                $questions_params[] = $search_param;
-                $questions_params[] = $search_param;
-                $questions_params[] = $search_param;
-            }
-
-            // Teachers see only their own questions unless they're principal
-            if ($_SESSION['role'] === 'teacher') {
-                $questions_query .= " AND q.created_by = ?";
-                $questions_params[] = $_SESSION['user_id'];
-            }
-
-            $base_query = $questions_query; // Save before adding LIMIT
-            $questions_query .= " ORDER BY q.created_at DESC LIMIT " . (int)$per_page . " OFFSET " . (int)$offset;
-
-            $stmt = $pdo->prepare($questions_query);
-            $stmt->execute($questions_params);
-            $questions = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // Get total count for pagination
-            $count_query = str_replace("SELECT q.*, s.subject_name, c.class_name, u.full_name as creator_name", "SELECT COUNT(*)", $questions_query);
-            $count_query = preg_replace('/ORDER BY.*LIMIT.*OFFSET.*/', '', $count_query);
-            $stmt = $pdo->prepare($count_query);
-            $stmt->execute($questions_params);
-            $total_questions_count = $stmt->fetchColumn();
-            $total_pages = ceil($total_questions_count / $per_page);
-            ?>
-
-            <?php if(empty($questions)): ?>
-                <div class="alert-modern alert-success-modern">
-                    <i class="fas fa-info-circle"></i>
-                    <span>No questions found. Add your first question above!</span>
-                </div>
-            <?php else: ?>
-                <div class="attendance-table-container">
-                    <div class="table-wrapper-modern">
-                        <table class="attendance-table-modern">
-                            <thead>
-                                <tr>
-                                    <th><i class="fas fa-hashtag"></i> Code</th>
-                                    <th><i class="fas fa-question"></i> Question</th>
-                                    <th><i class="fas fa-tag"></i> Type</th>
-                                    <th><i class="fas fa-book"></i> Subject</th>
-                                    <th><i class="fas fa-users"></i> Class</th>
-                                    <th><i class="fas fa-chart-line"></i> Difficulty</th>
-                                    <th><i class="fas fa-info-circle"></i> Status</th>
-                                    <th><i class="fas fa-cogs"></i> Actions</th>
-                                </tr>
-                            </thead>
-                        <tbody>
-                            <?php foreach($questions as $question): ?>
-                                <tr>
-                                    <td>
-                                        <strong><?php echo htmlspecialchars($question['question_code']); ?></strong>
-                                    </td>
-                                    <td>
-                                        <div style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                            <?php echo htmlspecialchars(substr($question['question_text'], 0, 100)); ?>
-                                            <?php if (strlen($question['question_text']) > 100): ?>
-                                                ...
-                                            <?php endif; ?>
-                                        </div>
-                                        <?php if ($question['topic']): ?>
-                                            <small style="color: #6c757d;">Topic: <?php echo htmlspecialchars($question['topic']); ?></small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="type-cell">
-                                        <span class="question-type-badge type-<?php echo $question['question_type']; ?>">
-                                            <?php
-                                            $type_labels = [
-                                                'mcq' => 'MCQ',
-                                                'true_false' => 'T/F',
-                                                'short_answer' => 'Short',
-                                                'essay' => 'Essay',
-                                                'fill_blank' => 'Fill'
-                                            ];
-                                            echo $type_labels[$question['question_type']] ?? ucfirst(substr($question['question_type'], 0, 4));
-                                            ?>
-                                        </span>
-                                    </td>
-                                    <td><?php echo htmlspecialchars($question['subject_name']); ?></td>
-                                    <td><?php echo htmlspecialchars($question['class_name']); ?></td>
-                                    <td>
-                                        <span class="difficulty-badge difficulty-<?php echo $question['difficulty_level']; ?>">
-                                            <?php echo ucfirst(str_replace('_', ' ', $question['difficulty_level'])); ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="status-badge status-<?php echo $question['status']; ?>">
-                                            <?php echo ucfirst($question['status']); ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                                            <button onclick="viewQuestion(<?php echo $question['id']; ?>)" class="btn-modern-primary" title="View Details" style="padding: 0.5rem;">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                            <a href="questions.php?edit=<?php echo $question['id']; ?>" class="btn-modern-primary" title="Edit Question" style="background: var(--success-500); padding: 0.5rem;">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <?php if ($question['status'] !== 'approved' || $_SESSION['role'] === 'principal'): ?>
-                                                <form method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this question?');">
-                                                    <input type="hidden" name="action" value="delete_question">
-                                                    <input type="hidden" name="question_id" value="<?php echo $question['id']; ?>">
-                                                    <button type="submit" class="btn-modern-primary" title="Delete Question" style="background: var(--error-500); padding: 0.5rem;">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </form>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Pagination -->
-                <?php if ($total_pages > 1): ?>
-                    <div class="table-footer">
-                        <div class="pagination">
-                            <?php if ($page > 1): ?>
-                                <a href="?page=<?php echo $page - 1; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo !empty($subject_filter) ? '&subject_filter=' . $subject_filter : ''; ?><?php echo !empty($class_filter) ? '&class_filter=' . $class_filter : ''; ?><?php echo !empty($difficulty_filter) ? '&difficulty_filter=' . $difficulty_filter : ''; ?><?php echo !empty($type_filter) ? '&type_filter=' . $type_filter : ''; ?><?php echo !empty($status_filter) ? '&status_filter=' . $status_filter : ''; ?>" class="btn-modern-primary" style="background: var(--gray-500);">
-                                    <i class="fas fa-chevron-left"></i>
-                                    <span>Previous</span>
-                                </a>
-                            <?php endif; ?>
-
-                            <span style="margin: 0 10px;">
-                                Page <?php echo $page; ?> of <?php echo $total_pages; ?>
-                                (<?php echo $total_questions_count; ?> total questions)
-                            </span>
-
-                            <?php if ($page < $total_pages): ?>
-                                <a href="?page=<?php echo $page + 1; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo !empty($subject_filter) ? '&subject_filter=' . $subject_filter : ''; ?><?php echo !empty($class_filter) ? '&class_filter=' . $class_filter : ''; ?><?php echo !empty($difficulty_filter) ? '&difficulty_filter=' . $difficulty_filter : ''; ?><?php echo !empty($type_filter) ? '&type_filter=' . $type_filter : ''; ?><?php echo !empty($status_filter) ? '&status_filter=' . $status_filter : ''; ?>" class="btn-modern-primary" style="background: var(--gray-500);">
-                                    <span>Next</span>
-                                    <i class="fas fa-chevron-right"></i>
-                                </a>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                <?php endif; ?>
-            <?php endif; ?>
-        </section>
-
         <!-- Questions Bank Summary Table -->
         <div class="modern-card animate-fade-in-up">
             <div class="card-header-modern">
@@ -2031,7 +1755,7 @@ $my_questions = $my_questions->fetch(PDO::FETCH_ASSOC)['total'];
                 <?php else: ?>
                     <div class="attendance-table-container">
                         <div class="table-wrapper-modern">
-                            <table class="attendance-table-modern">
+                            <table class="summary-table-modern">
                                 <thead>
                                     <tr>
                                         <th><i class="fas fa-book"></i> Subject</th>
@@ -2081,12 +1805,40 @@ $my_questions = $my_questions->fetch(PDO::FETCH_ASSOC)['total'];
                                 Last Updated: <?php echo date('d/m/Y H:i'); ?>
                             </span>
                         </div>
+                        <div class="pagination" style="margin-top: 12px;">
+                            <?php
+                                $summary_params = $_GET;
+                                $summary_params['summary_page'] = max(1, $summary_page - 1);
+                                $summary_prev_url = 'questions.php' . '?' . http_build_query($summary_params);
+                                $summary_params['summary_page'] = min($summary_total_pages, $summary_page + 1);
+                                $summary_next_url = 'questions.php' . '?' . http_build_query($summary_params);
+                            ?>
+                            <?php if ($summary_page > 1): ?>
+                                <a href="<?php echo htmlspecialchars($summary_prev_url); ?>" class="btn-modern-primary" style="background: var(--gray-500);">
+                                    <i class="fas fa-chevron-left"></i>
+                                    <span>Previous</span>
+                                </a>
+                            <?php endif; ?>
+
+                            <span style="margin: 0 10px;">
+                                Page <?php echo $summary_page; ?> of <?php echo $summary_total_pages; ?>
+                            </span>
+
+                            <?php if ($summary_page < $summary_total_pages): ?>
+                                <a href="<?php echo htmlspecialchars($summary_next_url); ?>" class="btn-modern-primary" style="background: var(--gray-500);">
+                                    <span>Next</span>
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 <?php endif; ?>
             </div>
         </div>
 
         
+    </div>
+        </main>
     </div>
 
     <!-- Preview Modal -->
@@ -2306,173 +2058,6 @@ $my_questions = $my_questions->fetch(PDO::FETCH_ASSOC)['total'];
             document.getElementById('previewModal').style.display = 'none';
         }
         
-        // View question details
-        function viewQuestion(questionId) {
-            // Fetch question details via AJAX
-            fetch('questions.php?action=get_question_details&id=' + questionId)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        showQuestionModal(data.question);
-                    } else {
-                        alert('Error loading question details: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    alert('Error: ' + error.message);
-                });
-        }
-
-        // Show question details modal
-        function showQuestionModal(question) {
-            let modalHTML = `
-                <div id="questionModal" class="preview-modal">
-                    <div class="preview-content" style="max-width: 900px;">
-                        <span class="close-preview" onclick="closeQuestionModal()">&times;</span>
-                        <h2 style="margin-bottom: 20px; color: var(--primary);">
-                            <i class="fas fa-eye"></i> Question Details
-                        </h2>
-
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                            <div>
-                                <strong>Question Code:</strong> ${question.question_code || 'N/A'}
-                            </div>
-                            <div>
-                                <strong>Status:</strong>
-                                <span class="status-badge status-${question.status || 'draft'}">
-                                    ${question.status ? question.status.charAt(0).toUpperCase() + question.status.slice(1) : 'Draft'}
-                                </span>
-                            </div>
-                            <div>
-                                <strong>Subject:</strong> ${question.subject_name || 'N/A'}
-                            </div>
-                            <div>
-                                <strong>Class:</strong> ${question.class_name || 'N/A'}
-                            </div>
-                            <div>
-                                <strong>Difficulty:</strong>
-                                <span class="difficulty-badge difficulty-${question.difficulty_level || 'medium'}">
-                                    ${question.difficulty_level ? question.difficulty_level.replace('_', ' ').toUpperCase() : 'MEDIUM'}
-                                </span>
-                            </div>
-                            <div>
-                                <strong>Marks:</strong> ${question.marks || 'N/A'}
-                            </div>
-                            <div>
-                                <strong>Type:</strong> ${getQuestionTypeLabel(question.question_type)}
-                            </div>
-                            <div>
-                                <strong>Cognitive Level:</strong> ${question.cognitive_level ? question.cognitive_level.charAt(0).toUpperCase() + question.cognitive_level.slice(1) : 'N/A'}
-                            </div>
-                        </div>
-
-                        <div style="margin-bottom: 20px;">
-                            <strong>Topic:</strong> ${question.topic || 'N/A'}
-                        </div>
-
-                        <div style="margin-bottom: 20px;">
-                            <strong>Question Text:</strong>
-                            <div style="border: 1px solid #ddd; padding: 15px; border-radius: 5px; margin-top: 10px; background: #f8f9fa;">
-                                ${question.question_text || 'N/A'}
-                            </div>
-                        </div>
-            `;
-
-            // Add options for MCQ questions
-            if (question.question_type === 'mcq' && question.options && question.options.length > 0) {
-                modalHTML += `
-                    <div style="margin-bottom: 20px;">
-                        <strong>Options:</strong>
-                        <div style="border: 1px solid #ddd; padding: 15px; border-radius: 5px; margin-top: 10px; background: #f8f9fa;">
-                            <div class="option-list">
-                `;
-
-                question.options.forEach(option => {
-                    modalHTML += `
-                        <div ${option.is_correct ? 'style="background: #d4edda; border-color: #c3e6cb;"' : ''}>
-                            <strong>${option.option_letter}.</strong> ${option.option_text}
-                            ${option.is_correct ? ' <span style="color: green; font-weight: bold;">✓ Correct</span>' : ''}
-                        </div>
-                    `;
-                });
-
-                modalHTML += `
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            // Add tags if any
-            if (question.tags) {
-                modalHTML += `
-                    <div style="margin-bottom: 20px;">
-                        <strong>Tags:</strong>
-                        <div style="margin-top: 10px;">
-                            ${question.tags.split(',').map(tag => tag.trim()).filter(tag => tag).map(tag =>
-                                `<span class="tag">${tag}</span>`
-                            ).join(' ')}
-                        </div>
-                    </div>
-                `;
-            }
-
-            // Add metadata
-            modalHTML += `
-                        <div style="border-top: 1px solid #ddd; padding-top: 20px; margin-top: 20px;">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                                <div>
-                                    <strong>Created By:</strong> ${question.creator_name || 'N/A'}
-                                </div>
-                                <div>
-                                    <strong>Created Date:</strong> ${question.created_at ? new Date(question.created_at).toLocaleDateString() : 'N/A'}
-                                </div>
-                                <div>
-                                    <strong>Last Updated:</strong> ${question.updated_at ? new Date(question.updated_at).toLocaleDateString() : 'N/A'}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
-                            <button onclick="editQuestion(${question.id})" class="btn primary" style="margin-right: 10px;">
-                                <i class="fas fa-edit"></i> Edit Question
-                            </button>
-                            <button onclick="closeQuestionModal()" class="btn secondary">
-                                <i class="fas fa-times"></i> Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            document.body.insertAdjacentHTML('beforeend', modalHTML);
-        }
-
-        // Close question modal
-        function closeQuestionModal() {
-            const modal = document.getElementById('questionModal');
-            if (modal) {
-                modal.remove();
-            }
-        }
-
-        // Edit question (redirect to edit mode)
-        function editQuestion(questionId) {
-            window.location.href = 'questions.php?edit=' + questionId;
-        }
-
-        // Helper function to get question type label
-        function getQuestionTypeLabel(type) {
-            const labels = {
-                'mcq': 'Multiple Choice',
-                'true_false': 'True/False',
-                'short_answer': 'Short Answer',
-                'essay': 'Essay',
-                'fill_blank': 'Fill in the Blank'
-            };
-            return labels[type] || type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ');
-        }
-        
         // Export questions
         function exportQuestions() {
             // This would export questions in various formats (PDF, Word, Excel)
@@ -2481,7 +2066,7 @@ $my_questions = $my_questions->fetch(PDO::FETCH_ASSOC)['total'];
         
         // Print table
         function printTable() {
-            const tableContent = document.querySelector('.modern-table').outerHTML;
+            const tableContent = document.querySelector('.summary-table-modern').outerHTML;
             const originalContent = document.body.innerHTML;
 
             document.body.innerHTML = `
@@ -2506,7 +2091,7 @@ $my_questions = $my_questions->fetch(PDO::FETCH_ASSOC)['total'];
                     <body>
                         <h1>Questions Bank Summary</h1>
                         <p>Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
-                        <p>Total Entries: ${document.querySelectorAll('.modern-table tbody tr').length}</p>
+                        <p>Total Entries: ${document.querySelectorAll('.summary-table-modern tbody tr').length}</p>
                         ${tableContent}
                     </body>
                 </html>
@@ -2516,35 +2101,26 @@ $my_questions = $my_questions->fetch(PDO::FETCH_ASSOC)['total'];
             document.body.innerHTML = originalContent;
         }
 
-        // Export table
-        function exportTable() {
-            const table = document.querySelector('.modern-table');
-            let csv = 'Subject,Question Type,Total Questions,Class\n';
-
-            const rows = table.querySelectorAll('tbody tr');
-            rows.forEach(row => {
-                const cells = row.querySelectorAll('td');
-                const subject = cells[0].textContent.trim();
-                const type = cells[1].textContent.trim();
-                const count = cells[2].textContent.trim();
-                const className = cells[3].textContent.trim();
-                csv += `"${subject}","${type}","${count}","${className}"\n`;
-            });
-
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `questions-bank-summary-${new Date().toISOString().split('T')[0]}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-        }
-        
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             toggleQuestionOptions();
+
+            const toggleBtn = document.getElementById('toggleQuestionForm');
+            const formBody = document.getElementById('questionFormBody');
+            if (toggleBtn && formBody) {
+                const setState = (expanded) => {
+                    formBody.style.display = expanded ? 'block' : 'none';
+                    toggleBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+                    toggleBtn.classList.toggle('is-collapsed', !expanded);
+                    toggleBtn.innerHTML = expanded
+                        ? '<i class="fas fa-eye-slash"></i><span>Hide Form</span>'
+                        : '<i class="fas fa-eye"></i><span>Show Form</span>';
+                };
+                setState(true);
+                toggleBtn.addEventListener('click', function() {
+                    setState(formBody.style.display === 'none');
+                });
+            }
             
             // Close preview modal when clicking outside
             window.onclick = function(event) {
@@ -2553,6 +2129,12 @@ $my_questions = $my_questions->fetch(PDO::FETCH_ASSOC)['total'];
                     closePreview();
                 }
             };
+
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    closePreview();
+                }
+            });
         });
     </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>

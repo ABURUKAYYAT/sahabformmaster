@@ -25,6 +25,8 @@ $generated_html = '';
 $paper_id = 0;
 $answer_key_html = '';
 
+$teacher_name = $_SESSION['full_name'] ?? 'Teacher';
+
 // Fetch school information for the form
 $school_info = $pdo->query("SELECT * FROM school_info LIMIT 1")->fetch(PDO::FETCH_ASSOC);
 
@@ -1270,9 +1272,12 @@ $form_data = [
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Paper Builder | SahabFormMaster</title>
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,500;8..60,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root {
             --sky-50: #f3f8ff;
@@ -1291,6 +1296,8 @@ $form_data = [
             --amber: #f0a202;
             --danger: #cd3a53;
             --surface: #ffffff;
+            --gradient-primary: linear-gradient(135deg, #2563eb 0%, #1d4ed8 45%, #1e40af 100%);
+            --shadow-soft: 0 12px 28px rgba(15, 23, 42, 0.08);
         }
 
         * { box-sizing: border-box; }
@@ -1298,25 +1305,28 @@ $form_data = [
             margin: 0;
             font-family: 'Plus Jakarta Sans', sans-serif;
             color: var(--ink-900);
-            background:
-                radial-gradient(circle at 0% 0%, #ffffff 0%, #f6fbff 45%, #ecf4ff 100%);
+            background: #f5f7fb;
         }
 
-        .shell {
-            max-width: 1360px;
-            margin: 24px auto;
-            padding: 0 18px 30px;
+        .dashboard-container .main-content {
+            width: 100%;
+        }
+
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem;
         }
 
         .hero {
-            background: linear-gradient(130deg, #0f2f5c 0%, #1f4b87 55%, #3268ad 100%);
+            background: var(--gradient-primary);
             color: #fff;
-            border-radius: 16px;
+            border-radius: 18px;
             padding: 22px 24px;
             display: grid;
             grid-template-columns: 1fr auto;
             gap: 18px;
-            box-shadow: 0 14px 34px rgba(20, 46, 87, 0.28);
+            box-shadow: var(--shadow-soft);
         }
 
         .hero h1 {
@@ -1375,14 +1385,15 @@ $form_data = [
 
         .toolbar {
             margin-top: 14px;
-            background: var(--surface);
+            background: #fff;
             border: 1px solid var(--line);
-            border-radius: 14px;
-            padding: 14px;
+            border-radius: 18px;
+            padding: 16px;
             display: grid;
             grid-template-columns: repeat(5, minmax(120px, 1fr)) 1.4fr auto;
             gap: 10px;
             align-items: end;
+            box-shadow: var(--shadow-soft);
         }
 
         .field label {
@@ -1435,10 +1446,11 @@ $form_data = [
         }
 
         .card {
-            background: var(--surface);
+            background: #fff;
             border: 1px solid var(--line);
-            border-radius: 14px;
-            padding: 14px;
+            border-radius: 18px;
+            padding: 16px;
+            box-shadow: var(--shadow-soft);
         }
 
         .card h2 {
@@ -1500,7 +1512,7 @@ $form_data = [
             font-size: 0.9rem;
         }
 
-        .sidebar {
+        .builder-sidebar {
             position: sticky;
             top: 16px;
             display: grid;
@@ -1588,12 +1600,54 @@ $form_data = [
         @media (max-width: 1100px) {
             .toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .workspace { grid-template-columns: 1fr; }
-            .sidebar { position: static; }
+            .builder-sidebar { position: static; }
+        }
+
+        @media (max-width: 768px) {
+            .hero {
+                grid-template-columns: 1fr;
+                text-align: left;
+            }
+
+            .hero-metrics {
+                justify-content: flex-start;
+            }
         }
     </style>
 </head>
 <body>
-<div class="shell">
+    <!-- Mobile Navigation Component -->
+    <?php include '../includes/mobile_navigation.php'; ?>
+
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Teacher Portal</p>
+                    </div>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="teacher-info">
+                    <p class="teacher-label">Teacher</p>
+                    <span class="teacher-name"><?php echo htmlspecialchars($teacher_name); ?></span>
+                </div>
+                <a href="logout.php" class="btn-logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        <?php include '../includes/teacher_sidebar.php'; ?>
+        <main class="main-content">
+            <div class="main-container">
     <header class="hero">
         <div>
             <h1>Paper Builder</h1>
@@ -1796,7 +1850,7 @@ $form_data = [
                 </section>
             </div>
 
-            <aside class="sidebar">
+            <aside class="builder-sidebar">
                 <section class="card">
                     <h2>Selection Summary</h2>
                     <div class="summary-grid">
@@ -1833,6 +1887,8 @@ $form_data = [
         </section>
     <?php endif; ?>
 </div>
+        </main>
+    </div>
 
 <?php include '../includes/floating-button.php'; ?>
 

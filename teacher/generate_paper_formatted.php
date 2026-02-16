@@ -103,6 +103,20 @@ foreach ($questions_data as $row) {
     }
 }
 
+// Order sections in a standard sequence
+$ordered_types = ['mcq', 'true_false', 'short_answer', 'essay', 'fill_blank'];
+$ordered_questions_by_type = [];
+foreach ($ordered_types as $type) {
+    if (!empty($questions_by_type[$type])) {
+        $ordered_questions_by_type[$type] = $questions_by_type[$type];
+        unset($questions_by_type[$type]);
+    }
+}
+foreach ($questions_by_type as $type => $items) {
+    $ordered_questions_by_type[$type] = $items;
+}
+$questions_by_type = $ordered_questions_by_type;
+
 // Function to get section title for question type
 function getSectionTitle($question_type) {
     $titles = [
@@ -122,6 +136,125 @@ foreach ($questions_by_type as $type_questions) {
     foreach ($type_questions as $question) {
         $total_calculated_marks += $question['marks'];
     }
+}
+
+if (isset($_POST['download_pdf']) && $_POST['download_pdf'] === '1') {
+    require_once '../TCPDF-main/TCPDF-main/tcpdf.php';
+
+    $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
+    $pdf->SetCreator('Sahab School Management System');
+    $pdf->SetAuthor($_SESSION['full_name'] ?? 'Teacher');
+    $pdf->SetTitle($paper_title);
+    $pdf->SetSubject($subject_name ?: 'Exam Paper');
+    $pdf->SetHeaderData('', 0, '', '');
+    $pdf->setPrintHeader(false);
+    $pdf->setPrintFooter(false);
+    $pdf->SetMargins(15, 18, 15);
+    $pdf->SetAutoPageBreak(true, 18);
+    $pdf->SetFont('times', '', 11);
+    $pdf->AddPage();
+
+    // Header
+    $pdf->SetFont('times', 'B', 14);
+    $pdf->Cell(0, 6, strtoupper($school_name ?: 'SCHOOL NAME'), 0, 1, 'C');
+    if (!empty($school_motto)) {
+        $pdf->SetFont('times', 'I', 10);
+        $pdf->Cell(0, 5, $school_motto, 0, 1, 'C');
+    }
+    if (!empty($school_address)) {
+        $pdf->SetFont('times', '', 9);
+        $pdf->Cell(0, 4, $school_address, 0, 1, 'C');
+    }
+    $pdf->Ln(4);
+
+    $pdf->SetFont('times', 'B', 12);
+    $pdf->Cell(0, 6, strtoupper($paper_title), 0, 1, 'C');
+    $pdf->Ln(2);
+
+    // Paper info
+    $pdf->SetFont('times', '', 10);
+    $info = [
+        'Subject' => $subject_name,
+        'Class' => $class_name,
+        'Term' => $term,
+        'Time' => $time_allotted ? ($time_allotted . ' minutes') : '',
+        'Total Marks' => $total_marks ?: $total_calculated_marks
+    ];
+    $line = '';
+    foreach ($info as $label => $value) {
+        if (!empty($value)) {
+            $line .= $label . ': ' . $value . '    ';
+        }
+    }
+    if (!empty($line)) {
+        $pdf->MultiCell(0, 5, trim($line), 0, 'C');
+        $pdf->Ln(2);
+    }
+
+    // Instructions
+    if (!empty($general_instructions)) {
+        $pdf->SetFont('times', 'B', 11);
+        $pdf->Cell(0, 6, 'GENERAL INSTRUCTIONS:', 0, 1);
+        $pdf->SetFont('times', '', 10);
+        $instructions = explode("\n", $general_instructions);
+        $counter = 1;
+        foreach ($instructions as $instruction) {
+            $instruction = trim($instruction);
+            if (!empty($instruction)) {
+                $pdf->MultiCell(0, 5, $counter . '. ' . $instruction, 0, 'L');
+                $counter++;
+            }
+        }
+        $pdf->Ln(2);
+    }
+
+    if (!empty($specific_instructions)) {
+        $pdf->SetFont('times', 'B', 11);
+        $pdf->Cell(0, 6, 'SPECIFIC INSTRUCTIONS:', 0, 1);
+        $pdf->SetFont('times', '', 10);
+        $pdf->MultiCell(0, 5, $specific_instructions, 0, 'L');
+        $pdf->Ln(2);
+    }
+
+    // Questions
+    $question_counter = 1;
+    foreach ($questions_by_type as $question_type => $type_questions) {
+        $section_title = getSectionTitle($question_type);
+        $pdf->SetFont('times', 'B', 11);
+        $pdf->Cell(0, 7, $section_title, 0, 1);
+        $pdf->Ln(2);
+
+        foreach ($type_questions as $question) {
+            $pdf->SetFont('times', '', 11);
+            $marks_text = $question['marks'] ? ' (' . $question['marks'] . ' marks)' : '';
+            $pdf->MultiCell(0, 6, $question_counter . '. ' . strip_tags($question['question_text']) . $marks_text, 0, 'L');
+
+            if ($question_type === 'mcq' && !empty($question['options'])) {
+                $pdf->SetFont('times', '', 10);
+                foreach ($question['options'] as $option) {
+                    $pdf->MultiCell(0, 5, '   (' . $option['letter'] . ') ' . $option['text'], 0, 'L');
+                }
+                $pdf->Ln(1);
+            } elseif ($question_type === 'true_false') {
+                $pdf->SetFont('times', '', 10);
+                $pdf->Cell(0, 5, '[   ] True      [   ] False', 0, 1);
+                $pdf->Ln(1);
+            } elseif ($question_type === 'fill_blank') {
+                $pdf->Ln(2);
+            } elseif ($question_type === 'short_answer') {
+                $pdf->Ln(3);
+            } elseif ($question_type === 'essay') {
+                $pdf->Ln(6);
+            }
+
+            $question_counter++;
+        }
+        $pdf->Ln(2);
+    }
+
+    $filename = preg_replace('/[^a-zA-Z0-9_-]+/', '_', strtolower($paper_title)) . '.pdf';
+    $pdf->Output($filename, 'D');
+    exit;
 }
 
 ?>
@@ -146,23 +279,21 @@ foreach ($questions_by_type as $type_questions) {
             color: #000;
             background: white;
             margin: 0;
-            padding: 20px;
+            padding: 0;
         }
 
         .exam-paper {
             max-width: 210mm;
             min-height: 297mm;
             margin: 0 auto;
-            padding: 20mm;
+            padding: 20mm 18mm;
             background: white;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
 
         .header {
             text-align: center;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #000;
-            padding-bottom: 10px;
+            margin-bottom: 16px;
+            padding-bottom: 0;
         }
 
         .school-name {
@@ -184,20 +315,18 @@ foreach ($questions_by_type as $type_questions) {
         }
 
         .paper-title {
-            font-size: 14pt;
+            font-size: 13pt;
             font-weight: bold;
             text-transform: uppercase;
-            margin: 15px 0;
+            margin: 10px 0 4px;
         }
 
         .exam-info {
             display: flex;
             flex-wrap: wrap;
-            gap: 20px;
-            margin: 20px 0;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 5px;
+            gap: 16px;
+            margin: 10px 0 6px;
+            padding: 0;
             justify-content: center;
         }
 
@@ -209,7 +338,7 @@ foreach ($questions_by_type as $type_questions) {
 
         .info-label {
             font-weight: bold;
-            color: #2c3e50;
+            color: #000;
         }
 
         .info-value {
@@ -218,7 +347,7 @@ foreach ($questions_by_type as $type_questions) {
 
         .instructions-container {
             display: block;
-            margin: 20px 0;
+            margin: 14px 0;
         }
 
         .instructions-section {
@@ -229,9 +358,10 @@ foreach ($questions_by_type as $type_questions) {
 
         .instructions-title {
             font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 10px;
-            font-size: 14px;
+            color: #000;
+            margin-bottom: 6px;
+            font-size: 11pt;
+            text-transform: uppercase;
         }
 
         .instructions-list {
@@ -246,16 +376,16 @@ foreach ($questions_by_type as $type_questions) {
         }
 
         .instruction-item {
-            margin: 5px 0;
-            color: #333;
+            margin: 4px 0;
+            color: #000;
             display: flex;
             align-items: flex-start;
-            gap: 10px;
+            gap: 8px;
         }
 
         .instruction-bullet {
             font-weight: bold;
-            color: #3498db;
+            color: #000;
             min-width: 15px;
         }
 
@@ -266,23 +396,17 @@ foreach ($questions_by_type as $type_questions) {
 
         .section-header {
             font-weight: bold;
-            font-size: 14pt;
-            color: #2c3e50;
-            margin-bottom: 15px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #3498db;
+            font-size: 12pt;
+            color: #000;
+            margin-bottom: 8px;
+            padding-bottom: 0;
             text-transform: uppercase;
         }
 
         .question {
-            margin: 15px 0;
-            padding: 12px;
-            border-bottom: 1px solid #eee;
+            margin: 6px 0 6px;
+            padding: 0;
             page-break-inside: avoid;
-        }
-
-        .question:last-child {
-            border-bottom: none;
         }
 
         .question-header {
@@ -295,21 +419,21 @@ foreach ($questions_by_type as $type_questions) {
         .question-number {
             font-weight: bold;
             font-size: 12pt;
-            color: #2c3e50;
-            min-width: 25px;
+            color: #000;
+            min-width: 24px;
         }
 
         .question-marks {
             font-weight: bold;
             font-style: italic;
-            color: #e74c3c;
+            color: #000;
             font-size: 11pt;
         }
 
         .question-text {
-            margin-bottom: 10px;
+            margin-bottom: 4px;
             line-height: 1.6;
-            color: #333;
+            color: #000;
             flex: 1;
         }
 
@@ -329,19 +453,19 @@ foreach ($questions_by_type as $type_questions) {
 
         .option-letter {
             font-weight: bold;
-            color: #27ae60;
+            color: #000;
             min-width: 15px;
         }
 
         .option-text {
-            color: #555;
+            color: #000;
             line-height: 1.4;
         }
 
         .true-false-options {
             display: flex;
-            gap: 30px;
-            margin-top: 8px;
+            gap: 20px;
+            margin-top: 6px;
         }
 
         .true-false-option {
@@ -351,42 +475,38 @@ foreach ($questions_by_type as $type_questions) {
         }
 
         .answer-space {
-            margin: 15px 0;
-            border-bottom: 1px dashed #000;
-            min-height: 40px;
-            padding: 8px 0;
+            margin: 4px 0 0;
+            min-height: 24px;
         }
 
         .answer-space.short {
-            min-height: 60px;
+            min-height: 40px;
         }
 
         .answer-space.essay {
-            min-height: 150px;
+            min-height: 90px;
         }
 
         .footer {
             text-align: center;
-            margin-top: 40px;
-            padding-top: 15px;
-            border-top: 1px solid #000;
+            margin-top: 24px;
+            padding-top: 0;
             font-size: 10pt;
-            color: #666;
+            color: #000;
         }
 
         .summary-box {
-            background: #ecf0f1;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
+            background: #fff;
+            padding: 10px 0;
+            margin: 12px 0;
             text-align: center;
         }
 
         .summary-item {
             display: inline-block;
-            margin: 0 15px;
+            margin: 0 12px;
             font-weight: bold;
-            color: #2c3e50;
+            color: #000;
         }
 
         @media print {
@@ -412,18 +532,14 @@ foreach ($questions_by_type as $type_questions) {
         }
 
         .print-btn {
-            background: #3498db;
+            background: #111827;
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
+            padding: 10px 16px;
+            border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
-            margin: 0 10px;
-        }
-
-        .print-btn:hover {
-            background: #2980b9;
+            margin: 0 8px;
         }
     </style>
 </head>
@@ -478,9 +594,10 @@ foreach ($questions_by_type as $type_questions) {
 
             <div class="info-item">
                 <span class="info-label">Total Marks:</span>
-                <span class="info-value"><?php echo $total_marks; ?></span>
+                <span class="info-value"><?php echo $total_marks ?: $total_calculated_marks; ?></span>
             </div>
         </div>
+
 
         <!-- Instructions -->
         <div class="instructions-container">
@@ -546,14 +663,8 @@ foreach ($questions_by_type as $type_questions) {
                         <?php elseif ($question_type === 'true_false'): ?>
                             <!-- True/False Questions -->
                             <div class="true-false-options">
-                                <div class="true-false-option">
-                                    <input type="radio" name="q<?php echo $question_id; ?>" value="true">
-                                    <span>True</span>
-                                </div>
-                                <div class="true-false-option">
-                                    <input type="radio" name="q<?php echo $question_id; ?>" value="false">
-                                    <span>False</span>
-                                </div>
+                                <div class="true-false-option">[ ] True</div>
+                                <div class="true-false-option">[ ] False</div>
                             </div>
                         <?php elseif ($question_type === 'fill_blank'): ?>
                             <!-- Fill in the Blank -->
@@ -595,11 +706,30 @@ foreach ($questions_by_type as $type_questions) {
         <button class="print-btn" onclick="window.location.href='generate_paper.php'">⬅️ Back</button>
     </div>
 
+    <form id="pdfDownloadForm" method="POST" action="generate_paper_formatted.php" style="display: none;">
+        <input type="hidden" name="download_pdf" value="1">
+        <input type="hidden" name="selected_questions" value="<?php echo htmlspecialchars(json_encode($selected_questions)); ?>">
+        <input type="hidden" name="paper_title" value="<?php echo htmlspecialchars($paper_title); ?>">
+        <input type="hidden" name="general_instructions" value="<?php echo htmlspecialchars($general_instructions); ?>">
+        <input type="hidden" name="instructions" value="<?php echo htmlspecialchars($specific_instructions); ?>">
+        <input type="hidden" name="exam_type" value="<?php echo htmlspecialchars($exam_type); ?>">
+        <input type="hidden" name="subject_id" value="<?php echo htmlspecialchars((string)$subject_id); ?>">
+        <input type="hidden" name="class_id" value="<?php echo htmlspecialchars((string)$class_id); ?>">
+        <input type="hidden" name="term" value="<?php echo htmlspecialchars($term); ?>">
+        <input type="hidden" name="time_allotted" value="<?php echo htmlspecialchars((string)$time_allotted); ?>">
+        <input type="hidden" name="total_marks" value="<?php echo htmlspecialchars((string)$total_marks); ?>">
+    </form>
+
     <script>
         function downloadPDF() {
-            // This would integrate with a PDF generation library
-            alert('PDF download functionality would be implemented with a server-side PDF generator.');
-            window.print(); // Fallback to print
+            const form = document.getElementById('pdfDownloadForm');
+            if (form) {
+                form.submit();
+            }
         }
-    </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
+    </script>
+
+    <?php include '../includes/floating-button.php'; ?>
+
+</body>
 </html>

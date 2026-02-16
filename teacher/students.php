@@ -10,7 +10,7 @@ if (!isset($_SESSION['user_id']) || strtolower($_SESSION['role'] ?? '') !== 'tea
 }
 $current_school_id = require_school_auth();
 $teacher_id = intval($_SESSION['user_id']);
-$teacher_id = intval($_SESSION['user_id']);
+$teacher_name = $_SESSION['full_name'] ?? 'Teacher';
 $errors = [];
 $success = '';
 
@@ -795,89 +795,135 @@ if ($class_id > 0) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher Students | SahabFormMaster</title>
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background: #f5f7fb;
+        }
+
+        .dashboard-container .main-content {
+            width: 100%;
+        }
+
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        .panel,
+        .quick-actions-section,
+        .content-header,
+        .alert {
+            background: #ffffff;
+            border: 1px solid #cfe1ff;
+            border-radius: 12px;
+            box-shadow: none;
+        }
+
+        .content-header {
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .quick-actions-section {
+            padding: 1.25rem 1.5rem;
+        }
+
+        .panel-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #cfe1ff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            background: #1d4ed8;
+            color: #fff;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .panel-body {
+            padding: 1.5rem;
+        }
+
+        .btn-toggle-form {
+            border: 1px solid #1d4ed8;
+            background: #fff;
+            color: #1d4ed8;
+            border-radius: 999px;
+            padding: 0.5rem 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 1rem;
+        }
+
+        .quick-actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .quick-action-card {
+            background: #1d4ed8;
+            color: #fff;
+            border: 1px solid #1d4ed8;
+        }
+
+        .students-table thead th {
+            background: #1d4ed8;
+            color: #fff;
+        }
+
+        .btn {
+            background: #1d4ed8;
+            color: #fff;
+            border: 1px solid #1d4ed8;
+        }
+
+        .btn-primary { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+        .btn-success { background: #16a34a; border-color: #16a34a; color: #fff; }
+        .btn-info { background: #0ea5e9; border-color: #0ea5e9; color: #fff; }
+        .btn-danger { background: #dc2626; border-color: #dc2626; color: #fff; }
+        .btn-warning { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+        .btn-secondary { background: #2563eb; border-color: #2563eb; color: #fff; }
+
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 1rem;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .form-actions {
+                flex-direction: column-reverse;
+            }
+        }
+    </style>
 </head>
 <body>
 
-    <!-- Mobile Menu Toggle -->
-    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
-        <i class="fas fa-bars"></i>
-    </button>
+        <!-- Mobile Navigation Component -->
+    <?php include '../includes/mobile_navigation.php'; ?>
 
-    <!-- Mobile Navigation Dropdown -->
-    <div class="mobile-nav-dropdown" id="mobileNavDropdown">
-        <div class="mobile-nav-header">
-            <h3>Navigation</h3>
-            <button class="mobile-nav-close" id="mobileNavClose">&times;</button>
-        </div>
-        <nav class="mobile-nav-menu">
-            <a href="index.php" class="mobile-nav-link">
-                <i class="fas fa-tachometer-alt"></i>
-                <span>Dashboard</span>
-            </a>
-            <a href="schoolfeed.php" class="mobile-nav-link">
-                <i class="fas fa-newspaper"></i>
-                <span>School Feeds</span>
-            </a>
-            <a href="school_diary.php" class="mobile-nav-link">
-                <i class="fas fa-book"></i>
-                <span>School Diary</span>
-            </a>
-            <a href="students.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'students.php' ? 'active' : ''; ?>">
-                <i class="fas fa-users"></i>
-                <span>Students</span>
-            </a>
-            <a href="results.php" class="mobile-nav-link">
-                <i class="fas fa-chart-line"></i>
-                <span>Results</span>
-            </a>
-            <a href="subjects.php" class="mobile-nav-link">
-                <i class="fas fa-book-open"></i>
-                <span>Subjects</span>
-            </a>
-            <a href="questions.php" class="mobile-nav-link">
-                <i class="fas fa-question-circle"></i>
-                <span>Questions</span>
-            </a>
-            <a href="lesson-plan.php" class="mobile-nav-link">
-                <i class="fas fa-clipboard-list"></i>
-                <span>Lesson Plans</span>
-            </a>
-            <a href="curricullum.php" class="mobile-nav-link">
-                <i class="fas fa-graduation-cap"></i>
-                <span>Curriculum</span>
-            </a>
-            <a href="teacher_class_activities.php" class="mobile-nav-link">
-                <i class="fas fa-tasks"></i>
-                <span>Class Activities</span>
-            </a>
-            <a href="student-evaluation.php" class="mobile-nav-link">
-                <i class="fas fa-star"></i>
-                <span>Evaluations</span>
-            </a>
-            <a href="class_attendance.php" class="mobile-nav-link">
-                <i class="fas fa-calendar-check"></i>
-                <span>Attendance</span>
-            </a>
-            <a href="timebook.php" class="mobile-nav-link">
-                <i class="fas fa-clock"></i>
-                <span>Time Book</span>
-            </a>
-            <a href="permissions.php" class="mobile-nav-link">
-                <i class="fas fa-key"></i>
-                <span>Permissions</span>
-            </a>
-            <a href="payments.php" class="mobile-nav-link">
-                <i class="fas fa-money-bill-wave"></i>
-                <span>Payments</span>
-            </a>
-        </nav>
-    </div>
-
-    <!-- Header -->
+<!-- Header -->
     <header class="dashboard-header">
         <div class="header-container">
             <!-- Logo and School Name -->
@@ -891,16 +937,12 @@ if ($class_id > 0) {
                 </div>
             </div>
 
-            <!-- Teacher Info, Dashboard, and Logout -->
+            <!-- Teacher Info and Logout -->
             <div class="header-right">
                 <div class="teacher-info">
                     <p class="teacher-label">Teacher</p>
-                    <span class="teacher-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Teacher'); ?></span>
+                    <span class="teacher-name"><?php echo htmlspecialchars($teacher_name); ?></span>
                 </div>
-                <a href="index.php" class="btn-dashboard">
-                    <i class="fas fa-tachometer-alt"></i>
-                    <span>Dashboard</span>
-                </a>
                 <a href="logout.php" class="btn-logout">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
@@ -909,8 +951,11 @@ if ($class_id > 0) {
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="main-content" style="margin-left: 0; max-width: 100%; padding: 2rem;">
+    <div class="dashboard-container">
+        <?php include '../includes/teacher_sidebar.php'; ?>
+        <main class="main-content">
+        <div class="main-container">
+            <!-- Main Content -->
             <!-- Content Header -->
             <div class="content-header">
                 <div class="welcome-section">
@@ -947,16 +992,92 @@ if ($class_id > 0) {
                 </div>
             <?php endif; ?>
 
+            <!-- Add Student Form -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Add New Student</h2>
+                    <button type="button" class="btn-toggle-form" id="toggleAddStudentForm" aria-expanded="true" aria-controls="addStudentFormBody">
+                        <i class="fas fa-eye-slash"></i>
+                        <span>Hide Form</span>
+                    </button>
+                </div>
+                <div class="panel-body" id="addStudentFormBody">
+                    <form method="POST">
+                        <input type="hidden" name="action" value="add_student">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="class_id_add">Class *</label>
+                                <select id="class_id_add" name="class_id" class="form-control" required>
+                                    <option value="">-- Select Class --</option>
+                                    <?php foreach($assigned_classes as $c): ?>
+                                        <option value="<?php echo $c['id']; ?>"><?php echo htmlspecialchars($c['class_name']); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="full_name_add">Full Name *</label>
+                                <input type="text" id="full_name_add" name="full_name" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="admission_no_add">Admission Number *</label>
+                                <input type="text" id="admission_no_add" name="admission_no" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="gender_add">Gender</label>
+                                <select id="gender_add" name="gender" class="form-control">
+                                    <option value="">-- Select --</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="dob_add">Date of Birth</label>
+                                <input type="date" id="dob_add" name="dob" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="phone_add">Phone Number</label>
+                                <input type="tel" id="phone_add" name="phone" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="guardian_name_add">Guardian Name</label>
+                                <input type="text" id="guardian_name_add" name="guardian_name" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="guardian_phone_add">Guardian Phone</label>
+                                <input type="tel" id="guardian_phone_add" name="guardian_phone" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="address_add">Address</label>
+                                <textarea id="address_add" name="address" class="form-control" rows="2"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="student_type_add">Student Type</label>
+                                <select id="student_type_add" name="student_type" class="form-control">
+                                    <option value="fresh" selected>Fresh Student</option>
+                                    <option value="transfer">Transfer Student</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Add Student
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <!-- Quick Actions -->
             <div class="quick-actions-section">
                 <div class="section-header">
                     <h3>Quick Actions</h3>
                 </div>
                 <div class="quick-actions-grid">
-                    <a href="add_student.php" class="quick-action-card">
+                    <button type="button" class="quick-action-card" onclick="toggleAddStudentForm()">
                         <i class="fas fa-user-plus"></i>
                         <span>Add Student</span>
-                    </a>
+                    </button>
                     <button onclick="openModal('bulkUploadModal')" class="quick-action-card">
                         <i class="fas fa-file-upload"></i>
                         <span>Bulk Upload</span>
@@ -1130,6 +1251,7 @@ if ($class_id > 0) {
                     </div>
                 </div>
             <?php endif; ?>
+        </div>
         </main>
     </div>
 
@@ -1265,39 +1387,7 @@ if ($class_id > 0) {
     </div>
 
     <script>
-        // Mobile Menu Toggle - Dropdown Navigation
-        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-        const mobileNavDropdown = document.getElementById('mobileNavDropdown');
-        const mobileNavClose = document.getElementById('mobileNavClose');
-
-        // Toggle dropdown menu
-        mobileMenuToggle.addEventListener('click', (e) => {
-            e.stopPropagation();
-            mobileNavDropdown.classList.toggle('active');
-            mobileMenuToggle.classList.toggle('active');
-        });
-
-        // Close dropdown when clicking close button
-        mobileNavClose.addEventListener('click', () => {
-            mobileNavDropdown.classList.remove('active');
-            mobileMenuToggle.classList.remove('active');
-        });
-
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!mobileNavDropdown.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
-                mobileNavDropdown.classList.remove('active');
-                mobileMenuToggle.classList.remove('active');
-            }
-        });
-
-        // Close dropdown when clicking on a navigation link
-        document.querySelectorAll('.mobile-nav-link').forEach(link => {
-            link.addEventListener('click', () => {
-                mobileNavDropdown.classList.remove('active');
-                mobileMenuToggle.classList.remove('active');
-            });
-        });
+        // Mobile navigation is handled by includes/mobile_navigation.php
 
         // Modal functions
         function openModal(modalId) {
@@ -1309,6 +1399,30 @@ if ($class_id > 0) {
             document.getElementById(modalId).style.display = 'none';
             document.body.style.overflow = 'auto';
         }
+
+        // Add student form toggle
+        function toggleAddStudentForm(forceState) {
+            const body = document.getElementById('addStudentFormBody');
+            const btn = document.getElementById('toggleAddStudentForm');
+            if (!body || !btn) return;
+            const shouldShow = typeof forceState === 'boolean'
+                ? forceState
+                : body.style.display === 'none';
+            body.style.display = shouldShow ? 'block' : 'none';
+            btn.setAttribute('aria-expanded', shouldShow ? 'true' : 'false');
+            btn.innerHTML = shouldShow
+                ? '<i class="fas fa-eye-slash"></i><span>Hide Form</span>'
+                : '<i class="fas fa-eye"></i><span>Show Form</span>';
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const btn = document.getElementById('toggleAddStudentForm');
+            if (btn) {
+                btn.addEventListener('click', function () {
+                    toggleAddStudentForm();
+                });
+            }
+        });
 
         // Bulk upload functionality
         function handleFileSelect(input) {
@@ -1459,5 +1573,9 @@ if ($class_id > 0) {
                 setTimeout(() => alert.remove(), 300);
             });
         }, 5000);
-    </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
+    </script>
+
+    <?php include '../includes/floating-button.php'; ?>
+
+</body>
 </html>

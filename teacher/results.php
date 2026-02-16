@@ -17,6 +17,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
 // Get current school context
 $current_school_id = require_school_auth();
 $teacher_id = intval($_SESSION['user_id']);
+$teacher_name = $_SESSION['full_name'] ?? 'Teacher';
 
 $class_id = $_GET['id'] ?? $_GET['class_id'] ?? $_REQUEST['class'] ?? $_POST['class_id'] ?? null;
 
@@ -508,6 +509,8 @@ $default_academic_session = "{$current_year}/{$next_year}";
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Results | SahabFormMaster</title>
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1419,36 +1422,50 @@ $default_academic_session = "{$current_year}/{$next_year}";
                 font-size: 12px;
             }
         }
+
+        body {
+            background: #f5f7fb;
+        }
+
+        .dashboard-container .main-content {
+            width: 100%;
+        }
+
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 1rem;
+            }
+        }
     </style>
 </head>
 <body>
-    <!-- Modern Header -->
-    <header class="modern-header">
-        <div class="header-content">
-            <div class="header-brand">
-                <a href="index.php" class="back-btn">
-                    <i class="fas fa-arrow-left"></i>
-                    <span>Back to Dashboard</span>
-                </a>
-                <div class="logo-container">
-                    <i class="fas fa-graduation-cap"></i>
-                </div>
-                <div class="brand-text">
-                    <h1>SahabFormMaster</h1>
-                    <p>Results Management</p>
+    <!-- Mobile Navigation Component -->
+    <?php include '../includes/mobile_navigation.php'; ?>
+
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Teacher Portal</p>
+                    </div>
                 </div>
             </div>
-            <div class="header-actions">
-                <div class="user-info">
-                    <div class="user-avatar">
-                        <?php echo strtoupper(substr($_SESSION['full_name'] ?? 'T', 0, 1)); ?>
-                    </div>
-                    <div class="user-details">
-                        <p>Teacher</p>
-                        <span><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Teacher'); ?></span>
-                    </div>
+            <div class="header-right">
+                <div class="teacher-info">
+                    <p class="teacher-label">Teacher</p>
+                    <span class="teacher-name"><?php echo htmlspecialchars($teacher_name); ?></span>
                 </div>
-                <a href="logout.php" class="logout-btn">
+                <a href="logout.php" class="btn-logout">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </a>
@@ -1456,8 +1473,11 @@ $default_academic_session = "{$current_year}/{$next_year}";
         </div>
     </header>
 
-    <!-- Main Container -->
-    <div class="main-container">
+    <div class="dashboard-container">
+        <?php include '../includes/teacher_sidebar.php'; ?>
+        <main class="main-content">
+            <!-- Main Container -->
+            <div class="main-container">
         <!-- Welcome Section -->
         <div class="modern-card animate-fade-in-up">
             <div class="card-header-modern">
@@ -1970,8 +1990,6 @@ $default_academic_session = "{$current_year}/{$next_year}";
                 </div>
             </div>
         </main>
-
-        
     </div>
 
     <script>
@@ -2067,5 +2085,9 @@ $default_academic_session = "{$current_year}/{$next_year}";
                 switchTab('multi');
             }
         });
-    </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
+    </script>
+
+    <?php include '../includes/floating-button.php'; ?>
+
+</body>
 </html>

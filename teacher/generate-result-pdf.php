@@ -67,16 +67,21 @@ if (!empty($results)) {
             SELECT r.student_id, AVG(r.total_ca + r.exam) as avg_score
             FROM results r
             JOIN students s ON r.student_id = s.id
-            WHERE s.class_id = :class_id AND r.term = :term
-            GROUP BY r.student_id
-        ) student_averages
-        WHERE student_averages.avg_score > (
-            SELECT AVG(r2.total_ca + r2.exam)
-            FROM results r2
-            WHERE r2.student_id = :student_id AND r2.term = :term
-        )
-    ");
-    $stmt->execute(['class_id' => $class_id,'school_id' => $current_school_id, 'student_id' => $student_id, 'term' => $term]);
+        WHERE s.class_id = :class_id AND r.term = :term
+        GROUP BY r.student_id
+    ) student_averages
+    WHERE student_averages.avg_score > (
+        SELECT AVG(r2.total_ca + r2.exam)
+        FROM results r2
+        WHERE r2.student_id = :student_id AND r2.term = :term_student
+    )
+");
+    $stmt->execute([
+        'class_id' => $class_id,
+        'student_id' => $student_id,
+        'term' => $term,
+        'term_student' => $term
+    ]);
     $position = $stmt->fetchColumn();
 } else {
     $position = 'N/A';
