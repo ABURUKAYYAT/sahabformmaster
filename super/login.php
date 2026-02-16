@@ -88,190 +88,202 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
+            <style>
+        :root {
+            --fb-blue: #1877f2;
+            --fb-blue-dark: #166fe5;
+            --fb-bg: #f0f2f5;
+            --text: #1c1e21;
+            --muted: #606770;
+            --border: #dddfe2;
+            --card: #ffffff;
+        }
+
         * {
-            margin: 0;
-            padding: 0;
             box-sizing: border-box;
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+            background: var(--fb-bg);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: 24px;
+            color: var(--text);
         }
 
         .login-container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-            overflow: hidden;
             width: 100%;
-            max-width: 450px;
-            position: relative;
+            max-width: 420px;
+            background: var(--card);
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+            overflow: hidden;
         }
 
         .login-header {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: white;
-            padding: 40px 30px;
+            padding: 24px 24px 12px;
             text-align: center;
+            border-bottom: 1px solid var(--border);
+            background: #fff;
         }
 
-        .login-header h1 {
-            font-size: 28px;
+        .login-header h1,
+        .login-header h2 {
+            font-size: 24px;
             font-weight: 700;
-            margin-bottom: 10px;
+            margin: 0 0 6px;
         }
 
         .login-header p {
-            font-size: 16px;
-            opacity: 0.9;
+            margin: 0;
+            font-size: 14px;
+            color: var(--muted);
         }
 
+        .login-body,
         .login-form {
-            padding: 40px 30px;
+            padding: 20px 24px 24px;
         }
 
         .form-group {
-            margin-bottom: 25px;
+            margin-bottom: 16px;
         }
 
         .form-group label {
             display: block;
+            font-size: 13px;
             font-weight: 600;
-            color: #333;
-            margin-bottom: 8px;
-            font-size: 14px;
+            color: var(--text);
+            margin-bottom: 6px;
         }
 
         .form-control {
             width: 100%;
-            padding: 15px 20px;
-            border: 2px solid #e1e5e9;
-            border-radius: 12px;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            background: #f8f9fa;
+            height: 48px;
+            padding: 12px 14px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 15px;
+            background: #fff;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
         .form-control:focus {
             outline: none;
-            border-color: #667eea;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: var(--fb-blue);
+            box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.15);
         }
 
+        .btn-primary,
         .btn-login {
             width: 100%;
-            padding: 16px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            height: 48px;
+            background: var(--fb-blue);
+            color: #fff;
             border: none;
-            border-radius: 12px;
+            border-radius: 6px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 20px;
+            transition: background 0.2s ease, box-shadow 0.2s ease;
         }
 
+        .btn-primary:hover,
         .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            background: var(--fb-blue-dark);
+            box-shadow: 0 2px 8px rgba(24, 119, 242, 0.2);
         }
 
+        .btn-primary:active,
         .btn-login:active {
-            transform: translateY(0);
+            transform: translateY(1px);
         }
 
+        .error-message,
         .alert {
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-size: 14px;
+            background: #fdecea;
+            color: #b42318;
+            padding: 10px 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            border: 1px solid #f5c6cb;
+            text-align: center;
         }
 
         .alert-danger {
-            background: #fee;
-            color: #c33;
-            border: 1px solid #fcc;
+            background: #fdecea;
+            color: #b42318;
+            border: 1px solid #f5c6cb;
         }
 
         .alert-success {
-            background: #efe;
-            color: #363;
-            border: 1px solid #cfc;
+            background: #ecfdf3;
+            color: #067647;
+            border: 1px solid #abefc6;
         }
 
+        .login-links,
         .login-footer {
             text-align: center;
-            padding: 20px 30px;
-            background: #f8f9fa;
-            border-top: 1px solid #e1e5e9;
+            padding: 16px 24px 20px;
+            border-top: 1px solid var(--border);
+            background: #fff;
         }
 
-        .login-footer p {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
-
+        .login-links a,
         .back-link {
-            color: #667eea;
+            color: var(--fb-blue);
             text-decoration: none;
-            font-weight: 600;
             font-size: 14px;
+            font-weight: 500;
         }
 
+        .login-links a:hover,
         .back-link:hover {
             text-decoration: underline;
         }
 
         .admin-badge {
             position: absolute;
-            top: 20px;
-            right: 20px;
-            background: #ff6b6b;
-            color: white;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
+            top: 16px;
+            right: 16px;
+            background: #f04438;
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
         }
 
         .security-notice {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            color: #856404;
-            padding: 12px;
-            border-radius: 8px;
+            background: #fffaeb;
+            border: 1px solid #fcefc7;
+            color: #7a5600;
+            padding: 10px 12px;
+            border-radius: 6px;
             font-size: 13px;
-            margin-bottom: 20px;
-        }
-
-        .security-notice i {
-            margin-right: 8px;
+            margin-bottom: 16px;
         }
 
         @media (max-width: 480px) {
-            .login-container {
-                margin: 10px;
-                max-width: none;
+            body {
+                padding: 16px;
             }
 
             .login-header {
-                padding: 30px 20px;
+                padding: 20px 20px 10px;
             }
 
+            .login-body,
             .login-form {
-                padding: 30px 20px;
+                padding: 16px 20px 20px;
             }
         }
     </style>
