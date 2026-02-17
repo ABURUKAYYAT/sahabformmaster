@@ -47,302 +47,106 @@ if (!empty($news_items)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>School Blog | SahabFormMaster</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root {
-            --primary-color: #4f46e5;
-            --primary-dark: #3730a3;
-            --secondary-color: #06b6d4;
-            --accent-color: #f59e0b;
-            --success-color: #10b981;
-            --warning-color: #f59e0b;
-            --error-color: #ef4444;
-            --info-color: #3b82f6;
-            --light-color: #f9fafb;
-            --dark-color: #1f2937;
-            --gray-color: #6b7280;
-            --card-bg: #ffffff;
-            --shadow: 0 20px 40px rgba(79, 70, 229, 0.15);
-            --shadow-hover: 0 30px 60px rgba(79, 70, 229, 0.25);
-            --radius: 20px;
-            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            --gradient-accent: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            --gradient-success: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-            --gradient-warning: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-            --gradient-info: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #ffffff;
-            min-height: 100vh;
-            color: var(--dark-color);
-            overflow-x: hidden;
+            background: #f5f7fb;
         }
 
-        .header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 1rem 2rem;
-            box-shadow: var(--shadow);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
+        .dashboard-container .main-content {
+            width: 100%;
         }
 
-        .header-container {
+        .main-container {
             max-width: 1400px;
             margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        .panel,
+        .content-header {
+            background: #ffffff;
+            border: 1px solid #cfe1ff;
+            border-radius: 12px;
+            box-shadow: none;
+        }
+
+        .content-header {
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .panel-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #cfe1ff;
             display: flex;
+            align-items: center;
             justify-content: space-between;
-            align-items: center;
-        }
-
-        .logo-container {
-            display: flex;
-            align-items: center;
             gap: 1rem;
+            background: #1d4ed8;
+            color: #fff;
+            border-radius: 12px 12px 0 0;
         }
 
-        .logo {
-            height: 50px;
-            width: 50px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid var(--primary-color);
-        }
-
-        .school-name {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: var(--primary-color);
-        }
-
-        .teacher-panel {
-            display: flex;
-            align-items: center;
-            gap: 2rem;
-        }
-
-        .teacher-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .teacher-avatar {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 1.3rem;
-        }
-
-        .teacher-details {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .teacher-name {
-            font-weight: 600;
-            font-size: 1.1rem;
-        }
-
-        .teacher-subject {
-            font-size: 0.9rem;
-            color: var(--dark-color);
-            background: var(--accent-color);
-            padding: 0.2rem 0.8rem;
-            border-radius: 50px;
-            display: inline-block;
-            font-weight: 600;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 1rem;
-        }
-
-        .nav-link {
-            padding: 0.6rem 1.5rem;
-            background: var(--accent-color);
-            color: white;
-            text-decoration: none;
-            border-radius: 50px;
-            font-weight: 600;
-            transition: all 0.3s ease;
+        .panel-header h3 {
+            margin: 0;
             display: flex;
             align-items: center;
             gap: 0.5rem;
         }
 
-        .nav-link:hover {
-            background: var(--primary-color);
-            transform: translateY(-2px);
-        }
-
-        .main-container {
-            max-width: 1400px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-
-        .welcome-card {
-            background: var(--gradient-primary);
-            color: white;
-            padding: 2.5rem;
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            margin-bottom: 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: relative;
-            overflow: hidden;
-            animation: slideInUp 0.8s ease-out;
-        }
-
-        .welcome-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-            animation: shimmer 2s infinite;
-        }
-
-        .welcome-content h1 {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .welcome-content p {
-            font-size: 1.1rem;
-            opacity: 0.9;
+        .panel-body {
+            padding: 1.5rem;
         }
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
         }
 
         .stat-card {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.95) 100%);
-            backdrop-filter: blur(10px);
-            padding: 2rem 1.5rem;
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            text-align: center;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 1px solid rgba(255, 107, 53, 0.1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--gradient-primary);
-            border-radius: var(--radius) var(--radius) 0 0;
-        }
-
-        .stat-card::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 107, 53, 0.05), transparent);
-            transition: left 0.5s ease;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: var(--shadow-hover);
-        }
-
-        .stat-card:hover::after {
-            left: 100%;
+            background: #f5f9ff;
+            border: 1px solid #dbe7fb;
+            border-radius: 12px;
+            padding: 1.25rem;
         }
 
         .stat-number {
-            font-size: 2.5rem;
+            font-size: 1.8rem;
             font-weight: 700;
-            color: var(--primary-color);
-            margin-bottom: 0.5rem;
+            color: #1d4ed8;
         }
 
         .stat-label {
-            color: var(--gray-color);
-            font-size: 0.95rem;
+            color: #4b5563;
+            font-size: 0.9rem;
         }
 
         .news-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 2rem;
-            margin-bottom: 3rem;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
         }
 
         .news-card {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.98) 100%);
-            backdrop-filter: blur(10px);
-            border-radius: var(--radius);
+            border: 1px solid #dbe7fb;
+            border-radius: 12px;
             overflow: hidden;
-            box-shadow: var(--shadow);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            height: 100%;
+            background: #fff;
             display: flex;
             flex-direction: column;
-            border: 1px solid rgba(255, 107, 53, 0.08);
-            position: relative;
-        }
-
-        .news-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: var(--gradient-accent);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .news-card:hover::before {
-            opacity: 1;
-        }
-
-        .news-card:hover {
-            transform: translateY(-10px) scale(1.02);
-            box-shadow: var(--shadow-hover);
         }
 
         .news-image-container {
-            height: 200px;
+            height: 180px;
             overflow: hidden;
+            background: #eaf2ff;
             position: relative;
         }
 
@@ -350,496 +154,219 @@ if (!empty($news_items)) {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transition: transform 0.5s ease;
-        }
-
-        .news-card:hover .news-image {
-            transform: scale(1.05);
         }
 
         .news-category {
             position: absolute;
-            top: 1rem;
-            left: 1rem;
-            background: var(--gradient-accent);
-            color: var(--dark-color);
-            padding: 0.4rem 1rem;
-            border-radius: 50px;
-            font-size: 0.85rem;
+            top: 0.75rem;
+            left: 0.75rem;
+            background: #1d4ed8;
+            color: #fff;
+            padding: 0.3rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
             font-weight: 600;
-            z-index: 2;
-            box-shadow: 0 4px 12px rgba(255, 253, 63, 0.3);
         }
 
         .news-card-content {
-            padding: 1.5rem;
-            flex-grow: 1;
+            padding: 1.25rem;
             display: flex;
             flex-direction: column;
+            gap: 0.75rem;
+            flex: 1;
         }
 
         .news-title {
-            font-size: 1.3rem;
+            font-size: 1.1rem;
             font-weight: 700;
-            margin-bottom: 1rem;
-            color: var(--dark-color);
-            line-height: 1.4;
+            color: #0f172a;
         }
 
         .news-excerpt {
-            color: var(--gray-color);
-            line-height: 1.6;
-            margin-bottom: 1.5rem;
-            flex-grow: 1;
+            color: #4b5563;
+            font-size: 0.95rem;
         }
 
         .news-meta {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            gap: 1rem;
+            color: #64748b;
             font-size: 0.85rem;
-            color: var(--gray-color);
-            margin-bottom: 1rem;
-            padding-top: 1rem;
-            border-top: 1px solid #eee;
-        }
-
-        .meta-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            border-top: 1px solid #eef2f7;
+            padding-top: 0.75rem;
         }
 
         .read-more-btn {
+            margin-top: auto;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 0.8rem 1.5rem;
-            border-radius: 50px;
+            background: #1d4ed8;
+            color: #fff;
+            padding: 0.7rem 1rem;
+            border-radius: 10px;
             text-decoration: none;
             font-weight: 600;
-            transition: all 0.3s ease;
-            width: 100%;
-            text-align: center;
-        }
-
-        .read-more-btn:hover {
-            background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
-            transform: translateY(-2px);
         }
 
         .no-news {
-            grid-column: 1 / -1;
             text-align: center;
-            padding: 4rem 2rem;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.95) 100%);
-            backdrop-filter: blur(10px);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            border: 1px solid rgba(255, 107, 53, 0.1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .no-news::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--gradient-secondary);
-            border-radius: var(--radius) var(--radius) 0 0;
-        }
-
-        .no-news h3 {
-            font-size: 1.8rem;
-            color: var(--primary-color);
-            margin-bottom: 1rem;
-            position: relative;
-            z-index: 1;
-        }
-
-        .no-news p {
-            color: var(--gray-color);
-            font-size: 1.1rem;
-            position: relative;
-            z-index: 1;
-        }
-
-        .footer {
-            background: linear-gradient(135deg, var(--dark-color) 0%, #1a202c 100%);
-            color: white;
-            padding: 4rem 2rem 2rem;
-            position: relative;
-            margin-top: 5rem;
-            overflow: hidden;
-        }
-
-        .footer::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--gradient-primary);
-        }
-
-        .footer::after {
-            content: '';
-            position: absolute;
-            top: -50px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 100px;
-            height: 100px;
-            background: radial-gradient(circle, rgba(255, 107, 53, 0.1) 0%, transparent 70%);
-            border-radius: 50%;
-        }
-
-        .footer-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 3rem;
-            margin-bottom: 2rem;
-            position: relative;
-            z-index: 1;
-        }
-
-        .footer-section h4 {
-            color: var(--accent-color);
-            margin-bottom: 1.5rem;
-            font-size: 1.3rem;
-            font-weight: 700;
-            position: relative;
-        }
-
-        .footer-section h4::after {
-            content: '';
-            position: absolute;
-            bottom: -8px;
-            left: 0;
-            width: 50px;
-            height: 3px;
-            background: var(--gradient-primary);
-            border-radius: 2px;
-        }
-
-        .footer-section p {
-            color: #a0aec0;
-            line-height: 1.7;
-            margin-bottom: 1.5rem;
-        }
-
-        .footer-links {
-            display: flex;
-            flex-direction: column;
-            gap: 0.8rem;
-        }
-
-        .footer-links a {
-            color: #cbd5e0;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 0;
-            border-radius: 8px;
-            padding-left: 0.5rem;
-        }
-
-        .footer-links a:hover {
-            color: var(--accent-color);
-            background: rgba(255, 253, 63, 0.1);
-            transform: translateX(5px);
-        }
-
-        .footer-links a i {
-            font-size: 0.9rem;
-            width: 16px;
-        }
-
-        .footer-bottom {
-            text-align: center;
-            padding-top: 2rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            position: relative;
-            z-index: 1;
-        }
-
-        .footer-bottom p {
-            color: #718096;
-            font-size: 0.9rem;
-            margin: 0;
-        }
-
-        .social-links {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .social-link {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.1);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-        }
-
-        .social-link:hover {
-            background: var(--gradient-primary);
-            transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(255, 107, 53, 0.3);
+            padding: 3rem;
+            color: #667085;
+            border: 1px dashed #cfe1ff;
+            border-radius: 12px;
         }
 
         @media (max-width: 768px) {
-            .header-container {
-                flex-direction: column;
-                gap: 1rem;
-                text-align: center;
+            .main-container {
+                padding: 1rem;
             }
-            
-            .teacher-panel {
-                flex-direction: column;
-                gap: 1rem;
-            }
-            
-            .welcome-card {
-                flex-direction: column;
-                text-align: center;
-                gap: 1.5rem;
-            }
-            
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
+
             .news-grid {
                 grid-template-columns: 1fr;
-                gap: 1.5rem;
-            }
-        }
-
-        @keyframes slideInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes shimmer {
-            0% {
-                left: -100%;
-            }
-            100% {
-                left: 100%;
-            }
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes pulse {
-            0%, 100% {
-                transform: scale(1);
-            }
-            50% {
-                transform: scale(1.05);
-            }
-        }
-
-        .stats-grid {
-            animation: fadeInUp 0.8s ease-out 0.2s both;
-        }
-
-        .news-grid {
-            animation: fadeInUp 0.8s ease-out 0.4s both;
-        }
-
-        .stat-card:hover .stat-number {
-            animation: pulse 0.6s ease-in-out;
-        }
-
-        .news-card {
-            animation: fadeInUp 0.6s ease-out both;
-            animation-delay: calc(var(--index, 0) * 0.1s);
-        }
-
-        @media (max-width: 480px) {
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .welcome-content h1 {
-                font-size: 2rem;
-            }
-
-            .footer-content {
-                grid-template-columns: 1fr;
-                text-align: center;
             }
         }
     </style>
 </head>
 <body>
-    <!-- <header class="header">
+    <?php include '../includes/mobile_navigation.php'; ?>
+
+    <header class="dashboard-header">
         <div class="header-container">
-            <div class="logo-container">
-                <img src="assets/images/nysc.jpg" alt="School Logo" class="logo">
-                <h1 class="school-name">SahabFormMaster</h1>
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">School News Feed</p>
+                    </div>
+                </div>
             </div>
-            
-            <div class="teacher-panel">
+            <div class="header-right">
                 <div class="teacher-info">
-                    <div class="teacher-avatar">
-                        <?php echo strtoupper(substr($user_name, 0, 1)); ?>
+                    <p class="teacher-label">Teacher</p>
+                    <span class="teacher-name"><?php echo htmlspecialchars($user_name); ?></span>
+                </div>
+                <a href="logout.php" class="btn-logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        <?php include '../includes/teacher_sidebar.php'; ?>
+        <main class="main-content">
+            <div class="main-container">
+                <div class="content-header">
+                    <div class="welcome-section">
+                        <h2>School News Feed</h2>
+                        <p>Stay updated with the latest announcements and events.</p>
                     </div>
-                    <div class="teacher-details">
-                        <span class="teacher-name"><?php echo htmlspecialchars($user_name); ?></span>
-                        <span class="teacher-subject"><?php echo htmlspecialchars($teacher_subject); ?></span>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3><i class="fas fa-chart-bar"></i> Quick Stats</h3>
                     </div>
-                </div>
-                
-             
-            </div>
-        </div>
-    </header> -->
-       <div class="nav-links">
-                    <a href="index.php" class="nav-link">
-                        <i class="fas fa-tachometer-alt"></i> Dashboard
-                    </a>
-                    <!-- <a href="logout.php" class="nav-link">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </a> -->
-        </div>
-
-    <main class="main-container">
-        <div class="welcome-card">
-            <div class="welcome-content">
-                <h1>School News Feed</h1>
-                <p>Stay updated with the latest announcements and events</p>
-                <p><i class="fas fa-chalkboard-teacher"></i> Teacher Access: View all posts and click to read details</p>
-            </div>
-            <div class="welcome-stats">
-                <div class="stat-card" style="background: rgba(255,255,255,0.2); border: none; color: white;">
-                    <div class="stat-number"><?php echo count($news_items); ?></div>
-                    <div class="stat-label">Active Posts</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-number"><?php echo array_sum(array_column($news_items, 'view_count')); ?></div>
-                <div class="stat-label">Total Views</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number"><?php echo count(array_filter($news_items, fn($n) => $n['allow_comments'])); ?></div>
-                <div class="stat-label">Posts with Comments</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number"><?php echo $total_comments; ?></div>
-                <div class="stat-label">Total Comments</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number"><?php echo count(array_filter($news_items, fn($n) => $n['priority'] === 'high')); ?></div>
-                <div class="stat-label">High Priority</div>
-            </div>
-        </div>
-
-        <div class="news-grid">
-            <?php if (empty($news_items)): ?>
-                <div class="no-news">
-                    <h3>No news available yet</h3>
-                    <p>Check back later for updates!</p>
-                </div>
-            <?php else: ?>
-                <?php foreach ($news_items as $index => $item):
-                    // Get first 200 characters of content
-                    $content_preview = strip_tags($item['content']);
-                    if (strlen($content_preview) > 200) {
-                        $content_preview = substr($content_preview, 0, 200) . '...';
-                    }
-                ?>
-                    <div class="news-card" style="--index: <?php echo $index; ?>">
-                        <div class="news-image-container">
-                            <?php if ($item['featured_image']): ?>
-                                <img src="../<?php echo htmlspecialchars($item['featured_image']); ?>" 
-                                     alt="<?php echo htmlspecialchars($item['title']); ?>" 
-                                     class="news-image"
-                                     onerror="this.src='https://via.placeholder.com/400x200/4CAF50/ffffff?text=News+Image'">
-                            <?php else: ?>
-                                <img src="https://via.placeholder.com/400x200/4CAF50/ffffff?text=School+News" 
-                                     alt="News Image" 
-                                     class="news-image">
-                            <?php endif; ?>
-                            <span class="news-category"><?php echo htmlspecialchars($item['category']); ?></span>
-                        </div>
-                        
-                        <div class="news-card-content">
-                            <h3 class="news-title"><?php echo htmlspecialchars($item['title']); ?></h3>
-                            
-                            <p class="news-excerpt">
-                                <?php if (!empty($item['excerpt'])): ?>
-                                    <?php echo htmlspecialchars($item['excerpt']); ?>
-                                <?php else: ?>
-                                    <?php echo htmlspecialchars($content_preview); ?>
-                                <?php endif; ?>
-                            </p>
-                            
-                            <div class="news-meta">
-                                <div class="meta-item">
-                                    <i class="far fa-calendar"></i>
-                                    <?php echo date('M d, Y', strtotime($item['published_date'])); ?>
-                                </div>
-                                <div class="meta-item">
-                                    <i class="far fa-eye"></i>
-                                    <?php echo intval($item['view_count']); ?>
-                                </div>
-                                <?php if ($item['allow_comments']): ?>
-                                    <div class="meta-item">
-                                        <i class="far fa-comments"></i>
-                                        Comments
-                                    </div>
-                                <?php endif; ?>
+                    <div class="panel-body">
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-number"><?php echo count($news_items); ?></div>
+                                <div class="stat-label">Active Posts</div>
                             </div>
-                            
-                            <a href="newsdetails.php?id=<?php echo $item['id']; ?>" class="read-more-btn">
-                                <i class="fas fa-book-open"></i> Read Full Story
-                            </a>
+                            <div class="stat-card">
+                                <div class="stat-number"><?php echo array_sum(array_column($news_items, 'view_count')); ?></div>
+                                <div class="stat-label">Total Views</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number"><?php echo count(array_filter($news_items, fn($n) => $n['allow_comments'])); ?></div>
+                                <div class="stat-label">Posts with Comments</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number"><?php echo $total_comments; ?></div>
+                                <div class="stat-label">Total Comments</div>
+                            </div>
                         </div>
                     </div>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </div>
-    </main>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3><i class="fas fa-newspaper"></i> Latest Posts</h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class="news-grid">
+                            <?php if (empty($news_items)): ?>
+                                <div class="no-news">
+                                    <h3>No news available yet</h3>
+                                    <p>Check back later for updates!</p>
+                                </div>
+                            <?php else: ?>
+                                <?php foreach ($news_items as $index => $item):
+                                    $content_preview = strip_tags($item['content']);
+                                    if (strlen($content_preview) > 200) {
+                                        $content_preview = substr($content_preview, 0, 200) . '...';
+                                    }
+                                ?>
+                                    <div class="news-card">
+                                        <div class="news-image-container">
+                                            <?php if ($item['featured_image']): ?>
+                                                <img src="../<?php echo htmlspecialchars($item['featured_image']); ?>"
+                                                     alt="<?php echo htmlspecialchars($item['title']); ?>"
+                                                     class="news-image"
+                                                     onerror="this.src='https://via.placeholder.com/400x200/1d4ed8/ffffff?text=News+Image'">
+                                            <?php else: ?>
+                                                <img src="https://via.placeholder.com/400x200/1d4ed8/ffffff?text=School+News"
+                                                     alt="News Image"
+                                                     class="news-image">
+                                            <?php endif; ?>
+                                            <span class="news-category"><?php echo htmlspecialchars($item['category']); ?></span>
+                                        </div>
+
+                                        <div class="news-card-content">
+                                            <h3 class="news-title"><?php echo htmlspecialchars($item['title']); ?></h3>
+
+                                            <p class="news-excerpt">
+                                                <?php if (!empty($item['excerpt'])): ?>
+                                                    <?php echo htmlspecialchars($item['excerpt']); ?>
+                                                <?php else: ?>
+                                                    <?php echo htmlspecialchars($content_preview); ?>
+                                                <?php endif; ?>
+                                            </p>
+
+                                            <div class="news-meta">
+                                                <div class="meta-item">
+                                                    <i class="far fa-calendar"></i>
+                                                    <?php echo date('M d, Y', strtotime($item['published_date'])); ?>
+                                                </div>
+                                                <div class="meta-item">
+                                                    <i class="far fa-eye"></i>
+                                                    <?php echo intval($item['view_count']); ?>
+                                                </div>
+                                                <?php if ($item['allow_comments']): ?>
+                                                    <div class="meta-item">
+                                                        <i class="far fa-comments"></i>
+                                                        Comments
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+
+                                            <a href="newsdetails.php?id=<?php echo $item['id']; ?>" class="read-more-btn">
+                                                <i class="fas fa-book-open"></i> Read Full Story
+                                            </a>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
 <!-- 
     <footer class="footer">
         <div class="footer-content">
@@ -913,73 +440,10 @@ if (!empty($news_items)) {
     </footer> -->
 
     <script>
-        // Smooth scrolling for anchor links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth' });
-                }
-            });
-        });
-
-        // Add interactive hover effects
-        document.addEventListener('DOMContentLoaded', function() {
-            // Add ripple effect to buttons
-            const buttons = document.querySelectorAll('.read-more-btn, .nav-link');
-            buttons.forEach(button => {
-                button.addEventListener('click', function(e) {
-                    const ripple = document.createElement('span');
-                    ripple.style.position = 'absolute';
-                    ripple.style.borderRadius = '50%';
-                    ripple.style.background = 'rgba(255, 255, 255, 0.3)';
-                    ripple.style.transform = 'scale(0)';
-                    ripple.style.animation = 'ripple 0.6s linear';
-                    ripple.style.left = (e.offsetX - 10) + 'px';
-                    ripple.style.top = (e.offsetY - 10) + 'px';
-                    ripple.style.width = '20px';
-                    ripple.style.height = '20px';
-
-                    this.appendChild(ripple);
-
-                    setTimeout(() => {
-                        ripple.remove();
-                    }, 600);
-                });
-            });
-
-            // Add floating animation to welcome card
-            const welcomeCard = document.querySelector('.welcome-card');
-            let floatingDirection = 1;
-            setInterval(() => {
-                welcomeCard.style.transform = `translateY(${floatingDirection * 2}px)`;
-                floatingDirection *= -1;
-            }, 3000);
-        });
-
         // Auto-refresh every 45 seconds
         setInterval(() => {
             location.reload();
         }, 45000);
     </script>
-
-    <style>
-        @keyframes ripple {
-            to {
-                transform: scale(4);
-                opacity: 0;
-            }
-        }
-
-        .read-more-btn, .nav-link {
-            position: relative;
-            overflow: hidden;
-        }
-
-        .welcome-card {
-            transition: transform 3s ease-in-out;
-        }
-    </style>
 </body>
 </html>

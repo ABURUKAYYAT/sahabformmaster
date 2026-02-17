@@ -110,378 +110,136 @@ $current_year = date('Y') . '/' . (date('Y') + 1);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Content Coverage | SahabFormMaster</title>
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root {
-            --primary-50: #eff6ff;
-            --primary-100: #dbeafe;
-            --primary-200: #bfdbfe;
-            --primary-300: #93c5fd;
-            --primary-400: #60a5fa;
-            --primary-500: #3b82f6;
-            --primary-600: #2563eb;
-            --primary-700: #1d4ed8;
-            --primary-800: #1e40af;
-            --primary-900: #1e3a8a;
-
-            --success-50: #f0fdf4;
-            --success-100: #dcfce7;
-            --success-500: #22c55e;
-            --success-600: #16a34a;
-
-            --warning-50: #fffbeb;
-            --warning-100: #fef3c7;
-            --warning-500: #f59e0b;
-            --warning-600: #d97706;
-
-            --error-50: #fef2f2;
-            --error-100: #fee2e2;
-            --error-500: #ef4444;
-            --error-600: #dc2626;
-
-            --gray-50: #f9fafb;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-300: #d1d5db;
-            --gray-400: #9ca3af;
-            --gray-500: #6b7280;
-            --gray-600: #4b5563;
-            --gray-700: #374151;
-            --gray-800: #1f2937;
-            --gray-900: #111827;
-
-            --glass-bg: rgba(255, 255, 255, 0.1);
-            --glass-border: rgba(255, 255, 255, 0.2);
-            --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.08);
-            --shadow-medium: 0 8px 32px rgba(0, 0, 0, 0.12);
-            --shadow-strong: 0 16px 48px rgba(0, 0, 0, 0.15);
-
-            --gradient-primary: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-700) 100%);
-            --gradient-bg: linear-gradient(135deg, var(--primary-50) 0%, var(--accent-50) 50%, var(--primary-100) 100%);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: var(--gradient-bg);
-            color: var(--gray-800);
-            line-height: 1.6;
-            min-height: 100vh;
+            background: #f5f7fb;
         }
 
-        .header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: var(--shadow-soft);
+        .dashboard-container .main-content {
+            width: 100%;
         }
 
-        .header-content {
+        .main-container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 1.5rem 2rem;
+            padding: 1.5rem;
+        }
+
+        .panel,
+        .content-header,
+        .alert {
+            background: #ffffff;
+            border: 1px solid #cfe1ff;
+            border-radius: 12px;
+            box-shadow: none;
+        }
+
+        .content-header {
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .panel-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #cfe1ff;
             display: flex;
+            align-items: center;
             justify-content: space-between;
-            align-items: center;
-        }
-
-        .header-brand {
-            display: flex;
-            align-items: center;
             gap: 1rem;
+            background: #1d4ed8;
+            color: #fff;
+            border-radius: 12px 12px 0 0;
         }
 
-        .logo-container {
-            width: 56px;
-            height: 56px;
-            background: var(--gradient-primary);
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.5rem;
-            box-shadow: var(--shadow-medium);
-        }
-
-        .brand-text h1 {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--gray-900);
-            margin-bottom: 0.125rem;
-        }
-
-        .brand-text p {
-            font-size: 0.875rem;
-            color: var(--gray-600);
-            font-weight: 500;
-        }
-
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-        }
-
-        .back-btn {
+        .panel-header h3 {
+            margin: 0;
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            padding: 0.75rem 1.25rem;
-            background: rgba(255, 255, 255, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            border-radius: 12px;
-            color: var(--gray-700);
-            text-decoration: none;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
         }
 
-        .back-btn:hover {
-            background: white;
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-medium);
+        .panel-body {
+            padding: 1.5rem;
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        .page-header {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(20px);
-            border-radius: 24px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: var(--shadow-soft);
-        }
-
-        .page-title {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--gray-900);
-            margin-bottom: 0.5rem;
-        }
-
-        .page-subtitle {
-            color: var(--gray-600);
-            font-size: 1.1rem;
-        }
-
-        .alert {
-            padding: 1rem;
-            border-radius: 12px;
-            margin-bottom: 1.5rem;
-        }
-
-        .alert-success {
-            background: var(--success-50);
-            color: var(--success-600);
-            border: 1px solid var(--success-100);
-        }
-
-        .alert-error {
-            background: var(--error-50);
-            color: var(--error-600);
-            border: 1px solid var(--error-100);
-        }
-
-        .form-section {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(20px);
-            border-radius: 24px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: var(--shadow-soft);
-        }
-
-        .section-title {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--gray-900);
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
+        .btn-toggle-form {
+            border: 1px solid #1d4ed8;
+            background: #fff;
+            color: #1d4ed8;
+            border-radius: 999px;
+            padding: 0.5rem 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
         }
 
         .form-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
         }
 
-        .form-group {
-            margin-bottom: 1.5rem;
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 1rem;
         }
 
-        .form-label {
-            display: block;
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: var(--gray-700);
-            margin-bottom: 0.5rem;
-            letter-spacing: 0.025em;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 1rem 1.25rem;
-            border: 2px solid var(--gray-200);
-            border-radius: 12px;
-            font-size: 1rem;
-            background: white;
-            transition: all 0.3s ease;
-            font-family: inherit;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: var(--primary-500);
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-        }
-
-        .form-control::placeholder {
-            color: var(--gray-400);
-        }
-
-        textarea.form-control {
-            resize: vertical;
-            min-height: 100px;
-        }
-
-        .btn {
-            padding: 1rem 2rem;
-            border: none;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            box-shadow: var(--shadow-medium);
-        }
-
-        .btn-primary {
-            background: var(--gradient-primary);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-strong);
-        }
-
-        .btn-secondary {
-            background: white;
-            color: var(--gray-700);
-            border: 2px solid var(--gray-200);
-        }
-
-        .btn-secondary:hover {
-            border-color: var(--primary-300);
-            box-shadow: var(--shadow-medium);
-        }
-
-        .table-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 24px;
-            overflow: hidden;
-            box-shadow: var(--shadow-soft);
-        }
-
-        .table {
+        .coverage-table {
             width: 100%;
             border-collapse: collapse;
+            background: #fff;
         }
 
-        .table th {
-            background: var(--primary-500);
-            color: white;
-            padding: 1.25rem 1.5rem;
+        .coverage-table th {
             text-align: left;
-            font-weight: 600;
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+            padding: 0.85rem 1rem;
+            background: #f3f6fb;
+            color: #0f172a;
+            font-weight: 700;
+            font-size: 0.85rem;
+            border-bottom: 1px solid #dbe7fb;
         }
 
-        .table td {
-            padding: 1.25rem 1.5rem;
-            border-bottom: 1px solid var(--gray-100);
-            transition: background 0.2s ease;
+        .coverage-table td {
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid #eef2f7;
+            color: #334155;
+            font-size: 0.9rem;
         }
 
-        .table tr:hover {
-            background: var(--primary-50);
+        .coverage-table tbody tr:hover {
+            background: #f9fbff;
         }
 
-        .status-badge {
-            padding: 0.375rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .status-pending {
-            background: var(--warning-100);
-            color: var(--warning-600);
-        }
-
-        .status-approved {
-            background: var(--success-100);
-            color: var(--success-600);
-        }
-
-        .status-rejected {
-            background: var(--error-100);
-            color: var(--error-600);
+        .coverage-table tbody tr:last-child td {
+            border-bottom: none;
         }
 
         .empty-state {
             text-align: center;
-            padding: 4rem 2rem;
-            color: var(--gray-600);
+            padding: 3rem;
+            color: #666;
         }
 
-        .empty-icon {
-            font-size: 4rem;
-            color: var(--gray-400);
+        .empty-state i {
+            font-size: 3rem;
             margin-bottom: 1rem;
+            opacity: 0.5;
         }
 
-        .empty-title {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--gray-900);
-            margin-bottom: 0.5rem;
+        .form-body.is-collapsed {
+            display: none;
         }
 
         @media (max-width: 768px) {
-            .container {
+            .main-container {
                 padding: 1rem;
             }
 
@@ -489,55 +247,55 @@ $current_year = date('Y') . '/' . (date('Y') + 1);
                 grid-template-columns: 1fr;
             }
 
-            .table th,
-            .table td {
-                padding: 0.75rem;
-                font-size: 0.8rem;
+            .form-actions {
+                flex-direction: column-reverse;
             }
         }
     </style>
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="header-content">
-            <div class="header-brand">
-                <a href="index.php" class="back-btn">
-                    <i class="fas fa-arrow-left"></i>
-                    <span>Back to Dashboard</span>
-                </a>
-                <div class="logo-container">
-                    <i class="fas fa-clipboard-check"></i>
-                </div>
-                <div class="brand-text">
-                    <h1>SahabFormMaster</h1>
-                    <p>Content Coverage</p>
-                </div>
-            </div>
-            <div class="header-actions">
-                <div class="user-info">
-                    <div class="user-avatar">
-                        <div style="width: 40px; height: 40px; background: var(--gradient-primary); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
-                            <?php echo strtoupper(substr($teacher_name, 0, 1)); ?>
-                        </div>
+    <?php include '../includes/mobile_navigation.php'; ?>
+
+    <header class="dashboard-header">
+        <div class="header-container">
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Content Coverage</p>
                     </div>
                 </div>
+            </div>
+            <div class="header-right">
+                <div class="teacher-info">
+                    <p class="teacher-label">Teacher</p>
+                    <span class="teacher-name"><?php echo htmlspecialchars($teacher_name); ?></span>
+                </div>
+                <a href="logout.php" class="btn-logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
             </div>
         </div>
     </header>
 
-    <!-- Main Container -->
-    <div class="container">
-        <!-- Page Header -->
-        <div class="page-header">
-            <h2 class="page-title">
-                <i class="fas fa-clipboard-check"></i>
-                Content Coverage Tracking
-            </h2>
-            <p class="page-subtitle">
-                Submit weekly content coverage for principal approval
-            </p>
-        </div>
+    <div class="dashboard-container">
+        <?php include '../includes/teacher_sidebar.php'; ?>
+        <main class="main-content">
+            <div class="main-container">
+                <div class="content-header">
+                    <div class="welcome-section">
+                        <h2>Content Coverage</h2>
+                        <p>Submit weekly content coverage for principal approval.</p>
+                    </div>
+                    <div class="header-stats">
+                        <div class="quick-stat">
+                            <span class="quick-stat-value"><?php echo htmlspecialchars($current_year); ?></span>
+                            <span class="quick-stat-label">Academic Year</span>
+                        </div>
+                    </div>
+                </div>
 
         <!-- Alerts -->
         <?php if ($errors): ?>
@@ -555,194 +313,222 @@ $current_year = date('Y') . '/' . (date('Y') + 1);
         <?php endif; ?>
 
         <!-- Submit Coverage Form -->
-        <div class="form-section">
-            <h3 class="section-title">
-                <i class="fas fa-plus-circle"></i>
-                Submit New Coverage
-            </h3>
+        <div class="panel">
+            <div class="panel-header">
+                <h3><i class="fas fa-plus-circle"></i> Submit New Coverage</h3>
+                <button type="button" class="btn-toggle-form" id="toggleCoverageForm" aria-expanded="true">
+                    <i class="fas fa-eye-slash"></i>
+                    <span>Hide Form</span>
+                </button>
+            </div>
 
-            <form method="POST">
-                <input type="hidden" name="action" value="submit_coverage">
+            <div class="panel-body form-body" id="coverageFormBody">
+                <form method="POST">
+                    <input type="hidden" name="action" value="submit_coverage">
 
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label class="form-label">Subject *</label>
-                        <select name="subject_id" class="form-control" required>
-                            <option value="">Select Subject</option>
-                            <?php
-                            $unique_subjects = [];
-                            foreach ($assignments as $assignment) {
-                                if (!in_array($assignment['subject_id'], array_column($unique_subjects, 'subject_id'))) {
-                                    $unique_subjects[] = $assignment;
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Subject *</label>
+                            <select name="subject_id" class="form-control" required>
+                                <option value="">Select Subject</option>
+                                <?php
+                                $unique_subjects = [];
+                                foreach ($assignments as $assignment) {
+                                    if (!in_array($assignment['subject_id'], array_column($unique_subjects, 'subject_id'))) {
+                                        $unique_subjects[] = $assignment;
+                                    }
                                 }
-                            }
-                            foreach ($unique_subjects as $subject):
-                            ?>
-                                <option value="<?php echo $subject['subject_id']; ?>">
-                                    <?php echo htmlspecialchars($subject['subject_name']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
+                                foreach ($unique_subjects as $subject):
+                                ?>
+                                    <option value="<?php echo $subject['subject_id']; ?>">
+                                        <?php echo htmlspecialchars($subject['subject_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
 
-                    <div class="form-group">
-                        <label class="form-label">Class *</label>
-                        <select name="class_id" class="form-control" required>
-                            <option value="">Select Class</option>
-                            <?php
-                            $unique_classes = [];
-                            foreach ($assignments as $assignment) {
-                                if (!in_array($assignment['class_id'], array_column($unique_classes, 'class_id'))) {
-                                    $unique_classes[] = $assignment;
+                        <div class="form-group">
+                            <label class="form-label">Class *</label>
+                            <select name="class_id" class="form-control" required>
+                                <option value="">Select Class</option>
+                                <?php
+                                $unique_classes = [];
+                                foreach ($assignments as $assignment) {
+                                    if (!in_array($assignment['class_id'], array_column($unique_classes, 'class_id'))) {
+                                        $unique_classes[] = $assignment;
+                                    }
                                 }
-                            }
-                            foreach ($unique_classes as $class):
-                            ?>
-                                <option value="<?php echo $class['class_id']; ?>">
-                                    <?php echo htmlspecialchars($class['class_name']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                                foreach ($unique_classes as $class):
+                                ?>
+                                    <option value="<?php echo $class['class_id']; ?>">
+                                        <?php echo htmlspecialchars($class['class_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Term *</label>
+                            <select name="term" class="form-control" required>
+                                <option value="">Select Term</option>
+                                <option value="1st Term">1st Term</option>
+                                <option value="2nd Term">2nd Term</option>
+                                <option value="3rd Term">3rd Term</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Week</label>
+                            <input type="number" name="week" class="form-control" min="1" max="52" placeholder="Enter week number">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Date Covered *</label>
+                            <input type="date" name="date_covered" class="form-control" required
+                                   value="<?php echo date('Y-m-d'); ?>">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Time Start</label>
+                            <input type="time" name="time_start" class="form-control">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Time End</label>
+                            <input type="time" name="time_end" class="form-control">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Period</label>
+                            <input type="text" name="period" class="form-control" placeholder="e.g. Period 1, Morning Session">
+                        </div>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Term *</label>
-                        <select name="term" class="form-control" required>
-                            <option value="">Select Term</option>
-                            <option value="1st Term">1st Term</option>
-                            <option value="2nd Term">2nd Term</option>
-                            <option value="3rd Term">3rd Term</option>
-                        </select>
+                        <label class="form-label">Topics Covered *</label>
+                        <textarea name="topics_covered" class="form-control" rows="4" required
+                                  placeholder="Enter the actual topics you covered in this session..."></textarea>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Objectives Achieved</label>
+                            <textarea name="objectives_achieved" class="form-control" rows="3"
+                                      placeholder="What learning objectives were achieved..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Resources Used</label>
+                            <textarea name="resources_used" class="form-control" rows="3"
+                                      placeholder="Textbooks, materials, equipment used..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Assessment Done</label>
+                            <textarea name="assessment_done" class="form-control" rows="3"
+                                      placeholder="Tests, quizzes, assignments given..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Challenges Faced</label>
+                            <textarea name="challenges" class="form-control" rows="3"
+                                      placeholder="Any difficulties encountered..."></textarea>
+                        </div>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Week</label>
-                        <input type="number" name="week" class="form-control" min="1" max="52" placeholder="Enter week number">
+                        <label class="form-label">Additional Notes</label>
+                        <textarea name="notes" class="form-control" rows="2"
+                                  placeholder="Any additional comments or observations..."></textarea>
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label">Date Covered *</label>
-                        <input type="date" name="date_covered" class="form-control" required
-                               value="<?php echo date('Y-m-d'); ?>">
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i>
+                            <span>Submit for Approval</span>
+                        </button>
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Time Start</label>
-                        <input type="time" name="time_start" class="form-control">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Time End</label>
-                        <input type="time" name="time_end" class="form-control">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Period</label>
-                        <input type="text" name="period" class="form-control" placeholder="e.g. Period 1, Morning Session">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Topics Covered *</label>
-                    <textarea name="topics_covered" class="form-control" rows="4" required
-                              placeholder="Enter the actual topics you covered in this session..."></textarea>
-                </div>
-
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label class="form-label">Objectives Achieved</label>
-                        <textarea name="objectives_achieved" class="form-control" rows="3"
-                                  placeholder="What learning objectives were achieved..."></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Resources Used</label>
-                        <textarea name="resources_used" class="form-control" rows="3"
-                                  placeholder="Textbooks, materials, equipment used..."></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Assessment Done</label>
-                        <textarea name="assessment_done" class="form-control" rows="3"
-                                  placeholder="Tests, quizzes, assignments given..."></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Challenges Faced</label>
-                        <textarea name="challenges" class="form-control" rows="3"
-                                  placeholder="Any difficulties encountered..."></textarea>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Additional Notes</label>
-                    <textarea name="notes" class="form-control" rows="2"
-                              placeholder="Any additional comments or observations..."></textarea>
-                </div>
-
-                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-paper-plane"></i>
-                        <span>Submit for Approval</span>
-                    </button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
 
         <!-- Coverage History -->
-        <div class="form-section">
-            <h3 class="section-title">
-                <i class="fas fa-history"></i>
-                Coverage History
-            </h3>
-
-            <?php if (empty($coverage_entries)): ?>
-                <div class="empty-state">
-                    <i class="fas fa-clipboard-list empty-icon"></i>
-                    <h3 class="empty-title">No Coverage Entries</h3>
-                    <p>You haven't submitted any content coverage yet. Use the form above to submit your first entry.</p>
-                </div>
-            <?php else: ?>
-                <div class="table-container">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Subject</th>
-                                <th>Class</th>
-                                <th>Term</th>
-                                <th>Topics</th>
-                                <th>Status</th>
-                                <th>Submitted</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($coverage_entries as $entry): ?>
+        <div class="panel">
+            <div class="panel-header">
+                <h3><i class="fas fa-history"></i> Coverage History</h3>
+            </div>
+            <div class="panel-body">
+                <?php if (empty($coverage_entries)): ?>
+                    <div class="empty-state">
+                        <i class="fas fa-clipboard-list"></i>
+                        <h3 style="margin-bottom: 0.5rem;">No Coverage Entries</h3>
+                        <p>You haven't submitted any content coverage yet. Use the form above to submit your first entry.</p>
+                    </div>
+                <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="coverage-table">
+                            <thead>
                                 <tr>
-                                    <td><?php echo date('M d, Y', strtotime($entry['date_covered'])); ?></td>
-                                    <td><?php echo htmlspecialchars($entry['subject_name']); ?></td>
-                                    <td><?php echo htmlspecialchars($entry['class_name']); ?></td>
-                                    <td><?php echo htmlspecialchars($entry['term']); ?></td>
-                                    <td>
-                                        <div style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                            <?php echo htmlspecialchars(substr($entry['topics_covered'], 0, 100)); ?>
-                                            <?php if (strlen($entry['topics_covered']) > 100): ?>...<?php endif; ?>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span class="status-badge status-<?php echo $entry['status']; ?>">
-                                            <?php echo ucfirst(str_replace('_', ' ', $entry['status'])); ?>
-                                        </span>
-                                    </td>
-                                    <td><?php echo date('M d, H:i', strtotime($entry['submitted_at'])); ?></td>
+                                    <th>Date</th>
+                                    <th>Subject</th>
+                                    <th>Topics</th>
+                                    <th>Class</th>
+                                    <th>Time</th>
+                                    <th>Period</th>
+                                    <th>Status</th>
                                 </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endif; ?>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($coverage_entries as $entry): ?>
+                                    <tr>
+                                        <td><?php echo date('M d, Y', strtotime($entry['date_covered'])); ?></td>
+                                        <td><?php echo htmlspecialchars($entry['subject_name']); ?></td>
+                                        <td>
+                                            <div style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                <?php echo htmlspecialchars(substr($entry['topics_covered'], 0, 100)); ?>
+                                                <?php if (strlen($entry['topics_covered']) > 100): ?>...<?php endif; ?>
+                                            </div>
+                                        </td>
+                                        <td><?php echo htmlspecialchars($entry['class_name']); ?></td>
+                                        <td>
+                                            <?php
+                                            $time_start = $entry['time_start'] ?? '';
+                                            $time_end = $entry['time_end'] ?? '';
+                                            $time_range = trim($time_start) !== '' || trim($time_end) !== ''
+                                                ? trim($time_start . ' - ' . $time_end)
+                                                : '--';
+                                            echo htmlspecialchars($time_range);
+                                            ?>
+                                        </td>
+                                        <td><?php echo htmlspecialchars($entry['period'] ?? '--'); ?></td>
+                                        <td><?php echo ucfirst(str_replace('_', ' ', $entry['status'] ?? 'pending')); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
+            </div>
+        </main>
     </div>
+
+    <script>
+        (function () {
+            var toggleButton = document.getElementById('toggleCoverageForm');
+            var formBody = document.getElementById('coverageFormBody');
+            if (!toggleButton || !formBody) return;
+
+            toggleButton.addEventListener('click', function () {
+                var isCollapsed = formBody.classList.toggle('is-collapsed');
+                toggleButton.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+                toggleButton.innerHTML = isCollapsed
+                    ? '<i class="fas fa-eye"></i><span>Show Form</span>'
+                    : '<i class="fas fa-eye-slash"></i><span>Hide Form</span>';
+            });
+        })();
+    </script>
 
     <?php include '../includes/floating-button.php'; ?>
 </body>
