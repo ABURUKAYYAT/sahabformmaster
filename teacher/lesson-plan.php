@@ -46,20 +46,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($errors)) {
         if ($action === 'add') {
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM lesson_plans WHERE teacher_id = :teacher_id AND class_id = :class_id AND topic = :topic AND DATE(date_planned) = :date_planned");
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM lesson_plans WHERE teacher_id = :teacher_id AND class_id = :class_id AND topic = :topic AND DATE(date_planned) = :date_planned AND school_id = :school_id");
             $stmt->execute([
                 'teacher_id' => $user_id,
                 'class_id' => $class_id,
                 'topic' => $topic,
-                'date_planned' => $date_planned
+                'date_planned' => $date_planned,
+                'school_id' => $current_school_id
             ]);
             if ($stmt->fetchColumn() > 0) {
                 $errors[] = 'You already created a lesson plan for this topic on the selected date.';
             } else {
                 $stmt = $pdo->prepare("INSERT INTO lesson_plans 
-                    (subject_id, class_id, teacher_id, topic, duration, learning_objectives, teaching_methods, resources, lesson_content, assessment_method, assessment_tasks, differentiation, homework, date_planned, status, approval_status, created_at)
-                    VALUES (:subject_id, :class_id, :teacher_id, :topic, :duration, :learning_objectives, :teaching_methods, :resources, :lesson_content, :assessment_method, :assessment_tasks, :differentiation, :homework, :date_planned, 'draft', 'pending', NOW())");
+                    (school_id, subject_id, class_id, teacher_id, topic, duration, learning_objectives, teaching_methods, resources, lesson_content, assessment_method, assessment_tasks, differentiation, homework, date_planned, status, approval_status, created_at)
+                    VALUES (:school_id, :subject_id, :class_id, :teacher_id, :topic, :duration, :learning_objectives, :teaching_methods, :resources, :lesson_content, :assessment_method, :assessment_tasks, :differentiation, :homework, :date_planned, 'draft', 'pending', NOW())");
                 $stmt->execute([
+                    'school_id' => $current_school_id,
                     'subject_id' => $subject_id,
                     'class_id' => $class_id,
                     'teacher_id' => $user_id,
@@ -73,7 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'assessment_tasks' => $assessment_tasks,
                     'differentiation' => $differentiation,
                     'homework' => $homework,
-                    'date_planned' => $date_planned
+                    'date_planned' => $date_planned,
+                'school_id' => $current_school_id
                 ]);
                 $success = 'Lesson plan created successfully!';
                 header("Location: lesson-plan.php");
@@ -86,15 +89,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($id <= 0) {
                 $errors[] = 'Invalid lesson plan ID.';
             } else {
-                $stmt = $pdo->prepare("SELECT teacher_id, status FROM lesson_plans WHERE id = :id");
-                $stmt->execute(['id' => $id]);
+                $stmt = $pdo->prepare("SELECT teacher_id, status FROM lesson_plans WHERE id = :id AND school_id = :school_id");
+                $stmt->execute(['id' => $id, 'school_id' => $current_school_id]);
                 $plan = $stmt->fetch(PDO::FETCH_ASSOC);
                 if (!$plan || $plan['teacher_id'] != $user_id) {
                     $errors[] = 'Lesson plan not found or access denied.';
-                } elseif ($plan['status'] !== 'draft') {
-                    $errors[] = 'Only draft lesson plans can be edited.';
+                } elseif (!in_array($plan['status'], ['draft', 'on_hold'], true)) {
+                    $errors[] = 'Only draft or on-hold lesson plans can be edited.';
                 } else {
-                    $stmt = $pdo->prepare("UPDATE lesson_plans SET subject_id = :subject_id, class_id = :class_id, topic = :topic, duration = :duration, learning_objectives = :learning_objectives, teaching_methods = :teaching_methods, resources = :resources, lesson_content = :lesson_content, assessment_method = :assessment_method, assessment_tasks = :assessment_tasks, differentiation = :differentiation, homework = :homework, date_planned = :date_planned, status = :status WHERE id = :id");
+                    $stmt = $pdo->prepare("UPDATE lesson_plans SET subject_id = :subject_id, class_id = :class_id, topic = :topic, duration = :duration, learning_objectives = :learning_objectives, teaching_methods = :teaching_methods, resources = :resources, lesson_content = :lesson_content, assessment_method = :assessment_method, assessment_tasks = :assessment_tasks, differentiation = :differentiation, homework = :homework, date_planned = :date_planned, status = :status WHERE id = :id AND school_id = :school_id");
                     $stmt->execute([
                         'subject_id' => $subject_id,
                         'class_id' => $class_id,
@@ -110,7 +113,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'homework' => $homework,
                         'date_planned' => $date_planned,
                         'status' => $status,
-                        'id' => $id
+                        'id' => $id,
+                        'school_id' => $current_school_id
                     ]);
                     $success = 'Lesson plan updated successfully!';
                     header("Location: lesson-plan.php");
@@ -124,17 +128,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($id <= 0) {
                 $errors[] = 'Invalid lesson plan ID.';
             } else {
-                $stmt = $pdo->prepare("SELECT teacher_id, status FROM lesson_plans WHERE id = :id");
-                $stmt->execute(['id' => $id]);
+                $stmt = $pdo->prepare("SELECT teacher_id, status FROM lesson_plans WHERE id = :id AND school_id = :school_id");
+                $stmt->execute(['id' => $id, 'school_id' => $current_school_id]);
                 $plan = $stmt->fetch(PDO::FETCH_ASSOC);
                 if (!$plan || $plan['teacher_id'] != $user_id) {
                     $errors[] = 'Not found or access denied.';
-                } elseif ($plan['status'] === 'completed') {
-                    $errors[] = 'Completed lesson plans cannot be deleted.';
+                } elseif (!in_array($plan['status'], ['draft', 'on_hold'], true)) {
+                    $errors[] = 'Only draft or on-hold lesson plans can be deleted.';
                 } else {
                     $pdo->prepare("DELETE FROM lesson_plan_feedback WHERE lesson_plan_id = :id")->execute(['id' => $id]);
                     $pdo->prepare("DELETE FROM lesson_plan_attachments WHERE lesson_plan_id = :id")->execute(['id' => $id]);
-                    $pdo->prepare("DELETE FROM lesson_plans WHERE id = :id")->execute(['id' => $id]);
+                    $pdo->prepare("DELETE FROM lesson_plans WHERE id = :id AND school_id = :school_id")
+                        ->execute(['id' => $id, 'school_id' => $current_school_id]);
                     $success = 'Lesson plan deleted successfully!';
                     header("Location: lesson-plan.php");
                     exit;
@@ -147,16 +152,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($id <= 0) {
                 $errors[] = 'Invalid lesson plan ID.';
             } else {
-                $stmt = $pdo->prepare("SELECT teacher_id, status FROM lesson_plans WHERE id = :id");
-                $stmt->execute(['id' => $id]);
+                $stmt = $pdo->prepare("SELECT teacher_id, status FROM lesson_plans WHERE id = :id AND school_id = :school_id");
+                $stmt->execute(['id' => $id, 'school_id' => $current_school_id]);
                 $plan = $stmt->fetch(PDO::FETCH_ASSOC);
                 if (!$plan || $plan['teacher_id'] != $user_id) {
                     $errors[] = 'Not found or access denied.';
-                } elseif ($plan['status'] !== 'draft') {
-                    $errors[] = 'Only draft plans can be submitted for approval.';
+                } elseif (!in_array($plan['status'], ['draft', 'on_hold'], true)) {
+                    $errors[] = 'Only draft or on-hold plans can be submitted for approval.';
                 } else {
-                    $stmt = $pdo->prepare("UPDATE lesson_plans SET approval_status = 'pending', status = 'submitted' WHERE id = :id");
-                    $stmt->execute(['id' => $id]);
+                    $stmt = $pdo->prepare("UPDATE lesson_plans SET approval_status = 'pending', status = 'submitted' WHERE id = :id AND school_id = :school_id");
+                    $stmt->execute(['id' => $id, 'school_id' => $current_school_id]);
                     $success = 'Lesson plan submitted for principal review!';
                     header("Location: lesson-plan.php");
                     exit;
@@ -170,9 +175,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $subjects = get_school_subjects($pdo, $current_school_id);
 $classes = get_school_classes($pdo, $current_school_id);
 
+// Seed sample lesson plans (one-time trigger via ?seed_samples=1)
+if (isset($_GET['seed_samples']) && $_GET['seed_samples'] === '1') {
+    if (!empty($subjects) && !empty($classes)) {
+        $subject_id = intval($subjects[0]['id']);
+        $class_id = intval($classes[0]['id']);
+        $sample_topics = [
+            'Introduction to the Topic',
+            'Key Concepts and Terms',
+            'Guided Practice Session',
+            'Real-world Applications',
+            'Summary and Review'
+        ];
+
+        $stmt = $pdo->prepare("INSERT INTO lesson_plans
+            (school_id, subject_id, class_id, teacher_id, topic, duration, learning_objectives, teaching_methods, resources, lesson_content, assessment_method, assessment_tasks, differentiation, homework, date_planned, status, approval_status, created_at)
+            VALUES (:school_id, :subject_id, :class_id, :teacher_id, :topic, :duration, :learning_objectives, :teaching_methods, :resources, :lesson_content, :assessment_method, :assessment_tasks, :differentiation, :homework, :date_planned, 'draft', 'pending', NOW())");
+
+        $base_date = date('Y-m-d');
+        foreach ($sample_topics as $index => $topic) {
+            $date_planned = date('Y-m-d', strtotime($base_date . " +$index day"));
+            $stmt->execute([
+                'school_id' => $current_school_id,
+                'subject_id' => $subject_id,
+                'class_id' => $class_id,
+                'teacher_id' => $user_id,
+                'topic' => $topic,
+                'duration' => 45,
+                'learning_objectives' => 'Understand the lesson objectives and key takeaways.',
+                'teaching_methods' => 'Discussion, demonstration, and guided practice.',
+                'resources' => 'Whiteboard, textbook, and slides.',
+                'lesson_content' => 'Introduce the topic, explain key ideas, and provide examples.',
+                'assessment_method' => 'Short quiz and oral questions.',
+                'assessment_tasks' => 'Complete classwork and answer review questions.',
+                'differentiation' => 'Provide support materials and extension tasks.',
+                'homework' => 'Revise notes and complete assigned exercises.',
+                'date_planned' => $date_planned
+            ]);
+        }
+        $_SESSION['success'] = 'Sample lesson plans inserted successfully.';
+    } else {
+        $_SESSION['error'] = 'No subjects or classes found for your school.';
+    }
+    header("Location: lesson-plan.php");
+    exit;
+}
+
 // Fetch teacher's lesson plans - school-filtered
-$stmt = $pdo->prepare("SELECT lp.*, s.subject_name, c.class_name FROM lesson_plans lp JOIN subjects s ON lp.subject_id = s.id JOIN classes c ON lp.class_id = c.id WHERE lp.teacher_id = :teacher_id AND s.school_id = :school_id AND c.school_id = :school_id2 ORDER BY lp.date_planned DESC, lp.created_at DESC");
-$stmt->execute(['teacher_id' => $user_id, 'school_id' => $current_school_id, 'school_id2' => $current_school_id]);
+$stmt = $pdo->prepare("SELECT lp.*, s.subject_name, c.class_name, u.full_name AS approved_by_name FROM lesson_plans lp JOIN subjects s ON lp.subject_id = s.id JOIN classes c ON lp.class_id = c.id LEFT JOIN users u ON lp.approved_by = u.id WHERE lp.teacher_id = :teacher_id AND lp.school_id = :school_id_lp AND s.school_id = :school_id_s AND c.school_id = :school_id_c ORDER BY lp.date_planned DESC, lp.created_at DESC");
+$stmt->execute([
+    'teacher_id' => $user_id,
+    'school_id_lp' => $current_school_id,
+    'school_id_s' => $current_school_id,
+    'school_id_c' => $current_school_id
+]);
 $lesson_plans = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // If editing, fetch single plan
@@ -180,8 +236,8 @@ $edit_plan = null;
 if (isset($_GET['edit'])) {
     $edit_id = intval($_GET['edit']);
     if ($edit_id > 0) {
-        $stmt = $pdo->prepare("SELECT * FROM lesson_plans WHERE id = :id AND teacher_id = :teacher_id");
-        $stmt->execute(['id' => $edit_id, 'teacher_id' => $user_id]);
+        $stmt = $pdo->prepare("SELECT * FROM lesson_plans WHERE id = :id AND teacher_id = :teacher_id AND school_id = :school_id");
+        $stmt->execute(['id' => $edit_id, 'teacher_id' => $user_id, 'school_id' => $current_school_id]);
         $edit_plan = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($edit_plan && $edit_plan['status'] !== 'draft') $edit_plan = null;
     }
@@ -205,6 +261,8 @@ function getStatusBadge($status) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Lesson Plans | SahabFormMaster</title>
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1011,6 +1069,27 @@ function getStatusBadge($status) {
             box-shadow: none !important;
             background: inherit !important;
         }
+        .toggle-form-btn {
+            background: #f1f5f9;
+            color: #1f2937;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 0.5rem 1rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+        .toggle-form-btn:hover {
+            background: #e2e8f0;
+        }
+        .lesson-form-collapsible {
+            display: none;
+        }
+        .lesson-form-collapsible.active {
+            display: block;
+        }
 
         /* Alerts */
         .alert-modern {
@@ -1216,108 +1295,27 @@ function getStatusBadge($status) {
     </style>
 </head>
 <body>
-    <!-- Mobile Menu Toggle -->
-    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
-        <i class="fas fa-bars"></i>
-    </button>
+    <!-- Mobile Navigation Component -->
+    <?php include '../includes/mobile_navigation.php'; ?>
 
-    <!-- Mobile Navigation Dropdown -->
-    <div class="mobile-nav-dropdown" id="mobileNavDropdown">
-        <div class="mobile-nav-header">
-            <h3>Navigation</h3>
-            <button class="mobile-nav-close" id="mobileNavClose">&times;</button>
-        </div>
-        <nav class="mobile-nav-menu">
-            <a href="index.php" class="mobile-nav-link">
-                <i class="fas fa-tachometer-alt"></i>
-                <span>Dashboard</span>
-            </a>
-            <a href="schoolfeed.php" class="mobile-nav-link">
-                <i class="fas fa-newspaper"></i>
-                <span>School Feeds</span>
-            </a>
-            <a href="school_diary.php" class="mobile-nav-link">
-                <i class="fas fa-book"></i>
-                <span>School Diary</span>
-            </a>
-            <a href="students.php" class="mobile-nav-link">
-                <i class="fas fa-users"></i>
-                <span>Students</span>
-            </a>
-            <a href="results.php" class="mobile-nav-link">
-                <i class="fas fa-chart-line"></i>
-                <span>Results</span>
-            </a>
-            <a href="subjects.php" class="mobile-nav-link">
-                <i class="fas fa-book-open"></i>
-                <span>Subjects</span>
-            </a>
-            <a href="questions.php" class="mobile-nav-link">
-                <i class="fas fa-question-circle"></i>
-                <span>Questions</span>
-            </a>
-            <a href="lesson-plan.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'lesson-plan.php' ? 'active' : ''; ?>">
-                <i class="fas fa-clipboard-list"></i>
-                <span>Lesson Plans</span>
-            </a>
-            <a href="curricullum.php" class="mobile-nav-link">
-                <i class="fas fa-graduation-cap"></i>
-                <span>Curriculum</span>
-            </a>
-            <a href="teacher_class_activities.php" class="mobile-nav-link">
-                <i class="fas fa-tasks"></i>
-                <span>Class Activities</span>
-            </a>
-            <a href="student-evaluation.php" class="mobile-nav-link">
-                <i class="fas fa-star"></i>
-                <span>Evaluations</span>
-            </a>
-            <a href="class_attendance.php" class="mobile-nav-link">
-                <i class="fas fa-calendar-check"></i>
-                <span>Attendance</span>
-            </a>
-            <a href="timebook.php" class="mobile-nav-link">
-                <i class="fas fa-clock"></i>
-                <span>Time Book</span>
-            </a>
-            <a href="permissions.php" class="mobile-nav-link">
-                <i class="fas fa-key"></i>
-                <span>Permissions</span>
-            </a>
-            <a href="payments.php" class="mobile-nav-link">
-                <i class="fas fa-money-bill-wave"></i>
-                <span>Payments</span>
-            </a>
-        </nav>
-    </div>
-
-    <!-- Modern Header -->
-    <header class="modern-header">
-        <div class="header-content">
-            <div class="header-brand">
-                <a href="index.php" class="back-btn">
-                    <i class="fas fa-arrow-left"></i>
-                    <span>Back to Dashboard</span>
-                </a>
-                <div class="logo-container">
-                    <i class="fas fa-graduation-cap"></i>
-                </div>
-                <div class="brand-text">
-                    <h1>SahabFormMaster</h1>
-                    <p>Lesson Plans</p>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Teacher Portal</p>
+                    </div>
                 </div>
             </div>
-            <div class="header-actions">
-                <div class="user-info">
-                    <div class="user-avatar">
-                        <?php echo strtoupper(substr($user_name, 0, 1)); ?>
-                    </div>
-                    <div class="user-details">
-                        <p>Teacher</p>
-                        <span><?php echo htmlspecialchars($user_name); ?></span>
-                    </div>
+            <div class="header-right">
+                <div class="teacher-info">
+                    <p class="teacher-label">Teacher</p>
+                    <span class="teacher-name"><?php echo htmlspecialchars($user_name); ?></span>
                 </div>
-                <a href="logout.php" class="logout-btn">
+                <a href="logout.php" class="btn-logout">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </a>
@@ -1325,8 +1323,10 @@ function getStatusBadge($status) {
         </div>
     </header>
 
-    <!-- Main Container -->
-    <div class="main-container">
+    <div class="dashboard-container">
+        <?php include '../includes/teacher_sidebar.php'; ?>
+        <main class="main-content">
+<div class="main-container">
         <!-- Welcome Section -->
         <div class="modern-card animate-fade-in-up">
             <div class="card-header-modern">
@@ -1404,7 +1404,8 @@ function getStatusBadge($status) {
 
         <!-- Form Section -->
         <div class="modern-card animate-fade-in-up">
-            <div class="card-header-modern">
+            <div class="card-header-modern" style="display:flex; align-items:center; justify-content:space-between; gap:1rem;">
+                <div>
                 <h2 class="card-title-modern">
                     <i class="fas <?php echo $edit_plan ? 'fa-edit' : 'fa-plus-circle'; ?>"></i>
                     <?php echo $edit_plan ? 'Edit Lesson Plan' : 'Create New Lesson Plan'; ?>
@@ -1412,8 +1413,14 @@ function getStatusBadge($status) {
                 <p class="card-subtitle-modern">
                     <?php echo $edit_plan ? 'Modify existing lesson plan details' : 'Fill in the details to create a new lesson plan'; ?>
                 </p>
+                </div>
+                <button type="button" class="toggle-form-btn" id="toggleLessonForm">
+                    <i class="fas fa-eye"></i>
+                    <span>Show Form</span>
+                </button>
             </div>
             <div class="card-body-modern">
+                <div id="lessonFormBody" class="lesson-form-collapsible">
                 <form method="POST" action="lesson-plan.php">
                     <input type="hidden" name="action" value="<?php echo $edit_plan ? 'edit' : 'add'; ?>">
                     <?php if ($edit_plan): ?>
@@ -1579,7 +1586,9 @@ function getStatusBadge($status) {
                         <?php endif; ?>
                     </div>
                 </form>
+                </div>
             </div>
+        </div>
         </div>
 
         <!-- Lesson Plans Table -->
@@ -1656,6 +1665,11 @@ function getStatusBadge($status) {
                                             <?php endif; ?>
                                             <?php echo htmlspecialchars(ucfirst($lp['approval_status'] ?? 'pending')); ?>
                                         </span>
+                                        <?php if (!empty($lp['approved_by_name'])): ?>
+                                            <div style="font-size: 0.75rem; color: var(--gray-500); margin-top: 0.35rem;">
+                                                By <?php echo htmlspecialchars($lp['approved_by_name']); ?>
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <div class="manage-actions-modern">
@@ -1664,19 +1678,19 @@ function getStatusBadge($status) {
                                                 <span>View</span>
                                             </a>
 
-                                            <?php if ($lp['status'] === 'draft'): ?>
+                                            <?php if (in_array($lp['status'], ['draft', 'on_hold'], true)): ?>
                                                 <a class="btn-small-modern btn-edit-modern" href="lesson-plan.php?edit=<?php echo intval($lp['id']); ?>">
                                                     <i class="fas fa-edit"></i>
                                                     <span>Edit</span>
                                                 </a>
                                             <?php else: ?>
-                                                <button class="btn-small-modern btn-edit-modern" disabled style="opacity: 0.5; cursor: not-allowed;" title="Only draft plans can be edited">
+                                                <button class="btn-small-modern btn-edit-modern" disabled style="opacity: 0.5; cursor: not-allowed;" title="Only draft or on-hold plans can be edited">
                                                     <i class="fas fa-edit"></i>
                                                     <span>Edit</span>
                                                 </button>
                                             <?php endif; ?>
 
-                                            <?php if ($lp['status'] === 'draft'): ?>
+                                            <?php if (in_array($lp['status'], ['draft', 'on_hold'], true)): ?>
                                                 <form method="POST" style="display:inline;">
                                                     <input type="hidden" name="action" value="submit_for_approval">
                                                     <input type="hidden" name="id" value="<?php echo intval($lp['id']); ?>">
@@ -1686,13 +1700,13 @@ function getStatusBadge($status) {
                                                     </button>
                                                 </form>
                                             <?php else: ?>
-                                                <button class="btn-small-modern btn-submit-modern" disabled style="opacity: 0.5; cursor: not-allowed;" title="Only draft plans can be submitted">
+                                                <button class="btn-small-modern btn-submit-modern" disabled style="opacity: 0.5; cursor: not-allowed;" title="Only draft or on-hold plans can be submitted">
                                                     <i class="fas fa-paper-plane"></i>
                                                     <span>Submit</span>
                                                 </button>
                                             <?php endif; ?>
 
-                                            <?php if ($lp['status'] !== 'completed'): ?>
+                                            <?php if (in_array($lp['status'], ['draft', 'on_hold'], true)): ?>
                                                 <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this lesson plan?');">
                                                     <input type="hidden" name="action" value="delete">
                                                     <input type="hidden" name="id" value="<?php echo intval($lp['id']); ?>">
@@ -1702,7 +1716,7 @@ function getStatusBadge($status) {
                                                     </button>
                                                 </form>
                                             <?php else: ?>
-                                                <button class="btn-small-modern btn-delete-modern" disabled style="opacity: 0.5; cursor: not-allowed;" title="Completed plans cannot be deleted">
+                                                <button class="btn-small-modern btn-delete-modern" disabled style="opacity: 0.5; cursor: not-allowed;" title="Only draft or on-hold plans can be deleted">
                                                     <i class="fas fa-trash"></i>
                                                     <span>Delete</span>
                                                 </button>
@@ -1722,44 +1736,29 @@ function getStatusBadge($status) {
     
 
 <script>
-    // Mobile Menu Toggle - Dropdown Navigation
-    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-    const mobileNavDropdown = document.getElementById('mobileNavDropdown');
-    const mobileNavClose = document.getElementById('mobileNavClose');
+    // Mobile navigation is handled by includes/mobile_navigation.php
 
-    // Toggle dropdown menu
-    mobileMenuToggle.addEventListener('click', (e) => {
-        e.stopPropagation();
-        mobileNavDropdown.classList.toggle('active');
-        mobileMenuToggle.classList.toggle('active');
-    });
-
-    // Close dropdown when clicking close button
-    mobileNavClose.addEventListener('click', () => {
-        mobileNavDropdown.classList.remove('active');
-        mobileMenuToggle.classList.remove('active');
-    });
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!mobileNavDropdown.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
-            mobileNavDropdown.classList.remove('active');
-            mobileMenuToggle.classList.remove('active');
-        }
-    });
-
-    // Close dropdown when clicking on a navigation link
-    document.querySelectorAll('.mobile-nav-link').forEach(link => {
-        link.addEventListener('click', () => {
-            mobileNavDropdown.classList.remove('active');
-            mobileMenuToggle.classList.remove('active');
-        });
-    });
-
-    // Auto-focus first input in form
+// Auto-focus first input in form
     document.addEventListener('DOMContentLoaded', function() {
         const firstInput = document.querySelector('.lesson-form input, .lesson-form select, .lesson-form textarea');
         if (firstInput) firstInput.focus();
+
+        // Toggle create/edit form
+        const toggleBtn = document.getElementById('toggleLessonForm');
+        const formBody = document.getElementById('lessonFormBody');
+        if (toggleBtn && formBody) {
+            const show = true;
+            formBody.classList.toggle('active', show);
+            toggleBtn.innerHTML = show
+                ? '<i class="fas fa-eye-slash"></i><span>Hide Form</span>'
+                : '<i class="fas fa-eye"></i><span>Show Form</span>';
+            toggleBtn.addEventListener('click', () => {
+                const isOpen = formBody.classList.toggle('active');
+                toggleBtn.innerHTML = isOpen
+                    ? '<i class="fas fa-eye-slash"></i><span>Hide Form</span>'
+                    : '<i class="fas fa-eye"></i><span>Show Form</span>';
+            });
+        }
 
         // Form validation feedback
         const forms = document.querySelectorAll('form');
@@ -1783,5 +1782,9 @@ function getStatusBadge($status) {
             });
         });
     });
-</script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
+</script>
+
+    <?php include '../includes/floating-button.php'; ?>
+
+</body>
 </html>

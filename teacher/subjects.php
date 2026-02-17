@@ -85,6 +85,8 @@ $total_assignments = count($assignments);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Subject Management | SahabFormMaster</title>
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -163,6 +165,17 @@ $total_assignments = count($assignments);
             color: var(--gray-800);
             line-height: 1.6;
             min-height: 100vh;
+        }
+        .dashboard-container .main-content {
+            width: 100%;
+        }
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+        body {
+            background: #f5f7fb;
         }
 
         /* Modern Header */
@@ -1085,33 +1098,27 @@ $total_assignments = count($assignments);
     </style>
 </head>
 <body>
-    <!-- Modern Header -->
-    <header class="modern-header">
-        <div class="header-content">
-            <div class="header-brand">
-                <a href="index.php" class="back-btn">
-                    <i class="fas fa-arrow-left"></i>
-                    <span>Back to Dashboard</span>
-                </a>
-                <div class="logo-container">
-                    <i class="fas fa-book"></i>
-                </div>
-                <div class="brand-text">
-                    <h1>SahabFormMaster</h1>
-                    <p>Subject Management</p>
+    <!-- Mobile Navigation Component -->
+    <?php include '../includes/mobile_navigation.php'; ?>
+
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Teacher Portal</p>
+                    </div>
                 </div>
             </div>
-            <div class="header-actions">
-                <div class="user-info">
-                    <div class="user-avatar">
-                        <?php echo strtoupper(substr($teacher_name, 0, 1)); ?>
-                    </div>
-                    <div class="user-details">
-                        <p>Teacher</p>
-                        <span><?php echo htmlspecialchars($teacher_name); ?></span>
-                    </div>
+            <div class="header-right">
+                <div class="teacher-info">
+                    <p class="teacher-label">Teacher</p>
+                    <span class="teacher-name"><?php echo htmlspecialchars($teacher_name); ?></span>
                 </div>
-                <a href="logout.php" class="logout-btn">
+                <a href="logout.php" class="btn-logout">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </a>
@@ -1119,8 +1126,10 @@ $total_assignments = count($assignments);
         </div>
     </header>
 
-    <!-- Main Container -->
-    <div class="main-container">
+    <div class="dashboard-container">
+        <?php include '../includes/teacher_sidebar.php'; ?>
+        <main class="main-content">
+<div class="main-container">
         <!-- Welcome Section -->
         <div class="modern-card animate-fade-in-up">
             <div class="card-header-modern">
@@ -1396,7 +1405,12 @@ $total_assignments = count($assignments);
         </div>
     </div>
 
-    <script>
+    
+        </div>
+    </main>
+</div>
+
+<script>
         function editSubject(id, name, code, description) {
             document.getElementById('edit_id').value = id;
             document.getElementById('edit_name').value = name;
@@ -1417,15 +1431,17 @@ $total_assignments = count($assignments);
         });
 
         // Header scroll effect
-        window.addEventListener('scroll', () => {
-            const header = document.querySelector('.modern-header');
-            if (window.scrollY > 50) {
-                header.style.background = 'rgba(255, 255, 255, 0.98)';
-                header.style.backdropFilter = 'blur(20px)';
-            } else {
-                header.style.background = 'rgba(255, 255, 255, 0.95)';
-            }
-        });
+        const header = document.querySelector('.dashboard-header');
+        if (header) {
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 50) {
+                    header.style.background = 'rgba(255, 255, 255, 0.98)';
+                    header.style.backdropFilter = 'blur(20px)';
+                } else {
+                    header.style.background = 'rgba(255, 255, 255, 0.95)';
+                }
+            });
+        }
 
         // Add entrance animations on scroll
         const observerOptions = {
@@ -1460,5 +1476,9 @@ $total_assignments = count($assignments);
                 }
             });
         });
-    </script><?php include '../includes/floating-button.php'; ?></body>
+    </script>
+
+    <?php include '../includes/floating-button.php'; ?>
+
+</body>
 </html>

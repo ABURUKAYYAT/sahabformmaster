@@ -68,8 +68,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($teacher_id <= 0) {
         $errors[] = 'Teacher is required.';
     } else {
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE id = :id AND role = 'teacher'");
-        $stmt->execute(['id' => $teacher_id]);
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE id = :id AND role = 'teacher' AND school_id = :school_id");
+        $stmt->execute(['id' => $teacher_id, 'school_id' => $current_school_id]);
         if ($stmt->fetchColumn() == 0) {
             $errors[] = 'Selected teacher does not exist or is not a teacher.';
         }
@@ -89,13 +89,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($stmt->fetchColumn() > 0) {
                 $errors[] = 'A lesson plan for this topic already exists for this class on this date.';
             } else {
+                $approval_status = $is_principal ? 'approved' : 'pending';
+                $approved_by = $is_principal ? $user_id : null;
+                $approved_at = $is_principal ? date('Y-m-d H:i:s') : null;
+
                 $stmt = $pdo->prepare("INSERT INTO lesson_plans
                                       (school_id, subject_id, class_id, teacher_id, topic, duration, learning_objectives,
                                        teaching_methods, resources, lesson_content, assessment_method, assessment_tasks,
-                                       differentiation, homework, date_planned, status, principal_remarks)
+                                       differentiation, homework, date_planned, status, approval_status, approved_by, approved_at, principal_remarks)
                                       VALUES (:school_id, :subject_id, :class_id, :teacher_id, :topic, :duration, :learning_objectives,
                                               :teaching_methods, :resources, :lesson_content, :assessment_method, :assessment_tasks,
-                                              :differentiation, :homework, :date_planned, :status, :principal_remarks)");
+                                              :differentiation, :homework, :date_planned, :status, :approval_status, :approved_by, :approved_at, :principal_remarks)");
                 $stmt->execute([
                     'school_id' => $current_school_id,
                     'subject_id' => $subject_id,
@@ -113,6 +117,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'homework' => $homework,
                     'date_planned' => $date_planned,
                     'status' => $status,
+                    'approval_status' => $approval_status,
+                    'approved_by' => $approved_by,
+                    'approved_at' => $approved_at,
                     'principal_remarks' => $principal_remarks
                 ]);
                 $success = 'Lesson plan created successfully!';
@@ -126,8 +133,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($id <= 0) {
                 $errors[] = 'Invalid lesson plan ID.';
             } else {
-                $stmt = $pdo->prepare("SELECT teacher_id, status FROM lesson_plans WHERE id = :id");
-                $stmt->execute(['id' => $id]);
+                $stmt = $pdo->prepare("SELECT teacher_id, status FROM lesson_plans WHERE id = :id AND school_id = :school_id");
+                $stmt->execute(['id' => $id, 'school_id' => $current_school_id]);
                 $plan = $stmt->fetch();
 
                 if (!$plan) {
@@ -141,7 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                           teaching_methods = :teaching_methods, resources = :resources, lesson_content = :lesson_content,
                                           assessment_method = :assessment_method, assessment_tasks = :assessment_tasks,
                                           differentiation = :differentiation, homework = :homework, date_planned = :date_planned,
-                                          status = :status, principal_remarks = :principal_remarks WHERE id = :id");
+                                          status = :status, principal_remarks = :principal_remarks WHERE id = :id AND school_id = :school_id");
                     $stmt->execute([
                         'subject_id' => $subject_id,
                         'class_id' => $class_id,
@@ -159,7 +166,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'date_planned' => $date_planned,
                         'status' => $status,
                         'principal_remarks' => $principal_remarks,
-                        'id' => $id
+                        'id' => $id,
+                        'school_id' => $current_school_id
                     ]);
                     $success = 'Lesson plan updated successfully!';
                     header("Location: lesson-plans.php");
@@ -174,13 +182,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($id <= 0) {
                 $errors[] = 'Invalid lesson plan ID.';
             } else {
-                $stmt = $pdo->prepare("UPDATE lesson_plans SET approval_status = :approval_status, approved_by = :approved_by, status = :status WHERE id = :id");
+                $stmt = $pdo->prepare("UPDATE lesson_plans SET approval_status = :approval_status, approved_by = :approved_by, approved_at = NOW(), status = :status WHERE id = :id AND school_id = :school_id");
                 $new_status = ($approval_status === 'approved') ? 'scheduled' : 'on_hold';
                 $stmt->execute([
                     'approval_status' => $approval_status,
                     'approved_by' => $user_id,
                     'status' => $new_status,
-                    'id' => $id
+                    'id' => $id,
+                    'school_id' => $current_school_id
                 ]);
                 $success = 'Lesson plan ' . $approval_status . ' successfully!';
                 header("Location: lesson-plans.php");
@@ -193,8 +202,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($id <= 0) {
                 $errors[] = 'Invalid lesson plan ID.';
             } else {
-                $stmt = $pdo->prepare("UPDATE lesson_plans SET status = :status WHERE id = :id");
-                $stmt->execute(['status' => 'completed', 'id' => $id]);
+                $stmt = $pdo->prepare("UPDATE lesson_plans SET status = :status WHERE id = :id AND school_id = :school_id");
+                $stmt->execute(['status' => 'completed', 'id' => $id, 'school_id' => $current_school_id]);
                 $success = 'Lesson plan marked as completed!';
                 header("Location: lesson-plans.php");
                 exit;
@@ -206,8 +215,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($id <= 0) {
                 $errors[] = 'Invalid lesson plan ID.';
             } else {
-                $stmt = $pdo->prepare("SELECT teacher_id, status FROM lesson_plans WHERE id = :id");
-                $stmt->execute(['id' => $id]);
+                $stmt = $pdo->prepare("SELECT teacher_id, status FROM lesson_plans WHERE id = :id AND school_id = :school_id");
+                $stmt->execute(['id' => $id, 'school_id' => $current_school_id]);
                 $plan = $stmt->fetch();
 
                 if (!$plan) {
@@ -217,7 +226,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $pdo->prepare("DELETE FROM lesson_plan_feedback WHERE lesson_plan_id = :id")->execute(['id' => $id]);
                     $pdo->prepare("DELETE FROM lesson_plan_attachments WHERE lesson_plan_id = :id")->execute(['id' => $id]);
-                    $pdo->prepare("DELETE FROM lesson_plans WHERE id = :id")->execute(['id' => $id]);
+                    $pdo->prepare("DELETE FROM lesson_plans WHERE id = :id AND school_id = :school_id")
+                        ->execute(['id' => $id, 'school_id' => $current_school_id]);
                     $success = 'Lesson plan deleted successfully!';
                     header("Location: lesson-plans.php");
                     exit;
@@ -258,15 +268,17 @@ foreach ($approval_statuses as $status) {
 }
 
 // Top teachers by lesson plans
-$teacher_performance = $pdo->query("
+$teacherStmt = $pdo->prepare("
     SELECT u.full_name, COUNT(lp.id) as plan_count 
     FROM users u 
-    LEFT JOIN lesson_plans lp ON u.id = lp.teacher_id 
-    WHERE u.role = 'teacher' 
+    LEFT JOIN lesson_plans lp ON u.id = lp.teacher_id AND lp.school_id = ? 
+    WHERE u.role = 'teacher' AND u.school_id = ? 
     GROUP BY u.id, u.full_name 
     ORDER BY plan_count DESC 
     LIMIT 5
-")->fetchAll(PDO::FETCH_ASSOC);
+");
+$teacherStmt->execute([$current_school_id, $current_school_id]);
+$teacher_performance = $teacherStmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch data for dropdowns
 $stmt = $pdo->prepare("SELECT id, subject_name FROM subjects WHERE school_id = ? ORDER BY subject_name ASC");
@@ -284,6 +296,7 @@ $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // Search and filter
 $search = trim($_GET['search'] ?? '');
 $filter_status = $_GET['filter_status'] ?? '';
+$filter_approval = $_GET['approval_status'] ?? '';
 $filter_teacher = $_GET['filter_teacher'] ?? '';
 $filter_class = $_GET['filter_class'] ?? '';
 
@@ -311,6 +324,11 @@ if ($filter_status !== '') {
     $params['status'] = $filter_status;
 }
 
+if ($filter_approval !== '') {
+    $query .= " AND lp.approval_status = :approval_status";
+    $params['approval_status'] = $filter_approval;
+}
+
 if ($filter_teacher !== '' && $is_principal) {
     $query .= " AND lp.teacher_id = :teacher_id_filter";
     $params['teacher_id_filter'] = intval($filter_teacher);
@@ -331,8 +349,8 @@ $edit_plan = null;
 if (isset($_GET['edit'])) {
     $edit_id = intval($_GET['edit']);
     if ($edit_id > 0) {
-        $stmt = $pdo->prepare("SELECT * FROM lesson_plans WHERE id = :id");
-        $stmt->execute(['id' => $edit_id]);
+        $stmt = $pdo->prepare("SELECT * FROM lesson_plans WHERE id = :id AND school_id = :school_id");
+        $stmt->execute(['id' => $edit_id, 'school_id' => $current_school_id]);
         $edit_plan = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($edit_plan && $user_role === 'teacher' && ($edit_plan['teacher_id'] != $user_id || $edit_plan['status'] !== 'draft')) {
             $edit_plan = null;
@@ -368,510 +386,53 @@ function getStatusBadge($status) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lesson Plans Management | SahabFormMaster</title>
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root {
-            --primary-color: #4361ee;
-            --secondary-color: #3a0ca3;
-            --success-color: #4cc9f0;
-            --warning-color: #f8961e;
-            --danger-color: #f72585;
-            --light-color: #f8f9fa;
-            --dark-color: #212529;
-            --gray-color: #6c757d;
-            --card-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            --hover-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        body { background: #f5f7fb; }
+        .dashboard-container .main-content { width: 100%; }
+        .lesson-section,
+        .search-filter,
+        .quick-actions,
+        .analytics-section {
+            background: #fff;
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow);
+            padding: 24px;
+            margin-bottom: 24px;
         }
-        
-        .lesson-section {
-            margin-bottom: 2rem;
-            background: white;
-            border-radius: 12px;
-            box-shadow: var(--card-shadow);
-            overflow: hidden;
-            transition: transform 0.3s ease;
-        }
-        
-        .lesson-section:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--hover-shadow);
-        }
-        
-        .lesson-card {
-            padding: 2rem;
-        }
-        
-        .lesson-card h3 {
-            color: var(--secondary-color);
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 2px solid #e9ecef;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 1.5rem;
-        }
-        
-        .form-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        
-        .form-group label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: var(--dark-color);
-        }
-        
-        .form-control {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: all 0.3s;
-        }
-        
-        .form-control:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
-        }
-        
-        .form-actions {
-            display: flex;
-            gap: 1rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid #e9ecef;
-        }
-        
-        .btn-gold {
-            background: linear-gradient(135deg, #FFD700, #FFA500);
-            color: white;
-            padding: 0.75rem 2rem;
+        .lesson-card { padding: 0; }
+        .lesson-card h3 { margin: 0 0 16px; color: var(--secondary); font-size: 1.25rem; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 16px; }
+        .form-control { width: 100%; padding: 12px 14px; border: 2px solid #e5e7eb; border-radius: var(--border-radius); font-size: 0.95rem; }
+        .admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+        .quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+        .btn-gold, .btn-search, .btn-primary-std {
+            background: var(--gradient-primary);
+            color: #fff;
             border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
         }
-        
-        .btn-gold:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
-        }
-        
-        .btn-secondary {
-            background: var(--gray-color);
-            color: white;
-            padding: 0.75rem 2rem;
+        .btn-secondary, .btn-reset, .btn-secondary-std {
+            background: #e2e8f0;
+            color: #1f2937;
             border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
         }
-        
-        .search-filter {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: var(--card-shadow);
-            margin-bottom: 2rem;
+        .btn-outline-std {
+            background: #fff;
+            border: 2px solid #e2e8f0;
+            color: #1f2937;
         }
-        
-        .search-form {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            align-items: end;
-        }
-        
-        .btn-search {
-            background: var(--primary-color);
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .btn-reset {
-            background: var(--gray-color);
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            text-align: center;
-        }
-        
-        .table-wrapper {
-            overflow-x: auto;
-            border-radius: 12px;
-            box-shadow: var(--card-shadow);
-            background: white;
-        }
-        
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-            min-width: 1000px;
-        }
-        
-        .table th {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 1rem;
-            text-align: left;
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-        }
-        
-        .table td {
-            padding: 1rem;
-            border-bottom: 1px solid #e9ecef;
-            vertical-align: middle;
-        }
-        
-        .table tr:hover {
-            background-color: rgba(67, 97, 238, 0.05);
-        }
-        
-        .badge {
-            padding: 0.4rem 0.8rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .badge-secondary { background: #6c757d; color: white; }
-        .badge-warning { background: #ffc107; color: #212529; }
-        .badge-primary { background: var(--primary-color); color: white; }
-        .badge-success { background: #28a745; color: white; }
-        .badge-danger { background: var(--danger-color); color: white; }
-        
-        .manage-actions {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-        
-        .btn-small {
-            padding: 0.4rem 0.8rem;
-            border: none;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            text-decoration: none;
-        }
-        
-        .btn-view { background: #17a2b8; color: white; }
-        .btn-edit { background: #ffc107; color: #212529; }
-        .btn-approve { background: #28a745; color: white; }
-        .btn-reject { background: #dc3545; color: white; }
-        .btn-complete { background: #20c997; color: white; }
-        .btn-delete { background: var(--danger-color); color: white; }
-        
-        .btn-small:hover {
-            transform: translateY(-1px);
-            opacity: 0.9;
-        }
-        
-        .alert {
-            padding: 1rem 1.5rem;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            animation: slideIn 0.3s ease;
-        }
-        
-        .alert-error {
-            background: linear-gradient(135deg, #ffeaea, #ffcccc);
-            border-left: 4px solid var(--danger-color);
-            color: #721c24;
-        }
-        
-        .alert-success {
-            background: linear-gradient(135deg, #d4edda, #c3e6cb);
-            border-left: 4px solid #28a745;
-            color: #155724;
-        }
-        
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .admin-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-        
-        .stat-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: var(--card-shadow);
-            text-align: center;
-            transition: all 0.3s;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-3px);
-            box-shadow: var(--hover-shadow);
-        }
-        
-        .stat-card i {
-            font-size: 2rem;
-            color: var(--primary-color);
-            margin-bottom: 1rem;
-        }
-        
-        .stat-number {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--dark-color);
-            margin: 0.5rem 0;
-        }
-        
-        .stat-label {
-            color: var(--gray-color);
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        /* Responsive Design */
-        @media (max-width: 1200px) {
-            .search-form {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-        
-        @media (max-width: 768px) {
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-            
-            .search-form {
-                grid-template-columns: 1fr;
-            }
-            
-            .lesson-card {
-                padding: 1rem;
-            }
-            
-            .form-actions {
-                flex-direction: column;
-            }
-            
-            .btn-gold, .btn-secondary {
-                width: 100%;
-                justify-content: center;
-            }
-            
-            .manage-actions {
-                flex-direction: column;
-                gap: 0.25rem;
-            }
-            
-            .admin-stats {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .lesson-section {
-                margin: 0 -1rem;
-                border-radius: 0;
-            }
-            
-            .admin-stats {
-                grid-template-columns: 1fr;
-            }
-            
-            .stat-card {
-                padding: 1rem;
-            }
-            
-            .stat-number {
-                font-size: 2rem;
-            }
-        }
-        
-        .principal-actions {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            padding: 1rem;
-            background: #f8f9fa;
-            border-radius: 8px;
-            margin-top: 1rem;
-        }
-        
-        .quick-actions {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        
-        .quick-action-btn {
-            background: white;
-            border: 2px solid #e9ecef;
-            padding: 1rem 1.5rem;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            text-decoration: none;
-            color: var(--dark-color);
-            font-weight: 500;
-            transition: all 0.3s;
-        }
-        
-        .quick-action-btn:hover {
-            border-color: var(--primary-color);
-            transform: translateY(-2px);
-            box-shadow: var(--card-shadow);
-        }
-        
-        .quick-action-btn i {
-            font-size: 1.2rem;
-            color: var(--primary-color);
-        }
-
-        .charts-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-            margin-top: 1.5rem;
-        }
-
-        .chart-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: var(--card-shadow);
-            border: 1px solid var(--gray-200);
-            transition: var(--transition-normal);
-        }
-
-        .chart-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--hover-shadow);
-        }
-
-        .chart-card h4 {
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--gray-900);
-            margin-bottom: 1rem;
-            text-align: center;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .chart-card h4 i {
-            color: var(--primary-color);
-        }
-
-        .chart-card canvas {
-            width: 100% !important;
-            height: 250px !important;
-            max-width: 100%;
-        }
-
-        /* Charts responsive */
-        @media (max-width: 768px) {
-            .charts-grid {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-
-            .chart-card {
-                padding: 1rem;
-            }
-
-            .chart-card canvas {
-                height: 200px !important;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .chart-card h4 {
-                font-size: 1rem;
-            }
-
-            .chart-card canvas {
-                height: 180px !important;
-            }
-        }
+        .btn-small { border-radius: 8px; }
+        .quick-action-btn { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; text-decoration: none; color: #1f2937; font-weight: 600; }
+        .quick-action-btn:hover { background: #e2e8f0; }
+        .lesson-form-collapsible { display: none; }
+        .lesson-form-collapsible.active { display: block; }
+        .toggle-form-btn { margin-left: auto; }
     </style>
 </head>
 <body>
@@ -1051,7 +612,7 @@ function getStatusBadge($status) {
                 <h2><i class="fas fa-clipboard-list"></i> Lesson Plans Management</h2>
                 <p class="small-muted"><?php echo $is_principal ? 'Review, approve, and manage all lesson plans' : 'Create and manage your lesson plans'; ?></p>
             </div>
-            <a href="index.php" class="btn-secondary" style="background: var(--primary-color); color: white;">
+            <a href="index.php" class="btn btn-secondary-std" style="background: var(--primary-color); color: white;">
                 <i class="fas fa-tachometer-alt"></i> Dashboard
             </a>
         </div>
@@ -1159,11 +720,17 @@ function getStatusBadge($status) {
         <!-- Create / Edit Form -->
         <section class="lesson-section">
             <div class="lesson-card">
-                <h3>
-                    <i class="fas <?php echo $edit_plan ? 'fa-edit' : 'fa-plus-circle'; ?>"></i>
-                    <?php echo $edit_plan ? 'Edit Lesson Plan' : 'Create New Lesson Plan'; ?>
-                </h3>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <h3 style="margin-bottom: 0;">
+                        <i class="fas <?php echo $edit_plan ? 'fa-edit' : 'fa-plus-circle'; ?>"></i>
+                        <?php echo $edit_plan ? 'Edit Lesson Plan' : 'Create New Lesson Plan'; ?>
+                    </h3>
+                    <button type="button" class="btn btn-outline-std toggle-form-btn" id="toggleLessonForm">
+                        <i class="fas fa-eye"></i> Show Form
+                    </button>
+                </div>
 
+                <div id="lessonFormBody" class="lesson-form-collapsible">
                 <form method="POST" class="lesson-form" action="">
                     <input type="hidden" name="action" value="<?php echo $edit_plan ? 'edit' : 'add'; ?>">
                     <?php if ($edit_plan): ?>
@@ -1314,19 +881,20 @@ function getStatusBadge($status) {
 
                     <div class="form-actions">
                         <?php if ($edit_plan): ?>
-                            <button type="submit" class="btn-gold">
+                            <button type="submit" class="btn btn-primary-std">
                                 <i class="fas fa-save"></i> Update Lesson Plan
                             </button>
-                            <a href="lesson-plans.php" class="btn-secondary">
+                            <a href="lesson-plans.php" class="btn btn-secondary-std">
                                 <i class="fas fa-times"></i> Cancel
                             </a>
                         <?php else: ?>
-                            <button type="submit" class="btn-gold">
+                            <button type="submit" class="btn btn-primary-std">
                                 <i class="fas fa-plus-circle"></i> Create Lesson Plan
                             </button>
                         <?php endif; ?>
                     </div>
                 </form>
+            </div>
             </div>
         </section>
 
@@ -1350,6 +918,14 @@ function getStatusBadge($status) {
                         <option value="scheduled" <?php echo $filter_status === 'scheduled' ? 'selected' : ''; ?>>Scheduled</option>
                         <option value="completed" <?php echo $filter_status === 'completed' ? 'selected' : ''; ?>>Completed</option>
                         <option value="on_hold" <?php echo $filter_status === 'on_hold' ? 'selected' : ''; ?>>On Hold</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <select name="approval_status" class="form-control">
+                        <option value="">All Approvals</option>
+                        <option value="pending" <?php echo $filter_approval === 'pending' ? 'selected' : ''; ?>>Pending</option>
+                        <option value="approved" <?php echo $filter_approval === 'approved' ? 'selected' : ''; ?>>Approved</option>
+                        <option value="rejected" <?php echo $filter_approval === 'rejected' ? 'selected' : ''; ?>>Rejected</option>
                     </select>
                 </div>
 
@@ -1377,10 +953,10 @@ function getStatusBadge($status) {
                     </select>
                 </div>
 
-                <button type="submit" class="btn-search">
+                <button type="submit" class="btn btn-primary-std">
                     <i class="fas fa-search"></i> Search
                 </button>
-                <a href="lesson-plans.php" class="btn-reset">
+                <a href="lesson-plans.php" class="btn btn-secondary-std">
                     <i class="fas fa-redo"></i> Reset
                 </a>
             </form>
@@ -1456,16 +1032,16 @@ function getStatusBadge($status) {
                                         <?php endif; ?>
                                         <td>
                                             <div class="manage-actions">
-                                                <a class="btn-small btn-view" href="lesson-plans-detail.php?id=<?php echo intval($lp['id']); ?>" title="View Details">
+                                                <a class="btn btn-outline-std btn-small" href="lesson-plans-detail.php?id=<?php echo intval($lp['id']); ?>" title="View Details">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
 
                                                 <?php if ($user_role === 'teacher' && $lp['teacher_id'] == $user_id && $lp['status'] === 'draft'): ?>
-                                                    <a class="btn-small btn-edit" href="lesson-plans.php?edit=<?php echo intval($lp['id']); ?>">
+                                                    <a class="btn btn-secondary-std btn-small" href="lesson-plans.php?edit=<?php echo intval($lp['id']); ?>">
                                                         <i class="fas fa-edit"></i>
                                                     </a>
                                                 <?php elseif ($is_principal): ?>
-                                                    <a class="btn-small btn-edit" href="lesson-plans.php?edit=<?php echo intval($lp['id']); ?>">
+                                                    <a class="btn btn-secondary-std btn-small" href="lesson-plans.php?edit=<?php echo intval($lp['id']); ?>">
                                                         <i class="fas fa-edit"></i>
                                                     </a>
                                                 <?php endif; ?>
@@ -1475,7 +1051,7 @@ function getStatusBadge($status) {
                                                         <input type="hidden" name="action" value="approve">
                                                         <input type="hidden" name="id" value="<?php echo intval($lp['id']); ?>">
                                                         <input type="hidden" name="approval_status" value="approved">
-                                                        <button type="submit" class="btn-small btn-approve" title="Approve">
+                                                        <button type="submit" class="btn btn-primary-std btn-small" title="Approve">
                                                             <i class="fas fa-check"></i>
                                                         </button>
                                                     </form>
@@ -1484,7 +1060,7 @@ function getStatusBadge($status) {
                                                         <input type="hidden" name="action" value="approve">
                                                         <input type="hidden" name="id" value="<?php echo intval($lp['id']); ?>">
                                                         <input type="hidden" name="approval_status" value="rejected">
-                                                        <button type="submit" class="btn-small btn-reject" title="Reject" onclick="return confirm('Are you sure you want to reject this lesson plan?');">
+                                                        <button type="submit" class="btn btn-secondary-std btn-small" title="Reject" onclick="return confirm('Are you sure you want to reject this lesson plan?');">
                                                             <i class="fas fa-times"></i>
                                                         </button>
                                                     </form>
@@ -1494,7 +1070,7 @@ function getStatusBadge($status) {
                                                     <form method="POST" style="display:inline;">
                                                         <input type="hidden" name="action" value="complete">
                                                         <input type="hidden" name="id" value="<?php echo intval($lp['id']); ?>">
-                                                        <button type="submit" class="btn-small btn-complete" title="Mark Completed" onclick="return confirm('Mark this lesson plan as completed?');">
+                                                        <button type="submit" class="btn btn-primary-std btn-small" title="Mark Completed" onclick="return confirm('Mark this lesson plan as completed?');">
                                                             <i class="fas fa-check-double"></i>
                                                         </button>
                                                     </form>
@@ -1504,7 +1080,7 @@ function getStatusBadge($status) {
                                                     <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this lesson plan?');">
                                                         <input type="hidden" name="action" value="delete">
                                                         <input type="hidden" name="id" value="<?php echo intval($lp['id']); ?>">
-                                                        <button type="submit" class="btn-small btn-delete">
+                                                        <button type="submit" class="btn btn-outline-std btn-small">
                                                             <i class="fas fa-trash"></i>
                                                         </button>
                                                     </form>
@@ -1522,32 +1098,7 @@ function getStatusBadge($status) {
     </main>
 </div>
 
-<footer class="dashboard-footer">
-    <div class="footer-container">
-        <div class="footer-content">
-            <div class="footer-section">
-                <h4><i class="fas fa-graduation-cap"></i> SahabFormMaster</h4>
-                <p>Professional lesson planning and management system.</p>
-            </div>
-            <div class="footer-section">
-                <h4>Quick Links</h4>
-                <div class="footer-links">
-                    <a href="index.php">Dashboard</a>
-                    <a href="lesson-plan.php">Lesson Plans</a>
-                    <a href="manage_curriculum.php">Curriculum</a>
-                </div>
-            </div>
-            <div class="footer-section">
-                <h4>Support</h4>
-                <p><i class="fas fa-envelope"></i> <a href="mailto:support@sahabformmaster.com">support@sahabformmaster.com</a></p>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <p class="footer-copyright">&copy; 2025 SahabFormMaster. All rights reserved.</p>
-            <p class="footer-version">Version 1.0</p>
-        </div>
-    </div>
-</footer>
+
 
 <script>
     // Form validation
@@ -1564,7 +1115,26 @@ function getStatusBadge($status) {
             }
         });
         
-        // Search form auto-submit on filter change
+        
+        // Toggle lesson form
+        const toggleBtn = document.getElementById('toggleLessonForm');
+        const formBody = document.getElementById('lessonFormBody');
+        if (toggleBtn && formBody) {
+            const isEditing = Boolean(document.querySelector('input[name="id"]'));
+            const show = isEditing;
+            formBody.classList.toggle('active', show);
+            toggleBtn.innerHTML = show
+                ? '<i class="fas fa-eye-slash"></i> Hide Form'
+                : '<i class="fas fa-eye"></i> Show Form';
+            toggleBtn.addEventListener('click', () => {
+                const isOpen = formBody.classList.toggle('active');
+                toggleBtn.innerHTML = isOpen
+                    ? '<i class="fas fa-eye-slash"></i> Hide Form'
+                    : '<i class="fas fa-eye"></i> Show Form';
+            });
+        }
+
+// Search form auto-submit on filter change
         const filterSelects = document.querySelectorAll('.search-form select');
         filterSelects.forEach(select => {
             select.addEventListener('change', function() {
