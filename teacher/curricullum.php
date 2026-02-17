@@ -163,806 +163,305 @@ function getStatusBadgeClass($status) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Curriculum Management | SahabFormMaster</title>
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root {
-            --primary-50: #eff6ff;
-            --primary-100: #dbeafe;
-            --primary-200: #bfdbfe;
-            --primary-300: #93c5fd;
-            --primary-400: #60a5fa;
-            --primary-500: #3b82f6;
-            --primary-600: #2563eb;
-            --primary-700: #1d4ed8;
-            --primary-800: #1e40af;
-            --primary-900: #1e3a8a;
-
-            --accent-50: #fdf4ff;
-            --accent-100: #fae8ff;
-            --accent-200: #f5d0fe;
-            --accent-300: #f0abfc;
-            --accent-400: #e879f9;
-            --accent-500: #d946ef;
-            --accent-600: #c026d3;
-            --accent-700: #a21caf;
-            --accent-800: #86198f;
-            --accent-900: #701a75;
-
-            --success-50: #f0fdf4;
-            --success-100: #dcfce7;
-            --success-500: #22c55e;
-            --success-600: #16a34a;
-            --success-700: #15803d;
-
-            --error-50: #fef2f2;
-            --error-100: #fee2e2;
-            --error-500: #ef4444;
-            --error-600: #dc2626;
-
-            --warning-50: #fffbeb;
-            --warning-100: #fef3c7;
-            --warning-500: #f59e0b;
-            --warning-600: #d97706;
-
-            --gray-50: #f9fafb;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-300: #d1d5db;
-            --gray-400: #9ca3af;
-            --gray-500: #6b7280;
-            --gray-600: #4b5563;
-            --gray-700: #374151;
-            --gray-800: #1f2937;
-            --gray-900: #111827;
-
-            --glass-bg: rgba(255, 255, 255, 0.1);
-            --glass-border: rgba(255, 255, 255, 0.2);
-            --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.08);
-            --shadow-medium: 0 8px 32px rgba(0, 0, 0, 0.12);
-            --shadow-strong: 0 16px 48px rgba(0, 0, 0, 0.15);
-
-            --gradient-primary: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-700) 100%);
-            --gradient-accent: linear-gradient(135deg, var(--accent-500) 0%, var(--accent-700) 100%);
-            --gradient-bg: linear-gradient(135deg, var(--primary-50) 0%, var(--accent-50) 50%, var(--primary-100) 100%);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: var(--gradient-bg);
-            color: var(--gray-800);
-            line-height: 1.6;
-            min-height: 100vh;
+            background: #f5f7fb;
         }
 
-        /* Modern Header */
-        .modern-header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: var(--shadow-soft);
+        .dashboard-container .main-content {
+            width: 100%;
         }
 
-        .header-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 1.5rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .header-brand {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .logo-container {
-            width: 56px;
-            height: 56px;
-            background: var(--gradient-primary);
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.5rem;
-            box-shadow: var(--shadow-medium);
-        }
-
-        .brand-text h1 {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--gray-900);
-            margin-bottom: 0.125rem;
-        }
-
-        .brand-text p {
-            font-size: 0.875rem;
-            color: var(--gray-600);
-            font-weight: 500;
-        }
-
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-        }
-
-        .back-btn {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1.25rem;
-            background: rgba(255, 255, 255, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            border-radius: 12px;
-            color: var(--gray-700);
-            text-decoration: none;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-        }
-
-        .back-btn:hover {
-            background: white;
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-medium);
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            background: var(--gradient-accent);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 600;
-        }
-
-        .user-details p {
-            font-size: 0.75rem;
-            color: var(--gray-500);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.125rem;
-        }
-
-        .user-details span {
-            font-weight: 600;
-            color: var(--gray-900);
-        }
-
-        .logout-btn {
-            padding: 0.75rem 1.25rem;
-            background: var(--error-500);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .logout-btn:hover {
-            background: var(--error-600);
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-medium);
-        }
-
-        /* Main Container */
         .main-container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 2rem;
+            padding: 1.5rem;
         }
 
-        /* Modern Cards */
-        .modern-card {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 24px;
-            box-shadow: var(--shadow-soft);
-            overflow: hidden;
-            transition: all 0.3s ease;
-            margin-bottom: 2rem;
-        }
-
-        .modern-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-strong);
+        .content-header,
+        .controls-modern,
+        .actions-modern,
+        .curriculum-table-container,
+        .empty-state-modern,
+        .modal-content-modern {
+            background: #ffffff;
+            border: 1px solid #cfe1ff;
+            border-radius: 12px;
+            box-shadow: none;
         }
 
         .card-header-modern {
-            padding: 2rem;
-            background: var(--gradient-primary);
-            color: white;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .card-header-modern::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.05)"/><circle cx="10" cy="90" r="0.5" fill="rgba(255,255,255,0.05)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-            opacity: 0.3;
+            background: #1d4ed8;
+            color: #ffffff;
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
         }
 
         .card-title-modern {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 1.75rem;
+            font-size: 1.5rem;
             font-weight: 700;
-            margin-bottom: 0.5rem;
-            position: relative;
-            z-index: 1;
         }
 
-        .card-subtitle-modern {
-            font-size: 1rem;
-            opacity: 0.9;
-            position: relative;
-            z-index: 1;
-        }
-
-        .card-body-modern {
-            padding: 2rem;
-        }
-
-        /* Statistics Grid */
         .stats-modern {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.25rem;
         }
 
         .stat-card-modern {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: var(--shadow-soft);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .stat-card-modern::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--gradient-primary);
-        }
-
-        .stat-card-modern:hover {
-            transform: translateY(-6px);
-            box-shadow: var(--shadow-strong);
+            background: #ffffff;
+            border: 1px solid #cfe1ff;
+            border-radius: 12px;
+            padding: 1.25rem;
         }
 
         .stat-icon-modern {
-            width: 64px;
-            height: 64px;
-            border-radius: 16px;
-            display: flex;
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.75rem;
-            margin-bottom: 1.5rem;
-            position: relative;
-            z-index: 1;
-        }
-
-        .stat-curriculum .stat-icon-modern {
-            background: var(--gradient-primary);
-            color: white;
-            box-shadow: var(--shadow-medium);
-        }
-
-        .stat-assigned .stat-icon-modern {
-            background: var(--gradient-success);
-            color: white;
-            box-shadow: var(--shadow-medium);
-        }
-
-        .stat-subjects .stat-icon-modern {
-            background: var(--gradient-accent);
-            color: white;
-            box-shadow: var(--shadow-medium);
-        }
-
-        .stat-topics .stat-icon-modern {
-            background: var(--gradient-warning);
-            color: white;
-            box-shadow: var(--shadow-medium);
+            background: #1d4ed8;
+            color: #fff;
+            margin-bottom: 0.75rem;
         }
 
         .stat-value-modern {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: var(--gray-900);
-            margin-bottom: 0.5rem;
-            line-height: 1;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #0f172a;
         }
 
         .stat-label-modern {
-            font-size: 0.875rem;
-            color: var(--gray-600);
+            color: #64748b;
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+            font-size: 0.85rem;
         }
 
-        /* Form Controls */
-        .controls-modern {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: var(--shadow-soft);
+        .controls-modern,
+        .actions-modern {
+            padding: 1.25rem;
+            margin-bottom: 1.25rem;
         }
 
         .form-row-modern {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .form-group-modern {
-            position: relative;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
         }
 
         .form-label-modern {
-            display: block;
-            font-size: 0.875rem;
             font-weight: 600;
-            color: var(--gray-700);
-            margin-bottom: 0.5rem;
-            letter-spacing: 0.025em;
+            color: #475569;
+            margin-bottom: 0.4rem;
+            display: block;
         }
 
         .form-input-modern {
             width: 100%;
-            padding: 1rem 1.25rem;
-            border: 2px solid var(--gray-200);
-            border-radius: 12px;
-            font-size: 1rem;
-            background: white;
-            transition: all 0.3s ease;
-            font-family: inherit;
+            border: 1px solid #cfe1ff;
+            border-radius: 10px;
+            padding: 0.65rem 0.85rem;
         }
 
-        .form-input-modern:focus {
-            outline: none;
-            border-color: var(--primary-500);
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-        }
-
-        .form-input-modern::placeholder {
-            color: var(--gray-400);
+        .btn-modern-primary,
+        .btn-modern-secondary {
+            padding: 0.6rem 1rem;
+            border-radius: 999px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .btn-modern-primary {
-            padding: 1rem 2rem;
-            background: var(--gradient-primary);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            box-shadow: var(--shadow-medium);
-        }
-
-        .btn-modern-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-strong);
+            background: #1d4ed8;
+            color: #fff;
+            border: 1px solid #1d4ed8;
         }
 
         .btn-modern-secondary {
-            padding: 1rem 2rem;
-            background: white;
-            color: var(--gray-700);
-            border: 2px solid var(--gray-200);
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .btn-modern-secondary:hover {
-            border-color: var(--primary-300);
-            box-shadow: var(--shadow-medium);
-        }
-
-        /* Quick Actions */
-        .actions-modern {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: var(--shadow-soft);
+            background: #fff;
+            color: #1d4ed8;
+            border: 1px solid #1d4ed8;
         }
 
         .actions-grid-modern {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 0.75rem;
         }
 
         .action-btn-modern {
-            padding: 1.25rem 1.5rem;
-            background: white;
-            border: 2px solid var(--gray-200);
-            border-radius: 16px;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            border: 1px solid #cfe1ff;
+            border-radius: 12px;
+            padding: 0.9rem;
+            text-decoration: none;
+            color: #1e293b;
+            background: #fff;
             display: flex;
             flex-direction: column;
+            gap: 0.5rem;
             align-items: center;
-            gap: 0.75rem;
-            text-decoration: none;
-            color: var(--gray-700);
-            box-shadow: var(--shadow-soft);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .action-btn-modern::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent);
-            transition: left 0.5s;
-        }
-
-        .action-btn-modern:hover::before {
-            left: 100%;
-        }
-
-        .action-btn-modern:hover {
-            transform: translateY(-4px);
-            border-color: var(--primary-300);
-            box-shadow: var(--shadow-strong);
         }
 
         .action-icon-modern {
-            font-size: 1.5rem;
-            color: var(--primary-600);
-            transition: transform 0.3s ease;
-        }
-
-        .action-btn-modern:hover .action-icon-modern {
-            transform: scale(1.1);
-        }
-
-        .action-text-modern {
-            font-weight: 600;
-            font-size: 0.875rem;
-            text-align: center;
-        }
-
-        /* Curriculum Grid */
-        .curriculum-table-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 24px;
-            overflow: hidden;
-            box-shadow: var(--shadow-soft);
+            color: #1d4ed8;
         }
 
         .table-header-modern {
-            background: var(--gradient-primary);
-            color: white;
-            padding: 1.5rem 2rem;
+            padding: 1rem 1.25rem;
+            background: #1d4ed8;
+            color: #fff;
+            border-radius: 12px 12px 0 0;
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 1rem;
-        }
-
-        .table-title-modern {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 1.25rem;
-            font-weight: 700;
-        }
-
-        .curriculum-count-modern {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: 600;
-        }
-
-        .table-wrapper-modern {
-            overflow-x: auto;
-        }
-
-        .curriculum-table-modern {
-            width: 100%;
-            border-collapse: collapse;
         }
 
         .curriculum-table-modern th {
-            background: var(--gray-50);
-            color: var(--gray-700);
-            font-weight: 600;
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            padding: 1.25rem 1.5rem;
-            text-align: left;
-            border-bottom: 2px solid var(--gray-200);
-        }
-
-        .curriculum-table-modern td {
-            padding: 1.25rem 1.5rem;
-            border-bottom: 1px solid var(--gray-100);
-            transition: background 0.2s ease;
-        }
-
-        .curriculum-table-modern tr:nth-child(even) {
-            background: var(--gray-50);
-        }
-
-        .curriculum-table-modern tr:hover {
-            background: var(--primary-50);
-        }
-
-        .curriculum-subject-modern {
-            font-weight: 600;
-            color: var(--gray-900);
-            font-size: 1.125rem;
-        }
-
-        .curriculum-grade-modern {
-            font-weight: 500;
-            color: var(--gray-600);
-            font-size: 0.875rem;
-        }
-
-        .curriculum-description-modern {
-            color: var(--gray-600);
-            max-width: 300px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .curriculum-meta-modern {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
+            background: #f1f5ff;
+            color: #1e3a8a;
         }
 
         .meta-tag-modern {
-            background: var(--primary-100);
-            color: var(--primary-700);
-            padding: 0.25rem 0.75rem;
-            border-radius: 12px;
+            background: #e0ecff;
+            color: #1e40af;
+        }
+
+        .status-badge-modern {
+            border-radius: 999px;
+            padding: 0.25rem 0.6rem;
             font-size: 0.75rem;
             font-weight: 600;
         }
 
-        .status-badge-modern {
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            display: inline-block;
-        }
-
-        .status-active-modern {
-            background: var(--success-100);
-            color: var(--success-700);
-        }
-
-        .status-inactive-modern {
-            background: var(--error-100);
-            color: var(--error-700);
-        }
-
-        .action-buttons-modern {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
+        .status-active-modern { background: #dcfce7; color: #166534; }
+        .status-inactive-modern { background: #fee2e2; color: #991b1b; }
 
         .btn-small-modern {
-            padding: 0.5rem 1rem;
-            border: none;
             border-radius: 8px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
+            padding: 0.4rem 0.7rem;
         }
 
-        .btn-view-modern {
-            background: var(--primary-500);
-            color: white;
-        }
+        .btn-view-modern { background: #2563eb; color: #fff; }
+        .btn-edit-modern { background: #0ea5e9; color: #fff; }
 
-        .btn-view-modern:hover {
-            background: var(--primary-600);
-            transform: translateY(-2px);
-        }
-
-        .btn-edit-modern {
-            background: var(--warning-500);
-            color: white;
-        }
-
-        .btn-edit-modern:hover {
-            background: var(--warning-600);
-            transform: translateY(-2px);
-        }
-
-        .btn-delete-modern {
-            background: var(--error-500);
-            color: white;
-        }
-
-        .btn-delete-modern:hover {
-            background: var(--error-600);
-            transform: translateY(-2px);
-        }
-
-        /* Modal */
         .modal-modern {
             display: none;
             position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
             z-index: 1050;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(8px);
         }
 
         .modal-content-modern {
             position: absolute;
-            top: 50%;
-            left: 50%;
+            inset: 50% auto auto 50%;
             transform: translate(-50%, -50%);
-            background: white;
-            border-radius: 20px;
+            max-width: 820px;
             width: 90%;
-            max-width: 800px;
             max-height: 80vh;
             overflow-y: auto;
-            box-shadow: var(--shadow-strong);
+            padding: 1.5rem;
+            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
+            border-radius: 16px;
         }
 
         .modal-header-modern {
-            padding: 2rem;
-            border-bottom: 1px solid var(--gray-200);
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 0.75rem;
+            margin-bottom: 1rem;
         }
 
         .modal-title-modern {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 1.5rem;
+            font-size: 1.25rem;
             font-weight: 700;
-            color: var(--gray-900);
-            margin: 0;
+            color: #0f172a;
         }
 
         .modal-close-modern {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
+            background: #f1f5ff;
+            border: 1px solid #cfe1ff;
+            color: #1d4ed8;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
             cursor: pointer;
-            color: var(--gray-400);
-            padding: 0.5rem;
-            border-radius: 8px;
-            transition: all 0.2s;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
 
         .modal-close-modern:hover {
-            background: var(--gray-100);
-            color: var(--gray-600);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 16px rgba(29, 78, 216, 0.12);
         }
 
-        .modal-body-modern {
-            padding: 2rem;
+        .modal-actions-modern {
+            border-top: 1px solid #e2e8f0;
+            padding-top: 0.75rem;
+            margin-top: 1rem;
+            display: flex;
+            justify-content: flex-end;
         }
 
         .detail-grid-modern {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 0.75rem;
         }
 
         .detail-item-modern {
-            margin-bottom: 1rem;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 0.75rem 0.9rem;
         }
 
         .detail-label-modern {
-            font-weight: 600;
-            color: var(--gray-900);
-            margin-bottom: 0.25rem;
-            font-size: 0.9rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
 
         .detail-value-modern {
-            color: var(--gray-600);
-            font-size: 0.95rem;
+            color: #0f172a;
+            font-weight: 600;
+            margin-top: 0.25rem;
         }
 
         .topics-preview-modern {
-            max-height: 200px;
-            overflow-y: auto;
-            background: var(--gray-50);
-            border: 1px solid var(--gray-200);
+            background: #ffffff;
+            border: 1px dashed #cfe1ff;
             border-radius: 12px;
-            padding: 1rem;
-            margin-top: 0.5rem;
+            padding: 0.75rem;
+            max-height: 240px;
+            overflow-y: auto;
         }
 
         .topic-item-modern {
-            padding: 0.5rem 0;
-            border-bottom: 1px solid var(--gray-200);
             display: flex;
-            align-items: center;
             gap: 0.5rem;
+            padding: 0.4rem 0;
+            border-bottom: 1px solid #eef2ff;
         }
 
         .topic-item-modern:last-child {
@@ -970,259 +469,41 @@ function getStatusBadgeClass($status) {
         }
 
         .topic-icon-modern {
-            color: var(--accent-500);
-            font-size: 0.75rem;
+            color: #1d4ed8;
+            margin-top: 0.2rem;
         }
 
-        .modal-actions-modern {
-            padding: 2rem;
-            border-top: 1px solid var(--gray-200);
-            display: flex;
-            justify-content: flex-end;
-            gap: 1rem;
-        }
-
-        /* Empty State */
-        .empty-state-modern {
-            text-align: center;
-            padding: 4rem 2rem;
-            color: var(--gray-600);
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 24px;
-            box-shadow: var(--shadow-soft);
-        }
-
-        .empty-icon-modern {
-            font-size: 4rem;
-            color: var(--gray-400);
-            margin-bottom: 1rem;
-        }
-
-        .empty-title-modern {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--gray-900);
-            margin-bottom: 0.5rem;
-        }
-
-        .empty-text-modern {
-            font-size: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        /* Footer */
-        .footer-modern {
-            background: var(--gray-900);
-            color: var(--gray-300);
-            padding: 3rem 2rem 2rem;
-            margin-top: 4rem;
-            position: relative;
-        }
-
-        .footer-modern::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--gray-700), transparent);
-        }
-
-        .footer-content-modern {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 2rem;
-        }
-
-        .footer-section-modern h4 {
-            color: white;
-            font-size: 1.125rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-
-        .footer-section-modern p {
-            margin-bottom: 0.75rem;
-            line-height: 1.6;
-        }
-
-        /* Responsive Design */
         @media (max-width: 768px) {
-            .header-content {
-                padding: 1rem;
-                flex-direction: column;
-                gap: 1rem;
-            }
-
             .main-container {
                 padding: 1rem;
             }
 
-            .stats-modern {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 1rem;
-            }
-
             .form-row-modern {
                 grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-
-            .actions-grid-modern {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .table-header-modern {
-                padding: 1rem;
-                flex-direction: column;
-                gap: 0.5rem;
-                text-align: center;
-            }
-
-            .curriculum-table-modern th,
-            .curriculum-table-modern td {
-                padding: 0.75rem;
-                font-size: 0.8rem;
-            }
-
-            .action-buttons-modern {
-                flex-direction: column;
-                gap: 0.25rem;
-            }
-
-            .btn-small-modern {
-                padding: 0.375rem 0.5rem;
-                font-size: 0.7rem;
             }
         }
-
-        @media (max-width: 480px) {
-            .stats-modern {
-                grid-template-columns: 1fr;
-            }
-
-            .actions-grid-modern {
-                grid-template-columns: 1fr;
-            }
-
-            .modern-card {
-                margin-bottom: 1rem;
-            }
-
-            .card-header-modern,
-            .card-body-modern {
-                padding: 1.5rem;
-            }
-
-            .stat-card-modern {
-                padding: 1.5rem;
-            }
-
-            .stat-icon-modern {
-                width: 48px;
-                height: 48px;
-                font-size: 1.25rem;
-            }
-
-            .stat-value-modern {
-                font-size: 2rem;
-            }
-        }
-
-        /* Animations */
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes slideInLeft {
-            from {
-                opacity: 0;
-                transform: translateX(-30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        .animate-fade-in-up {
-            animation: fadeInUp 0.6s ease-out;
-        }
-
-        .animate-slide-in-left {
-            animation: slideInLeft 0.6s ease-out;
-        }
-
-        .animate-slide-in-right {
-            animation: slideInRight 0.6s ease-out;
-        }
-
-        /* Utility Classes */
-        .text-center { text-align: center; }
-        .text-left { text-align: left; }
-        .text-right { text-align: right; }
-        .font-bold { font-weight: 700; }
-        .font-semibold { font-weight: 600; }
-        .font-medium { font-weight: 500; }
-
-        .gradient-success { background: linear-gradient(135deg, var(--success-500) 0%, var(--success-600) 100%); }
-        .gradient-error { background: linear-gradient(135deg, var(--error-500) 0%, var(--error-600) 100%); }
-        .gradient-warning { background: linear-gradient(135deg, var(--warning-500) 0%, var(--warning-600) 100%); }
     </style>
 </head>
 <body>
-    <!-- Modern Header -->
-    <header class="modern-header">
-        <div class="header-content">
-            <div class="header-brand">
-                <a href="index.php" class="back-btn">
-                    <i class="fas fa-arrow-left"></i>
-                    <span>Back to Dashboard</span>
-                </a>
-                <div class="logo-container">
-                    <i class="fas fa-book"></i>
-                </div>
-                <div class="brand-text">
-                    <h1>SahabFormMaster</h1>
-                    <p>Curriculum Management</p>
+    <?php include '../includes/mobile_navigation.php'; ?>
+
+    <header class="dashboard-header">
+        <div class="header-container">
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Curriculum Management</p>
+                    </div>
                 </div>
             </div>
-            <div class="header-actions">
-                <div class="user-info">
-                    <div class="user-avatar">
-                        <?php echo strtoupper(substr($teacher_name, 0, 1)); ?>
-                    </div>
-                    <div class="user-details">
-                        <p>Teacher</p>
-                        <span><?php echo htmlspecialchars($teacher_name); ?></span>
-                    </div>
+            <div class="header-right">
+                <div class="teacher-info">
+                    <p class="teacher-label">Teacher</p>
+                    <span class="teacher-name"><?php echo htmlspecialchars($teacher_name); ?></span>
                 </div>
-                <a href="../logout.php" class="logout-btn">
+                <a href="logout.php" class="btn-logout">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </a>
@@ -1230,29 +511,36 @@ function getStatusBadgeClass($status) {
         </div>
     </header>
 
-    <!-- Main Container -->
-    <div class="main-container">
-        <!-- Welcome Section -->
-        <div class="modern-card animate-fade-in-up">
-            <div class="card-header-modern">
-                <h2 class="card-title-modern">
-                    <i class="fas fa-graduation-cap"></i>
-                    Curriculum Management System
-                </h2>
-                <p class="card-subtitle-modern">
-                    Efficiently manage and track curriculum content for your assigned classes
-                </p>
+    <div class="dashboard-container">
+        <?php include '../includes/teacher_sidebar.php'; ?>
+        <main class="main-content">
+            <div class="main-container">
+        <?php
+        $total_curriculum = count($curriculums);
+        $assigned_curriculum = array_filter($curriculums, fn($c) => $c['teacher_id'] == $teacher_id);
+        $unique_subjects = count(array_unique(array_column($curriculums, 'subject_name')));
+        $total_topics = array_sum(array_map('countTopics', array_column($curriculums, 'topics')));
+        ?>
+
+        <div class="content-header">
+            <div class="welcome-section">
+                <h2>Curriculum Management</h2>
+                <p>Efficiently manage and track curriculum content for your assigned classes</p>
+            </div>
+            <div class="header-stats">
+                <div class="quick-stat">
+                    <span class="quick-stat-value"><?php echo $total_curriculum; ?></span>
+                    <span class="quick-stat-label">Total Curriculum</span>
+                </div>
+                <div class="quick-stat">
+                    <span class="quick-stat-value"><?php echo count($assigned_curriculum); ?></span>
+                    <span class="quick-stat-label">Assigned to Me</span>
+                </div>
             </div>
         </div>
 
         <!-- Statistics Cards -->
         <div class="stats-modern">
-            <?php
-            $total_curriculum = count($curriculums);
-            $assigned_curriculum = array_filter($curriculums, fn($c) => $c['teacher_id'] == $teacher_id);
-            $unique_subjects = count(array_unique(array_column($curriculums, 'subject_name')));
-            $total_topics = array_sum(array_map('countTopics', array_column($curriculums, 'topics')));
-            ?>
             <div class="stat-card-modern stat-curriculum animate-slide-in-left">
                 <div class="stat-icon-modern">
                     <i class="fas fa-book"></i>
@@ -1378,10 +666,6 @@ function getStatusBadgeClass($status) {
                 <button class="action-btn-modern" onclick="exportCurriculum()">
                     <i class="fas fa-download action-icon-modern"></i>
                     <span class="action-text-modern">Export Report</span>
-                </button>
-                <button class="action-btn-modern" onclick="printCurriculum()">
-                    <i class="fas fa-print action-icon-modern"></i>
-                    <span class="action-text-modern">Print Curriculum</span>
                 </button>
                 <button class="action-btn-modern" onclick="viewAnalytics()">
                     <i class="fas fa-chart-bar action-icon-modern"></i>
@@ -1525,8 +809,8 @@ function getStatusBadgeClass($status) {
                 <?php endif; ?>
             </div>
         <?php endif; ?>
-
-        
+            </div>
+        </main>
     </div>
 
     <!-- Curriculum Details Modal -->
@@ -1695,12 +979,12 @@ function getStatusBadgeClass($status) {
 
         // Header scroll effect
         window.addEventListener('scroll', () => {
-            const header = document.querySelector('.modern-header');
+            const header = document.querySelector('.dashboard-header');
+            if (!header) return;
             if (window.scrollY > 50) {
-                header.style.background = 'rgba(255, 255, 255, 0.98)';
-                header.style.backdropFilter = 'blur(20px)';
+                header.classList.add('scrolled');
             } else {
-                header.style.background = 'rgba(255, 255, 255, 0.95)';
+                header.classList.remove('scrolled');
             }
         });
 
@@ -1726,5 +1010,9 @@ function getStatusBadgeClass($status) {
             el.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
             observer.observe(el);
         });
-    </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
+    </script>
+
+    <?php include '../includes/floating-button.php'; ?>
+
+</body>
 </html>

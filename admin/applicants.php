@@ -93,17 +93,90 @@ $classes = $classesStmt->fetchAll(PDO::FETCH_COLUMN);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Applicants - Principal Dashboard</title>
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    <!-- Bootstrap CSS (for modals and DataTables base styles) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
 
     <!-- Select2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/css/select2.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-dark: #1e40af;
+            --primary-light: #dbeafe;
+            --accent-blue: #38bdf8;
+        }
+
+        .content-header {
+            background: #ffffff;
+            border: 1px solid rgba(37, 99, 235, 0.12);
+            box-shadow: 0 12px 30px rgba(30, 58, 138, 0.08);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            border: none;
+        }
+
+        .btn-secondary {
+            background: #eef2ff;
+            border: 1px solid #c7d2fe;
+            color: #1e3a8a;
+        }
+
+        .students-table thead th {
+            background: #f1f5ff;
+            color: #1e3a8a;
+        }
+
+        .badge {
+            padding: 0.35rem 0.7rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+
+        .badge-pending { background: #e0f2fe; color: #075985; }
+        .badge-under_review { background: #fff7ed; color: #9a3412; }
+        .badge-accepted { background: #ecfdf5; color: #065f46; }
+        .badge-rejected { background: #fef2f2; color: #991b1b; }
+        .badge-waitlisted { background: #eef2ff; color: #3730a3; }
+        .badge-enrolled { background: #eff6ff; color: #1d4ed8; }
+
+        .card {
+            border: 1px solid rgba(37, 99, 235, 0.08);
+            box-shadow: 0 10px 24px rgba(37, 99, 235, 0.08);
+        }
+
+        .chart-card {
+            border: 1px solid rgba(37, 99, 235, 0.1);
+            box-shadow: 0 12px 26px rgba(30, 58, 138, 0.08);
+        }
+
+        .modal-content {
+            border: 1px solid rgba(37, 99, 235, 0.12);
+        }
+
+        .dataTables_filter input {
+            border-radius: 8px;
+            border: 1px solid #cbd5f5;
+        }
+
+        .dropdown-menu {
+            border: 1px solid rgba(37, 99, 235, 0.12);
+        }
+    </style>
 </head>
 <body>
 
@@ -131,7 +204,7 @@ $classes = $classesStmt->fetchAll(PDO::FETCH_COLUMN);
                     <span class="principal-name"><?php echo htmlspecialchars($_SESSION['full_name']); ?></span>
                 </div>
                 <a href="logout.php" class="btn-logout">
-                    <span class="logout-icon">🚪</span>
+                    <span class="logout-icon"><i class="fas fa-sign-out-alt"></i></span>
                     <span>Logout</span>
                 </a>
             </div>
@@ -447,9 +520,7 @@ $classes = $classesStmt->fetchAll(PDO::FETCH_COLUMN);
         </main>
     </div>
 
-    
-
-
+    <script>
         // Smooth scroll for internal links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
@@ -549,14 +620,136 @@ $classes = $classesStmt->fetchAll(PDO::FETCH_COLUMN);
                     <h5 class="modal-title">Add New Applicant</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <form method="POST" action="process-application.php?source=manual">
+                <form method="POST" action="process-application.php?source=manual" enctype="multipart/form-data">
                     <div class="modal-body">
                         <!-- Form similar to application portal but for manual entry -->
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle me-2"></i>
                             This form allows you to manually enter applicant information. The applicant will receive an email with their application details.
                         </div>
-                        <!-- Add form fields here -->
+                        <input type="hidden" name="submission_source" value="manual">
+                        <input type="hidden" name="terms_accepted" value="1">
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Full Name</label>
+                                <input type="text" class="form-control" name="full_name" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Date of Birth</label>
+                                <input type="date" class="form-control" name="date_of_birth" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Gender</label>
+                                <select class="form-select" name="gender" required>
+                                    <option value="">Select Gender</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Class Applying For</label>
+                                <select class="form-select" name="class_applied" required>
+                                    <option value="">Select Class</option>
+                                    <?php foreach ($classes as $class): ?>
+                                        <option value="<?php echo htmlspecialchars($class); ?>"><?php echo htmlspecialchars($class); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email Address</label>
+                                <input type="email" class="form-control" name="email" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" name="phone" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Address</label>
+                                <textarea class="form-control" name="address" rows="2" required></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Previous School</label>
+                                <input type="text" class="form-control" name="previous_school">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last Class Completed</label>
+                                <input type="text" class="form-control" name="last_class_completed">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Academic Qualifications</label>
+                                <textarea class="form-control" name="academic_qualifications" rows="2"></textarea>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Extracurricular Activities</label>
+                                <textarea class="form-control" name="extracurricular_activities" rows="2"></textarea>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Reason for Application</label>
+                                <textarea class="form-control" name="reason_for_application" rows="2" required></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Guardian Name</label>
+                                <input type="text" class="form-control" name="guardian_name" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Relationship</label>
+                                <select class="form-select" name="guardian_relationship" required>
+                                    <option value="">Select Relationship</option>
+                                    <option value="Father">Father</option>
+                                    <option value="Mother">Mother</option>
+                                    <option value="Brother">Brother</option>
+                                    <option value="Sister">Sister</option>
+                                    <option value="Uncle">Uncle</option>
+                                    <option value="Aunt">Aunt</option>
+                                    <option value="Grandfather">Grandfather</option>
+                                    <option value="Grandmother">Grandmother</option>
+                                    <option value="Guardian">Guardian</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Guardian Phone</label>
+                                <input type="tel" class="form-control" name="guardian_phone" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Guardian Email</label>
+                                <input type="email" class="form-control" name="guardian_email">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Guardian Occupation</label>
+                                <input type="text" class="form-control" name="guardian_occupation">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">How did you hear about us?</label>
+                                <select class="form-select" name="how_heard_about_us">
+                                    <option value="">Select Option</option>
+                                    <option value="Friend/Family">Friend/Family</option>
+                                    <option value="Social Media">Social Media</option>
+                                    <option value="Website">Website</option>
+                                    <option value="Newspaper">Newspaper</option>
+                                    <option value="Radio/TV">Radio/TV</option>
+                                    <option value="School Fair">School Fair</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Birth Certificate</label>
+                                <input type="file" class="form-control" name="birth_certificate" accept=".jpg,.jpeg,.png,.pdf">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Passport Photo</label>
+                                <input type="file" class="form-control" name="passport_photo" accept=".jpg,.jpeg,.png">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Previous School Certificate</label>
+                                <input type="file" class="form-control" name="school_certificate" accept=".jpg,.jpeg,.png,.pdf">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Other Documents</label>
+                                <input type="file" class="form-control" name="other_documents[]" accept=".jpg,.jpeg,.png,.pdf" multiple>
+                            </div>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -575,9 +768,11 @@ $classes = $classesStmt->fetchAll(PDO::FETCH_COLUMN);
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/js/select2.min.js"></script>
     
     <script>
+        let applicantsTable;
+
         $(document).ready(function() {
             // Initialize DataTable for client-side processing
-            $('#applicantsTable').DataTable({
+            applicantsTable = $('#applicantsTable').DataTable({
                 pageLength: 25,
                 responsive: true,
                 order: [[6, 'desc']],
@@ -710,9 +905,11 @@ $classes = $classesStmt->fetchAll(PDO::FETCH_COLUMN);
             window.location.href = 'export-applicants.php?' + window.location.search.substring(1);
         }
         
-        // Refresh data every 30 seconds
+        // Refresh data every 30 seconds if ajax is configured
         setInterval(function() {
-            $('#applicantsTable').DataTable().ajax.reload(null, false);
+            if (applicantsTable && applicantsTable.ajax && applicantsTable.ajax.url()) {
+                applicantsTable.ajax.reload(null, false);
+            }
         }, 30000);
     </script>
 
@@ -720,6 +917,3 @@ $classes = $classesStmt->fetchAll(PDO::FETCH_COLUMN);
 
 </body>
 </html>
-</html>
-        }
-

@@ -13,40 +13,57 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'principal') {
 $principal_name = $_SESSION['full_name'];
 $current_school_id = require_school_auth();
 
-// Fetch dynamic statistics
+// Fetch dynamic statistics (each query isolated so one failure doesn't zero everything)
+$total_students = $new_students = $total_teachers = $total_classes = $total_results = $pending_complaints = $unpaid_fees = 0;
+$attendance_stats = ['total_records' => 0, 'attendance_rate' => 0];
+$fee_stats = ['total_collected' => 0, 'total_outstanding' => 0];
+$recent_activities = [];
+
 try {
-    // Student statistics
     $query = "SELECT COUNT(*) as total_students FROM students WHERE is_active = 1";
     $params = [];
     $query = add_school_filter($query, $params);
     $stmt = $pdo->prepare($query);
     $stmt->execute($params);
     $total_students = $stmt->fetchColumn();
+} catch (PDOException $e) {
+    error_log("Admin dashboard total_students error: " . $e->getMessage());
+}
 
+try {
     $query = "SELECT COUNT(*) as new_students FROM students WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
     $params = [];
     $query = add_school_filter($query, $params);
     $stmt = $pdo->prepare($query);
     $stmt->execute($params);
     $new_students = $stmt->fetchColumn();
+} catch (PDOException $e) {
+    error_log("Admin dashboard new_students error: " . $e->getMessage());
+}
 
-    // Teacher statistics
+try {
     $query = "SELECT COUNT(*) as total_teachers FROM users WHERE role IN ('teacher', 'principal') AND is_active = 1";
     $params = [];
     $query = add_school_filter($query, $params);
     $stmt = $pdo->prepare($query);
     $stmt->execute($params);
     $total_teachers = $stmt->fetchColumn();
+} catch (PDOException $e) {
+    error_log("Admin dashboard total_teachers error: " . $e->getMessage());
+}
 
-    // Class statistics
+try {
     $query = "SELECT COUNT(*) as total_classes FROM classes";
     $params = [];
     $query = add_school_filter($query, $params);
     $stmt = $pdo->prepare($query);
     $stmt->execute($params);
     $total_classes = $stmt->fetchColumn();
+} catch (PDOException $e) {
+    error_log("Admin dashboard total_classes error: " . $e->getMessage());
+}
 
-    // Attendance statistics (last 30 days)
+try {
     $query = "
         SELECT
             COUNT(*) as total_records,
@@ -59,16 +76,22 @@ try {
     $stmt = $pdo->prepare($query);
     $stmt->execute($params);
     $attendance_stats = $stmt->fetch();
+} catch (PDOException $e) {
+    error_log("Admin dashboard attendance_stats error: " . $e->getMessage());
+}
 
-    // Results statistics
+try {
     $query = "SELECT COUNT(*) as total_results FROM results";
     $params = [];
     $query = add_school_filter($query, $params);
     $stmt = $pdo->prepare($query);
     $stmt->execute($params);
     $total_results = $stmt->fetchColumn();
+} catch (PDOException $e) {
+    error_log("Admin dashboard total_results error: " . $e->getMessage());
+}
 
-    // Fee collection statistics
+try {
     $query = "
         SELECT
             SUM(amount_paid) as total_collected,
@@ -81,8 +104,11 @@ try {
     $stmt = $pdo->prepare($query);
     $stmt->execute($params);
     $fee_stats = $stmt->fetch();
+} catch (PDOException $e) {
+    error_log("Admin dashboard fee_stats error: " . $e->getMessage());
+}
 
-    // Recent activities
+try {
     $query1 = "SELECT 'student' as type, full_name, admission_no, created_at FROM students WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
     $params1 = [];
     $query1 = add_school_filter($query1, $params1);
@@ -100,29 +126,30 @@ try {
     $stmt = $pdo->prepare("{$query1} UNION ALL {$query2} ORDER BY created_at DESC LIMIT 10");
     $stmt->execute(array_merge($params1, $params2));
     $recent_activities = $stmt->fetchAll();
+} catch (PDOException $e) {
+    error_log("Admin dashboard recent_activities error: " . $e->getMessage());
+}
 
-    // System health check
+try {
     $query = "SELECT COUNT(*) as pending_complaints FROM results_complaints WHERE status = 'pending'";
     $params = [];
     $query = add_school_filter($query, $params);
     $stmt = $pdo->prepare($query);
     $stmt->execute($params);
     $pending_complaints = $stmt->fetchColumn();
+} catch (PDOException $e) {
+    error_log("Admin dashboard pending_complaints error: " . $e->getMessage());
+}
 
+try {
     $query = "SELECT COUNT(*) as unpaid_fees FROM student_payments WHERE balance > 0";
     $params = [];
     $query = add_school_filter($query, $params);
     $stmt = $pdo->prepare($query);
     $stmt->execute($params);
     $unpaid_fees = $stmt->fetchColumn();
-
 } catch (PDOException $e) {
-    error_log("Admin dashboard error: " . $e->getMessage());
-    // Set defaults if database error
-    $total_students = $new_students = $total_teachers = $total_classes = $total_results = $pending_complaints = $unpaid_fees = 0;
-    $attendance_stats = ['total_records' => 0, 'attendance_rate' => 0];
-    $fee_stats = ['total_collected' => 0, 'total_outstanding' => 0];
-    $recent_activities = [];
+    error_log("Admin dashboard unpaid_fees error: " . $e->getMessage());
 }
 ?>
 
@@ -132,12 +159,48 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Principal Dashboard | SahabFormMaster</title>
-    <link rel="stylesheet" href="../assets/css/education-theme-main.css">
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-dark: #1e3a8a;
+            --primary-light: #dbeafe;
+            --accent-blue: #38bdf8;
+        }
+
+        .content-header {
+            background: #ffffff;
+            border: 1px solid rgba(37, 99, 235, 0.12);
+            box-shadow: 0 12px 30px rgba(30, 58, 138, 0.08);
+        }
+
+        .card {
+            border: 1px solid rgba(37, 99, 235, 0.08);
+            box-shadow: 0 10px 24px rgba(37, 99, 235, 0.08);
+        }
+
+        .chart-card,
+        .stat-box,
+        .quick-action-card,
+        .activity-item {
+            border: 1px solid rgba(37, 99, 235, 0.1);
+            box-shadow: 0 10px 22px rgba(30, 58, 138, 0.06);
+        }
+
+        .progress-bar {
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-blue));
+        }
+
+        .notification-badge {
+            background: var(--primary-color);
+        }
+    </style>
 </head>
 <body>
 
@@ -165,7 +228,7 @@ try {
                     <span class="principal-name"><?php echo htmlspecialchars($principal_name); ?></span>
                 </div>
                 <a href="logout.php" class="btn-logout">
-                    <span class="logout-icon">🚪</span>
+                    <span class="logout-icon"><i class="fas fa-sign-out-alt"></i></span>
                     <span>Logout</span>
                 </a>
             </div>
@@ -317,8 +380,8 @@ try {
         <main class="main-content">
             <div class="content-header">
                 <div class="welcome-section">
-                    <h2 style="font-size: 2.5rem; font-weight: 800;">Welcome back, <?php echo htmlspecialchars($principal_name); ?>! 👋</h2>
-                    <p style="font-size: 1.25rem; font-weight: 500;">Here's what's happening with your school today</p>
+                    <h2>Welcome back, <?php echo htmlspecialchars($principal_name); ?>! ??</h2>
+                    <p>Here's what's happening with your school today</p>
                 </div>
                 <div class="header-stats">
                     <div class="quick-stat">
@@ -625,8 +688,8 @@ try {
                     datasets: [{
                         label: 'New Students',
                         data: [12, 19, 15, 25, 22, <?php echo $new_students; ?>],
-                        borderColor: '#6366f1',
-                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        borderColor: '#2563eb',
+                        backgroundColor: 'rgba(37, 99, 235, 0.12)',
                         tension: 0.4,
                         fill: true
                     }]
@@ -660,9 +723,9 @@ try {
                             5
                         ],
                         backgroundColor: [
-                            '#10b981',
-                            '#ef4444',
-                            '#f59e0b'
+                            '#1d4ed8',
+                            '#93c5fd',
+                            '#38bdf8'
                         ]
                     }]
                 },
@@ -690,8 +753,8 @@ try {
                             <?php echo ($fee_stats['total_outstanding'] ?? 0) / 1000; ?>
                         ],
                         backgroundColor: [
-                            '#10b981',
-                            '#ef4444'
+                            '#2563eb',
+                            '#93c5fd'
                         ]
                     }]
                 },
@@ -720,6 +783,7 @@ try {
         // Quick Actions Functionality
         document.querySelectorAll('.quick-action-card').forEach(card => {
             card.addEventListener('click', function(e) {
+                e.preventDefault();
                 // Add loading state
                 this.style.opacity = '0.7';
                 this.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Loading...</span>';
@@ -730,6 +794,9 @@ try {
                 }, 500);
             });
         });
-    </script><?php include '../includes/floating-button.php'; ?></body>
-</html>
+    </script>
+
+    <?php include '../includes/floating-button.php'; ?>
+
+</body>
 </html>

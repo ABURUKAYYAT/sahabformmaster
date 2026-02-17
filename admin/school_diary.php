@@ -184,6 +184,7 @@ $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>School Diary | SahabFormMaster</title>
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -238,6 +239,20 @@ $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
             display: flex;
             align-items: center;
             gap: 1rem;
+        }
+
+        .alert {
+            padding: 1rem 1.25rem;
+            border-radius: var(--border-radius-lg);
+            margin: 1rem 0;
+            font-weight: 600;
+            border-left: 4px solid;
+        }
+
+        .alert-success {
+            background: #f0fdf4;
+            color: #16a34a;
+            border-color: #16a34a;
         }
 
         /* Filter Section */
@@ -295,8 +310,8 @@ $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
 
         /* Button Enhancements */
         .btn-gold {
-            background: linear-gradient(135deg, #FFD700, #FFA500);
-            color: var(--gray-900);
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: #ffffff;
             border: none;
             padding: 0.875rem 1.5rem;
             border-radius: 10px;
@@ -312,8 +327,8 @@ $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
 
         .btn-gold:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.3);
-            color: var(--gray-900);
+            box-shadow: var(--shadow-md);
+            color: #ffffff;
         }
 
         .btn-small {
@@ -331,12 +346,12 @@ $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
         .btn-small.btn-view {
-            background: #06b6d4;
+            background: var(--info-color);
             color: white;
         }
 
         .btn-small.btn-view:hover {
-            background: #0891b2;
+            background: #2563eb;
             transform: translateY(-2px);
         }
 
@@ -666,7 +681,7 @@ $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
                     <span class="principal-name"><?php echo htmlspecialchars($principal_name); ?></span>
                 </div>
                 <a href="logout.php" class="btn-logout">
-                    <span class="logout-icon">🚪</span>
+                    <i class="fas fa-sign-out-alt logout-icon"></i>
                     <span>Logout</span>
                 </a>
             </div>
@@ -1033,7 +1048,7 @@ $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Close sidebar when clicking outside on mobile
         document.addEventListener('click', (e) => {
-            if (window.innerWidth <= 768) {
+            if (window.innerWidth <= 1024) {
                 if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
                     sidebar.classList.remove('active');
                     mobileMenuToggle.classList.remove('active');
@@ -1074,4 +1089,3 @@ $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
     <?php include '../includes/floating-button.php'; ?>
 </body>
 </html>
-

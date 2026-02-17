@@ -23,27 +23,32 @@ function generateApplicationNumber() {
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Fonts (match admin style) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- Custom CSS -->
     <style>
         :root {
-            --primary-color: #2c3e50;
-            --secondary-color: #3498db;
-            --accent-color: #e74c3c;
-            --success-color: #27ae60;
-            --light-bg: #f8f9fa;
-            --border-radius: 10px;
-            --box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            --primary-color: #1e3a8a;
+            --secondary-color: #2563eb;
+            --accent-color: #38bdf8;
+            --success-color: #16a34a;
+            --light-bg: #eef4ff;
+            --border-radius: 14px;
+            --box-shadow: 0 10px 30px rgba(30, 58, 138, 0.12);
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: 'Inter', 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(circle at top, #f0f6ff 0%, #dbeafe 45%, #c7d2fe 100%);
             min-height: 100vh;
         }
         
         .application-header {
-            background: linear-gradient(135deg, var(--primary-color) 0%, #34495e 100%);
+            background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%);
             color: white;
             padding: 3rem 0;
             border-radius: 0 0 var(--border-radius) var(--border-radius);
@@ -105,7 +110,7 @@ function generateApplicationNumber() {
         }
         
         .step.completed .step-circle {
-            background: var(--success-color);
+            background: var(--primary-color);
             color: white;
         }
         
@@ -145,12 +150,12 @@ function generateApplicationNumber() {
         
         .upload-area:hover {
             border-color: var(--secondary-color);
-            background: #f8f9ff;
+            background: #edf4ff;
         }
         
         .upload-area.dragover {
             border-color: var(--secondary-color);
-            background: #e8f4ff;
+            background: #e0ecff;
         }
         
         .preview-image {
@@ -161,7 +166,7 @@ function generateApplicationNumber() {
         }
         
         .btn-primary {
-            background: linear-gradient(135deg, var(--secondary-color) 0%, #2980b9 100%);
+            background: linear-gradient(135deg, var(--secondary-color) 0%, #1d4ed8 100%);
             border: none;
             padding: 0.75rem 2rem;
             font-weight: 600;
@@ -170,7 +175,17 @@ function generateApplicationNumber() {
         
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%);
+            border: none;
+        }
+
+        .btn-success:hover {
+            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.25);
+            transform: translateY(-2px);
         }
         
         .progress-container {
@@ -193,9 +208,17 @@ function generateApplicationNumber() {
         
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, var(--success-color) 0%, var(--secondary-color) 100%);
+            background: linear-gradient(90deg, var(--secondary-color) 0%, var(--accent-color) 100%);
             width: 0%;
             transition: width 0.5s ease;
+        }
+
+        .text-primary {
+            color: var(--secondary-color) !important;
+        }
+
+        .bg-light {
+            background-color: #f5f8ff !important;
         }
         
         @media (max-width: 768px) {
@@ -267,6 +290,7 @@ function generateApplicationNumber() {
 
         <!-- Form Steps -->
         <form id="applicationForm" class="application-form-container" method="POST" action="process-application.php" enctype="multipart/form-data">
+            <input type="hidden" name="submission_source" value="online_portal">
             <!-- Step 1: Personal Information -->
             <div class="form-step active" id="step1">
                 <h3 class="mb-4"><i class="fas fa-user-circle me-2 text-primary"></i>Personal Information</h3>
@@ -483,7 +507,7 @@ function generateApplicationNumber() {
                 
                 <!-- Terms and Conditions -->
                 <div class="form-check mt-4">
-                    <input class="form-check-input" type="checkbox" id="termsCheck" required>
+                    <input class="form-check-input" type="checkbox" id="termsCheck" name="terms_accepted" required>
                     <label class="form-check-label" for="termsCheck">
                         I agree to the <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Terms and Conditions</a> and confirm that all information provided is accurate.
                     </label>

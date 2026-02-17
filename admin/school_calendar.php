@@ -60,13 +60,16 @@ function renderCalendar($month, $year, $events) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>School Calendar | SahabFormMaster</title>
-    <link rel="stylesheet" href="../assets/css/admin_dashboard.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root {--p:#4f46e5;--pd:#4338ca;--s:#7c3aed;--suc:#10b981;--w:#f59e0b;--e:#ef4444;--i:#3b82f6;--g100:#f3f4f6;--g200:#e5e7eb;--g500:#6b7280;--g900:#111827;--w:#fff;}
-        .dashboard-content {padding: 2rem;}
-        .calendar-container,.upcoming-events,.quick-actions-calendar {background:var(--w);border-radius:16px;box-shadow:0 1px 2px 0 rgb(0 0 0/0.05);padding:1.5rem;margin-bottom:1.5rem;}
+        :root {--p:#2563eb;--pd:#1d4ed8;--s:#38bdf8;--suc:#10b981;--warning:#f59e0b;--e:#ef4444;--i:#3b82f6;--g100:#f3f4f6;--g200:#e5e7eb;--g500:#6b7280;--g900:#111827;--white:#fff;}
+        .main-content {padding: 2rem;}
+        .calendar-container,.upcoming-events,.quick-actions-calendar {background:var(--white);border-radius:16px;box-shadow:0 1px 2px 0 rgb(0 0 0/0.05);padding:1.5rem;margin-bottom:1.5rem;}
         .calendar-header {display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;}
         .calendar-title {font-family:'Poppins',sans-serif;font-size:1.25rem;font-weight:700;color:var(--g900);margin:0;}
         .calendar-nav {display:flex;gap:0.5rem;align-items:center;}
@@ -75,7 +78,7 @@ function renderCalendar($month, $year, $events) {
         .current-month {font-size:1rem;font-weight:600;color:var(--g500);min-width:120px;text-align:center;}
         .calendar-grid {display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--g200);border-radius:12px;overflow:hidden;}
         .calendar-day-header {background:var(--p);color:white;padding:0.5rem;text-align:center;font-weight:600;font-size:0.75rem;text-transform:uppercase;}
-        .calendar-day {background:var(--w);min-height:80px;padding:0.35rem;cursor:pointer;transition:0.2s;}
+        .calendar-day {background:var(--white);min-height:80px;padding:0.35rem;cursor:pointer;transition:0.2s;}
         .calendar-day:hover{background:var(--g100);}
         .calendar-day.other-month{background:var(--g100);color:var(--g500);}
         .calendar-day-number{font-size:0.85rem;font-weight:600;margin-bottom:0.25rem;display:block;color:var(--g900);}
@@ -85,7 +88,7 @@ function renderCalendar($month, $year, $events) {
         .event-item{background:var(--p);color:white;padding:0.15rem 0.25rem;border-radius:4px;font-size:0.6rem;margin-bottom:0.15rem;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
         .event-item:hover{opacity:0.85;}
         .event-item.event-holiday{background:var(--e);}
-        .event-item.event-exam{background:var(--w);}
+        .event-item.event-exam{background:var(--warning);}
         .event-item.event-sports{background:var(--suc);}
         .event-item.event-ceremony{background:var(--i);}
         .event-item.event-meeting{background:#8b5cf6;}
@@ -94,7 +97,7 @@ function renderCalendar($month, $year, $events) {
         .events-list{display:flex;flex-direction:column;gap:0.75rem;}
         .event-card{display:flex;align-items:flex-start;gap:0.75rem;padding:0.75rem;background:var(--g100);border-radius:12px;border-left:4px solid var(--p);}
         .event-card.type-holiday{border-left-color:var(--e);}
-        .event-card.type-exam{border-left-color:var(--w);}
+        .event-card.type-exam{border-left-color:var(--warning);}
         .event-card.type-sports{border-left-color:var(--suc);}
         .event-card.type-ceremony{border-left-color:var(--i);}
         .event-card.type-meeting{border-left-color:#8b5cf6;}
@@ -102,7 +105,7 @@ function renderCalendar($month, $year, $events) {
         .event-card.type-academic{border-left-color:var(--p);}
         .event-date{background:var(--p);color:white;padding:0.35rem;border-radius:6px;text-align:center;min-width:45px;}
         .event-card.type-holiday .event-date{background:var(--e);}
-        .event-card.type-exam .event-date{background:var(--w);}
+        .event-card.type-exam .event-date{background:var(--warning);}
         .event-card.type-sports .event-date{background:var(--suc);}
         .event-card.type-ceremony .event-date{background:var(--i);}
         .event-card.type-meeting .event-date{background:#8b5cf6;}
@@ -127,11 +130,11 @@ function renderCalendar($month, $year, $events) {
         .quick-action-card i{font-size:1.5rem;}
         .quick-action-card span{font-size:0.8rem;font-weight:600;}
         .stats-calendar{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1rem;margin-bottom:1.5rem;}
-        .stat-card{background:var(--w);border-radius:12px;padding:1rem;box-shadow:0 1px 2px 0 rgb(0 0 0/0.05);border:1px solid var(--g200);}
+        .stat-card{background:var(--white);border-radius:12px;padding:1rem;box-shadow:0 1px 2px 0 rgb(0 0 0/0.05);border:1px solid var(--g200);}
         .stat-card:hover{box-shadow:0 4px 6px -1px rgb(0 0 0/0.1);}
         .stat-icon{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--p),var(--s));display:flex;align-items:center;justify-content:center;color:white;font-size:1rem;margin-bottom:0.5rem;}
         .stat-icon.holiday{background:linear-gradient(135deg,var(--e),#dc2626);}
-        .stat-icon.exam{background:linear-gradient(135deg,var(--w),#d97706);}
+        .stat-icon.exam{background:linear-gradient(135deg,var(--warning),#d97706);}
         .stat-icon.sports{background:linear-gradient(135deg,var(--suc),#059669);}
         .stat-icon.ceremony{background:linear-gradient(135deg,var(--i),#2563eb);}
         .stat-info h3{font-family:'Poppins',sans-serif;font-size:1.1rem;font-weight:600;color:var(--g900);margin:0;}
@@ -140,7 +143,7 @@ function renderCalendar($month, $year, $events) {
         .legend-item{display:flex;align-items:center;gap:0.35rem;font-size:0.75rem;color:var(--g500);}
         .legend-color{width:12px;height:12px;border-radius:50%;}
         .legend-color.holiday{background:var(--e);}
-        .legend-color.exam{background:var(--w);}
+        .legend-color.exam{background:var(--warning);}
         .legend-color.sport{background:var(--suc);}
         .legend-color.ceremony{background:var(--i);}
         .legend-color.meeting{background:#8b5cf6;}
@@ -170,13 +173,181 @@ function renderCalendar($month, $year, $events) {
         .toast.error{background:var(--e);}
         .form-row{display:flex;gap:0.75rem;}
         .form-row .form-group{flex:1;}
-        @media(max-width:768px){.dashboard-content{padding:1rem;}.calendar-container,.upcoming-events,.quick-actions-calendar{padding:1rem;}.calendar-day{min-height:60px;}.event-item{font-size:0.55rem;padding:0.1rem 0.2rem;}}
+        @media(max-width:768px){.main-content{padding:1rem;}.calendar-container,.upcoming-events,.quick-actions-calendar{padding:1rem;}.calendar-day{min-height:60px;}.event-item{font-size:0.55rem;padding:0.1rem 0.2rem;}}
     </style>
 </head>
 <body>
-    <?php include '../includes/admin_sidebar.php'; ?>
-    <main class="dashboard-content">
-        <div class="calendar-container">
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <header class="dashboard-header">
+        <div class="header-container">
+            <div class="header-left">
+                <div class="school-logo-container">
+                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <div class="school-info">
+                        <h1 class="school-name">SahabFormMaster</h1>
+                        <p class="school-tagline">Principal Portal</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <div class="principal-info">
+                    <p class="principal-label">Principal</p>
+                    <span class="principal-name"><?php echo htmlspecialchars($principal_name); ?></span>
+                </div>
+                <a href="logout.php" class="btn-logout">
+                    <i class="fas fa-sign-out-alt logout-icon"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3>Navigation</h3>
+                <button class="sidebar-close" id="sidebarClose">✖</button>
+            </div>
+            <nav class="sidebar-nav">
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="index.php" class="nav-link">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Dashboard</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a href="schoolnews.php" class="nav-link">
+                            <span class="nav-icon">📰</span>
+                            <span class="nav-text">School News</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="school_diary.php" class="nav-link">
+                            <span class="nav-icon">📔</span>
+                            <span class="nav-text">School Diary</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="students.php" class="nav-link">
+                            <span class="nav-icon">👥</span>
+                            <span class="nav-text">Students Registration</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="students-evaluations.php" class="nav-link">
+                            <span class="nav-icon">⭐</span>
+                            <span class="nav-text">Students Evaluations</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_class.php" class="nav-link">
+                            <span class="nav-icon">🎓</span>
+                            <span class="nav-text">Manage Classes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_results.php" class="nav-link">
+                            <span class="nav-icon">📈</span>
+                            <span class="nav-text">Manage Results</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="lesson-plans.php" class="nav-link">
+                            <span class="nav-icon">📝</span>
+                            <span class="nav-text">Lesson Plans</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_curriculum.php" class="nav-link">
+                            <span class="nav-icon">📚</span>
+                            <span class="nav-text">Curriculum</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage-school.php" class="nav-link">
+                            <span class="nav-icon">🏫</span>
+                            <span class="nav-text">Manage School</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="subjects.php" class="nav-link">
+                            <span class="nav-icon">📖</span>
+                            <span class="nav-text">Subjects</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_user.php" class="nav-link">
+                            <span class="nav-icon">👤</span>
+                            <span class="nav-text">Manage Users</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="visitors.php" class="nav-link">
+                            <span class="nav-icon">🚶</span>
+                            <span class="nav-text">Visitors</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_timebook.php" class="nav-link">
+                            <span class="nav-icon">⏰</span>
+                            <span class="nav-text">Teachers Time Book</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="permissions.php" class="nav-link">
+                            <span class="nav-icon">🔐</span>
+                            <span class="nav-text">Permissions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="manage_attendance.php" class="nav-link">
+                            <span class="nav-icon">📋</span>
+                            <span class="nav-text">Attendance Register</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="payments_dashboard.php" class="nav-link">
+                            <span class="nav-icon">💰</span>
+                            <span class="nav-text">School Fees</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="sessions.php" class="nav-link">
+                            <span class="nav-icon">📆</span>
+                            <span class="nav-text">School Sessions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="school_calendar.php" class="nav-link active">
+                            <span class="nav-icon">🗓️</span>
+                            <span class="nav-text">School Calendar</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="applicants.php" class="nav-link">
+                            <span class="nav-icon">📄</span>
+                            <span class="nav-text">Applicants</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="content-header">
+                <div class="welcome-section">
+                    <h2>📅 School Calendar</h2>
+                    <p>Manage events, schedules, and school activities</p>
+                </div>
+            </div>
+
+            <div class="calendar-container">
             <div id="calendarContent">
                 <?php echo renderCalendar($current_month, $current_year, $monthly_events); ?>
             </div>
@@ -263,7 +434,8 @@ function renderCalendar($month, $year, $events) {
                 <div class="legend-item"><div class="legend-color other"></div> Other</div>
             </div>
         </div>
-    </main>
+        </main>
+    </div>
 
     <!-- Add/Edit Event Modal -->
     <div class="modal" id="eventModal">
@@ -635,6 +807,34 @@ function renderCalendar($month, $year, $events) {
                 closeViewModal();
             }
         });
+
+        // Mobile Menu Toggle
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarClose = document.getElementById('sidebarClose');
+
+        if (mobileMenuToggle && sidebar) {
+            mobileMenuToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('active');
+                mobileMenuToggle.classList.toggle('active');
+            });
+
+            if (sidebarClose) {
+                sidebarClose.addEventListener('click', () => {
+                    sidebar.classList.remove('active');
+                    mobileMenuToggle.classList.remove('active');
+                });
+            }
+
+            document.addEventListener('click', (e) => {
+                if (window.innerWidth <= 1024) {
+                    if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+                        sidebar.classList.remove('active');
+                        mobileMenuToggle.classList.remove('active');
+                    }
+                }
+            });
+        }
     </script>
 </body>
 </html>

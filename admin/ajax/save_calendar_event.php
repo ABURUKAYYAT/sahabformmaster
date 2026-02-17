@@ -37,8 +37,28 @@ $event_type = isset($input['event_type']) ? $input['event_type'] : 'academic';
 $description = isset($input['description']) ? $input['description'] : null;
 $location = isset($input['location']) ? $input['location'] : null;
 $event_time = isset($input['event_time']) ? $input['event_time'] : null;
-$is_all_day = isset($input['is_all_day']) ? (int)$input['is_all_day'] : 1;
+$is_all_day = !empty($input['is_all_day']) ? 1 : 0;
 $color = isset($input['color']) ? $input['color'] : null;
+
+// Normalize school_id to avoid FK violations
+if (empty($school_id) || !is_numeric($school_id)) {
+    $school_id = null;
+} else {
+    $school_id = (int)$school_id;
+    $checkSchool = $pdo->prepare("SELECT COUNT(*) FROM schools WHERE id = ?");
+    $checkSchool->execute([$school_id]);
+    if ($checkSchool->fetchColumn() == 0) {
+        $school_id = null;
+    }
+}
+
+// Normalize event time when all-day
+if ($event_time === '') {
+    $event_time = null;
+}
+if ($is_all_day === 1) {
+    $event_time = null;
+}
 
 // Validation
 if (empty($title)) {

@@ -103,6 +103,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Fetch subjects and assignments - filtered by current school
+$subjects_per_page = 10;
+$subjects_page = max(1, intval($_GET['page'] ?? 1));
+$subjects_offset = ($subjects_page - 1) * $subjects_per_page;
+
+$subjects_total_stmt = $pdo->prepare("SELECT COUNT(*) FROM subjects WHERE school_id = ?");
+$subjects_total_stmt->execute([$current_school_id]);
+$subjects_total = (int) $subjects_total_stmt->fetchColumn();
+$subjects_total_pages = max(1, (int) ceil($subjects_total / $subjects_per_page));
+
 $subjects_query = $pdo->prepare("SELECT s.*,
     (SELECT COUNT(*) FROM lesson_plans WHERE subject_id = s.id) as lesson_count,
     (SELECT COUNT(*) FROM subject_assignments WHERE subject_id = s.id) as assignment_count,
@@ -110,8 +119,12 @@ $subjects_query = $pdo->prepare("SELECT s.*,
     FROM subjects s
     LEFT JOIN users u ON s.created_by = u.id
     WHERE s.school_id = ?
-    ORDER BY s.subject_name ASC");
-$subjects_query->execute([$current_school_id]);
+    ORDER BY s.subject_name ASC
+    LIMIT ? OFFSET ?");
+$subjects_query->bindValue(1, $current_school_id, PDO::PARAM_INT);
+$subjects_query->bindValue(2, $subjects_per_page, PDO::PARAM_INT);
+$subjects_query->bindValue(3, $subjects_offset, PDO::PARAM_INT);
+$subjects_query->execute();
 $subjects = $subjects_query->fetchAll(PDO::FETCH_ASSOC);
 
 $assignments_query = $pdo->prepare("SELECT sa.id AS assign_id, sa.subject_id, sa.class_id, sa.teacher_id,
@@ -151,12 +164,156 @@ $school_tagline = 'Principal Portal'; // Default
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Subject Management | <?php echo htmlspecialchars($school_name); ?></title>
-    <link rel="stylesheet" href="../assets/css/admin_dashboard.css">
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary-color: #38bdf8;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0;
+        }
+
+        .dashboard-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: var(--border-radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--gray-200);
+        }
+
+        .card-icon-wrapper {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: grid;
+            place-items: center;
+            color: white;
+            margin-bottom: 0.75rem;
+        }
+
+        .card-value {
+            font-size: 2rem;
+            font-weight: 800;
+            margin: 0.25rem 0 0.5rem 0;
+            color: var(--gray-900);
+        }
+
+        .section-container {
+            background: white;
+            border-radius: var(--border-radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--gray-200);
+            margin-bottom: 2rem;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .results-table th,
+        .results-table td {
+            padding: 0.85rem 0.9rem;
+            text-align: left;
+            border-bottom: 1px solid var(--gray-200);
+            font-size: 0.92rem;
+        }
+
+        .results-table thead {
+            background: var(--gray-50);
+        }
+
+        .table-container {
+            overflow: auto;
+        }
+
+        .subject-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 999px;
+            background: rgba(37, 99, 235, 0.1);
+            color: var(--primary-color);
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+
+        .pagination {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            justify-content: flex-end;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .pagination a,
+        .pagination span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            height: 36px;
+            padding: 0 0.75rem;
+            border-radius: 8px;
+            border: 1px solid var(--gray-200);
+            text-decoration: none;
+            color: var(--gray-700);
+            font-weight: 600;
+            font-size: 0.9rem;
+            background: white;
+        }
+
+        .pagination a:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .pagination .active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .pagination .disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
 </head>
 <body>
 
@@ -186,7 +343,7 @@ $school_tagline = 'Principal Portal'; // Default
                     <span class="principal-name"><?php echo htmlspecialchars($principal_name); ?></span>
                 </div>
                 <a href="logout.php" class="btn-logout">
-                    <span class="logout-icon">🚪</span>
+                    <i class="fas fa-sign-out-alt logout-icon"></i>
                     <span>Logout</span>
                 </a>
             </div>
@@ -392,6 +549,23 @@ $school_tagline = 'Principal Portal'; // Default
                     </tbody>
                 </table>
             </div>
+            <?php if ($subjects_total_pages > 1): ?>
+            <div class="pagination" aria-label="Subjects pagination">
+                <?php
+                $prev_page = max(1, $subjects_page - 1);
+                $next_page = min($subjects_total_pages, $subjects_page + 1);
+                ?>
+                <a href="?page=<?php echo $prev_page; ?>" class="<?php echo $subjects_page <= 1 ? 'disabled' : ''; ?>">Prev</a>
+                <?php for ($p = 1; $p <= $subjects_total_pages; $p++): ?>
+                    <?php if ($p == $subjects_page): ?>
+                        <span class="active"><?php echo $p; ?></span>
+                    <?php else: ?>
+                        <a href="?page=<?php echo $p; ?>"><?php echo $p; ?></a>
+                    <?php endif; ?>
+                <?php endfor; ?>
+                <a href="?page=<?php echo $next_page; ?>" class="<?php echo $subjects_page >= $subjects_total_pages ? 'disabled' : ''; ?>">Next</a>
+            </div>
+            <?php endif; ?>
             <?php endif; ?>
         </section>
 
@@ -582,7 +756,7 @@ $school_tagline = 'Principal Portal'; // Default
 
         // Close sidebar when clicking outside on mobile
         document.addEventListener('click', (e) => {
-            if (window.innerWidth <= 768) {
+            if (window.innerWidth <= 1024) {
                 if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
                     sidebar.classList.remove('active');
                     mobileMenuToggle.classList.remove('active');

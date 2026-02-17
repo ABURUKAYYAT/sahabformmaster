@@ -14,6 +14,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Handle file uploads
         $uploads = handleFileUploads($application_number);
         
+        $submission_source = $_POST['submission_source'] ?? ($_GET['source'] ?? 'online_portal');
+        $allowed_sources = ['online_portal', 'manual'];
+        if (!in_array($submission_source, $allowed_sources, true)) {
+            $submission_source = 'online_portal';
+        }
+        $terms_accepted = isset($_POST['terms_accepted']) ? 1 : 0;
+
         // Insert application data
         $stmt = $pdo->prepare("
             INSERT INTO applicants (
@@ -36,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 :extracurricular, :reason,
                 :birth_cert, :passport_photo,
                 :school_cert, :other_docs,
-                'pending', 1, :ip, 'online_portal', :how_heard
+                'pending', :terms_accepted, :ip, :submission_source, :how_heard
             )
         ");
         
@@ -67,6 +74,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':school_cert' => $uploads['school_certificate'] ?? '',
             ':other_docs' => $uploads['other_documents'] ?? '',
             ':ip' => $_SERVER['REMOTE_ADDR'],
+            ':terms_accepted' => $terms_accepted,
+            ':submission_source' => $submission_source,
             ':how_heard' => $_POST['how_heard_about_us'] ?? ''
         ]);
         
