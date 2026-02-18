@@ -42,6 +42,52 @@ try {
     // Table might already exist, continue
 }
 
+// Ensure time_records table schema supports timebook features
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS time_records (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        user_id INT NOT NULL,
+        school_id INT NULL,
+        sign_in_time DATETIME NULL,
+        sign_out_time DATETIME NULL,
+        status VARCHAR(50) DEFAULT 'pending',
+        notes TEXT,
+        recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    $columns = $pdo->query("SHOW COLUMNS FROM time_records")->fetchAll(PDO::FETCH_ASSOC);
+    $columnMap = [];
+    foreach ($columns as $col) {
+        $columnMap[strtolower($col['Field'])] = $col;
+    }
+
+    if (!isset($columnMap['id'])) {
+        $pdo->exec("ALTER TABLE time_records ADD COLUMN id INT NOT NULL AUTO_INCREMENT PRIMARY KEY FIRST");
+    } elseif (stripos($columnMap['id']['Extra'] ?? '', 'auto_increment') === false) {
+        $pdo->exec("ALTER TABLE time_records MODIFY COLUMN id INT NOT NULL AUTO_INCREMENT");
+    }
+
+    if (!isset($columnMap['school_id'])) {
+        $pdo->exec("ALTER TABLE time_records ADD COLUMN school_id INT NULL AFTER user_id");
+    }
+
+    if (!isset($columnMap['notes'])) {
+        $pdo->exec("ALTER TABLE time_records ADD COLUMN notes TEXT NULL");
+    }
+
+    if (!isset($columnMap['status'])) {
+        $pdo->exec("ALTER TABLE time_records ADD COLUMN status VARCHAR(50) DEFAULT 'pending'");
+    }
+
+    if (!isset($columnMap['sign_in_time'])) {
+        $pdo->exec("ALTER TABLE time_records ADD COLUMN sign_in_time DATETIME NULL");
+    } elseif (stripos($columnMap['sign_in_time']['Type'] ?? '', 'datetime') === false) {
+        $pdo->exec("ALTER TABLE time_records MODIFY COLUMN sign_in_time DATETIME NULL");
+    }
+} catch (PDOException $e) {
+    // Schema migration failed; continue and let runtime errors surface
+}
+
 // Apply system timezone if set
 $timezoneStmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ?");
 $timezoneStmt->execute(['timezone']);

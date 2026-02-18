@@ -22,19 +22,19 @@ if ($student_id <= 0) {
 
 // Fetch student details with class and school info
 $stmt = $pdo->prepare("
-    SELECT s.*, c.class_name, sp.school_name, sp.school_address,
-           sp.school_phone, sp.school_email, sp.school_logo as logo_path
+    SELECT s.*, c.class_name,
+           sp.school_name, sp.school_address, sp.school_phone,
+           sp.school_email, sp.school_logo as logo_path
     FROM students s
     JOIN classes c ON s.class_id = c.id AND c.school_id = ?
-    CROSS JOIN school_profile sp
+    LEFT JOIN school_profile sp ON sp.school_id = s.school_id
     WHERE s.id = ? AND s.school_id = ?
 ");
 $stmt->execute([$current_school_id, $student_id, $current_school_id]);
 $student = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$student) {
-    header("Location: students.php");
-    exit;
+    $error_message = 'Student not found or school profile missing for this school.';
 }
 
 // Verify teacher access
@@ -49,7 +49,64 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$student_id, $current_school_id, $teacher_id, $teacher_id]);
 if ($stmt->fetchColumn() == 0) {
-    header("Location: students.php");
+    $error_message = 'Access denied. You can only view students in your assigned classes.';
+}
+
+if (!empty($error_message)) {
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Student Details | SahabFormMaster</title>
+        <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+        <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
+    </head>
+    <body>
+        <?php include '../includes/mobile_navigation.php'; ?>
+        <header class="dashboard-header">
+            <div class="header-container">
+                <div class="header-left">
+                    <div class="school-logo-container">
+                        <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                        <div class="school-info">
+                            <h1 class="school-name">SahabFormMaster</h1>
+                            <p class="school-tagline">Student Details</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="teacher-info">
+                        <p class="teacher-label">Teacher</p>
+                        <span class="teacher-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Teacher'); ?></span>
+                    </div>
+                    <a href="logout.php" class="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
+        </header>
+        <div class="dashboard-container">
+            <?php include '../includes/teacher_sidebar.php'; ?>
+            <main class="main-content">
+                <div class="main-container">
+                    <div class="alert alert-error">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span><?php echo htmlspecialchars($error_message); ?></span>
+                    </div>
+                    <a href="students.php" class="btn btn-primary">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Back to Students</span>
+                    </a>
+                </div>
+            </main>
+        </div>
+        <?php include '../includes/floating-button.php'; ?>
+    </body>
+    </html>
+    <?php
     exit;
 }
 
@@ -237,13 +294,15 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($student['full_name']); ?> | Student Details</title>
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/teacher-students.css">
 </head>
-<body style="background-color: white;">
+<body style="background-color: #f5f7fb;">
+    <?php include '../includes/mobile_navigation.php'; ?>
 
     <!-- Header -->
     <header class="dashboard-header">
@@ -273,19 +332,21 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
         </div>
     </header>
 
-    <!-- Main Container -->
+    <div class="dashboard-container">
+        <?php include '../includes/teacher_sidebar.php'; ?>
         <main class="main-content">
+            <div class="main-container">
             <!-- Breadcrumb -->
             <div style="margin-bottom: 1.5rem;">
                 <nav aria-label="breadcrumb">
-                    <ol style="background: var(--gray-50); padding: 0.75rem 1rem; border-radius: var(--border-radius); margin: 0; list-style: none; display: flex; align-items: center; gap: 0.5rem;">
+                    <ol class="breadcrumb-modern">
                         <li style="display: flex; align-items: center; gap: 0.5rem;">
-                            <a href="students.php" style="color: var(--primary-color); text-decoration: none;">
+                            <a href="students.php">
                                 <i class="fas fa-users"></i> Students
                             </a>
                         </li>
                         <li style="color: var(--gray-400);">/</li>
-                        <li style="color: var(--gray-700); font-weight: 500;">
+                        <li style="color: var(--gray-700); font-weight: 600;">
                             <i class="fas fa-eye"></i> <?php echo htmlspecialchars($student['full_name']); ?> Details
                         </li>
                     </ol>
@@ -293,57 +354,51 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
             </div>
 
             <!-- Student Header -->
-            <div class="panel" style="margin-bottom: 2rem;">
-                <div style="display: flex; align-items: center; gap: 2rem; margin-bottom: 2rem;">
-                    <div style="width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); display: flex; align-items: center; justify-content: center; color: white; font-size: 2.5rem; flex-shrink: 0;">
+            <div class="modern-card animate-fade-in-up">
+                <div class="card-header-modern">
+                    <h2 class="card-title-modern">
                         <i class="fas fa-user"></i>
+                        <?php echo htmlspecialchars($student['full_name']); ?>
+                    </h2>
+                    <p class="card-subtitle-modern">
+                        <?php echo htmlspecialchars($student['class_name']); ?> •
+                        <?php echo htmlspecialchars($student['admission_no']); ?>
+                    </p>
+                </div>
+                <div class="card-body-modern">
+                    <div class="stats-grid">
+                        <div class="info-card">
+                            <div class="info-label">Admission No</div>
+                            <div class="info-value"><?php echo htmlspecialchars($student['admission_no']); ?></div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-label">Class</div>
+                            <div class="info-value"><?php echo htmlspecialchars($student['class_name']); ?></div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-label">Gender</div>
+                            <div class="info-value"><?php echo htmlspecialchars($student['gender']); ?></div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-label">Student Type</div>
+                            <div class="info-value"><?php echo ucfirst($student['student_type']); ?> Student</div>
+                        </div>
                     </div>
-                    <div style="flex: 1;">
-                        <h1 style="margin: 0 0 0.5rem 0; font-size: 2rem; color: var(--primary-color);">
-                            <?php echo htmlspecialchars($student['full_name']); ?>
-                            <?php if($student['student_type'] === 'fresh'): ?>
-                                <span class="badge badge-success" style="font-size: 0.8rem; margin-left: 1rem;">New Student</span>
-                            <?php endif; ?>
-                        </h1>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-                            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                <i class="fas fa-id-card" style="color: var(--primary-color);"></i>
-                                <div>
-                                    <div style="font-weight: 600; color: var(--gray-700);">Admission No</div>
-                                    <div style="color: var(--gray-600);"><?php echo htmlspecialchars($student['admission_no']); ?></div>
-                                </div>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                <i class="fas fa-school" style="color: var(--primary-color);"></i>
-                                <div>
-                                    <div style="font-weight: 600; color: var(--gray-700);">Class</div>
-                                    <div style="color: var(--gray-600);"><?php echo htmlspecialchars($student['class_name']); ?></div>
-                                </div>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                <i class="fas fa-<?php echo strtolower($student['gender']) === 'male' ? 'mars' : 'venus'; ?>" style="color: var(--primary-color);"></i>
-                                <div>
-                                    <div style="font-weight: 600; color: var(--gray-700);">Gender</div>
-                                    <div style="color: var(--gray-600);"><?php echo htmlspecialchars($student['gender']); ?></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                            <a href="edit_student.php?id=<?php echo $student['id']; ?>" class="btn btn-primary">
-                                <i class="fas fa-edit"></i> Edit Student
-                            </a>
-                            <a href="?id=<?php echo $student['id']; ?>&action=download_pdf" class="btn btn-success">
-                                <i class="fas fa-download"></i> Download PDF
-                            </a>
-                            <a href="students.php" class="btn">
-                                <i class="fas fa-arrow-left"></i> Back to Students
-                            </a>
-                        </div>
+                    <div class="action-row" style="margin-top: 1.5rem;">
+                        <a href="edit_student.php?id=<?php echo $student['id']; ?>" class="btn btn-primary">
+                            <i class="fas fa-edit"></i> Edit Student
+                        </a>
+                        <a href="?id=<?php echo $student['id']; ?>&action=download_pdf" class="btn btn-success">
+                            <i class="fas fa-download"></i> Download PDF
+                        </a>
+                        <a href="students.php" class="btn">
+                            <i class="fas fa-arrow-left"></i> Back to Students
+                        </a>
                     </div>
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+            <div class="details-grid">
                 <!-- Main Content -->
                 <div>
                     <!-- Personal Information -->
@@ -351,7 +406,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
                         <h2 style="margin-top: 0;">
                             <i class="fas fa-user"></i> Personal Information
                         </h2>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
+                        <div class="stats-grid">
                             <div class="info-card">
                                 <div class="info-label">Full Name</div>
                                 <div class="info-value"><?php echo htmlspecialchars($student['full_name']); ?></div>
@@ -384,7 +439,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
                         <h2>
                             <i class="fas fa-phone"></i> Contact Information
                         </h2>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
+                        <div class="stats-grid">
                             <div class="info-card">
                                 <div class="info-label">Phone Number</div>
                                 <div class="info-value"><?php echo htmlspecialchars($student['phone'] ?: 'N/A'); ?></div>
@@ -412,21 +467,19 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
                             <i class="fas fa-sticky-note"></i> Recent Notes
                         </h2>
                         <?php if (!empty($notes)): ?>
-                            <div style="space-y: 1rem;">
-                                <?php foreach ($notes as $note): ?>
-                                    <div style="border-left: 4px solid var(--primary-color); background: var(--gray-50); padding: 1rem; border-radius: var(--border-radius);">
-                                        <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 0.5rem;">
-                                            <div style="font-weight: 600; color: var(--primary-color);">
-                                                <?php echo htmlspecialchars($note['teacher_name']); ?>
-                                            </div>
-                                            <div style="font-size: 0.85rem; color: var(--gray-500);">
-                                                <?php echo date('M d, Y H:i', strtotime($note['created_at'])); ?>
-                                            </div>
+                            <?php foreach ($notes as $note): ?>
+                                <div class="note-item">
+                                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                        <div style="font-weight: 600; color: var(--primary-600);">
+                                            <?php echo htmlspecialchars($note['teacher_name']); ?>
                                         </div>
-                                        <div style="color: var(--gray-700);"><?php echo htmlspecialchars($note['note_text']); ?></div>
+                                        <div style="font-size: 0.85rem; color: var(--gray-500);">
+                                            <?php echo date('M d, Y H:i', strtotime($note['created_at'])); ?>
+                                        </div>
                                     </div>
-                                <?php endforeach; ?>
-                            </div>
+                                    <div style="color: var(--gray-700);"><?php echo htmlspecialchars($note['note_text']); ?></div>
+                                </div>
+                            <?php endforeach; ?>
                         <?php else: ?>
                             <div style="text-align: center; padding: 2rem; color: var(--gray-500);">
                                 <i class="fas fa-sticky-note" style="font-size: 2rem; opacity: 0.5; margin-bottom: 1rem;"></i>
@@ -469,7 +522,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
                         <p style="color: var(--gray-600); font-size: 0.9rem; margin-bottom: 1rem;">Last 30 days</p>
 
                         <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
-                            <div style="width: 80px; height: 80px; border-radius: 50%; background: conic-gradient(var(--success-color) 0% <?php echo $attendance_percentage; ?>%, var(--gray-300) <?php echo $attendance_percentage; ?>% 100%); display: flex; align-items: center; justify-content: center; position: relative;">
+                            <div class="attendance-ring" style="background: conic-gradient(var(--success-500) 0% <?php echo $attendance_percentage; ?>%, var(--gray-200) <?php echo $attendance_percentage; ?>% 100%);">
                                 <div style="width: 60px; height: 60px; border-radius: 50%; background: white; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--gray-700);">
                                     <?php echo $attendance_percentage; ?>%
                                 </div>
@@ -480,24 +533,24 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
                             </div>
                         </div>
 
-                        <div style="space-y: 0.75rem;">
+                        <div style="display: grid; gap: 0.75rem;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <span style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <span style="width: 12px; height: 12px; background: var(--success-color); border-radius: 2px;"></span>
+                                    <span style="width: 12px; height: 12px; background: var(--success-500); border-radius: 2px;"></span>
                                     Present
                                 </span>
                                 <span style="font-weight: 600;"><?php echo $present_days; ?> days</span>
                             </div>
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <span style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <span style="width: 12px; height: 12px; background: var(--danger-color); border-radius: 2px;"></span>
+                                    <span style="width: 12px; height: 12px; background: var(--error-500); border-radius: 2px;"></span>
                                     Absent
                                 </span>
                                 <span style="font-weight: 600;"><?php echo $absent_days; ?> days</span>
                             </div>
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <span style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <span style="width: 12px; height: 12px; background: var(--warning-color); border-radius: 2px;"></span>
+                                    <span style="width: 12px; height: 12px; background: var(--warning-500); border-radius: 2px;"></span>
                                     Late
                                 </span>
                                 <span style="font-weight: 600;"><?php echo $late_days; ?> days</span>
@@ -548,101 +601,270 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
                     </div>
                 </div>
             </div>
+            </div>
         </main>
+    </div>
     
     
 
     <style>
-        /* Simple and clean overrides for this page */
-        .main-content {
-            max-width: var(--container-max-width);
+        :root {
+            --primary-50: #eff6ff;
+            --primary-100: #dbeafe;
+            --primary-200: #bfdbfe;
+            --primary-300: #93c5fd;
+            --primary-400: #60a5fa;
+            --primary-500: #3b82f6;
+            --primary-600: #2563eb;
+            --primary-700: #1d4ed8;
+            --primary-800: #1e40af;
+            --primary-900: #1e3a8a;
+
+            --accent-50: #fdf4ff;
+            --accent-100: #fae8ff;
+            --accent-200: #f5d0fe;
+            --accent-300: #f0abfc;
+            --accent-400: #e879f9;
+            --accent-500: #d946ef;
+            --accent-600: #c026d3;
+            --accent-700: #a21caf;
+            --accent-800: #86198f;
+            --accent-900: #701a75;
+
+            --success-50: #f0fdf4;
+            --success-100: #dcfce7;
+            --success-500: #22c55e;
+            --success-600: #16a34a;
+            --success-700: #15803d;
+
+            --error-50: #fef2f2;
+            --error-100: #fee2e2;
+            --error-500: #ef4444;
+            --error-600: #dc2626;
+
+            --warning-50: #fffbeb;
+            --warning-100: #fef3c7;
+            --warning-500: #f59e0b;
+            --warning-600: #d97706;
+
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --shadow-medium: 0 8px 32px rgba(0, 0, 0, 0.12);
+            --shadow-strong: 0 16px 48px rgba(0, 0, 0, 0.15);
+
+            --gradient-primary: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-700) 100%);
+            --gradient-accent: linear-gradient(135deg, var(--accent-500) 0%, var(--accent-700) 100%);
+            --gradient-bg: linear-gradient(135deg, var(--primary-50) 0%, var(--accent-50) 50%, var(--primary-100) 100%);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f7fb;
+            color: var(--gray-800);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .dashboard-header {
+            background: #ffffff;
+        }
+
+        .dashboard-container .main-content {
+            width: 100%;
+        }
+
+        .main-container {
+            max-width: 1400px;
             margin: 0 auto;
             padding: 1.5rem;
         }
 
-        /* Clean grid layout */
-        .main-content > div[style*="grid-template-columns"] {
-            max-width: var(--container-max-width);
-            margin: 0 auto;
+        .modern-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            box-shadow: var(--shadow-soft);
+            overflow: hidden;
+            margin-bottom: 2rem;
         }
 
-        /* Simple info cards */
-        .info-card {
-            background: var(--white);
-            padding: 1rem;
-            border-radius: var(--border-radius-sm);
-            border: 1px solid var(--gray-200);
+        .card-header-modern {
+            padding: 2rem;
+            background: var(--gradient-primary);
+            color: white;
+            position: relative;
+        }
+
+        .card-header-modern::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        .card-title-modern {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.75rem;
+            font-weight: 700;
             margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .card-subtitle-modern {
+            font-size: 1rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .card-body-modern {
+            padding: 2rem;
+        }
+
+        .stat-card-modern {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .info-card {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 14px;
+            padding: 1rem;
+            box-shadow: var(--shadow-soft);
         }
 
         .info-label {
-            font-weight: 500;
+            font-weight: 600;
             color: var(--gray-600);
             font-size: 0.85rem;
             margin-bottom: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
 
         .info-value {
-            font-weight: 500;
+            font-weight: 600;
             color: var(--gray-900);
             font-size: 1rem;
         }
 
-        /* Clean logout button */
-        .btn-logout {
-            background: var(--gray-700);
-            color: white;
-            border: none;
-            padding: 0.6rem 1.2rem;
-            border-radius: var(--border-radius);
-            font-weight: 500;
-            transition: background-color 0.2s ease;
+        .panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 18px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-soft);
+            margin-bottom: 1.5rem;
         }
 
-        .btn-logout:hover {
-            background: var(--gray-800);
-        }
-
-        /* Simple typography improvements */
-        h1, h2, h3 {
-            color: var(--gray-900);
-            font-weight: 600;
-            margin-bottom: 1rem;
-        }
-
-        /* Clean breadcrumb */
-        nav[aria-label="breadcrumb"] ol {
-            background: var(--gray-50);
+        .breadcrumb-modern {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 14px;
             padding: 0.75rem 1rem;
-            border-radius: var(--border-radius);
-            margin: 0;
             list-style: none;
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            box-shadow: var(--shadow-soft);
         }
 
-        /* Clean student header */
-        .student-name {
-            font-size: 2rem;
-            color: var(--primary-color);
-            margin: 0 0 0.5rem 0;
+        .breadcrumb-modern a {
+            color: var(--primary-600);
+            text-decoration: none;
+            font-weight: 600;
         }
 
-        /* Simple grid styling */
-        div[style*="grid-template-columns"] {
-            gap: 1.5rem;
+        .details-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
         }
 
-        /* Clean panel styling */
-        .panel {
-            margin-bottom: 1.5rem;
+        .details-grid > div {
+            min-width: 0;
         }
 
-        /* Remove complex animations */
-        * {
-            transition: none !important;
-            animation: none !important;
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+
+        .action-row {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .note-item {
+            border-left: 4px solid var(--primary-500);
+            background: var(--gray-50);
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+        }
+
+        .attendance-ring {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        @media (max-width: 1024px) {
+            .details-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 1rem;
+            }
+
+            .card-header-modern,
+            .card-body-modern {
+                padding: 1.5rem;
+            }
+
+            .panel {
+                padding: 1.25rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            }
         }
     </style>
 
@@ -675,5 +897,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
             }
         }
     });
-</script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
+</script>
+
+    <?php include '../includes/floating-button.php'; ?>
+
+</body>
 </html>

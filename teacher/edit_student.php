@@ -159,13 +159,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Student | SahabFormMaster</title>
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/teacher-students.css">
 </head>
-<body>
+<body style="background-color: #f5f7fb;">
+    <?php include '../includes/mobile_navigation.php'; ?>
 
     <!-- Header -->
     <header class="dashboard-header">
@@ -195,14 +197,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </header>
 
-    <!-- Main Container -->
     <div class="dashboard-container">
-                <!-- Main Content -->
+        <?php include '../includes/teacher_sidebar.php'; ?>
         <main class="main-content">
+            <div class="main-container">
             <!-- Breadcrumb -->
             <div style="margin-bottom: 1.5rem;">
                 <nav aria-label="breadcrumb">
-                    <ol style="background: var(--gray-50); padding: 0.75rem 1rem; border-radius: var(--border-radius); margin: 0; list-style: none; display: flex; align-items: center; gap: 0.5rem;">
+                    <ol class="breadcrumb-modern">
                         <li style="display: flex; align-items: center; gap: 0.5rem;">
                             <a href="students.php" style="color: var(--primary-color); text-decoration: none;">
                                 <i class="fas fa-users"></i> Students
@@ -239,47 +241,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php endif; ?>
 
             <!-- Edit Form -->
-            <div class="panel">
-                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem;">
-                    <div style="width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); display: flex; align-items: center; justify-content: center; color: white;">
-                        <i class="fas fa-user-edit" style="font-size: 1.5rem;"></i>
-                    </div>
-                    <div>
-                        <h2 style="margin: 0 0 0.25rem 0;">Edit Student Information</h2>
-                        <p style="margin: 0; color: var(--gray-600);">Update <?php echo htmlspecialchars($student['full_name']); ?>'s details</p>
-                    </div>
+            <div class="modern-card animate-fade-in-up">
+                <div class="card-header-modern">
+                    <h2 class="card-title-modern">
+                        <i class="fas fa-user-edit"></i>
+                        Edit Student Information
+                    </h2>
+                    <p class="card-subtitle-modern">
+                        Update <?php echo htmlspecialchars($student['full_name']); ?>'s details
+                    </p>
                 </div>
+                <div class="card-body-modern">
 
                 <!-- Current Student Info Preview -->
-                <div style="background: var(--gray-50); padding: 1.5rem; border-radius: var(--border-radius); margin-bottom: 2rem; border-left: 4px solid var(--primary-color);">
-                    <h3 style="margin: 0 0 1rem 0; color: var(--primary-color); display: flex; align-items: center; gap: 0.75rem;">
+                <div class="panel" style="background: var(--gray-50); border-left: 4px solid var(--primary-500);">
+                    <h3 style="margin: 0 0 1rem 0; color: var(--primary-600); display: flex; align-items: center; gap: 0.75rem;">
                         <i class="fas fa-user"></i> Current Student Details
                     </h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                        <div style="background: white; padding: 1rem; border-radius: var(--border-radius); border: 1px solid var(--gray-200);">
+                    <div class="stats-grid">
+                        <div class="info-card">
                             <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
-                                <i class="fas fa-user" style="color: var(--primary-color);"></i>
+                                <i class="fas fa-user" style="color: var(--primary-600);"></i>
                                 <strong>Name</strong>
                             </div>
                             <p style="margin: 0; color: var(--gray-700);"><?php echo htmlspecialchars($student['full_name']); ?></p>
                         </div>
-                        <div style="background: white; padding: 1rem; border-radius: var(--border-radius); border: 1px solid var(--gray-200);">
+                        <div class="info-card">
                             <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
-                                <i class="fas fa-id-card" style="color: var(--primary-color);"></i>
+                                <i class="fas fa-id-card" style="color: var(--primary-600);"></i>
                                 <strong>Admission No</strong>
                             </div>
                             <p style="margin: 0; color: var(--gray-700);"><?php echo htmlspecialchars($student['admission_no']); ?></p>
                         </div>
-                        <div style="background: white; padding: 1rem; border-radius: var(--border-radius); border: 1px solid var(--gray-200);">
+                        <div class="info-card">
                             <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
-                                <i class="fas fa-school" style="color: var(--primary-color);"></i>
+                                <i class="fas fa-school" style="color: var(--primary-600);"></i>
                                 <strong>Class</strong>
                             </div>
                             <p style="margin: 0; color: var(--gray-700);"><?php echo htmlspecialchars($student['class_name']); ?></p>
                         </div>
-                        <div style="background: white; padding: 1rem; border-radius: var(--border-radius); border: 1px solid var(--gray-200);">
+                        <div class="info-card">
                             <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
-                                <i class="fas fa-venus-mars" style="color: var(--primary-color);"></i>
+                                <i class="fas fa-venus-mars" style="color: var(--primary-600);"></i>
                                 <strong>Gender</strong>
                             </div>
                             <p style="margin: 0; color: var(--gray-700);"><?php echo htmlspecialchars($student['gender']); ?></p>
@@ -389,8 +392,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <!-- Important Notes -->
-                    <div style="background: rgba(245, 158, 11, 0.1); padding: 1.5rem; border-radius: var(--border-radius); margin-top: 2rem; border-left: 4px solid var(--warning-color);">
-                        <h3 style="margin: 0 0 1rem 0; color: var(--warning-color); display: flex; align-items: center; gap: 0.75rem;">
+                    <div class="panel" style="background: rgba(245, 158, 11, 0.1); border-left: 4px solid var(--warning-500);">
+                        <h3 style="margin: 0 0 1rem 0; color: var(--warning-600); display: flex; align-items: center; gap: 0.75rem;">
                             <i class="fas fa-info-circle"></i> Important Notes
                         </h3>
                         <ul style="margin: 0; padding-left: 1.5rem; color: var(--gray-700);">
@@ -401,11 +404,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <!-- Action Buttons -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--gray-200);">
+                    <div class="action-row" style="justify-content: space-between; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--gray-200);">
                         <a href="students.php<?php echo isset($_GET['class_id']) ? '?class_id=' . intval($_GET['class_id']) : ''; ?>" class="btn btn-danger">
                             <i class="fas fa-arrow-left"></i> Back to Students
                         </a>
-                        <div style="display: flex; gap: 1rem;">
+                        <div class="action-row">
                             <button type="reset" class="btn">
                                 <i class="fas fa-undo"></i> Reset Changes
                             </button>
@@ -415,6 +418,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     </div>
                 </form>
+                </div>
             </div>
         </main>
     </div>
@@ -494,5 +498,214 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (errorMsg) errorMsg.remove();
         });
     });
-</script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
+</script>
+
+<style>
+    :root {
+        --primary-50: #eff6ff;
+        --primary-100: #dbeafe;
+        --primary-200: #bfdbfe;
+        --primary-300: #93c5fd;
+        --primary-400: #60a5fa;
+        --primary-500: #3b82f6;
+        --primary-600: #2563eb;
+        --primary-700: #1d4ed8;
+        --primary-800: #1e40af;
+        --primary-900: #1e3a8a;
+
+        --accent-50: #fdf4ff;
+        --accent-100: #fae8ff;
+        --accent-200: #f5d0fe;
+        --accent-300: #f0abfc;
+        --accent-400: #e879f9;
+        --accent-500: #d946ef;
+        --accent-600: #c026d3;
+        --accent-700: #a21caf;
+        --accent-800: #86198f;
+        --accent-900: #701a75;
+
+        --success-50: #f0fdf4;
+        --success-100: #dcfce7;
+        --success-500: #22c55e;
+        --success-600: #16a34a;
+        --success-700: #15803d;
+
+        --error-50: #fef2f2;
+        --error-100: #fee2e2;
+        --error-500: #ef4444;
+        --error-600: #dc2626;
+
+        --warning-50: #fffbeb;
+        --warning-100: #fef3c7;
+        --warning-500: #f59e0b;
+        --warning-600: #d97706;
+
+        --gray-50: #f9fafb;
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-300: #d1d5db;
+        --gray-400: #9ca3af;
+        --gray-500: #6b7280;
+        --gray-600: #4b5563;
+        --gray-700: #374151;
+        --gray-800: #1f2937;
+        --gray-900: #111827;
+
+        --glass-bg: rgba(255, 255, 255, 0.1);
+        --glass-border: rgba(255, 255, 255, 0.2);
+        --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.08);
+        --shadow-medium: 0 8px 32px rgba(0, 0, 0, 0.12);
+        --shadow-strong: 0 16px 48px rgba(0, 0, 0, 0.15);
+
+        --gradient-primary: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-700) 100%);
+        --gradient-accent: linear-gradient(135deg, var(--accent-500) 0%, var(--accent-700) 100%);
+        --gradient-bg: linear-gradient(135deg, var(--primary-50) 0%, var(--accent-50) 50%, var(--primary-100) 100%);
+    }
+
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: #f5f7fb;
+        color: var(--gray-800);
+        line-height: 1.6;
+        min-height: 100vh;
+    }
+
+    .dashboard-header {
+        background: #ffffff;
+    }
+
+    .dashboard-container .main-content {
+        width: 100%;
+    }
+
+    .main-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 1.5rem;
+    }
+
+    .modern-card {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 20px;
+        box-shadow: var(--shadow-soft);
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+
+    .card-header-modern {
+        padding: 2rem;
+        background: var(--gradient-primary);
+        color: white;
+        position: relative;
+    }
+
+    .card-header-modern::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(45deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+        pointer-events: none;
+    }
+
+    .card-title-modern {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .card-subtitle-modern {
+        font-size: 1rem;
+        opacity: 0.9;
+        position: relative;
+        z-index: 1;
+    }
+
+    .card-body-modern {
+        padding: 2rem;
+    }
+
+    .info-card {
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        border-radius: 14px;
+        padding: 1rem;
+        box-shadow: var(--shadow-soft);
+    }
+
+    .panel {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 18px;
+        padding: 1.5rem;
+        box-shadow: var(--shadow-soft);
+        margin-bottom: 1.5rem;
+    }
+
+    .breadcrumb-modern {
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        border-radius: 14px;
+        padding: 0.75rem 1rem;
+        list-style: none;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: var(--shadow-soft);
+        margin: 0;
+    }
+
+    .breadcrumb-modern a {
+        color: var(--primary-600);
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .action-row {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    @media (max-width: 768px) {
+        .main-container {
+            padding: 1rem;
+        }
+
+        .card-header-modern,
+        .card-body-modern {
+            padding: 1.5rem;
+        }
+
+        .panel {
+            padding: 1.25rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        }
+    }
+</style>
+
+    <?php include '../includes/floating-button.php'; ?>
+
+</body>
 </html>
