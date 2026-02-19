@@ -63,6 +63,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             header("Location: admin/index.php");
                         } elseif ($user['role'] === 'teacher') {
                             header("Location: teacher/index.php");
+                        } elseif ($user['role'] === 'clerk') {
+                            header("Location: clerk/index.php");
                         } elseif ($user['role'] === 'student') {
                             header("Location: student/index.php");
                         } else {

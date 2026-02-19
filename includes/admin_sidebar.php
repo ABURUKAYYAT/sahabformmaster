@@ -115,13 +115,7 @@
                             <span class="nav-text">Attendance Register</span>
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a href="payments_dashboard.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'payments_dashboard.php' ? 'active' : ''; ?>">
-                            <span class="nav-icon">💰</span>
-                            <span class="nav-text">School Fees</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
+<li class="nav-item">
                         <a href="sessions.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'sessions.php' ? 'active' : ''; ?>">
                             <span class="nav-icon">📅</span>
                             <span class="nav-text">School Sessions</span>
@@ -142,3 +136,4 @@
                 </ul>
             </nav>
         </aside>
+

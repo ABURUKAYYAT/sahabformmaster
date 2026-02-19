@@ -1,6 +1,12 @@
  <?php
 // receipt.php
 session_start();
+if (isset($_SESSION['role']) && $_SESSION['role'] === 'clerk') {
+    header('Location: ../clerk/payments.php');
+    exit();
+}
+header('Location: ../index.php');
+exit();
 require_once '../config/db.php';
 require_once 'helpers/payment_helper.php';
 
@@ -207,3 +213,10 @@ $schoolInfo = $pdo->query("SELECT * FROM school_profile LIMIT 1")->fetch();
     </script>
 </body>
 </html>
+session_start();
+if (isset($_SESSION['role']) && $_SESSION['role'] === 'clerk') {
+    header('Location: ../clerk/payments.php');
+    exit();
+}
+header('Location: ../index.php');
+exit();

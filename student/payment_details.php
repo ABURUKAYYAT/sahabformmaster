@@ -51,6 +51,10 @@ $school = $stmt->fetch();
 
 // Handle PDF download
 if (isset($_GET['download']) && $_GET['download'] === 'pdf') {
+    if ($payment['status'] !== 'completed' || empty($payment['receipt_number'])) {
+        header("Location: payment_details.php?id=" . $paymentId . "&error=receipt_unavailable");
+        exit;
+    }
     generatePaymentReceiptPDF($payment, $paymentHelper, $school);
     exit;
 }
@@ -658,7 +662,17 @@ $admission_number = $_SESSION['admission_no'];
             color: white;
         }
 
-        .status-failed {
+        .status-verified {
+            background: var(--info-color);
+            color: white;
+        }
+
+        .status-partial {
+            background: var(--secondary-color);
+            color: white;
+        }
+
+        .status-rejected {
             background: var(--error-color);
             color: white;
         }
@@ -910,10 +924,12 @@ $admission_number = $_SESSION['admission_no'];
                     <i class="fas fa-arrow-left"></i>
                     Back to Payments
                 </a>
-                <a href="?id=<?php echo $paymentId; ?>&download=pdf" class="btn btn-success">
-                    <i class="fas fa-download"></i>
-                    Download PDF Receipt
-                </a>
+                <?php if ($payment['status'] === 'completed' && !empty($payment['receipt_number'])): ?>
+                    <a href="?id=<?php echo $paymentId; ?>&download=pdf" class="btn btn-success">
+                        <i class="fas fa-download"></i>
+                        Download PDF Receipt
+                    </a>
+                <?php endif; ?>
             </div>
         </main>
     </div>

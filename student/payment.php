@@ -16,6 +16,10 @@ $current_school_id = get_current_school_id();
 $student_name = $_SESSION['student_name'];
 $admission_number = $_SESSION['admission_no'];
 $paymentHelper = new PaymentHelper();
+PaymentHelper::ensureSchema();
+$paymentConfig = include('../config/payment_config.php');
+$feeTypeLabels = $paymentConfig['fee_types'] ?? [];
+$bankAccounts = PaymentHelper::getSchoolBankAccounts($current_school_id);
 
 // Get student details
 $stmt = $pdo->prepare("SELECT s.*, c.class_name FROM students s
@@ -28,19 +32,242 @@ $student = $stmt->fetch();
 $currentTerm = '1st Term';
 $currentYear = date('Y') . '/' . (date('Y') + 1);
 
-// Get fee breakdown
-$feeBreakdown = $paymentHelper->getFeeBreakdown($student['class_id'], $currentTerm, $currentYear);
+$terms = ['1st Term', '2nd Term', '3rd Term'];
 
-// Calculate total fee and balance
-$totalFee = $feeBreakdown['total'];
-$paymentHistory = $paymentHelper->getStudentPaymentHistory($student['id']);
-$paidAmount = 0;
-foreach ($paymentHistory as $payment) {
-    if ($payment['term'] == $currentTerm && $payment['academic_year'] == $currentYear) {
-        $paidAmount += $payment['amount_paid'];
+// Load available academic years from fee structure for this class
+$yearsStmt = $pdo->prepare("SELECT DISTINCT academic_year FROM fee_structure WHERE class_id = ? AND school_id = ? ORDER BY academic_year DESC");
+$yearsStmt->execute([$student['class_id'], $current_school_id]);
+$academicYears = array_map('trim', $yearsStmt->fetchAll(PDO::FETCH_COLUMN));
+if (empty($academicYears)) {
+    $academicYears = [$currentYear];
+}
+
+$selectedYear = $_POST['academic_year'] ?? $_GET['academic_year'] ?? $academicYears[0] ?? $currentYear;
+if (!in_array($selectedYear, $academicYears, true)) {
+    $selectedYear = $academicYears[0] ?? $currentYear;
+}
+
+// Fee data for all terms and years
+$feeDataByYearTerm = [];
+foreach ($academicYears as $year) {
+    foreach ($terms as $term) {
+        $feeDataByYearTerm[$year][$term] = $paymentHelper->getFeeBreakdown($student['class_id'], $term, $year, null, $current_school_id);
     }
 }
-$balance = max(0, $totalFee - $paidAmount);
+
+// Find first available year per term (fallback)
+$firstAvailableYearByTerm = [];
+foreach ($terms as $term) {
+    foreach ($academicYears as $year) {
+        if (!empty($feeDataByYearTerm[$year][$term]['total'])) {
+            $firstAvailableYearByTerm[$term] = $year;
+            break;
+        }
+    }
+}
+
+$paymentHistory = $paymentHelper->getStudentPaymentHistory($student['id'], $current_school_id);
+
+// Aggregate payments by year, term and fee type
+$paymentTotalsByYearTerm = [];
+foreach ($academicYears as $year) {
+    foreach ($terms as $term) {
+        $paymentTotalsByYearTerm[$year][$term] = ['all' => 0.0];
+    }
+}
+foreach ($paymentHistory as $payment) {
+    $yearKey = $payment['academic_year'] ?? $currentYear;
+    $termKey = $payment['term'] ?? $currentTerm;
+    if (!isset($paymentTotalsByYearTerm[$yearKey][$termKey])) {
+        $paymentTotalsByYearTerm[$yearKey][$termKey] = ['all' => 0.0];
+    }
+    $feeTypeKey = $payment['fee_type'] ?: 'all';
+    $amountPaid = (float) $payment['amount_paid'];
+    $paymentTotalsByYearTerm[$yearKey][$termKey]['all'] += $amountPaid;
+    if (!isset($paymentTotalsByYearTerm[$yearKey][$termKey][$feeTypeKey])) {
+        $paymentTotalsByYearTerm[$yearKey][$termKey][$feeTypeKey] = 0.0;
+    }
+    $paymentTotalsByYearTerm[$yearKey][$termKey][$feeTypeKey] += $amountPaid;
+}
+
+$selectedTerm = $_POST['term'] ?? $currentTerm;
+if (!in_array($selectedTerm, $terms, true)) {
+    $selectedTerm = $currentTerm;
+}
+$selectedFeeId = $_POST['fee_id'] ?? 'all';
+
+// If selected year/term has no fees, fallback to first available year for the term
+if (empty($feeDataByYearTerm[$selectedYear][$selectedTerm]['total']) && !empty($firstAvailableYearByTerm[$selectedTerm])) {
+    $selectedYear = $firstAvailableYearByTerm[$selectedTerm];
+}
+
+$successMessage = '';
+$errorMessage = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $paymentMethod = $_POST['payment_method'] ?? '';
+    $paymentType = $_POST['payment_type'] ?? 'full';
+    $term = $_POST['term'] ?? $currentTerm;
+    $academicYear = $_POST['academic_year'] ?? $selectedYear;
+    if (!in_array($term, $terms, true)) {
+        $term = $currentTerm;
+    }
+    if (!in_array($academicYear, $academicYears, true)) {
+        $academicYear = $selectedYear;
+    }
+    $feeId = $_POST['fee_id'] ?? 'all';
+    $notes = trim($_POST['notes'] ?? '');
+
+    $termFeeData = $feeDataByYearTerm[$academicYear][$term] ?? ['breakdown' => [], 'total' => 0];
+    $selectedFeeRecord = null;
+    if ($feeId !== 'all') {
+        foreach ($termFeeData['breakdown'] as $fee) {
+            if ((string) $fee['id'] === (string) $feeId) {
+                $selectedFeeRecord = $fee;
+                break;
+            }
+        }
+        if (!$selectedFeeRecord) {
+            $errorMessage = 'Selected fee item is invalid for this term.';
+        }
+    }
+
+    $totalFee = ($feeId === 'all') ? (float) $termFeeData['total'] : (float) ($selectedFeeRecord['amount'] ?? 0);
+    $feeType = ($feeId === 'all') ? 'all' : ($selectedFeeRecord['fee_type'] ?? 'all');
+    $allowInstallments = ($feeId !== 'all') && !empty($selectedFeeRecord['allow_installments']);
+    $maxInstallments = ($feeId !== 'all') ? (int) ($selectedFeeRecord['max_installments'] ?? 1) : 1;
+    $paidAmountForSelection = $paymentTotalsByYearTerm[$academicYear][$term][$feeType] ?? 0;
+    $balance = max(0, $totalFee - $paidAmountForSelection);
+
+    $amount = $balance;
+    if ($paymentType === 'installment') {
+        if (!$allowInstallments || $maxInstallments < 2) {
+            $errorMessage = 'Installment payments are not allowed for the selected fee.';
+        } else {
+            $installmentAmount = $totalFee / max(1, $maxInstallments);
+            $amount = min($balance, round($installmentAmount, 2));
+        }
+    }
+
+    if ($errorMessage) {
+        // keep existing error
+    } elseif ($totalFee <= 0) {
+        $errorMessage = 'No fee structure is set for your class/term. Please contact the clerk.';
+    } elseif ($balance <= 0) {
+        $errorMessage = 'No outstanding balance for this term.';
+    } elseif (!in_array($paymentMethod, ['bank_transfer', 'cash'], true)) {
+        $errorMessage = 'Only manual payments (bank transfer or cash) are allowed.';
+    } elseif ($amount <= 0 || $amount > $balance) {
+        $errorMessage = 'Invalid amount for the selected fee.';
+    } else {
+        try {
+            $pdo->beginTransaction();
+
+            $transactionId = PaymentHelper::generateTransactionId($studentId);
+
+            $stmt = $pdo->prepare("INSERT INTO student_payments
+                                  (student_id, school_id, class_id, amount_paid, total_amount, payment_date,
+                                   academic_year, payment_method, payment_type, fee_type, status, term, transaction_id, notes)
+                                  VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, 'pending', ?, ?, ?)");
+            $stmt->execute([
+                $studentId,
+                $current_school_id,
+                $student['class_id'],
+                $amount,
+                $totalFee,
+                $academicYear,
+                $paymentMethod,
+                $paymentType,
+                $feeType,
+                $term,
+                $transactionId,
+                $notes
+            ]);
+
+            $paymentId = (int)$pdo->lastInsertId();
+
+            if (!empty($_FILES['payment_proof']['name'])) {
+                $allowed = ['image/jpeg', 'image/png', 'application/pdf'];
+                $fileType = $_FILES['payment_proof']['type'] ?? '';
+                $fileSize = $_FILES['payment_proof']['size'] ?? 0;
+
+                if (!in_array($fileType, $allowed, true)) {
+                    throw new Exception('Invalid file type. Only JPG, PNG, or PDF allowed.');
+                }
+                if ($fileSize > 5 * 1024 * 1024) {
+                    throw new Exception('File size exceeds 5MB.');
+                }
+
+                $uploadDir = '../uploads/payment_proofs/';
+                if (!file_exists($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+
+                $safeName = preg_replace('/[^A-Za-z0-9._-]/', '_', basename($_FILES['payment_proof']['name']));
+                $fileName = time() . '_student_' . $safeName;
+                $filePath = $uploadDir . $fileName;
+
+                if (!move_uploaded_file($_FILES['payment_proof']['tmp_name'], $filePath)) {
+                    throw new Exception('Failed to upload proof of payment.');
+                }
+
+                $attachStmt = $pdo->prepare("INSERT INTO payment_attachments
+                                            (payment_id, school_id, file_name, file_path, uploaded_by, file_type, role)
+                                            VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $attachStmt->execute([$paymentId, $current_school_id, $fileName, $filePath, $studentId, $fileType, 'student']);
+            }
+
+            $pdo->commit();
+            $successMessage = 'Payment submitted successfully. Awaiting verification.';
+
+            $paymentHistory = $paymentHelper->getStudentPaymentHistory($student['id'], $current_school_id);
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            $errorMessage = $e->getMessage();
+        }
+    }
+}
+
+// Rebuild payment totals after any updates
+$paymentTotalsByYearTerm = [];
+foreach ($academicYears as $year) {
+    foreach ($terms as $term) {
+        $paymentTotalsByYearTerm[$year][$term] = ['all' => 0.0];
+    }
+}
+foreach ($paymentHistory as $payment) {
+    $yearKey = $payment['academic_year'] ?? $currentYear;
+    $termKey = $payment['term'] ?? $currentTerm;
+    if (!isset($paymentTotalsByYearTerm[$yearKey][$termKey])) {
+        $paymentTotalsByYearTerm[$yearKey][$termKey] = ['all' => 0.0];
+    }
+    $feeTypeKey = $payment['fee_type'] ?: 'all';
+    $amountPaid = (float) $payment['amount_paid'];
+    $paymentTotalsByYearTerm[$yearKey][$termKey]['all'] += $amountPaid;
+    if (!isset($paymentTotalsByYearTerm[$yearKey][$termKey][$feeTypeKey])) {
+        $paymentTotalsByYearTerm[$yearKey][$termKey][$feeTypeKey] = 0.0;
+    }
+    $paymentTotalsByYearTerm[$yearKey][$termKey][$feeTypeKey] += $amountPaid;
+}
+
+// Resolve selected fee for display
+$selectedFeeRecord = null;
+$termFeeData = $feeDataByYearTerm[$selectedYear][$selectedTerm] ?? ['breakdown' => [], 'total' => 0];
+if ($selectedFeeId !== 'all') {
+    foreach ($termFeeData['breakdown'] as $fee) {
+        if ((string) $fee['id'] === (string) $selectedFeeId) {
+            $selectedFeeRecord = $fee;
+            break;
+        }
+    }
+    if (!$selectedFeeRecord) {
+        $selectedFeeId = 'all';
+    }
+}
+$selectedFeeType = ($selectedFeeId === 'all') ? 'all' : ($selectedFeeRecord['fee_type'] ?? 'all');
+$displayTotalFee = ($selectedFeeId === 'all') ? (float) $termFeeData['total'] : (float) ($selectedFeeRecord['amount'] ?? 0);
+$displayPaid = $paymentTotalsByYearTerm[$selectedYear][$selectedTerm][$selectedFeeType] ?? 0;
+$displayBalance = max(0, $displayTotalFee - $displayPaid);
 ?>
 
 <!DOCTYPE html>
@@ -947,13 +1174,50 @@ $balance = max(0, $totalFee - $paidAmount);
                 </div>
             </div>
 
+            <?php if (!empty($successMessage)): ?>
+                <div class="alert alert-success" style="margin-bottom: 1.5rem;">
+                    <?php echo htmlspecialchars($successMessage); ?>
+                </div>
+            <?php endif; ?>
+            <?php if (!empty($errorMessage)): ?>
+                <div class="alert alert-danger" style="margin-bottom: 1.5rem;">
+                    <?php echo htmlspecialchars($errorMessage); ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if (!empty($bankAccounts)): ?>
+                <div class="row" style="margin-bottom: 2rem;">
+                    <?php foreach (array_slice($bankAccounts, 0, 2) as $account): ?>
+                        <div class="col-md-6">
+                            <div class="card" style="border-left: 4px solid #0ea5e9;">
+                                <div class="card-body">
+                                    <div style="display:flex; align-items:center; gap:12px; margin-bottom: 0.75rem;">
+                                        <div style="font-size: 1.5rem; color: #0ea5e9;"><i class="fas fa-university"></i></div>
+                                        <div>
+                                            <div style="font-weight: 600;"><?php echo htmlspecialchars($account['bank_name']); ?></div>
+                                            <div style="color: #64748b; font-size: 0.9rem;">Manual Transfer Account</div>
+                                        </div>
+                                    </div>
+                                    <div style="font-size: 1.1rem; font-weight: 600; color: #0f172a;">
+                                        <?php echo htmlspecialchars($account['account_number']); ?>
+                                    </div>
+                                    <div style="color: #475569; font-size: 0.95rem;">
+                                        <?php echo htmlspecialchars($account['account_name']); ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
             <!-- Fee Summary -->
             <div class="row" style="margin-bottom: 2rem;">
                 <div class="col-md-4">
                     <div class="card text-center" style="border-left: 4px solid #007bff;">
                         <div class="card-body">
                             <div style="font-size: 2rem; color: #007bff; margin-bottom: 0.5rem;"><i class="fas fa-money-bill-wave"></i></div>
-                            <h3 style="color: #004085;"><?php echo $paymentHelper->formatCurrency($totalFee); ?></h3>
+                            <h3 style="color: #004085;" id="totalFeeValue"><?php echo $paymentHelper->formatCurrency($displayTotalFee); ?></h3>
                             <p style="margin: 0; color: #004085;">Total Fee</p>
                         </div>
                     </div>
@@ -962,7 +1226,7 @@ $balance = max(0, $totalFee - $paidAmount);
                     <div class="card text-center" style="border-left: 4px solid #28a745;">
                         <div class="card-body">
                             <div style="font-size: 2rem; color: #28a745; margin-bottom: 0.5rem;"><i class="fas fa-check-circle"></i></div>
-                            <h3 style="color: #155724;"><?php echo $paymentHelper->formatCurrency($paidAmount); ?></h3>
+                            <h3 style="color: #155724;" id="paidAmountValue"><?php echo $paymentHelper->formatCurrency($displayPaid); ?></h3>
                             <p style="margin: 0; color: #155724;">Amount Paid</p>
                         </div>
                     </div>
@@ -971,7 +1235,7 @@ $balance = max(0, $totalFee - $paidAmount);
                     <div class="card text-center" style="border-left: 4px solid #ffc107;">
                         <div class="card-body">
                             <div style="font-size: 2rem; color: #ffc107; margin-bottom: 0.5rem;"><i class="fas fa-balance-scale"></i></div>
-                            <h3 style="color: #856404;"><?php echo $paymentHelper->formatCurrency($balance); ?></h3>
+                            <h3 style="color: #856404;" id="balanceValue"><?php echo $paymentHelper->formatCurrency($displayBalance); ?></h3>
                             <p style="margin: 0; color: #856404;">Balance Due</p>
                         </div>
                     </div>
@@ -989,16 +1253,56 @@ $balance = max(0, $totalFee - $paidAmount);
                             <div class="col-md-6">
                                 <div class="form-group" style="margin-bottom: 1.5rem;">
                                     <label>Academic Year</label>
-                                    <input type="text" class="form-control" value="<?php echo $currentYear; ?>" readonly>
+                                    <select class="form-control" name="academic_year" id="academicYearSelect">
+                                        <?php foreach ($academicYears as $year): ?>
+                                            <option value="<?php echo htmlspecialchars($year); ?>" <?php echo $selectedYear === $year ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($year); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group" style="margin-bottom: 1.5rem;">
                                     <label>Term</label>
-                                    <select class="form-control" name="term">
-                                        <option value="1st Term" selected>1st Term</option>
-                                        <option value="2nd Term">2nd Term</option>
-                                        <option value="3rd Term">3rd Term</option>
+                                    <select class="form-control" name="term" id="termSelect">
+                                        <?php foreach ($terms as $term): ?>
+                                            <option value="<?php echo $term; ?>" <?php echo $selectedTerm === $term ? 'selected' : ''; ?>>
+                                                <?php echo $term; ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group" style="margin-bottom: 1.5rem;">
+                                    <label>Fee Type</label>
+                                    <select class="form-control" name="fee_id" id="feeSelect">
+                                        <option value="all">All Fees (Total: <?php echo $paymentHelper->formatCurrency($displayTotalFee); ?>)</option>
+                                        <?php foreach (($feeDataByYearTerm[$selectedYear][$selectedTerm]['breakdown'] ?? []) as $fee): ?>
+                                            <option value="<?php echo htmlspecialchars($fee['id']); ?>" <?php echo (string)$selectedFeeId === (string)$fee['id'] ? 'selected' : ''; ?>>
+                                                <?php
+                                                    $labelParts = [$fee['type_label']];
+                                                    if (!empty($fee['description'])) {
+                                                        $labelParts[] = $fee['description'];
+                                                    }
+                                                    echo htmlspecialchars(implode(' - ', $labelParts));
+                                                ?>
+                                                (<?php echo $paymentHelper->formatCurrency($fee['amount']); ?>)
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <small class="text-muted" id="feeMetaText">Select a fee item to load the amount.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group" style="margin-bottom: 1.5rem;">
+                                    <label>Payment Method</label>
+                                    <select class="form-control" name="payment_method" required>
+                                        <option value="bank_transfer" selected>Bank Transfer</option>
+                                        <option value="cash">Cash</option>
                                     </select>
                                 </div>
                             </div>
@@ -1007,32 +1311,23 @@ $balance = max(0, $totalFee - $paidAmount);
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group" style="margin-bottom: 1.5rem;">
-                                    <label>Payment Method</label>
-                                    <select class="form-control" name="payment_method" required>
-                                        <option value="bank_transfer" selected>Bank Transfer</option>
-                                        <option value="cash">Cash</option>
-                                        <option value="online">Online Payment</option>
+                                    <label>Payment Type</label>
+                                    <select class="form-control" name="payment_type" id="paymentTypeSelect" required>
+                                        <option value="full" selected>Full Payment</option>
+                                        <option value="installment">Installment Payment</option>
                                     </select>
+                                    <small class="text-muted" id="installmentHint" style="display:none;">Installment amount is auto-calculated for this fee.</small>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group" style="margin-bottom: 1.5rem;">
-                                    <label>Payment Type</label>
-                                    <select class="form-control" name="payment_type" required>
-                                        <option value="full" selected>Full Payment</option>
-                                        <option value="installment">Installment Payment</option>
-                                    </select>
+                                    <label>Amount (NGN)</label>
+                                    <input type="number" class="form-control" name="amount" id="amountInput" min="0" step="0.01"
+                                           value="<?php echo $displayBalance; ?>" readonly>
+                                    <small class="text-muted" id="balanceHelp">Available balance: <?php echo $paymentHelper->formatCurrency($displayBalance); ?></small>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="form-group" style="margin-bottom: 1.5rem;">
-                            <label>Amount (₦)</label>
-                            <input type="number" class="form-control" name="amount" min="1000" step="0.01"
-                                   value="<?php echo $balance; ?>" required>
-                            <small class="text-muted">Available balance: <?php echo $paymentHelper->formatCurrency($balance); ?></small>
-                        </div>
-
                         <div class="form-group" style="margin-bottom: 1.5rem;">
                             <label>Payment Proof</label>
                             <input type="file" class="form-control" name="payment_proof" accept=".jpg,.jpeg,.png,.pdf">
@@ -1044,7 +1339,7 @@ $balance = max(0, $totalFee - $paidAmount);
                             <textarea class="form-control" name="notes" rows="3" placeholder="Optional notes..."></textarea>
                         </div>
 
-                        <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        <button type="submit" class="btn btn-primary" style="width: 100%;" <?php echo ($displayTotalFee <= 0 || $displayBalance <= 0) ? 'disabled' : ''; ?> >
                             <i class="fas fa-paper-plane"></i> Submit Payment
                         </button>
                     </form>
@@ -1062,31 +1357,50 @@ $balance = max(0, $totalFee - $paidAmount);
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
-                                        <th>Receipt No</th>
-                                        <th>Date</th>
+                                        <th>Reference</th>
+                                        <th>Fee Type</th>
                                         <th>Term</th>
-                                        <th>Amount</th>
+                                        <th>Year</th>
+                                        <th>Amount Paid</th>
+                                        <th>Total Amount</th>
                                         <th>Method</th>
                                         <th>Status</th>
+                                        <th>Date</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($paymentHistory as $payment): ?>
                                         <tr>
-                                            <td><?php echo htmlspecialchars($payment['receipt_number']); ?></td>
-                                            <td><?php echo date('d/m/Y', strtotime($payment['payment_date'])); ?></td>
-                                            <td><?php echo htmlspecialchars($payment['term']); ?></td>
+                                            <?php
+                                                $reference = $payment['receipt_number'] ?: ($payment['transaction_id'] ?: '—');
+                                                $feeTypeKey = $payment['fee_type'] ?: 'all';
+                                                $feeTypeLabel = $feeTypeLabels[$feeTypeKey] ?? ucwords(str_replace('_', ' ', $feeTypeKey));
+                                                $paymentDate = $payment['payment_date'] ? date('d/m/Y', strtotime($payment['payment_date'])) : '—';
+                                            ?>
+                                            <td><?php echo htmlspecialchars($reference); ?></td>
+                                            <td><?php echo htmlspecialchars($feeTypeLabel); ?></td>
+                                            <td><?php echo htmlspecialchars($payment['term'] ?? '—'); ?></td>
+                                            <td><?php echo htmlspecialchars($payment['academic_year'] ?? '—'); ?></td>
                                             <td><?php echo $paymentHelper->formatCurrency($payment['amount_paid']); ?></td>
+                                            <td><?php echo $paymentHelper->formatCurrency($payment['total_amount'] ?? 0); ?></td>
                                             <td><?php echo ucwords(str_replace('_', ' ', $payment['payment_method'])); ?></td>
                                             <td>
-                                                <span class="badge badge-<?php
-                                                    echo $payment['status'] === 'completed' ? 'success' :
-                                                         ($payment['status'] === 'pending_verification' ? 'warning' : 'secondary');
-                                                ?>">
+                                                <?php
+                                                    $statusClassMap = [
+                                                        'pending' => 'warning',
+                                                        'verified' => 'info',
+                                                        'partial' => 'primary',
+                                                        'completed' => 'success',
+                                                        'rejected' => 'danger'
+                                                    ];
+                                                    $statusClass = $statusClassMap[$payment['status']] ?? 'secondary';
+                                                ?>
+                                                <span class="badge badge-<?php echo $statusClass; ?>">
                                                     <?php echo ucfirst(str_replace('_', ' ', $payment['status'])); ?>
                                                 </span>
                                             </td>
+                                            <td><?php echo $paymentDate; ?></td>
                                             <td>
                                                 <button class="btn btn-sm btn-outline-primary" onclick="viewPayment(<?php echo $payment['id']; ?>)">
                                                     <i class="fas fa-eye"></i> View
@@ -1129,6 +1443,168 @@ $balance = max(0, $totalFee - $paidAmount);
             sidebar.classList.remove('active');
             mobileMenuToggle.classList.remove('active');
         });
+
+        const feeDataByYearTerm = <?php echo json_encode($feeDataByYearTerm); ?>;
+        const paymentTotalsByYearTerm = <?php echo json_encode($paymentTotalsByYearTerm); ?>;
+        const currencySymbol = <?php echo json_encode($paymentConfig['currency'] ?? 'N'); ?>;
+        const initialTerm = <?php echo json_encode($selectedTerm); ?>;
+        const initialFeeId = <?php echo json_encode($selectedFeeId); ?>;
+        const initialYear = <?php echo json_encode($selectedYear); ?>;
+        const firstAvailableYearByTerm = <?php echo json_encode($firstAvailableYearByTerm); ?>;
+
+        const termSelect = document.getElementById('termSelect');
+        const academicYearSelect = document.getElementById('academicYearSelect');
+        const feeSelect = document.getElementById('feeSelect');
+        const paymentTypeSelect = document.getElementById('paymentTypeSelect');
+        const amountInput = document.getElementById('amountInput');
+        const balanceHelp = document.getElementById('balanceHelp');
+        const feeMetaText = document.getElementById('feeMetaText');
+        const installmentHint = document.getElementById('installmentHint');
+        const totalFeeValue = document.getElementById('totalFeeValue');
+        const paidAmountValue = document.getElementById('paidAmountValue');
+        const balanceValue = document.getElementById('balanceValue');
+        const submitButton = document.querySelector('button[type=\"submit\"]');
+
+        function formatCurrency(amount) {
+            const num = Number(amount || 0);
+            return `${currencySymbol}${num.toFixed(2).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',')}`;
+        }
+
+        function renderFeeOptions(year, term, selectedFeeId) {
+            if (!feeSelect) return;
+            const termData = (feeDataByYearTerm[year] && feeDataByYearTerm[year][term]) ? feeDataByYearTerm[year][term] : { breakdown: [], total: 0 };
+            feeSelect.innerHTML = '';
+
+            const allOption = new Option(`All Fees (Total: ${formatCurrency(termData.total)})`, 'all');
+            feeSelect.add(allOption);
+
+            termData.breakdown.forEach((fee) => {
+                const labelParts = [fee.type_label];
+                if (fee.description) {
+                    labelParts.push(fee.description);
+                }
+                const label = `${labelParts.join(' - ')} (${formatCurrency(fee.amount)})`;
+                const opt = new Option(label, String(fee.id));
+                opt.dataset.amount = fee.amount;
+                opt.dataset.feeType = fee.fee_type;
+                opt.dataset.allowInstallments = fee.allow_installments ? '1' : '0';
+                opt.dataset.maxInstallments = fee.max_installments;
+                feeSelect.add(opt);
+            });
+
+            const targetValue = selectedFeeId && Array.from(feeSelect.options).some(o => o.value === String(selectedFeeId))
+                ? String(selectedFeeId)
+                : 'all';
+            feeSelect.value = targetValue;
+        }
+
+        function getSelectedFeeMeta() {
+            const term = termSelect ? termSelect.value : initialTerm;
+            const year = academicYearSelect ? academicYearSelect.value : initialYear;
+            const termData = (feeDataByYearTerm[year] && feeDataByYearTerm[year][term]) ? feeDataByYearTerm[year][term] : { breakdown: [], total: 0 };
+            const selectedId = feeSelect ? feeSelect.value : 'all';
+
+            if (selectedId === 'all') {
+                return {
+                term,
+                year,
+                feeType: 'all',
+                total: Number(termData.total || 0),
+                allowInstallments: false,
+                maxInstallments: 1,
+                description: 'All fees for selected term'
+            };
+            }
+
+            const selectedOption = feeSelect ? feeSelect.options[feeSelect.selectedIndex] : null;
+            const amount = selectedOption ? Number(selectedOption.dataset.amount || 0) : 0;
+            const feeType = selectedOption ? (selectedOption.dataset.feeType || 'all') : 'all';
+            const allowInstallments = selectedOption ? selectedOption.dataset.allowInstallments === '1' : false;
+            const maxInstallments = selectedOption ? Number(selectedOption.dataset.maxInstallments || 1) : 1;
+
+            return {
+                term,
+                year,
+                feeType,
+                total: amount,
+                allowInstallments,
+                maxInstallments,
+                description: selectedOption ? selectedOption.text : ''
+            };
+        }
+
+        function updateSummaryCards() {
+            const meta = getSelectedFeeMeta();
+            const paid = (paymentTotalsByYearTerm[meta.year] && paymentTotalsByYearTerm[meta.year][meta.term] && paymentTotalsByYearTerm[meta.year][meta.term][meta.feeType])
+                ? Number(paymentTotalsByYearTerm[meta.year][meta.term][meta.feeType])
+                : 0;
+            const balance = Math.max(0, meta.total - paid);
+
+            if (totalFeeValue) totalFeeValue.textContent = formatCurrency(meta.total);
+            if (paidAmountValue) paidAmountValue.textContent = formatCurrency(paid);
+            if (balanceValue) balanceValue.textContent = formatCurrency(balance);
+
+            if (paymentTypeSelect) {
+                const installmentOption = paymentTypeSelect.querySelector('option[value=\"installment\"]');
+                if (installmentOption) {
+                    installmentOption.disabled = !meta.allowInstallments || meta.maxInstallments < 2;
+                }
+                if (( !meta.allowInstallments || meta.maxInstallments < 2) && paymentTypeSelect.value === 'installment') {
+                    paymentTypeSelect.value = 'full';
+                }
+            }
+
+            const paymentType = paymentTypeSelect ? paymentTypeSelect.value : 'full';
+            let payableAmount = balance;
+            if (paymentType === 'installment' && meta.allowInstallments && meta.maxInstallments > 1) {
+                payableAmount = Math.min(balance, Number((meta.total / meta.maxInstallments).toFixed(2)));
+                if (installmentHint) installmentHint.style.display = 'block';
+            } else if (installmentHint) {
+                installmentHint.style.display = 'none';
+            }
+
+            if (amountInput) amountInput.value = payableAmount.toFixed(2);
+            if (balanceHelp) balanceHelp.textContent = `Available balance: ${formatCurrency(balance)}`;
+            if (feeMetaText) {
+                feeMetaText.textContent = meta.total > 0
+                    ? (meta.description || 'Select a fee item to load the amount.')
+                    : 'No fee structure found for the selected year and term.';
+            }
+            if (submitButton) {
+                submitButton.disabled = meta.total <= 0 || balance <= 0;
+            }
+        }
+
+        if (termSelect && feeSelect) {
+            renderFeeOptions(initialYear, initialTerm, initialFeeId);
+            updateSummaryCards();
+
+            termSelect.addEventListener('change', () => {
+                let year = academicYearSelect ? academicYearSelect.value : initialYear;
+                const term = termSelect.value;
+                if ((!feeDataByYearTerm[year] || !feeDataByYearTerm[year][term] || !feeDataByYearTerm[year][term].total) && firstAvailableYearByTerm[term]) {
+                    year = firstAvailableYearByTerm[term];
+                    if (academicYearSelect) academicYearSelect.value = year;
+                }
+                renderFeeOptions(year, term, 'all');
+                updateSummaryCards();
+            });
+
+            feeSelect.addEventListener('change', updateSummaryCards);
+        }
+
+        if (academicYearSelect) {
+            academicYearSelect.addEventListener('change', () => {
+                const year = academicYearSelect.value;
+                const term = termSelect ? termSelect.value : initialTerm;
+                renderFeeOptions(year, term, 'all');
+                updateSummaryCards();
+            });
+        }
+
+        if (paymentTypeSelect) {
+            paymentTypeSelect.addEventListener('change', updateSummaryCards);
+        }
 
         // Close sidebar when clicking outside on mobile
         document.addEventListener('click', (e) => {

@@ -96,12 +96,6 @@
                             <span class="nav-text">Permissions</span>
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a href="payments.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'payments.php' ? 'active' : ''; ?>">
-                            <i class="fas fa-money-bill-wave nav-icon"></i>
-                            <span class="nav-text">Payments</span>
-                        </a>
-                    </li>
                 </ul>
             </nav>
         </aside>

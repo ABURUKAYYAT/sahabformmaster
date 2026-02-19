@@ -671,6 +671,7 @@ if (isset($_GET['edit'])) {
                                 <option value="admin">Administrative Staff</option>
                                 <option value="support">Support Staff</option>
                                 <option value="principal">Principal</option>
+                                <option value="clerk">Clerk</option>
                             </select>
                             <button class="btn secondary" type="button" onclick="togglePassword()">
                                 <i class="fas fa-eye"></i> Show/Hide Password
@@ -807,6 +808,7 @@ if (isset($_GET['edit'])) {
                                                 case 'teacher': $role_color = 'var(--info)'; $role_icon = 'fas fa-chalkboard-teacher'; break;
                                                 case 'admin': $role_color = 'var(--warning)'; $role_icon = 'fas fa-user-tie'; break;
                                                 case 'support': $role_color = 'var(--success)'; $role_icon = 'fas fa-hands-helping'; break;
+                                                case 'clerk': $role_color = 'var(--secondary)'; $role_icon = 'fas fa-cash-register'; break;
                                                 default: $role_color = 'var(--gray-600)'; $role_icon = 'fas fa-user';
                                             }
                                             ?>
@@ -882,6 +884,7 @@ if (isset($_GET['edit'])) {
                                 <option value="admin">Administrative Staff</option>
                                 <option value="support">Support Staff</option>
                                 <option value="principal">Principal</option>
+                                <option value="clerk">Clerk</option>
                             </select>
                         </div>
 

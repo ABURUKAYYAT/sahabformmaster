@@ -2,6 +2,7 @@
 // student/get_payment_details.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 if (!isset($_SESSION['student_id']) || !isset($_GET['id'])) {
     die("Unauthorized access");
@@ -9,6 +10,7 @@ if (!isset($_SESSION['student_id']) || !isset($_GET['id'])) {
 
 $paymentId = $_GET['id'];
 $studentId = $_SESSION['student_id'];
+$current_school_id = get_current_school_id();
 
 // Get payment details
 $stmt = $pdo->prepare("SELECT sp.*, s.full_name, s.admission_no, 
@@ -17,8 +19,8 @@ $stmt = $pdo->prepare("SELECT sp.*, s.full_name, s.admission_no,
                        JOIN students s ON sp.student_id = s.id
                        JOIN classes c ON sp.class_id = c.id
                        LEFT JOIN users u ON sp.verified_by = u.id
-                       WHERE sp.id = ? AND sp.student_id = ?");
-$stmt->execute([$paymentId, $studentId]);
+                       WHERE sp.id = ? AND sp.student_id = ? AND sp.school_id = ?");
+$stmt->execute([$paymentId, $studentId, $current_school_id]);
 $payment = $stmt->fetch();
 
 if (!$payment) {
@@ -42,12 +44,11 @@ $attachments = $attachmentsStmt->fetchAll();
 
 // Get payment status labels
 $statusLabels = [
-    'pending_verification' => 'Pending Verification',
+    'pending' => 'Pending',
     'verified' => 'Verified',
     'completed' => 'Completed',
     'partial' => 'Partial Payment',
-    'overdue' => 'Overdue',
-    'cancelled' => 'Cancelled'
+    'rejected' => 'Rejected'
 ];
 ?>
 
@@ -172,7 +173,7 @@ $statusLabels = [
                     <?php foreach ($attachments as $attachment): ?>
                         <div style="margin-bottom: 10px;">
                             <p><strong>File:</strong> <?php echo htmlspecialchars($attachment['file_name']); ?></p>
-                            <p><strong>Uploaded:</strong> <?php echo date('d/m/Y H:i', strtotime($attachment['created_at'])); ?></p>
+                            <p><strong>Uploaded:</strong> <?php echo date('d/m/Y H:i', strtotime($attachment['uploaded_at'] ?? $attachment['created_at'])); ?></p>
                             <a href="<?php echo htmlspecialchars($attachment['file_path']); ?>" 
                                target="_blank" 
                                style="display: inline-block; background: #3498db; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none;">

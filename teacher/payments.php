@@ -1,6 +1,12 @@
 <?php
 // clark/payments.php
 session_start();
+if (isset($_SESSION['role']) && $_SESSION['role'] === 'clerk') {
+    header('Location: ../clerk/payments.php');
+    exit();
+}
+header('Location: ../index.php');
+exit();
 require_once '../config/db.php';
 require_once '../includes/functions.php';
 require_once '../helpers/payment_helper.php';

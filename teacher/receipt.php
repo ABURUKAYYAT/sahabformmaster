@@ -1,6 +1,12 @@
 <?php
 // teacher/receipt.php - PDF Receipt Generation using TCPDF
 session_start();
+if (isset($_SESSION['role']) && $_SESSION['role'] === 'clerk') {
+    header('Location: ../clerk/payments.php');
+    exit;
+}
+header('Location: ../index.php');
+exit;
 require_once '../config/db.php';
 require_once '../includes/functions.php';
 require_once '../helpers/payment_helper.php';
@@ -318,4 +324,3 @@ $filename = 'Receipt_' . preg_replace('/[^A-Za-z0-9\-_]/', '_', $payment['receip
 // Output PDF to browser
 $pdf->Output($filename, 'I');
 exit;
-?>

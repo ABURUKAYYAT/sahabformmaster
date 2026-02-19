@@ -29,7 +29,6 @@ if ($user_role === 'principal') {
         ['url' => 'manage_timebook.php', 'icon' => 'fas fa-clock', 'text' => 'Teachers Time Book'],
         ['url' => 'permissions.php', 'icon' => 'fas fa-key', 'text' => 'Permissions'],
         ['url' => 'manage_attendance.php', 'icon' => 'fas fa-calendar-check', 'text' => 'Attendance Register'],
-        ['url' => 'payments_dashboard.php', 'icon' => 'fas fa-money-bill-wave', 'text' => 'School Fees'],
         ['url' => 'sessions.php', 'icon' => 'fas fa-calendar-alt', 'text' => 'School Sessions'],
         ['url' => 'school_calendar.php', 'icon' => 'fas fa-calendar', 'text' => 'School Calendar'],
         ['url' => 'applicants.php', 'icon' => 'fas fa-file-alt', 'text' => 'Applicants']
@@ -51,7 +50,7 @@ if ($user_role === 'principal') {
         ['url' => 'class_attendance.php', 'icon' => 'fas fa-calendar-check', 'text' => 'Attendance'],
         ['url' => 'timebook.php', 'icon' => 'fas fa-clock', 'text' => 'Time Book'],
         ['url' => 'permissions.php', 'icon' => 'fas fa-key', 'text' => 'Permissions'],
-        ['url' => 'payments.php', 'icon' => 'fas fa-money-bill-wave', 'text' => 'Payments']
+        ['url' => 'content_coverage.php', 'icon' => 'fas fa-check', 'text' => 'Content Coverage']
     ];
 } elseif ($user_role === 'student') {
     // Student Navigation
@@ -66,6 +65,15 @@ if ($user_role === 'principal') {
         ['url' => 'schoolfeed.php', 'icon' => 'fas fa-newspaper', 'text' => 'School Feeds'],
         ['url' => 'school_diary.php', 'icon' => 'fas fa-book', 'text' => 'School Diary'],
         ['url' => 'photo_album.php', 'icon' => 'fas fa-images', 'text' => 'Photo Album']
+    ];
+} elseif ($user_role === 'clerk') {
+    // Clerk Navigation
+    $nav_items = [
+        ['url' => 'index.php', 'icon' => 'fas fa-tachometer-alt', 'text' => 'Dashboard'],
+        ['url' => 'payments.php', 'icon' => 'fas fa-money-bill-wave', 'text' => 'Payments'],
+        ['url' => 'fee_structure.php', 'icon' => 'fas fa-receipt', 'text' => 'Fee Structure'],
+        ['url' => 'school_diary.php', 'icon' => 'fas fa-book', 'text' => 'School Diary'],
+        ['url' => 'schoolfeed.php', 'icon' => 'fas fa-newspaper', 'text' => 'School Feeds']
     ];
 } elseif ($user_role === 'super_admin') {
     // Super Admin Navigation

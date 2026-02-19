@@ -35,6 +35,7 @@ return [
         'sports' => 'Sports Fee',
         'library' => 'Library Fee',
         'development' => 'Development Levy',
+        'all' => 'All Fees',
         'other' => 'Other Charges'
     ]
 ];
