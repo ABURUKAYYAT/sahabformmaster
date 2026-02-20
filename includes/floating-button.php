@@ -15,9 +15,9 @@
 </div>
 
 <!-- Enhanced AI Assistant Modal -->
-<div id="ai-assistant-modal" class="ai-modal" style="position: fixed; inset: 0; z-index: 10001; display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.4s ease;">
-    <div class="ai-modal-overlay" style="position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 10000; opacity: 0; transition: opacity 0.4s ease;"></div>
-    <div class="ai-modal-content" style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 28px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15); width: 100%; max-width: 450px; max-height: 85vh; display: flex; flex-direction: column; transform: scale(0.9) translateY(20px); transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); overflow: hidden; position: relative; z-index: 10002;">
+<div id="ai-assistant-modal" class="ai-modal">
+    <div class="ai-modal-overlay"></div>
+    <div class="ai-modal-content">
         <div class="ai-modal-header">
             <div class="ai-header-left">
                 <div class="ai-avatar">
@@ -218,8 +218,8 @@ if (strpos($currentPath, '/admin/') !== false ||
         if (!testBtn) return false;
 
         const styles = window.getComputedStyle(testBtn);
-        // Check if our custom CSS variables are applied (updated for new glassmorphism design)
-        return styles.getPropertyValue('--primary') !== '';
+        // Check if our custom CSS variables are applied
+        return styles.getPropertyValue('--primary-color') !== '';
     }
 
     function applyFallbackStyles() {

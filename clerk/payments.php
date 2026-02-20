@@ -603,5 +603,6 @@ $academicYears = $yearStmt->fetchAll(PDO::FETCH_COLUMN);
     cashYearInput.addEventListener('change', updateCashAmount);
     cashFeeTypeSelect.addEventListener('change', updateCashAmount);
 </script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

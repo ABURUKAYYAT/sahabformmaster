@@ -465,5 +465,6 @@ $bankAccounts = $bankStmt->fetchAll();
         </div>
     </main>
 </div>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>
