@@ -425,9 +425,13 @@ $my_questions = $my_questions->fetch(PDO::FETCH_ASSOC)['total'];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="pwa-sw" content="../sw.js">
     <title>Questions Bank Management | SahabFormMaster</title>
+    <link rel="manifest" href="../manifest.json">
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
     <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
+    <link rel="stylesheet" href="../assets/css/offline-status.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1447,7 +1451,7 @@ $my_questions = $my_questions->fetch(PDO::FETCH_ASSOC)['total'];
                 </button>
             </div>
             <div class="card-body-modern" id="questionFormBody">
-                <form id="questionForm" method="POST">
+                <form id="questionForm" method="POST" data-offline-sync="1">
                 <input type="hidden" name="action" value="<?php echo $edit_mode ? 'update_question' : 'create_question'; ?>">
                 <?php if($edit_mode): ?>
                     <input type="hidden" name="question_id" value="<?php echo $edit_question['id']; ?>">
@@ -2136,5 +2140,10 @@ $my_questions = $my_questions->fetch(PDO::FETCH_ASSOC)['total'];
                 }
             });
         });
-    </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
+    </script>
+
+    <script src="../assets/js/offline-core.js" defer></script>
+    <?php include '../includes/floating-button.php'; ?>
+
+</body>
 </html>

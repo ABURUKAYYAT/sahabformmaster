@@ -196,8 +196,12 @@ $monthly_data = $monthly_stmt->fetchAll();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="pwa-sw" content="../sw.js">
     <title>Class Attendance | SahabFormMaster</title>
+    <link rel="manifest" href="../manifest.json">
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/offline-status.css">
     <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1328,7 +1332,7 @@ $monthly_data = $monthly_stmt->fetchAll();
             </div>
 
             <div class="table-wrapper-modern">
-                <form method="POST" action="" id="attendanceForm">
+                <form method="POST" action="" id="attendanceForm" data-offline-sync="1">
                     <input type="hidden" name="attendance_date" value="<?php echo $selected_date; ?>">
                     <input type="hidden" name="class_id" value="<?php echo $selected_class; ?>">
                     <input type="hidden" name="submit_attendance" value="1">
@@ -1614,6 +1618,7 @@ $monthly_data = $monthly_stmt->fetchAll();
         });
     </script>
 
+    <script src="../assets/js/offline-core.js" defer></script>
     <?php include '../includes/floating-button.php'; ?>
 
 </body>

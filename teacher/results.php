@@ -508,8 +508,12 @@ $default_academic_session = "{$current_year}/{$next_year}";
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="pwa-sw" content="../sw.js">
     <title>Manage Results | SahabFormMaster</title>
+    <link rel="manifest" href="../manifest.json">
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/offline-status.css">
     <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1584,7 +1588,7 @@ $default_academic_session = "{$current_year}/{$next_year}";
                 <div id="batch-tab" class="tab-content active">
                     <div class="section-card">
                         <h3>Batch Entry - Multiple Students & Subjects</h3>
-                        <form method="POST" id="batch-form">
+                        <form method="POST" id="batch-form" data-offline-sync="1">
                             <input type="hidden" name="action" value="save_batch_results">
                             
                             <!-- Academic Session Selection -->
@@ -1711,7 +1715,7 @@ $default_academic_session = "{$current_year}/{$next_year}";
                 <div id="single-tab" class="tab-content">
                     <div class="section-card">
                         <h3>Single Entry - Individual Result</h3>
-                        <form method="POST">
+                        <form method="POST" data-offline-sync="1">
                             <input type="hidden" name="action" value="save_single_result">
                             
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
@@ -1782,7 +1786,7 @@ $default_academic_session = "{$current_year}/{$next_year}";
                         <h3>Multiple Subjects - Single Student</h3>
                         <p>Enter scores for all subjects for one student at once.</p>
                         
-                        <form method="POST" id="multi-subject-form" class="multi-subject-form">
+                        <form method="POST" id="multi-subject-form" class="multi-subject-form" data-offline-sync="1">
                             <input type="hidden" name="action" value="save_multiple_subjects">
                             
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
@@ -2087,6 +2091,7 @@ $default_academic_session = "{$current_year}/{$next_year}";
         });
     </script>
 
+    <script src="../assets/js/offline-core.js" defer></script>
     <?php include '../includes/floating-button.php'; ?>
 
 </body>

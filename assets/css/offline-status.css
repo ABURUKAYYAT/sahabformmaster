@@ -1,0 +1,65 @@
+.offline-banner {
+    position: sticky;
+    top: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px;
+    font-family: "Poppins", "Inter", Arial, sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.offline-banner-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.offline-banner-count {
+    font-size: 12px;
+    font-weight: 500;
+    opacity: 0.9;
+}
+
+.offline-banner-retry {
+    border: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.offline-banner-online {
+    background: #e9f7ef;
+    color: #0f5132;
+}
+
+.offline-banner-online .offline-banner-retry {
+    background: #0f5132;
+    color: #ffffff;
+}
+
+.offline-banner-offline {
+    background: #fff4e5;
+    color: #8a4b00;
+}
+
+.offline-banner-offline .offline-banner-retry {
+    background: #8a4b00;
+    color: #ffffff;
+}
+
+.offline-banner-syncing {
+    background: #e8f1ff;
+    color: #0a3d91;
+}
+
+.offline-banner-syncing .offline-banner-retry {
+    background: #0a3d91;
+    color: #ffffff;
+}
