@@ -205,8 +205,12 @@ function calculateGrade($grand_total) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="pwa-sw" content="../sw.js">
     <title>Manage Results | Principal Dashboard</title>
+    <link rel="manifest" href="../manifest.json">
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/offline-status.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -628,7 +632,7 @@ function calculateGrade($grand_total) {
                 <button class="close-btn" onclick="closeEditModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <form method="POST" id="editForm">
+                <form method="POST" id="editForm" data-offline-sync="1">
                     <input type="hidden" name="action" value="update_result">
                     <input type="hidden" name="result_id" id="edit_result_id">
 
@@ -912,6 +916,7 @@ function calculateGrade($grand_total) {
         });
     </script>
 
+    <script src="../assets/js/offline-core.js" defer></script>
     <?php include '../includes/floating-button.php'; ?>
 
 </body>

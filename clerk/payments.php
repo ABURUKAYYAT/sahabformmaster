@@ -262,9 +262,13 @@ $academicYears = $yearStmt->fetchAll(PDO::FETCH_COLUMN);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="pwa-sw" content="../sw.js">
     <title>Payments - Clerk</title>
+    <link rel="manifest" href="../manifest.json">
     <link rel="stylesheet" href="../assets/css/education-theme-main.css">
     <link rel="stylesheet" href="../assets/css/mobile-navigation.css">
+    <link rel="stylesheet" href="../assets/css/offline-status.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -341,7 +345,7 @@ $academicYears = $yearStmt->fetchAll(PDO::FETCH_COLUMN);
 
             <div class="filters" style="margin-bottom: 20px;">
                 <h4 style="margin-bottom: 12px;">Record Cash Payment</h4>
-                <form method="POST">
+                <form method="POST" data-offline-sync="1">
                     <input type="hidden" name="action" value="record_cash">
                     <select name="class_id" id="cashClassSelect" required>
                         <option value="">Select Class</option>
@@ -527,5 +531,6 @@ $academicYears = $yearStmt->fetchAll(PDO::FETCH_COLUMN);
     cashYearInput.addEventListener('change', updateCashAmount);
     cashFeeTypeSelect.addEventListener('change', updateCashAmount);
 </script>
+<script src="../assets/js/offline-core.js" defer></script>
 </body>
 </html>
