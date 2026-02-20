@@ -74,8 +74,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $receiptNumber = PaymentHelper::generateReceiptNumber($current_school_id);
                 $insert = $pdo->prepare("INSERT INTO student_payments
                     (student_id, school_id, class_id, amount_paid, total_amount, payment_date, academic_year,
-                     payment_method, payment_type, fee_type, status, term, transaction_id, verified_by, verified_at, notes)
-                    VALUES (?, ?, ?, ?, ?, NOW(), ?, 'cash', 'full', ?, 'completed', ?, ?, ?, NOW(), ?)");
+                     payment_method, payment_type, fee_type, status, term, transaction_id, verified_by, verified_at, notes, receipt_number)
+                    VALUES (?, ?, ?, ?, ?, NOW(), ?, 'cash', 'full', ?, 'completed', ?, ?, ?, NOW(), ?, ?)");
                 $insert->execute([
                     $studentId,
                     $current_school_id,
@@ -87,7 +87,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     $term,
                     $transactionId,
                     $userId,
-                    $notes
+                    $notes,
+                    $receiptNumber
                 ]);
                 $message = 'Cash payment recorded successfully.';
             }
@@ -174,9 +175,24 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'fee_amount') {
     if ($fee_type === 'all') {
         $total = (float)($breakdown['total'] ?? 0);
     } else {
+        $matched = false;
         foreach ($breakdown['breakdown'] as $fee) {
             if ($fee['fee_type'] === $fee_type) {
                 $total += (float)$fee['amount'];
+                $matched = true;
+            }
+        }
+        if (!$matched) {
+            $feeTypeOptions = include('../config/payment_config.php');
+            $feeTypeOptions = $feeTypeOptions['fee_types'] ?? [];
+            $label = $feeTypeOptions[$fee_type] ?? '';
+            if ($label) {
+                foreach ($breakdown['breakdown'] as $fee) {
+                    $feeLabel = $feeTypeOptions[$fee['fee_type']] ?? '';
+                    if ($feeLabel && $feeLabel === $label) {
+                        $total += (float)$fee['amount'];
+                    }
+                }
             }
         }
     }
@@ -191,9 +207,24 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'fee_amount') {
             if ($fee_type === 'all') {
                 $total = (float)($breakdown['total'] ?? 0);
             } else {
+                $matched = false;
                 foreach ($breakdown['breakdown'] as $fee) {
                     if ($fee['fee_type'] === $fee_type) {
                         $total += (float)$fee['amount'];
+                        $matched = true;
+                    }
+                }
+                if (!$matched) {
+                    $feeTypeOptions = include('../config/payment_config.php');
+                    $feeTypeOptions = $feeTypeOptions['fee_types'] ?? [];
+                    $label = $feeTypeOptions[$fee_type] ?? '';
+                    if ($label) {
+                        foreach ($breakdown['breakdown'] as $fee) {
+                            $feeLabel = $feeTypeOptions[$fee['fee_type']] ?? '';
+                            if ($feeLabel && $feeLabel === $label) {
+                                $total += (float)$fee['amount'];
+                            }
+                        }
                     }
                 }
             }
@@ -270,12 +301,46 @@ $academicYears = $yearStmt->fetchAll(PDO::FETCH_COLUMN);
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        :root {
+            --clerk-surface: #ffffff;
+            --clerk-ink: #0f172a;
+            --clerk-muted: #64748b;
+            --clerk-border: #e2e8f0;
+            --clerk-accent: #0ea5e9;
+            --clerk-accent-strong: #2563eb;
+            --clerk-radius: 12px;
+        }
         .page-container { padding: 24px; }
-        .filters { background: #fff; padding: 16px; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06); }
+        .filters { background: var(--clerk-surface); padding: 16px; border-radius: var(--clerk-radius); margin-bottom: 16px; box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06); }
+        .filters h4 { margin: 0 0 12px; font-size: 1rem; color: var(--clerk-ink); }
         .filters form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
-        .table-container { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06); }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: left; font-size: 0.95rem; }
+        .filters input,
+        .filters select,
+        .filters textarea {
+            width: 100%;
+            min-height: 42px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--clerk-border);
+            background: #f8fafc;
+            color: var(--clerk-ink);
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+        .filters input:focus,
+        .filters select:focus,
+        .filters textarea:focus {
+            border-color: var(--clerk-accent);
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+            background: #ffffff;
+        }
+        .filters .btn { min-height: 42px; }
+        .filters .text-muted { display: inline-block; margin-top: 6px; color: var(--clerk-muted); }
+        .table-container { background: var(--clerk-surface); border-radius: var(--clerk-radius); padding: 16px; box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06); }
+        .table-scroll { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 720px; }
+        th, td { padding: 12px; border-bottom: 1px solid var(--clerk-border); text-align: left; font-size: 0.95rem; }
         .badge { padding: 4px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
         .badge-pending { background: #fef3c7; color: #92400e; }
         .badge-verified { background: #dbeafe; color: #1e40af; }
@@ -293,9 +358,18 @@ $academicYears = $yearStmt->fetchAll(PDO::FETCH_COLUMN);
         .notice.error { background: #fee2e2; color: #991b1b; }
         .btn-logout.clerk-logout { background: #dc2626; }
         .btn-logout.clerk-logout:hover { background: #b91c1c; }
+        @media (max-width: 900px) {
+            .filters form { grid-template-columns: 1fr; }
+        }
         @media (max-width: 768px) {
-            table { font-size: 0.85rem; }
+            .page-container { padding: 16px; }
+            .table-container { padding: 12px; }
+            table { font-size: 0.9rem; min-width: 640px; }
             th, td { padding: 10px; }
+        }
+        @media (max-width: 520px) {
+            .action-buttons { flex-direction: column; align-items: stretch; }
+            .btn, .btn-view { width: 100%; text-align: center; }
         }
     </style>
 </head>
@@ -403,6 +477,7 @@ $academicYears = $yearStmt->fetchAll(PDO::FETCH_COLUMN);
             </div>
 
             <div class="table-container">
+                <div class="table-scroll">
                 <table>
                     <thead>
                         <tr>
@@ -462,6 +537,7 @@ $academicYears = $yearStmt->fetchAll(PDO::FETCH_COLUMN);
                         <?php endif; ?>
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     </main>

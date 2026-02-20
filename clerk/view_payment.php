@@ -152,8 +152,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="../assets/css/mobile-navigation.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        :root {
+            --clerk-surface: #ffffff;
+            --clerk-ink: #0f172a;
+            --clerk-muted: #64748b;
+            --clerk-border: #e2e8f0;
+            --clerk-accent: #0ea5e9;
+            --clerk-accent-strong: #2563eb;
+            --clerk-radius: 12px;
+        }
         .page-container { padding: 24px; }
-        .card { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06); margin-bottom: 16px; }
+        .card { background: var(--clerk-surface); border-radius: var(--clerk-radius); padding: 16px; box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06); margin-bottom: 16px; }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
         .badge { padding: 4px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
         .badge-pending { background: #fef3c7; color: #92400e; }
@@ -161,20 +170,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .badge-completed { background: #dcfce7; color: #166534; }
         .badge-rejected { background: #fee2e2; color: #991b1b; }
         .badge-partial { background: #e0f2fe; color: #075985; }
-        .action-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-        .btn { padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+        .action-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+        .btn { padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
         .btn-verify { background: #2563eb; color: #fff; }
         .btn-complete { background: #16a34a; color: #fff; }
         .btn-reject { background: #dc2626; color: #fff; }
+        .btn-receipt { background: #0ea5e9; color: #fff; }
         .notice { padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; }
         .notice.success { background: #dcfce7; color: #166534; }
         .notice.error { background: #fee2e2; color: #991b1b; }
         .attachment { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; }
-        .attachment a { text-decoration: none; color: #0f172a; }
+        .attachment a { text-decoration: none; color: #0f172a; } 
+        .btn-logout.clerk-logout { background: #dc2626; }
+        .btn-logout.clerk-logout:hover { background: #b91c1c; }
+        .form-field,
+        .form-file {
+            width: 100%;
+            min-height: 42px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--clerk-border);
+            background: #f8fafc;
+            color: var(--clerk-ink);
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+        .form-field:focus,
+        .form-file:focus {
+            border-color: var(--clerk-accent);
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+            background: #ffffff;
+        }
+        .section-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 0 0 10px;
+        }
+        @media (max-width: 900px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 768px) {
+            .page-container { padding: 16px; }
+            .card { padding: 14px; }
+        }
+        @media (max-width: 520px) {
+            .action-row { flex-direction: column; align-items: stretch; }
+            .btn { width: 100%; }
+        }
+       
     </style>
 </head>
 <body>
+<?php include '../includes/header.php'; ?>
 <?php include '../includes/mobile_navigation.php'; ?>
+
+<header class="dashboard-header">
+    <div class="header-container">
+        <div class="header-left">
+            <div class="school-logo-container">
+                <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                <div class="school-info">
+                    <h1 class="school-name">SahabFormMaster</h1>
+                    <p class="school-tagline">Clerk Portal</p>
+                </div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="teacher-info">
+                <p class="teacher-label">Clerk</p>
+                <span class="teacher-name"><?php echo htmlspecialchars($userName); ?></span>
+            </div>
+            <a href="logout.php" class="btn-logout clerk-logout">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+    </div>
+</header>
 
 <div class="dashboard-wrapper">
     <?php include '../includes/clerk_sidebar.php'; ?>
@@ -223,18 +298,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <form method="POST" class="action-row">
                     <input type="hidden" name="payment_id" value="<?php echo $paymentId; ?>">
-                    <textarea name="notes" rows="2" placeholder="Optional notes..." style="flex: 1 1 240px;"></textarea>
+                    <textarea name="notes" rows="2" placeholder="Optional notes..." class="form-field" style="flex: 1 1 240px;"></textarea>
                     <?php if ($payment['status'] === 'pending'): ?>
                         <button class="btn btn-verify" type="submit" name="action" value="verify">Verify</button>
                         <button class="btn btn-reject" type="submit" name="action" value="reject">Reject</button>
                     <?php elseif (in_array($payment['status'], ['verified', 'partial'], true)): ?>
                         <button class="btn btn-complete" type="submit" name="action" value="complete">Mark Completed</button>
                     <?php endif; ?>
+                    <a class="btn btn-receipt" href="receipt.php?id=<?php echo $paymentId; ?>" target="_blank">
+                        <i class="fas fa-receipt"></i>
+                        <span>Generate Receipt</span>
+                    </a>
                 </form>
             </div>
 
             <div class="card">
-                <h4>Attachments</h4>
+                <div class="section-title">
+                    <h4>Attachments</h4>
+                    <a class="btn btn-receipt" href="receipt.php?id=<?php echo $paymentId; ?>" target="_blank">
+                        <i class="fas fa-receipt"></i>
+                        <span>Receipt</span>
+                    </a>
+                </div>
                 <?php if (empty($attachments)): ?>
                     <p>No attachments uploaded.</p>
                 <?php else: ?>
@@ -249,10 +334,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 <?php endif; ?>
 
-                <form method="POST" enctype="multipart/form-data" style="margin-top: 12px;">
+                <form method="POST" enctype="multipart/form-data" style="margin-top: 12px; display: grid; gap: 10px;">
                     <input type="hidden" name="action" value="upload_attachment">
-                    <input type="file" name="attachment_file" required>
-                    <button class="btn btn-verify" type="submit">Upload Attachment</button>
+                    <input class="form-file" type="file" name="attachment_file" required>
+                    <button class="btn btn-verify" type="submit">
+                        <i class="fas fa-upload"></i>
+                        <span>Upload Attachment</span>
+                    </button>
                 </form>
             </div>
         </div>

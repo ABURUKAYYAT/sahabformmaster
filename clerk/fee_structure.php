@@ -160,12 +160,43 @@ $bankAccounts = $bankStmt->fetchAll();
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        :root {
+            --clerk-surface: #ffffff;
+            --clerk-ink: #0f172a;
+            --clerk-muted: #64748b;
+            --clerk-border: #e2e8f0;
+            --clerk-accent: #0ea5e9;
+            --clerk-accent-strong: #2563eb;
+            --clerk-radius: 12px;
+        }
         .page-container { padding: 24px; }
-        .card { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06); margin-bottom: 16px; }
+        .card { background: var(--clerk-surface); border-radius: var(--clerk-radius); padding: 16px; box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06); margin-bottom: 16px; }
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
-        .btn { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+        .form-grid input,
+        .form-grid select,
+        .form-grid textarea {
+            width: 100%;
+            min-height: 42px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--clerk-border);
+            background: #f8fafc;
+            color: var(--clerk-ink);
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+        .form-grid input:focus,
+        .form-grid select:focus,
+        .form-grid textarea:focus {
+            border-color: var(--clerk-accent);
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+            background: #ffffff;
+        }
+        .table-container { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 720px; }
+        th, td { padding: 12px; border-bottom: 1px solid var(--clerk-border); text-align: left; }
+        .btn { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
         .btn-primary { background: #2563eb; color: #fff; }
         .btn-danger { background: #dc2626; color: #fff; }
         .btn-link { background: transparent; color: #2563eb; text-decoration: none; }
@@ -174,6 +205,18 @@ $bankAccounts = $bankStmt->fetchAll();
         .notice.error { background: #fee2e2; color: #991b1b; }
         .btn-logout.clerk-logout { background: #dc2626; }
         .btn-logout.clerk-logout:hover { background: #b91c1c; }
+        @media (max-width: 900px) {
+            .form-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 768px) {
+            .page-container { padding: 16px; }
+            .card { padding: 14px; }
+            table { min-width: 640px; font-size: 0.9rem; }
+            th, td { padding: 10px; }
+        }
+        @media (max-width: 520px) {
+            .btn { width: 100%; }
+        }
     </style>
 </head>
 <body>
@@ -336,6 +379,7 @@ $bankAccounts = $bankStmt->fetchAll();
 
             <div class="card">
                 <h4>School Bank Accounts</h4>
+                <div class="table-container">
                 <table>
                     <thead>
                         <tr>
@@ -371,10 +415,12 @@ $bankAccounts = $bankStmt->fetchAll();
                         <?php endif; ?>
                     </tbody>
                 </table>
+                </div>
             </div>
 
             <div class="card">
                 <h4>Fee Items</h4>
+                <div class="table-container">
                 <table>
                     <thead>
                         <tr>
@@ -414,6 +460,7 @@ $bankAccounts = $bankStmt->fetchAll();
                         <?php endif; ?>
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     </main>
