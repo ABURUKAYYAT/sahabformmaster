@@ -319,9 +319,13 @@ $transfer_students = $transfer_students->fetch(PDO::FETCH_ASSOC)['total'];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="pwa-sw" content="../sw.js">
     <title>Students Management | SahabFormMaster</title>
+    <link rel="manifest" href="../manifest.json">
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
     <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
+    <link rel="stylesheet" href="../assets/css/offline-status.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -568,7 +572,7 @@ $transfer_students = $transfer_students->fetch(PDO::FETCH_ASSOC)['total'];
                 </button>
             </div>
             
-            <form id="registrationForm" method="POST" enctype="multipart/form-data" class="hidden">
+            <form id="registrationForm" method="POST" enctype="multipart/form-data" class="hidden" data-offline-sync="1" data-offline-allow-files="1" data-offline-max-bytes="5242880">
                 <input type="hidden" name="action" value="create">
                 
                 <div class="form-section">
@@ -1254,5 +1258,9 @@ $transfer_students = $transfer_students->fetch(PDO::FETCH_ASSOC)['total'];
                 photosLabel.title = '';
             }
         });
-    </script><?php include '../includes/floating-button.php'; ?></body>
+    </script>
+
+    <script src="../assets/js/offline-core.js" defer></script>
+    <?php include '../includes/floating-button.php'; ?>
+</body>
 </html>

@@ -275,8 +275,12 @@ $displayBalance = max(0, $displayTotalFee - $displayPaid);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="pwa-sw" content="../sw.js">
     <title>Student Payment Portal - SahabFormMaster</title>
+    <link rel="manifest" href="../manifest.json">
     <link rel="stylesheet" href="../assets/css/mobile-navigation.css">
+    <link rel="stylesheet" href="../assets/css/offline-status.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1248,7 +1252,7 @@ $displayBalance = max(0, $displayTotalFee - $displayPaid);
                     <h4 style="margin: 0;"><i class="fas fa-plus-circle"></i> Make a Payment</h4>
                 </div>
                 <div class="card-body">
-                    <form method="POST" enctype="multipart/form-data">
+                    <form method="POST" enctype="multipart/form-data" data-offline-sync="1">
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group" style="margin-bottom: 1.5rem;">
@@ -1694,6 +1698,7 @@ $displayBalance = max(0, $displayTotalFee - $displayPaid);
         });
     </script>
 
+    <script src="../assets/js/offline-core.js" defer></script>
     <?php include '../includes/floating-button.php'; ?>
 
 </body>
