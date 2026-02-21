@@ -470,6 +470,12 @@ $teacher_name = $_SESSION['full_name'] ?? 'Teacher';
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a href="cbt_tests.php" class="nav-link">
+                            <i class="fas fa-laptop-code nav-icon"></i>
+                            <span class="nav-text">CBT Tests</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a href="student-evaluation.php" class="nav-link">
                             <i class="fas fa-star nav-icon"></i>
                             <span class="nav-text">Evaluations</span>

@@ -172,6 +172,12 @@ $pending_activities = $activities_stmt->fetch()['pending_activities'];
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a href="cbt_tests.php" class="nav-link">
+                            <i class="fas fa-laptop-code nav-icon"></i>
+                            <span class="nav-text">CBT Tests</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a href="photo_album.php" class="nav-link">
                             <i class="fas fa-images nav-icon"></i>
                             <span class="nav-text">Photo Album</span>
