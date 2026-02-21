@@ -81,11 +81,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Insert submission
         $insert_sql = "
             INSERT INTO student_submissions
-            (activity_id, student_id, submission_text, attachment_path, status, submitted_at)
-            VALUES (?, ?, ?, ?, ?, NOW())
+            (school_id, activity_id, student_id, submission_text, attachment_path, status, submitted_at)
+            VALUES (?, ?, ?, ?, ?, ?, NOW())
         ";
         $insert_stmt = $pdo->prepare($insert_sql);
         $insert_stmt->execute([
+            $current_school_id,
             $activity_id,
             $student_id,
             $submission_text,
@@ -125,113 +126,8 @@ $student_name = $student['full_name'];
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/student-dashboard.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/student-class-activities.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        /* ===================================================
-           Modern Activity Tabs Styles
-           =================================================== */
-
-        .activity-tabs {
-            background: var(--white);
-            border-radius: var(--border-radius-lg);
-            box-shadow: var(--shadow-sm);
-            overflow: hidden;
-            border: 1px solid var(--gray-200);
-        }
-
-        .tabs-nav {
-            display: flex;
-            position: relative;
-        }
-
-        .tab-link {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 1.25rem 1rem;
-            text-decoration: none;
-            color: var(--gray-500);
-            transition: var(--transition-normal);
-            position: relative;
-            border-bottom: 3px solid transparent;
-        }
-
-        .tab-link:hover {
-            color: var(--primary-color);
-            background: rgba(99, 102, 241, 0.05);
-        }
-
-        .tab-link.active {
-            color: var(--primary-color);
-            background: rgba(99, 102, 241, 0.08);
-            border-bottom-color: var(--primary-color);
-        }
-
-        .tab-link.active .tab-indicator {
-            opacity: 1;
-            transform: scaleX(1);
-        }
-
-        .tab-icon {
-            font-size: 1.25rem;
-            transition: var(--transition-fast);
-        }
-
-        .tab-link.active .tab-icon {
-            transform: scale(1.1);
-        }
-
-        .tab-text {
-            font-size: 0.875rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .tab-indicator {
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%) scaleX(0);
-            width: 40px;
-            height: 3px;
-            background: var(--primary-color);
-            border-radius: 2px 2px 0 0;
-            opacity: 0;
-            transition: var(--transition-normal);
-        }
-
-        /* Responsive Design for Tabs */
-        @media (max-width: 768px) {
-            .tab-link {
-                padding: 1rem 0.75rem;
-                gap: 0.375rem;
-            }
-
-            .tab-icon {
-                font-size: 1.1rem;
-            }
-
-            .tab-text {
-                font-size: 0.8rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .tab-link {
-                padding: 0.875rem 0.5rem;
-            }
-
-            .tab-text {
-                font-size: 0.75rem;
-            }
-        }
-    </style>
 </head>
 <body>
 
@@ -275,24 +171,21 @@ $student_name = $student['full_name'];
 
         <!-- Main Content -->
         <main class="main-content">
+        <div class="main-container">
         <?php
         // Show messages
         if (isset($_SESSION['success'])) {
-            echo '<div class="card" style="margin-bottom: 2rem; border-left: 4px solid var(--success-color); background: rgba(16, 185, 129, 0.1);">
-                    <div class="card-body" style="padding: 1rem;">
-                        <i class="fas fa-check-circle" style="color: var(--success-color); margin-right: 0.5rem;"></i>
-                        <span style="color: var(--success-color); font-weight: 500;">' . $_SESSION['success'] . '</span>
-                    </div>
+            echo '<div class="alert-modern alert-success-modern">
+                    <i class="fas fa-check-circle"></i>
+                    <span>' . $_SESSION['success'] . '</span>
                   </div>';
             unset($_SESSION['success']);
         }
 
         if (isset($_SESSION['error'])) {
-            echo '<div class="card" style="margin-bottom: 2rem; border-left: 4px solid var(--error-color); background: rgba(239, 68, 68, 0.1);">
-                    <div class="card-body" style="padding: 1rem;">
-                        <i class="fas fa-exclamation-circle" style="color: var(--error-color); margin-right: 0.5rem;"></i>
-                        <span style="color: var(--error-color); font-weight: 500;">' . $_SESSION['error'] . '</span>
-                    </div>
+            echo '<div class="alert-modern alert-error-modern">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>' . $_SESSION['error'] . '</span>
                   </div>';
             unset($_SESSION['error']);
         }
@@ -321,11 +214,11 @@ $student_name = $student['full_name'];
             }
             ?>
 
-            <div class="card" style="margin-bottom: 2rem;">
-                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px 8px 0 0;">
+            <div class="modern-card">
+                <div class="card-header-modern alt">
                     <h4 style="margin: 0;"><i class="fas fa-comments"></i> Feedback for: <?php echo htmlspecialchars($feedback['activity_title']); ?></h4>
                 </div>
-                <div class="card-body" style="padding: 2rem;">
+                <div class="card-body-modern">
                     <div class="row">
                         <div class="col-md-6">
                             <p><strong>Activity Title:</strong> <?php echo htmlspecialchars($feedback['activity_title']); ?></p>
@@ -392,17 +285,17 @@ $student_name = $student['full_name'];
 
             if (!$activity):
             ?>
-            <div class="alert alert-danger" style="margin-bottom: 2rem;">
+            <div class="alert-modern alert-error-modern">
                 Activity not found or access denied.
                 <a href="student_class_activities.php" class="btn btn-primary" style="margin-left: 1rem;">Back to Activities</a>
             </div>
             <?php else: ?>
-            <div class="card" style="margin-bottom: 2rem;">
-                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px 8px 0 0;">
+            <div class="modern-card">
+                <div class="card-header-modern">
                     <h4 style="margin: 0;"><i class="fas fa-eye"></i> <?php echo htmlspecialchars($activity['title']); ?></h4>
                     <small><?php echo htmlspecialchars($activity['subject_name']); ?> • <?php echo htmlspecialchars($activity['teacher_name']); ?></small>
                 </div>
-                <div class="card-body" style="padding: 2rem;">
+                <div class="card-body-modern">
                     <div class="row">
                         <div class="col-md-8">
                             <h6>Description</h6>
@@ -411,7 +304,7 @@ $student_name = $student['full_name'];
                             <h6 style="margin-top: 2rem;">Instructions</h6>
                             <p><?php echo nl2br(htmlspecialchars($activity['instructions'])); ?></p>
 
-                            <?php if ($activity['attachment_path']): ?>
+                            <?php if (!empty($activity['attachment_path'] ?? '')): ?>
                             <div style="margin-top: 2rem;">
                                 <a href="<?php echo $activity['attachment_path']; ?>"
                                    class="btn btn-outline-primary" target="_blank">
@@ -421,8 +314,8 @@ $student_name = $student['full_name'];
                             <?php endif; ?>
                         </div>
                         <div class="col-md-4">
-                            <div class="card" style="background: #f8f9fa;">
-                                <div class="card-body">
+                            <div class="modern-card">
+                                <div class="card-body-modern">
                                     <h6>Activity Details</h6>
                                     <p><strong>Type:</strong> <?php echo ucfirst($activity['activity_type']); ?></p>
                                     <p><strong>Due Date:</strong>
@@ -459,11 +352,11 @@ $student_name = $student['full_name'];
 
                     <!-- Submission Section -->
                     <?php if ($activity['submission_id']): ?>
-                        <div class="card" style="margin-top: 2rem;">
-                            <div class="card-header" style="background: #17a2b8; color: white;">
+                        <div class="modern-card">
+                            <div class="card-header-modern alt">
                                 <h5 style="margin: 0;"><i class="fas fa-file-alt"></i> Your Submission</h5>
                             </div>
-                            <div class="card-body">
+                            <div class="card-body-modern">
                                 <p><strong>Submission Text:</strong></p>
                                 <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
                                     <?php echo $activity['submission_text'] ? nl2br(htmlspecialchars($activity['submission_text'])) : '<em>No text submitted</em>'; ?>
@@ -478,11 +371,11 @@ $student_name = $student['full_name'];
                                 <?php endif; ?>
 
                                 <?php if ($activity['feedback']): ?>
-                                    <div class="card" style="margin-top: 2rem;">
-                                        <div class="card-header" style="background: #28a745; color: white;">
+                                    <div class="modern-card">
+                                        <div class="card-header-modern">
                                             <h5 style="margin: 0;"><i class="fas fa-comment"></i> Teacher Feedback</h5>
                                         </div>
-                                        <div class="card-body">
+                                        <div class="card-body-modern">
                                             <p><strong>Score:</strong>
                                                 <span class="badge badge-success" style="font-size: 1.3em;">
                                                     <?php echo $activity['marks_obtained']; ?>/<?php echo $activity['total_marks']; ?>
@@ -510,11 +403,11 @@ $student_name = $student['full_name'];
                         </div>
                     <?php else: ?>
                         <!-- Submission Form -->
-                        <div class="card" style="margin-top: 2rem;">
-                            <div class="card-header">
+                        <div class="modern-card">
+                            <div class="card-header-modern">
                                 <h5 style="margin: 0;"><i class="fas fa-upload"></i> Submit Your Work</h5>
                             </div>
-                            <div class="card-body">
+                            <div class="card-body-modern">
                                 <form method="POST" enctype="multipart/form-data">
                                     <input type="hidden" name="activity_id" value="<?php echo $activity_id; ?>">
 
@@ -564,7 +457,7 @@ $student_name = $student['full_name'];
 
             if (!$activity):
             ?>
-            <div class="alert alert-danger" style="margin-bottom: 2rem;">
+            <div class="alert-modern alert-error-modern">
                 Activity not found or closed for submission.
                 <a href="student_class_activities.php" class="btn btn-primary" style="margin-left: 1rem;">Back to Activities</a>
             </div>
@@ -576,7 +469,7 @@ $student_name = $student['full_name'];
 
                 if ($check_stmt->rowCount() > 0):
             ?>
-            <div class="alert alert-info" style="margin-bottom: 2rem;">
+            <div class="alert-modern alert-success-modern">
                 You have already submitted this activity.
                 <a href="student_class_activities.php?action=view&id=<?php echo $activity_id; ?>" class="btn btn-primary" style="margin-left: 1rem;">
                     View Your Submission
@@ -585,11 +478,11 @@ $student_name = $student['full_name'];
             <?php else: ?>
             <div class="row">
                 <div class="col-md-8">
-                    <div class="card" style="margin-bottom: 2rem;">
-                        <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px 8px 0 0;">
+                    <div class="modern-card">
+                        <div class="card-header-modern">
                             <h4 style="margin: 0;"><i class="fas fa-upload"></i> Submit: <?php echo htmlspecialchars($activity['title']); ?></h4>
                         </div>
-                        <div class="card-body" style="padding: 2rem;">
+                        <div class="card-body-modern">
                             <form method="POST" enctype="multipart/form-data">
                                 <input type="hidden" name="activity_id" value="<?php echo $activity_id; ?>">
 
@@ -620,11 +513,11 @@ $student_name = $student['full_name'];
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card">
-                        <div class="card-header">
+                    <div class="modern-card">
+                        <div class="card-header-modern">
                             <h5 style="margin: 0;"><i class="fas fa-info-circle"></i> Activity Details</h5>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body-modern">
                             <p><strong>Subject:</strong> <?php echo htmlspecialchars($activity['subject_name']); ?></p>
                             <p><strong>Teacher:</strong> <?php echo htmlspecialchars($activity['teacher_name']); ?></p>
                             <p><strong>Type:</strong> <?php echo ucfirst($activity['activity_type']); ?></p>
@@ -640,8 +533,8 @@ $student_name = $student['full_name'];
 
         <?php else: ?>
             <!-- Welcome Section -->
-            <div class="card" style="margin-bottom: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
-                <div class="card-body" style="padding: 2rem;">
+            <div class="modern-card hero-card">
+                <div class="card-body-modern">
                     <h2 style="margin-bottom: 0.5rem;"><i class="fas fa-graduation-cap"></i> Welcome back, <?php echo htmlspecialchars($student_name); ?>!</h2>
                     <p style="margin: 0; opacity: 0.9;">Manage your class activities and assignments for <?php echo htmlspecialchars($student['class_name']); ?></p>
                 </div>
@@ -742,24 +635,19 @@ $student_name = $student['full_name'];
             </div>
 
             <!-- Activity Tabs -->
-            <div class="activity-tabs" style="margin-bottom: 2rem;">
-                <nav class="tabs-nav">
-                    <a href="?action=dashboard" class="tab-link <?php echo $action === 'dashboard' ? 'active' : ''; ?>">
-                        <i class="fas fa-tasks tab-icon"></i>
-                        <span class="tab-text">Active</span>
-                        <span class="tab-indicator"></span>
-                    </a>
-                    <a href="?action=submitted" class="tab-link <?php echo $action === 'submitted' ? 'active' : ''; ?>">
-                        <i class="fas fa-check-circle tab-icon"></i>
-                        <span class="tab-text">Submitted</span>
-                        <span class="tab-indicator"></span>
-                    </a>
-                    <a href="?action=graded" class="tab-link <?php echo $action === 'graded' ? 'active' : ''; ?>">
-                        <i class="fas fa-star tab-icon"></i>
-                        <span class="tab-text">Graded</span>
-                        <span class="tab-indicator"></span>
-                    </a>
-                </nav>
+            <div class="tabs-modern" style="margin-bottom: 2rem;">
+                <a href="?action=dashboard" class="tab-modern <?php echo $action === 'dashboard' ? 'active' : ''; ?>">
+                    <i class="fas fa-tasks"></i>
+                    <span>Active</span>
+                </a>
+                <a href="?action=submitted" class="tab-modern <?php echo $action === 'submitted' ? 'active' : ''; ?>">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Submitted</span>
+                </a>
+                <a href="?action=graded" class="tab-modern <?php echo $action === 'graded' ? 'active' : ''; ?>">
+                    <i class="fas fa-star"></i>
+                    <span>Graded</span>
+                </a>
             </div>
 
             <!-- Activities Grid -->
@@ -769,6 +657,7 @@ $student_name = $student['full_name'];
                 SELECT ca.*, s.subject_name, u.full_name as teacher_name,
                        ss.id as submission_id, ss.status as submission_status,
                        ss.marks_obtained, ss.feedback, ss.submitted_at,
+                       ss.attachment_path as student_attachment,
                        ss.id as submission_db_id
                 FROM class_activities ca
                 JOIN subjects s ON ca.subject_id = s.id AND s.school_id = ?
@@ -778,7 +667,7 @@ $student_name = $student['full_name'];
             ";
 
             if ($action === 'submitted') {
-                $activities_query .= " AND ss.id IS NOT NULL AND ss.status IN ('submitted', 'graded')";
+                $activities_query .= " AND ss.id IS NOT NULL AND ss.status IN ('submitted', 'graded', 'late')";
             } elseif ($action === 'graded') {
                 $activities_query .= " AND ss.status = 'graded'";
             } else {
@@ -798,8 +687,8 @@ $student_name = $student['full_name'];
                                strtotime($activity['due_date']) > time() &&
                                strtotime($activity['due_date']) < strtotime('+3 days');
             ?>
-            <div class="card" style="margin-bottom: 1rem;">
-                <div class="card-body">
+            <div class="modern-card activity-card">
+                <div class="card-body-modern">
                     <div class="row align-items-center">
                         <div class="col-md-8">
                             <h5 style="margin-bottom: 0.5rem;">
@@ -810,20 +699,27 @@ $student_name = $student['full_name'];
                                     <span class="badge badge-warning">Due Soon</span>
                                 <?php endif; ?>
                             </h5>
-                            <p style="margin-bottom: 0.5rem; color: #6c757d;">
+                            <p class="activity-meta" style="margin-bottom: 0.5rem;">
                                 <i class="fas fa-book"></i> <?php echo htmlspecialchars($activity['subject_name']); ?> •
                                 <i class="fas fa-user"></i> <?php echo htmlspecialchars($activity['teacher_name']); ?>
                             </p>
-                            <p style="margin: 0; color: #6c757d;">
+                            <p class="activity-meta" style="margin: 0;">
                                 <?php echo htmlspecialchars(substr($activity['description'], 0, 100)); ?>
                                 <?php echo strlen($activity['description']) > 100 ? '...' : ''; ?>
                             </p>
                         </div>
-                        <div class="col-md-4 text-md-right">
+                        <div class="col-md-4 activity-actions text-md-right">
                             <?php if ($activity['due_date']): ?>
                                 <p style="margin-bottom: 0.5rem;">
                                     <i class="fas fa-clock"></i> Due: <?php echo date('M d, Y H:i', strtotime($activity['due_date'])); ?>
                                 </p>
+                            <?php endif; ?>
+
+                            <?php if (!empty($activity['student_attachment'] ?? '')): ?>
+                                <a href="<?php echo $activity['student_attachment']; ?>"
+                                   class="btn btn-sm btn-outline-secondary" target="_blank">
+                                    <i class="fas fa-download"></i> Your File
+                                </a>
                             <?php endif; ?>
 
                             <?php if ($action === 'graded'): ?>
@@ -848,8 +744,8 @@ $student_name = $student['full_name'];
                 </div>
             </div>
             <?php endforeach; else: ?>
-            <div class="card">
-                <div class="card-body text-center" style="padding: 3rem;">
+            <div class="modern-card">
+                <div class="card-body-modern text-center" style="padding: 3rem;">
                     <div style="font-size: 3rem; color: #dee2e6; margin-bottom: 1rem;">
                         <i class="fas fa-clipboard-list"></i>
                     </div>
@@ -867,6 +763,7 @@ $student_name = $student['full_name'];
             </div>
             <?php endif; ?>
         <?php endif; ?>
+        </div>
         </main>
     </div>
 

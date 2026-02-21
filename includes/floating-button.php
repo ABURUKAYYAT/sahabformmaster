@@ -143,6 +143,24 @@ if (strpos($currentPath, '/admin/') !== false ||
 
 <!-- Fallback CSS styles in case main CSS fails to load -->
 <style id="ai-assistant-fallback-css">
+/* Safety: never block the page unless modal is explicitly shown */
+.ai-modal {
+    display: none !important;
+    pointer-events: none !important;
+}
+.ai-modal.show {
+    display: flex !important;
+    pointer-events: auto !important;
+}
+.ai-modal-overlay {
+    display: none !important;
+    pointer-events: none !important;
+}
+.ai-modal.show .ai-modal-overlay {
+    display: block !important;
+    pointer-events: auto !important;
+}
+
 /* Fallback styles for AI Assistant - ensures visibility even if main CSS fails */
 #ai-assistant-modal.fallback {
     position: fixed !important;
@@ -152,9 +170,15 @@ if (strpos($currentPath, '/admin/') !== false ||
     height: 100% !important;
     background: rgba(0, 0, 0, 0.5) !important;
     z-index: 99999 !important;
-    display: flex !important;
+    display: none !important;
     align-items: center !important;
     justify-content: center !important;
+    pointer-events: none !important;
+}
+
+#ai-assistant-modal.fallback.show {
+    display: flex !important;
+    pointer-events: auto !important;
 }
 
 #ai-assistant-modal.fallback .ai-modal-content {

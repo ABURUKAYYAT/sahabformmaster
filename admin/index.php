@@ -271,7 +271,7 @@ try {
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="evaluations-crud.php" class="nav-link">
+                        <a href="students-evaluations.php" class="nav-link">
                             <span class="nav-icon">⭐</span>
                             <span class="nav-text">Students Evaluations</span>
                         </a>

@@ -12,6 +12,10 @@ if (!isset($_SESSION['user_id']) || strtolower($_SESSION['role'] ?? '') !== 'pri
 
 $current_school_id = require_school_auth();
 
+$legacy_target = 'students-evaluations.php';
+header("Location: {$legacy_target}");
+exit;
+
 $user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['role'];
 $user_name = $_SESSION['full_name'] ?? 'User';
@@ -268,9 +272,9 @@ $stats = $stmt->fetch();
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="evaluations-crud.php" class="nav-link active">
+                        <a href="students-evaluations.php" class="nav-link">
                             <span class="nav-icon">⭐</span>
-                            <span class="nav-text">Evaluations CRUD</span>
+                            <span class="nav-text">Students Evaluations</span>
                         </a>
                     </li>
                     <li class="nav-item">

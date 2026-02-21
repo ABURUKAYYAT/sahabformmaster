@@ -10,9 +10,20 @@ if (!isset($_SESSION['student_id']) && !isset($_SESSION['user_id'])) {
 }
 
 $student_id = isset($_SESSION['student_id']) ? $_SESSION['student_id'] : $_SESSION['user_id'];
-$student_name = $_SESSION['student_name'];
-$admission_number = $_SESSION['admission_no'];
+$student_name = $_SESSION['student_name'] ?? '';
+$admission_number = $_SESSION['admission_no'] ?? '';
 $current_school_id = get_current_school_id();
+
+// If school_id is missing, try to resolve it from the student record
+if ($current_school_id === false && $student_id) {
+    $school_stmt = $pdo->prepare("SELECT school_id FROM students WHERE id = ? OR user_id = ? LIMIT 1");
+    $school_stmt->execute([$student_id, $student_id]);
+    $resolved_school_id = $school_stmt->fetchColumn();
+    if ($resolved_school_id !== false) {
+        $_SESSION['school_id'] = $resolved_school_id;
+        $current_school_id = $resolved_school_id;
+    }
+}
 
 // Get student details including class
 try {
@@ -20,9 +31,9 @@ try {
         SELECT s.*, c.class_name
         FROM students s
         LEFT JOIN classes c ON s.class_id = c.id AND c.school_id = ?
-        WHERE s.id = ? OR s.user_id = ? AND s.school_id = ?
+        WHERE (s.id = ? OR s.user_id = ? OR s.admission_no = ?) AND s.school_id = ?
     ");
-    $student_stmt->execute([$current_school_id, $student_id, $student_id, $current_school_id]);
+    $student_stmt->execute([$current_school_id, $student_id, $student_id, $admission_number, $current_school_id]);
     $student = $student_stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$student) {
