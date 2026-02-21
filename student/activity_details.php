@@ -95,8 +95,7 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($activity['activity_title']); ?> | Activity Details</title>
-    <link rel="stylesheet" href="../assets/css/student-dashboard.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="../assets/css/student-dashboard.css">`r`n<link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -107,39 +106,12 @@ try {
            =================================================== */
 
         :root {
-            /* Inherit dashboard color palette */
-            --primary-color: #6366f1;
-            --primary-dark: #4f46e5;
-            --secondary-color: #06b6d4;
-            --accent-color: #8b5cf6;
-            --success-color: #10b981;
-            --warning-color: #f59e0b;
-            --error-color: #ef4444;
-            --info-color: #3b82f6;
-
-            /* Modern gradients */
-            --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            --gradient-secondary: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
-            --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            --gradient-error: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-
-            /* Enhanced shadows */
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-
-            /* Modern border radius */
-            --border-radius-sm: 0.375rem;
-            --border-radius-md: 0.5rem;
-            --border-radius-lg: 0.75rem;
-            --border-radius-xl: 1rem;
-
-            /* Smooth transitions */
-            --transition-fast: 0.15s ease-in-out;
-            --transition-normal: 0.3s ease-in-out;
-            --transition-slow: 0.5s ease-in-out;
+            /* Align with student dashboard palette */
+            --gradient-primary: var(--gradient-1);
+            --gradient-secondary: var(--gradient-2);
+            --gradient-success: var(--gradient-4);
+            --gradient-warning: var(--gradient-3);
+            --gradient-error: var(--gradient-5);
         }
 
         /* ===================================================
@@ -1088,3 +1060,7 @@ try {
 
 </body>
 </html>
+
+
+
+

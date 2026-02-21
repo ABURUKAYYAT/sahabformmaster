@@ -36,7 +36,7 @@ $news_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>School Feed | SahabFormMaster</title>
-    <link rel="stylesheet" href="../assets/css/mobile-navigation.css">
+    <link rel="stylesheet" href="../assets/css/student-dashboard.css">`r`n<link rel="stylesheet" href="../assets/css/mobile-navigation.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -48,39 +48,15 @@ $news_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
            =================================================== */
 
         :root {
-            /* Enhanced Color Palette */
-            --primary-color: #6366f1;
-            --primary-dark: #4f46e5;
-            --primary-light: #a5b4fc;
-            --secondary-color: #06b6d4;
-            --accent-color: #8b5cf6;
-            --success-color: #10b981;
-            --warning-color: #f59e0b;
-            --error-color: #ef4444;
-            --info-color: #3b82f6;
-
-            /* Advanced Gradients */
-            --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            --gradient-secondary: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
-            --gradient-accent: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            --gradient-error: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            --gradient-info: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-            --gradient-news: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --gradient-card: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-
-            /* Enhanced Neutrals */
-            --white: #ffffff;
-            --gray-50: #f9fafb;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-300: #d1d5db;
-            --gray-400: #9ca3af;
-            --gray-500: #6b7280;
-            --gray-600: #4b5563;
-            --gray-700: #374151;
-            --gray-800: #1f2937;
-            --gray-900: #111827;
+            /* Align with student dashboard palette */
+            --gradient-primary: var(--gradient-1);
+            --gradient-secondary: var(--gradient-2);
+            --gradient-accent: var(--gradient-3);
+            --gradient-success: var(--gradient-4);
+            --gradient-error: var(--gradient-5);
+            --gradient-info: var(--gradient-6);
+            --gradient-news: var(--gradient-6);
+            --gradient-card: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
 
             /* Premium Shadows */
             --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -1681,3 +1657,7 @@ $news_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 </body>
 </html>
+
+
+
+

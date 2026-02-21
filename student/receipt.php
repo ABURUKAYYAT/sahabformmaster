@@ -38,8 +38,7 @@ $schoolInfo = $pdo->query("SELECT * FROM school_profile LIMIT 1")->fetch();
 ?>
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+<head>`r`n<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment Receipt</title>
     <style>
@@ -207,3 +206,7 @@ $schoolInfo = $pdo->query("SELECT * FROM school_profile LIMIT 1")->fetch();
     </script>
 </body>
 </html>
+
+
+
+

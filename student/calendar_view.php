@@ -71,20 +71,19 @@ $next_year = $month == 12 ? $year + 1 : $year;
 
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+<head>`r`n<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calendar View - Sahab Academy</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
     <style>
         :root {
-            --primary-color: #4361ee;
-            --secondary-color: #3a0ca3;
+            --primary-color: #6366f1;
+            --secondary-color: #8b5cf6;
         }
         
         body {
-            background: #f8f9fa;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
@@ -434,3 +433,7 @@ $next_year = $month == 12 ? $year + 1 : $year;
     </script>
 </body>
 </html>
+
+
+
+

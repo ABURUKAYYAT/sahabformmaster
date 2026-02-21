@@ -105,8 +105,7 @@ $class_name = $stmt->fetchColumn() ?: 'N/A';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Results | SahabFormMaster</title>
-    <link rel="stylesheet" href="../assets/css/student-dashboard.css">
-    <link rel="stylesheet" href="../assets/css/mobile-navigation.css">
+    <link rel="stylesheet" href="../assets/css/student-dashboard.css">`r`n<link rel="stylesheet" href="../assets/css/mobile-navigation.css">
     <link rel="stylesheet" href="../assets/css/myresults-modern.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -578,3 +577,7 @@ $class_name = $stmt->fetchColumn() ?: 'N/A';
 
 </body>
 </html>
+
+
+
+

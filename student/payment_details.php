@@ -196,8 +196,7 @@ $admission_number = $_SESSION['admission_no'];
 
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+<head>`r`n<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment Details | SahabFormMaster</title>
     <link rel="stylesheet" href="../assets/css/mobile-navigation.css">
@@ -967,3 +966,7 @@ $admission_number = $_SESSION['admission_no'];
     <?php include '../includes/floating-button.php'; ?>
 </body>
 </html>
+
+
+
+

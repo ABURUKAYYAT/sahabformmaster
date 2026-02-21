@@ -62,8 +62,7 @@ $pending_activities = $activities_stmt->fetch()['pending_activities'];
 
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+<head>`r`n<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Dashboard | SahabFormMaster</title>
     <link rel="stylesheet" href="../assets/css/education-theme-main.css">
@@ -501,3 +500,7 @@ $pending_activities = $activities_stmt->fetch()['pending_activities'];
 
 </body>
 </html>
+
+
+
+

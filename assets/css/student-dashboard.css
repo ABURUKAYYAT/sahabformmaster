@@ -1,3 +1,4 @@
+@import url('student-theme-overrides.css');
 /* ===================================================
    Student Dashboard - Modern UI/UX Styles
    =================================================== */
@@ -50,6 +51,13 @@
     --transition-fast: 0.15s ease-in-out;
     --transition-normal: 0.3s ease-in-out;
     --transition-slow: 0.5s ease-in-out;
+
+    /* Shared Button Colors */
+    --btn-primary-bg: var(--primary-color);
+    --btn-primary-hover: var(--primary-dark);
+    --btn-success-bg: var(--success-color);
+    --btn-warning-bg: var(--warning-color);
+    --btn-danger-bg: var(--error-color);
 }
 
 /* ===================================================
@@ -325,6 +333,7 @@ body {
 
 .sidebar.active {
     transform: translateX(0);
+    background: var(--white);
 }
 
 .sidebar-header {
@@ -398,6 +407,7 @@ body {
     width: 20px;
     text-align: center;
     font-size: 1.1rem;
+    color: inherit;
 }
 
 .nav-text {
@@ -500,6 +510,104 @@ body {
 .card:hover {
     box-shadow: var(--shadow-xl);
     transform: translateY(-5px);
+}
+
+/* ===================================================
+   Global Buttons (Student Pages)
+   =================================================== */
+
+.btn,
+.btn-primary,
+.btn-success,
+.btn-warning,
+.btn-danger,
+.btn-outline-primary,
+.btn-outline-secondary,
+.btn-outline-success {
+    border-radius: var(--border-radius-md);
+    transition: var(--transition-fast);
+    font-weight: 600;
+}
+
+.btn-primary,
+.btn.btn-primary {
+    background: var(--btn-primary-bg);
+    border-color: var(--btn-primary-bg);
+    color: white;
+}
+
+.btn-primary:hover,
+.btn.btn-primary:hover {
+    background: var(--btn-primary-hover);
+    border-color: var(--btn-primary-hover);
+}
+
+.btn-success,
+.btn.btn-success {
+    background: var(--btn-success-bg);
+    border-color: var(--btn-success-bg);
+    color: white;
+}
+
+.btn-warning,
+.btn.btn-warning {
+    background: var(--btn-warning-bg);
+    border-color: var(--btn-warning-bg);
+    color: white;
+}
+
+.btn-danger,
+.btn.btn-danger {
+    background: var(--btn-danger-bg);
+    border-color: var(--btn-danger-bg);
+    color: white;
+}
+
+.btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-outline-primary:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-outline-secondary {
+    color: var(--gray-600);
+    border-color: var(--gray-300);
+}
+
+.btn-outline-secondary:hover {
+    background: var(--gray-100);
+    color: var(--gray-800);
+}
+
+.btn-outline-success {
+    color: var(--success-color);
+    border-color: var(--success-color);
+}
+
+.btn-outline-success:hover {
+    background: var(--success-color);
+    color: white;
+}
+
+/* ===================================================
+   Hero/Headers Consistency
+   =================================================== */
+
+.content-header,
+.card-header,
+.card-header-modern,
+.header-container {
+    color: var(--gray-900);
+}
+
+.card-header-modern,
+.card-header {
+    background: var(--white);
+    border-bottom: 1px solid var(--gray-200);
 }
 
 .card-gradient-1 { background: var(--gradient-1); color: white; }
