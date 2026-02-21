@@ -1,0 +1,496 @@
+<?php
+session_start();
+require_once '../config/db.php';
+require_once '../includes/functions.php';
+
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
+    header("Location: ../index.php");
+    exit;
+}
+
+$current_school_id = require_school_auth();
+$teacher_id = $_SESSION['user_id'];
+$action = $_GET['action'] ?? 'list';
+$test_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
+// Fetch classes and subjects assigned to teacher
+$class_stmt = $pdo->prepare("
+    SELECT DISTINCT c.id, c.class_name
+    FROM class_teachers ct
+    JOIN classes c ON ct.class_id = c.id
+    WHERE ct.teacher_id = ? AND c.school_id = ?
+");
+$class_stmt->execute([$teacher_id, $current_school_id]);
+$classes = $class_stmt->fetchAll();
+
+$subject_stmt = $pdo->prepare("
+    SELECT DISTINCT s.id, s.subject_name
+    FROM subject_assignments sa
+    JOIN subjects s ON sa.subject_id = s.id
+    WHERE sa.teacher_id = ? AND s.school_id = ?
+");
+$subject_stmt->execute([$teacher_id, $current_school_id]);
+$subjects = $subject_stmt->fetchAll();
+
+// Create or update test
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_test'])) {
+    $title = trim($_POST['title'] ?? '');
+    $class_id = intval($_POST['class_id'] ?? 0);
+    $subject_id = intval($_POST['subject_id'] ?? 0);
+    $duration = intval($_POST['duration_minutes'] ?? 30);
+    $starts_at = $_POST['starts_at'] ?: null;
+    $ends_at = $_POST['ends_at'] ?: null;
+    $status = $_POST['status'] ?? 'draft';
+
+    if ($test_id > 0) {
+        $stmt = $pdo->prepare("
+            UPDATE cbt_tests
+            SET title = ?, class_id = ?, subject_id = ?, duration_minutes = ?, starts_at = ?, ends_at = ?, status = ?
+            WHERE id = ? AND teacher_id = ? AND school_id = ?
+        ");
+        $stmt->execute([$title, $class_id, $subject_id, $duration, $starts_at, $ends_at, $status, $test_id, $teacher_id, $current_school_id]);
+    } else {
+        $stmt = $pdo->prepare("
+            INSERT INTO cbt_tests (school_id, teacher_id, class_id, subject_id, title, duration_minutes, starts_at, ends_at, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([$current_school_id, $teacher_id, $class_id, $subject_id, $title, $duration, $starts_at, $ends_at, $status]);
+        $test_id = $pdo->lastInsertId();
+    }
+
+    header("Location: cbt_tests.php?action=edit&id=" . $test_id);
+    exit;
+}
+
+// Add question
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_question']) && $test_id > 0) {
+    $question_text = trim($_POST['question_text'] ?? '');
+    $option_a = trim($_POST['option_a'] ?? '');
+    $option_b = trim($_POST['option_b'] ?? '');
+    $option_c = trim($_POST['option_c'] ?? '');
+    $option_d = trim($_POST['option_d'] ?? '');
+    $correct_option = $_POST['correct_option'] ?? 'A';
+
+    $stmt = $pdo->prepare("
+        INSERT INTO cbt_questions (test_id, question_text, option_a, option_b, option_c, option_d, correct_option)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ");
+    $stmt->execute([$test_id, $question_text, $option_a, $option_b, $option_c, $option_d, $correct_option]);
+
+    header("Location: cbt_tests.php?action=edit&id=" . $test_id);
+    exit;
+}
+
+// Import questions from question bank
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_questions']) && $test_id > 0) {
+    $question_ids = $_POST['question_ids'] ?? [];
+    if (!empty($question_ids)) {
+        foreach ($question_ids as $qid) {
+            $qid = intval($qid);
+            $qstmt = $pdo->prepare("
+                SELECT qb.id, qb.question_text
+                FROM questions_bank qb
+                WHERE qb.id = ? AND qb.school_id = ? AND qb.question_type = 'mcq'
+            ");
+            $qstmt->execute([$qid, $current_school_id]);
+            $qrow = $qstmt->fetch();
+            if (!$qrow) continue;
+
+            // Avoid duplicate question text in the same test
+            $dup = $pdo->prepare("SELECT COUNT(*) FROM cbt_questions WHERE test_id = ? AND question_text = ?");
+            $dup->execute([$test_id, $qrow['question_text']]);
+            if ($dup->fetchColumn() > 0) continue;
+
+            $opt = $pdo->prepare("
+                SELECT option_letter, option_text, is_correct
+                FROM question_options
+                WHERE question_id = ? AND school_id = ?
+                ORDER BY option_letter ASC
+            ");
+            $opt->execute([$qid, $current_school_id]);
+            $options = $opt->fetchAll();
+
+            $option_map = ['A' => '', 'B' => '', 'C' => '', 'D' => ''];
+            $correct = 'A';
+            foreach ($options as $o) {
+                $letter = strtoupper($o['option_letter']);
+                if (isset($option_map[$letter])) {
+                    $option_map[$letter] = $o['option_text'];
+                    if ((int)$o['is_correct'] === 1) {
+                        $correct = $letter;
+                    }
+                }
+            }
+
+            // Require A-D options for CBT
+            if ($option_map['A'] === '' || $option_map['B'] === '' || $option_map['C'] === '' || $option_map['D'] === '') {
+                continue;
+            }
+
+            $ins = $pdo->prepare("
+                INSERT INTO cbt_questions (test_id, question_text, option_a, option_b, option_c, option_d, correct_option)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ");
+            $ins->execute([
+                $test_id,
+                $qrow['question_text'],
+                $option_map['A'],
+                $option_map['B'],
+                $option_map['C'],
+                $option_map['D'],
+                $correct
+            ]);
+        }
+    }
+    header("Location: cbt_tests.php?action=edit&id=" . $test_id);
+    exit;
+}
+
+// Delete question
+if (isset($_GET['delete_q']) && $test_id > 0) {
+    $qid = intval($_GET['delete_q']);
+    $stmt = $pdo->prepare("
+        DELETE q FROM cbt_questions q
+        JOIN cbt_tests t ON q.test_id = t.id
+        WHERE q.id = ? AND t.teacher_id = ? AND t.school_id = ?
+    ");
+    $stmt->execute([$qid, $teacher_id, $current_school_id]);
+    header("Location: cbt_tests.php?action=edit&id=" . $test_id);
+    exit;
+}
+
+// Fetch test for edit
+$test = null;
+$questions = [];
+if ($test_id > 0) {
+    $stmt = $pdo->prepare("SELECT * FROM cbt_tests WHERE id = ? AND teacher_id = ? AND school_id = ?");
+    $stmt->execute([$test_id, $teacher_id, $current_school_id]);
+    $test = $stmt->fetch();
+
+    $qstmt = $pdo->prepare("SELECT * FROM cbt_questions WHERE test_id = ? ORDER BY id DESC");
+    $qstmt->execute([$test_id]);
+    $questions = $qstmt->fetchAll();
+}
+
+// Bank questions for import (only on edit)
+$bank_questions = [];
+if ($action === 'edit' && $test_id > 0 && $test) {
+    $bq = $pdo->prepare("
+        SELECT qb.id, qb.question_text, qb.difficulty_level
+        FROM questions_bank qb
+        WHERE qb.school_id = ? AND qb.question_type = 'mcq'
+          AND qb.subject_id = ? AND qb.class_id = ?
+        ORDER BY qb.created_at DESC
+        LIMIT 50
+    ");
+    $bq->execute([$current_school_id, $test['subject_id'], $test['class_id']]);
+    $bank_questions = $bq->fetchAll();
+}
+// List tests
+$tests_stmt = $pdo->prepare("
+    SELECT t.*, c.class_name, s.subject_name
+    FROM cbt_tests t
+    JOIN classes c ON t.class_id = c.id
+    JOIN subjects s ON t.subject_id = s.id
+    WHERE t.teacher_id = ? AND t.school_id = ?
+    ORDER BY t.created_at DESC
+");
+$tests_stmt->execute([$teacher_id, $current_school_id]);
+$tests = $tests_stmt->fetchAll();
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CBT Tests - Teacher</title>
+    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<?php include '../includes/mobile_navigation.php'; ?>
+
+<header class="dashboard-header">
+    <div class="header-container">
+        <div class="header-left">
+            <div class="school-logo-container">
+                <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                <div class="school-info">
+                    <h1 class="school-name">SahabFormMaster</h1>
+                    <p class="school-tagline">CBT Tests</p>
+                </div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="teacher-info">
+                <p class="teacher-label">Teacher</p>
+                <span class="teacher-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Teacher'); ?></span>
+            </div>
+            <a href="logout.php" class="btn-logout">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+    </div>
+</header>
+
+<div class="dashboard-container">
+    <?php include '../includes/teacher_sidebar.php'; ?>
+    <main class="main-content">
+        <div class="content-header">
+            <div class="welcome-section">
+                <h2>CBT Tests</h2>
+                <p>Create tests, add questions, and review results.</p>
+            </div>
+            <div class="header-actions">
+                <a href="cbt_tests.php?action=create" class="btn-modern-primary">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>New Test</span>
+                </a>
+                <a href="cbt_results.php" class="btn-modern-outline">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Results</span>
+                </a>
+            </div>
+        </div>
+
+        <?php if ($action === 'create' || $action === 'edit'): ?>
+            <div class="form-page-modern">
+                <div class="form-card-modern">
+                    <div class="form-header-modern">
+                        <div class="form-title-modern">
+                            <i class="fas fa-file-alt"></i>
+                            <?php echo $action === 'create' ? 'Create Test' : 'Edit Test'; ?>
+                        </div>
+                    </div>
+                    <div class="form-body-modern">
+                        <form method="POST">
+                            <input type="hidden" name="save_test" value="1">
+                            <div class="form-row-modern">
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Title</label>
+                                    <input type="text" class="form-input-modern" name="title" value="<?php echo htmlspecialchars($test['title'] ?? ''); ?>" required>
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Class</label>
+                                    <select class="form-input-modern" name="class_id" required>
+                                        <option value="">Select</option>
+                                        <?php foreach ($classes as $c): ?>
+                                            <option value="<?php echo $c['id']; ?>" <?php echo ($test['class_id'] ?? '') == $c['id'] ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($c['class_name']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-row-modern">
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Subject</label>
+                                    <select class="form-input-modern" name="subject_id" required>
+                                        <option value="">Select</option>
+                                        <?php foreach ($subjects as $s): ?>
+                                            <option value="<?php echo $s['id']; ?>" <?php echo ($test['subject_id'] ?? '') == $s['id'] ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($s['subject_name']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Duration (minutes)</label>
+                                    <input type="number" class="form-input-modern" name="duration_minutes" min="5" value="<?php echo htmlspecialchars($test['duration_minutes'] ?? 30); ?>">
+                                </div>
+                            </div>
+
+                            <div class="form-row-modern">
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Starts At</label>
+                                    <input type="datetime-local" class="form-input-modern" name="starts_at" value="<?php echo !empty($test['starts_at']) ? date('Y-m-d\TH:i', strtotime($test['starts_at'])) : ''; ?>">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Ends At</label>
+                                    <input type="datetime-local" class="form-input-modern" name="ends_at" value="<?php echo !empty($test['ends_at']) ? date('Y-m-d\TH:i', strtotime($test['ends_at'])) : ''; ?>">
+                                </div>
+                            </div>
+
+                            <div class="form-row-modern">
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Status</label>
+                                    <select class="form-input-modern" name="status">
+                                        <option value="draft" <?php echo ($test['status'] ?? '') === 'draft' ? 'selected' : ''; ?>>Draft</option>
+                                        <option value="published" <?php echo ($test['status'] ?? '') === 'published' ? 'selected' : ''; ?>>Published</option>
+                                        <option value="closed" <?php echo ($test['status'] ?? '') === 'closed' ? 'selected' : ''; ?>>Closed</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center mt-4">
+                                <a href="cbt_tests.php" class="btn-modern-outline">
+                                    <i class="fas fa-arrow-left"></i>
+                                    <span>Back</span>
+                                </a>
+                                <button type="submit" class="btn-modern-primary">
+                                    <i class="fas fa-save"></i>
+                                    <span>Save Test</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <?php if ($action === 'edit' && $test_id > 0): ?>
+                    <div class="form-card-modern">
+                        <div class="form-header-modern">
+                            <div class="form-title-modern">
+                                <i class="fas fa-question-circle"></i>
+                                Add Question
+                            </div>
+                        </div>
+                        <div class="form-body-modern">
+                            <form method="POST">
+                                <input type="hidden" name="add_question" value="1">
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Question</label>
+                                    <textarea class="form-input-modern" name="question_text" rows="3" required></textarea>
+                                </div>
+                                <div class="form-row-modern">
+                                    <div class="form-group-modern">
+                                        <label class="form-label-modern">Option A</label>
+                                        <input type="text" class="form-input-modern" name="option_a" required>
+                                    </div>
+                                    <div class="form-group-modern">
+                                        <label class="form-label-modern">Option B</label>
+                                        <input type="text" class="form-input-modern" name="option_b" required>
+                                    </div>
+                                </div>
+                                <div class="form-row-modern">
+                                    <div class="form-group-modern">
+                                        <label class="form-label-modern">Option C</label>
+                                        <input type="text" class="form-input-modern" name="option_c" required>
+                                    </div>
+                                    <div class="form-group-modern">
+                                        <label class="form-label-modern">Option D</label>
+                                        <input type="text" class="form-input-modern" name="option_d" required>
+                                    </div>
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Correct Option</label>
+                                    <select class="form-input-modern" name="correct_option">
+                                        <option value="A">A</option>
+                                        <option value="B">B</option>
+                                        <option value="C">C</option>
+                                        <option value="D">D</option>
+                                    </select>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center mt-4">
+                                    <div></div>
+                                    <button type="submit" class="btn-modern-primary">
+                                        <i class="fas fa-plus"></i>
+                                        <span>Add Question</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="form-card-modern">
+                        <div class="form-header-modern">
+                            <div class="form-title-modern">
+                                <i class="fas fa-database"></i>
+                                Import From Question Bank
+                            </div>
+                        </div>
+                        <div class="form-body-modern">
+                            <?php if (count($bank_questions) === 0): ?>
+                                <p>No matching questions in bank for this class/subject.</p>
+                            <?php else: ?>
+                                <form method="POST">
+                                    <input type="hidden" name="import_questions" value="1">
+                                    <div style="max-height: 260px; overflow: auto; border: 1px solid #e5e7eb; padding: 1rem; border-radius: 8px;">
+                                        <?php foreach ($bank_questions as $bq): ?>
+                                            <label style="display:block; margin-bottom: 0.75rem;">
+                                                <input type="checkbox" name="question_ids[]" value="<?php echo $bq['id']; ?>">
+                                                <strong><?php echo htmlspecialchars($bq['question_text']); ?></strong>
+                                                <small style="color:#6b7280;">(<?php echo htmlspecialchars($bq['difficulty_level']); ?>)</small>
+                                            </label>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mt-4">
+                                        <div></div>
+                                        <button type="submit" class="btn-modern-primary">
+                                            <i class="fas fa-download"></i>
+                                            <span>Import Selected</span>
+                                        </button>
+                                    </div>
+                                </form>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <div class="modern-card">
+                        <div class="card-header-modern">
+                            <h4>Questions</h4>
+                        </div>
+                        <div class="card-body-modern">
+                            <?php if (count($questions) === 0): ?>
+                                <p>No questions yet.</p>
+                            <?php else: ?>
+                                <ol>
+                                    <?php foreach ($questions as $q): ?>
+                                        <li style="margin-bottom: 1rem;">
+                                            <strong><?php echo htmlspecialchars($q['question_text']); ?></strong>
+                                            <div>A. <?php echo htmlspecialchars($q['option_a']); ?></div>
+                                            <div>B. <?php echo htmlspecialchars($q['option_b']); ?></div>
+                                            <div>C. <?php echo htmlspecialchars($q['option_c']); ?></div>
+                                            <div>D. <?php echo htmlspecialchars($q['option_d']); ?></div>
+                                            <div>Correct: <?php echo htmlspecialchars($q['correct_option']); ?></div>
+                                            <a href="cbt_tests.php?action=edit&id=<?php echo $test_id; ?>&delete_q=<?php echo $q['id']; ?>" class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete question?')">Delete</a>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ol>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+        <?php else: ?>
+            <div class="modern-card">
+                <div class="card-body-modern">
+                    <table class="table-modern">
+                        <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Class</th>
+                            <th>Subject</th>
+                            <th>Duration</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($tests as $t): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($t['title']); ?></td>
+                                <td><?php echo htmlspecialchars($t['class_name']); ?></td>
+                                <td><?php echo htmlspecialchars($t['subject_name']); ?></td>
+                                <td><?php echo intval($t['duration_minutes']); ?> mins</td>
+                                <td><?php echo htmlspecialchars($t['status']); ?></td>
+                                <td>
+                                    <a href="cbt_tests.php?action=edit&id=<?php echo $t['id']; ?>" class="btn btn-sm btn-outline-primary">Edit</a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        <?php endif; ?>
+    </main>
+</div>
+
+<?php include '../includes/floating-button.php'; ?>
+</body>
+</html>

@@ -73,6 +73,12 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a href="cbt_tests.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'cbt_tests.php' ? 'active' : ''; ?>">
+                            <i class="fas fa-laptop-code nav-icon"></i>
+                            <span class="nav-text">CBT Tests</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a href="student-evaluation.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'student-evaluation.php' ? 'active' : ''; ?>">
                             <i class="fas fa-star nav-icon"></i>
                             <span class="nav-text">Evaluations</span>
