@@ -34,6 +34,23 @@ function get_current_school_id() {
         }
     }
 
+    // Student fallback: fetch from students table
+    if (isset($_SESSION['student_id'])) {
+        global $pdo;
+        try {
+            $stmt = $pdo->prepare("SELECT school_id FROM students WHERE id = ?");
+            $stmt->execute([$_SESSION['student_id']]);
+            $school_id = $stmt->fetchColumn();
+
+            if ($school_id !== false) {
+                $_SESSION['school_id'] = $school_id;
+                return $school_id;
+            }
+        } catch (Exception $e) {
+            error_log("Error fetching school_id for student {$_SESSION['student_id']}: " . $e->getMessage());
+        }
+    }
+
     // If we can't determine school_id, user shouldn't have access
     return false;
 }

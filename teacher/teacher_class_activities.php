@@ -1487,23 +1487,71 @@ $assigned_subjects = $subject_stmt->fetchAll();
             ?>
 
             <div class="form-page-modern">
-                <!-- Activity Details Card -->
-                
+                <div class="form-card-modern animate-fade-in-up">
+                    <div class="form-header-modern">
+                        <div class="form-title-modern">
+                            <i class="fas fa-clipboard-check"></i>
+                            Submission Details
+                        </div>
+                        <p class="text-center mb-0 opacity-75">
+                            Review student work before grading
+                        </p>
+                    </div>
+
+                    <div class="form-body-modern">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <a href="teacher_class_activities.php?action=submissions&id=<?= $activity_id ?>" class="btn-modern-outline">
+                                <i class="fas fa-arrow-left"></i>
+                                <span>Back to Submissions</span>
+                            </a>
+                        </div>
+
+                        <div class="form-row-modern">
                             <div class="form-group-modern">
-                                <label class="form-label-modern"><i class="fas fa-calendar"></i> Submitted On</label>
+                                <label class="form-label-modern"><i class="fas fa-user"></i> Student</label>
                                 <div class="form-input-modern" style="background: var(--gray-50);">
-                                    <?= date('M d, Y H:i', strtotime($submission['submitted_at'])) ?>
+                                    <?= htmlspecialchars($submission['full_name']) ?>
+                                </div>
+                            </div>
+                            <div class="form-group-modern">
+                                <label class="form-label-modern"><i class="fas fa-id-card"></i> Admission No</label>
+                                <div class="form-input-modern" style="background: var(--gray-50);">
+                                    <?= htmlspecialchars($submission['admission_no']) ?>
                                 </div>
                             </div>
                         </div>
 
                         <div class="form-row-modern">
                             <div class="form-group-modern">
+                                <label class="form-label-modern"><i class="fas fa-book"></i> Activity</label>
+                                <div class="form-input-modern" style="background: var(--gray-50);">
+                                    <?= htmlspecialchars($submission['activity_title']) ?>
+                                </div>
+                            </div>
+                            <div class="form-group-modern">
+                                <label class="form-label-modern"><i class="fas fa-tag"></i> Type</label>
+                                <div class="form-input-modern" style="background: var(--gray-50);">
+                                    <?= ucfirst($submission['activity_type']) ?>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-row-modern">
+                            <div class="form-group-modern">
+                                <label class="form-label-modern"><i class="fas fa-calendar"></i> Submitted On</label>
+                                <div class="form-input-modern" style="background: var(--gray-50);">
+                                    <?= date('M d, Y H:i', strtotime($submission['submitted_at'])) ?>
+                                </div>
+                            </div>
+                            <div class="form-group-modern">
                                 <label class="form-label-modern"><i class="fas fa-trophy"></i> Maximum Marks</label>
                                 <div class="form-input-modern" style="background: var(--gray-50);">
                                     <?= $submission['total_marks'] ?> marks
                                 </div>
                             </div>
+                        </div>
+
+                        <div class="form-row-modern">
                             <div class="form-group-modern">
                                 <label class="form-label-modern"><i class="fas fa-chart-line"></i> Current Marks</label>
                                 <div class="form-input-modern" style="background: var(--gray-50);">
