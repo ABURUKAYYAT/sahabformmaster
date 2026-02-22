@@ -133,7 +133,135 @@ function require_school_auth() {
         exit;
     }
 
+    // Enforce active subscription for school-scoped users
+    require_active_subscription($school_id);
+
     return $school_id;
+}
+
+// Check whether subscription tables exist (migration safety)
+function subscription_tables_ready() {
+    global $pdo;
+    static $ready = null;
+
+    if ($ready !== null) {
+        return $ready;
+    }
+
+    try {
+        $stmt = $pdo->query("SHOW TABLES LIKE 'school_subscriptions'");
+        $ready = (bool)$stmt->fetchColumn();
+    } catch (Exception $e) {
+        $ready = false;
+    }
+
+    return $ready;
+}
+
+// Fetch latest approved subscription for a school
+function get_school_subscription_record($school_id) {
+    global $pdo;
+
+    if (!$school_id || !subscription_tables_ready()) {
+        return null;
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT ss.*, sp.name AS plan_name, sp.billing_cycle, sp.duration_days, sp.grace_days
+        FROM school_subscriptions ss
+        JOIN subscription_plans sp ON ss.plan_id = sp.id
+        WHERE ss.school_id = ?
+        ORDER BY ss.approved_at DESC, ss.id DESC
+        LIMIT 1
+    ");
+    $stmt->execute([$school_id]);
+    return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+
+// Compute effective subscription state from latest approved record
+function get_school_subscription_state($school_id) {
+    $record = get_school_subscription_record($school_id);
+    if (!$record) {
+        return [
+            'active' => false,
+            'status' => 'none',
+            'record' => null
+        ];
+    }
+
+    $today = date('Y-m-d');
+    $status = $record['status'];
+    $active = false;
+
+    if ($status === 'lifetime_active') {
+        $active = true;
+    } elseif ($status === 'suspended') {
+        $active = false;
+    } else {
+        $end_date = $record['end_date'];
+        $grace_end_date = $record['grace_end_date'];
+
+        if ($end_date && $today <= $end_date) {
+            $status = 'active';
+            $active = true;
+        } elseif ($grace_end_date && $today <= $grace_end_date) {
+            $status = 'grace_period';
+            $active = true;
+        } else {
+            $status = 'expired';
+            $active = false;
+        }
+    }
+
+    return [
+        'active' => $active,
+        'status' => $status,
+        'record' => $record
+    ];
+}
+
+function is_school_subscription_active($school_id) {
+    $state = get_school_subscription_state($school_id);
+    return (bool)$state['active'];
+}
+
+// Restrict school access if subscription is inactive.
+// Principal can still access billing/renewal routes.
+function require_active_subscription($school_id) {
+    if (!isset($_SESSION['role'])) {
+        return true;
+    }
+
+    if ($_SESSION['role'] === 'super_admin') {
+        return true;
+    }
+
+    if (!subscription_tables_ready()) {
+        // Fail-open before migration runs.
+        return true;
+    }
+
+    if (is_school_subscription_active($school_id)) {
+        return true;
+    }
+
+    $current_file = basename($_SERVER['PHP_SELF'] ?? '');
+    $role = strtolower($_SESSION['role'] ?? '');
+
+    if ($role === 'principal') {
+        $allowed_pages = ['subscription.php', 'logout.php'];
+        if (in_array($current_file, $allowed_pages, true)) {
+            return true;
+        }
+
+        header('Location: subscription.php?notice=subscription_required');
+        exit;
+    }
+
+    // Teachers/staff/students are redirected to root login with message.
+    session_destroy();
+    header('Location: ../index.php?error=subscription_inactive');
+    exit;
 }
 
 

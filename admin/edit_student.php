@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 require_once '../config/db.php';
 
@@ -321,6 +321,18 @@ $classes = $pdo->query("SELECT id, class_name FROM classes ORDER BY class_name")
                         <a href="manage-school.php" class="nav-link">
                             <span class="nav-icon">🏫</span>
                             <span class="nav-text">Manage School</span>
+                        </a>
+                    </li>
+                                                            <li class="nav-item">
+                        <a href="support.php" class="nav-link">
+                            <span class="nav-icon">🛟</span>
+                            <span class="nav-text">Support</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="subscription.php" class="nav-link">
+                            <span class="nav-icon">💳</span>
+                            <span class="nav-text">Subscription</span>
                         </a>
                     </li>
                     <li class="nav-item">
@@ -884,4 +896,7 @@ $classes = $pdo->query("SELECT id, class_name FROM classes ORDER BY class_name")
 <?php include '../includes/floating-button.php'; ?>
 </body>
 </html>
+
+
+
 

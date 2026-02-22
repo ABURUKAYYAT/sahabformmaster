@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 require_once '../config/db.php';
 require_once '../includes/functions.php';
@@ -251,6 +251,18 @@ if (!$school) {
                             <span class="nav-text">Manage School</span>
                         </a>
                     </li>
+                                                            <li class="nav-item">
+                        <a href="support.php" class="nav-link">
+                            <span class="nav-icon">🛟</span>
+                            <span class="nav-text">Support</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="subscription.php" class="nav-link">
+                            <span class="nav-icon">💳</span>
+                            <span class="nav-text">Subscription</span>
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a href="subjects.php" class="nav-link">
                             <span class="nav-icon">📖</span>
@@ -484,3 +496,6 @@ if (!$school) {
     <?php include '../includes/floating-button.php'; ?>
 </body>
 </html>
+
+
+

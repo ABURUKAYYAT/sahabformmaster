@@ -80,6 +80,18 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a href="support.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'support.php' || basename($_SERVER['PHP_SELF']) === 'support_ticket.php' ? 'active' : ''; ?>">
+                            <span class="nav-icon">🛟</span>
+                            <span class="nav-text">Support</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="subscription.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'subscription.php' ? 'active' : ''; ?>">
+                            <span class="nav-icon">💳</span>
+                            <span class="nav-text">Subscription</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a href="subjects.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'subjects.php' ? 'active' : ''; ?>">
                             <span class="nav-icon">📖</span>
                             <span class="nav-text">Subjects</span>

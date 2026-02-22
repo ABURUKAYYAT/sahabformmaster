@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // Enable error reporting for debugging
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -539,6 +539,18 @@ function getStatusBadge($status) {
                         <a href="manage-school.php" class="nav-link">
                             <span class="nav-icon">🏫</span>
                             <span class="nav-text">Manage School</span>
+                        </a>
+                    </li>
+                                                            <li class="nav-item">
+                        <a href="support.php" class="nav-link">
+                            <span class="nav-icon">🛟</span>
+                            <span class="nav-text">Support</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="subscription.php" class="nav-link">
+                            <span class="nav-icon">💳</span>
+                            <span class="nav-text">Subscription</span>
                         </a>
                     </li>
                     <li class="nav-item">
@@ -1258,3 +1270,6 @@ function getStatusBadge($status) {
     });
 </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
 </html>
+
+
+

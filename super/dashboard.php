@@ -737,6 +737,24 @@ try {
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a href="support_tickets.php" class="nav-link">
+                            <span class="nav-icon"><i class="fas fa-life-ring"></i></span>
+                            <span>Support Tickets</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="subscription_plans.php" class="nav-link">
+                            <span class="nav-icon"><i class="fas fa-tags"></i></span>
+                            <span>Subscription Plans</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="subscription_requests.php" class="nav-link">
+                            <span class="nav-icon"><i class="fas fa-file-invoice-dollar"></i></span>
+                            <span>Subscription Requests</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a href="manage_users.php" class="nav-link">
                             <span class="nav-icon"><i class="fas fa-users"></i></span>
                             <span>Manage Users</span>

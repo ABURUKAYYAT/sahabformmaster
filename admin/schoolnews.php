@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 require_once '../config/db.php';
 require_once '../includes/functions.php';
@@ -828,7 +828,19 @@ function getPriorityBadge($priority) {
                         <span class="nav-text">Manage School</span>
                     </a>
                 </li>
-                <li class="nav-item">
+                                                        <li class="nav-item">
+                        <a href="support.php" class="nav-link">
+                            <span class="nav-icon">🛟</span>
+                            <span class="nav-text">Support</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="subscription.php" class="nav-link">
+                            <span class="nav-icon">💳</span>
+                            <span class="nav-text">Subscription</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                     <a href="subjects.php" class="nav-link">
                         <span class="nav-icon">📖</span>
                         <span class="nav-text">Subjects</span>
@@ -1703,3 +1715,6 @@ style.textContent = toastStyles;
 document.head.appendChild(style);
 </script><?php include '../includes/floating-button.php'; ?></body>
 </html>
+
+
+

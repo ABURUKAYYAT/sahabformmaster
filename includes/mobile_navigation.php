@@ -23,6 +23,8 @@ if ($user_role === 'principal') {
         ['url' => 'manage_curriculum.php', 'icon' => 'fas fa-book-open', 'text' => 'Curriculum'],
         ['url' => 'content_coverage.php', 'icon' => 'fas fa-check', 'text' => 'Content Coverage'],
         ['url' => 'manage-school.php', 'icon' => 'fas fa-cog', 'text' => 'Manage School'],
+        ['url' => 'support.php', 'icon' => 'fas fa-life-ring', 'text' => 'Support'],
+        ['url' => 'subscription.php', 'icon' => 'fas fa-credit-card', 'text' => 'Subscription'],
         ['url' => 'subjects.php', 'icon' => 'fas fa-list', 'text' => 'Subjects'],
         ['url' => 'manage_user.php', 'icon' => 'fas fa-users-cog', 'text' => 'Manage Users'],
         ['url' => 'visitors.php', 'icon' => 'fas fa-user-friends', 'text' => 'Visitors'],
@@ -80,6 +82,9 @@ if ($user_role === 'principal') {
     $nav_items = [
         ['url' => 'dashboard.php', 'icon' => 'fas fa-tachometer-alt', 'text' => 'Dashboard'],
         ['url' => 'manage_schools.php', 'icon' => 'fas fa-school', 'text' => 'Manage Schools'],
+        ['url' => 'support_tickets.php', 'icon' => 'fas fa-life-ring', 'text' => 'Support Tickets'],
+        ['url' => 'subscription_plans.php', 'icon' => 'fas fa-tags', 'text' => 'Subscription Plans'],
+        ['url' => 'subscription_requests.php', 'icon' => 'fas fa-file-invoice-dollar', 'text' => 'Subscription Requests'],
         ['url' => 'manage_users.php', 'icon' => 'fas fa-users', 'text' => 'Manage Users'],
         ['url' => 'system_settings.php', 'icon' => 'fas fa-cogs', 'text' => 'System Settings'],
         ['url' => 'audit_logs.php', 'icon' => 'fas fa-history', 'text' => 'Audit Logs'],

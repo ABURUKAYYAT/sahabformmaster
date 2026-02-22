@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // admin/manage_user.php
 session_start();
 require_once '../config/db.php';
@@ -502,6 +502,18 @@ if (isset($_GET['edit'])) {
                         <a href="manage-school.php" class="nav-link">
                             <span class="nav-icon">🏫</span>
                             <span class="nav-text">Manage School</span>
+                        </a>
+                    </li>
+                                                            <li class="nav-item">
+                        <a href="support.php" class="nav-link">
+                            <span class="nav-icon">🛟</span>
+                            <span class="nav-text">Support</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="subscription.php" class="nav-link">
+                            <span class="nav-icon">💳</span>
+                            <span class="nav-text">Subscription</span>
                         </a>
                     </li>
                     <li class="nav-item">
@@ -1175,3 +1187,6 @@ if (isset($_GET['edit'])) {
     <?php include '../includes/floating-button.php'; ?>
 </body>
 </html>
+
+
+

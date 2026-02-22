@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 require_once '../config/db.php';
 
@@ -765,6 +765,18 @@ $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
                             <span class="nav-text">Manage School</span>
                         </a>
                     </li>
+                                                            <li class="nav-item">
+                        <a href="support.php" class="nav-link">
+                            <span class="nav-icon">🛟</span>
+                            <span class="nav-text">Support</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="subscription.php" class="nav-link">
+                            <span class="nav-icon">💳</span>
+                            <span class="nav-text">Subscription</span>
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a href="subjects.php" class="nav-link">
                             <span class="nav-icon">📖</span>
@@ -1089,3 +1101,6 @@ $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
     <?php include '../includes/floating-button.php'; ?>
 </body>
 </html>
+
+
+

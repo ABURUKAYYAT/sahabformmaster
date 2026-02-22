@@ -3,26 +3,42 @@ session_start();
 require_once '../config/db.php';
 require_once '../includes/functions.php';
 
-// Check if student is logged in
-if (!isset($_SESSION['student_id']) && !isset($_SESSION['user_id'])) {
+// Check if student is logged in (accept student_id, admission_no, or user_id)
+$student_id = $_SESSION['student_id'] ?? null;
+$user_id = $_SESSION['user_id'] ?? null;
+$admission_number = $_SESSION['admission_no'] ?? null;
+$student_name = $_SESSION['student_name'] ?? '';
+
+if (!$student_id && !$admission_number && !$user_id) {
     header("Location: index.php");
     exit;
 }
 
-$student_id = isset($_SESSION['student_id']) ? $_SESSION['student_id'] : $_SESSION['user_id'];
-$student_name = $_SESSION['student_name'] ?? '';
-$admission_number = $_SESSION['admission_no'] ?? '';
+// Prefer explicit student_id; fall back to user_id
+if (!$student_id && $user_id) {
+    $student_id = $user_id;
+}
+
 $current_school_id = get_current_school_id();
 
-// If school_id is missing, try to resolve it from the student record
-if ($current_school_id === false && $student_id) {
-    $school_stmt = $pdo->prepare("SELECT school_id FROM students WHERE id = ? OR user_id = ? LIMIT 1");
-    $school_stmt->execute([$student_id, $student_id]);
-    $resolved_school_id = $school_stmt->fetchColumn();
-    if ($resolved_school_id !== false) {
-        $_SESSION['school_id'] = $resolved_school_id;
-        $current_school_id = $resolved_school_id;
+// If school_id is missing, try to resolve it from the student record (by id or admission no)
+if ($current_school_id === false) {
+    $school_stmt = $pdo->prepare("SELECT id, school_id FROM students WHERE id = ? OR admission_no = ? LIMIT 1");
+    $school_stmt->execute([$student_id, $admission_number]);
+    $resolved = $school_stmt->fetch(PDO::FETCH_ASSOC);
+    if ($resolved) {
+        $_SESSION['school_id'] = $resolved['school_id'];
+        $current_school_id = $resolved['school_id'];
+        if (!$student_id) {
+            $student_id = $resolved['id'];
+            $_SESSION['student_id'] = $resolved['id'];
+        }
     }
+}
+
+if ($current_school_id === false) {
+    header("Location: index.php");
+    exit;
 }
 
 // Get student details including class
@@ -30,10 +46,10 @@ try {
     $student_stmt = $pdo->prepare("
         SELECT s.*, c.class_name
         FROM students s
-        LEFT JOIN classes c ON s.class_id = c.id AND c.school_id = ?
+        LEFT JOIN classes c ON s.class_id = c.id AND c.school_id = s.school_id
         WHERE (s.id = ? OR s.user_id = ? OR s.admission_no = ?) AND s.school_id = ?
     ");
-    $student_stmt->execute([$current_school_id, $student_id, $student_id, $admission_number, $current_school_id]);
+    $student_stmt->execute([$student_id, $student_id, $admission_number, $current_school_id]);
     $student = $student_stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$student) {

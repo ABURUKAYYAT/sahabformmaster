@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 require_once '../config/db.php';
 require_once 'helpers.php';
@@ -268,6 +268,18 @@ $today_rate = ($today_stats['total_students'] > 0) ? round(($today_stats['presen
                         <a href="manage-school.php" class="nav-link">
                             <span class="nav-icon">🏫</span>
                             <span class="nav-text">Manage School</span>
+                        </a>
+                    </li>
+                                                            <li class="nav-item">
+                        <a href="support.php" class="nav-link">
+                            <span class="nav-icon">🛟</span>
+                            <span class="nav-text">Support</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="subscription.php" class="nav-link">
+                            <span class="nav-icon">💳</span>
+                            <span class="nav-text">Subscription</span>
                         </a>
                     </li>
                     <li class="nav-item">
@@ -593,3 +605,6 @@ $today_rate = ($today_stats['total_students'] > 0) ? round(($today_stats['presen
     <?php include '../includes/floating-button.php'; ?>
 </body>
 </html>
+
+
+

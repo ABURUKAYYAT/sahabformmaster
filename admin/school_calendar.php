@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 require_once '../config/db.php';
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'principal') { header("Location: ../index.php"); exit; }
@@ -273,6 +273,18 @@ function renderCalendar($month, $year, $events) {
                         <a href="manage-school.php" class="nav-link">
                             <span class="nav-icon">🏫</span>
                             <span class="nav-text">Manage School</span>
+                        </a>
+                    </li>
+                                                            <li class="nav-item">
+                        <a href="support.php" class="nav-link">
+                            <span class="nav-icon">🛟</span>
+                            <span class="nav-text">Support</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="subscription.php" class="nav-link">
+                            <span class="nav-icon">💳</span>
+                            <span class="nav-text">Subscription</span>
                         </a>
                     </li>
                     <li class="nav-item">
@@ -838,3 +850,6 @@ function renderCalendar($month, $year, $events) {
     </script>
 </body>
 </html>
+
+
+

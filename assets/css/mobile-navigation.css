@@ -51,7 +51,9 @@
 
     .sidebar {
         transform: translateX(-100%);
-        z-index: 999;
+        z-index: 10001;
+        background: #ffffff !important;
+        pointer-events: auto;
     }
 
     .sidebar.active {
@@ -116,14 +118,14 @@
         content: '';
         position: fixed;
         top: 0;
-        left: 0;
-        width: 100vw;
+        left: 280px;
+        width: calc(100vw - 280px);
         height: 100vh;
         background: rgba(0, 0, 0, 0.5);
         opacity: 0;
         visibility: hidden;
         transition: all 0.3s ease;
-        z-index: 99;
+        z-index: 10000;
         pointer-events: none;
     }
 
