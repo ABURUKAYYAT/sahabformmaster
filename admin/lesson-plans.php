@@ -393,46 +393,322 @@ function getStatusBadge($status) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { background: #f5f7fb; }
-        .dashboard-container .main-content { width: 100%; }
+        body {
+            background: #f3f6fb;
+            color: #0f172a;
+        }
+        .dashboard-container .main-content {
+            width: 100%;
+        }
+        .content-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+            padding: 1.1rem 1.25rem;
+            margin-bottom: 1rem;
+        }
+        .content-header h2 {
+            margin: 0;
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .small-muted {
+            color: #64748b;
+        }
+        .content-header .small-muted {
+            margin: 0.35rem 0 0;
+            font-size: 0.92rem;
+        }
         .lesson-section,
         .search-filter,
         .quick-actions,
         .analytics-section {
-            background: #fff;
-            border-radius: var(--border-radius-lg);
-            box-shadow: var(--shadow);
-            padding: 24px;
-            margin-bottom: 24px;
+            background: #ffffff;
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+            padding: 1.2rem;
+            margin-bottom: 1rem;
         }
-        .lesson-card { padding: 0; }
-        .lesson-card h3 { margin: 0 0 16px; color: var(--secondary); font-size: 1.25rem; }
-        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 16px; }
-        .form-control { width: 100%; padding: 12px 14px; border: 2px solid #e5e7eb; border-radius: var(--border-radius); font-size: 0.95rem; }
-        .admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
-        .quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+        .lesson-card {
+            padding: 0;
+        }
+        .lesson-card h3 {
+            margin: 0 0 1rem;
+            color: #0f172a;
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+        .section-title {
+            margin: 0 0 1rem;
+            color: #0f172a;
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+        .section-topbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 0.9rem;
+        }
+        .section-topbar h3 {
+            margin: 0;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+        .form-group label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+            color: #334155;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            font-size: 0.92rem;
+            background: #ffffff;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+        textarea.form-control {
+            resize: vertical;
+            min-height: 92px;
+            line-height: 1.45;
+        }
+        .admin-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin: 0 0 1rem;
+        }
+        .stat-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 6px 14px rgba(15, 23, 42, 0.04);
+            padding: 0.95rem 1rem;
+        }
+        .stat-card i {
+            color: #2563eb;
+            font-size: 0.95rem;
+            margin-bottom: 6px;
+        }
+        .stat-number {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.2;
+        }
+        .stat-label {
+            color: #64748b;
+            font-size: 0.83rem;
+            font-weight: 600;
+        }
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        .quick-action-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 11px 12px;
+            text-decoration: none;
+            color: #1f2937;
+            font-weight: 600;
+            transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+        }
+        .quick-action-btn:hover {
+            background: #eff6ff;
+            border-color: #bfdbfe;
+            transform: translateY(-1px);
+        }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 12px;
+        }
+        .chart-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            background: #f8fafc;
+            padding: 0.9rem;
+            min-height: 280px;
+        }
+        .chart-card h4 {
+            margin: 0 0 0.7rem;
+            color: #334155;
+            font-size: 0.96rem;
+            font-weight: 700;
+        }
+        .search-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 10px;
+            align-items: end;
+        }
+        .form-actions {
+            margin-top: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
         .btn-gold, .btn-search, .btn-primary-std {
-            background: var(--gradient-primary);
-            color: #fff;
-            border: none;
+            background: #2563eb;
+            color: #ffffff;
+            border: 1px solid #2563eb;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+        .btn-gold:hover, .btn-search:hover, .btn-primary-std:hover {
+            background: #1d4ed8;
+            transform: translateY(-1px);
         }
         .btn-secondary, .btn-reset, .btn-secondary-std {
             background: #e2e8f0;
-            color: #1f2937;
-            border: none;
+            color: #0f172a;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-weight: 700;
+            text-decoration: none;
         }
         .btn-outline-std {
-            background: #fff;
-            border: 2px solid #e2e8f0;
-            color: #1f2937;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            color: #0f172a;
+            border-radius: 10px;
+            padding: 9px 12px;
+            font-weight: 700;
+            text-decoration: none;
         }
-        .btn-small { border-radius: 8px; }
-        .quick-action-btn { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; text-decoration: none; color: #1f2937; font-weight: 600; }
-        .quick-action-btn:hover { background: #e2e8f0; }
-        .lesson-form-collapsible { display: none; }
-        .lesson-form-collapsible.active { display: block; }
-        .toggle-form-btn { margin-left: auto; }
+        .btn-small {
+            border-radius: 8px;
+            padding: 7px 10px;
+            font-size: 0.82rem;
+        }
+        .table-wrapper {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow-x: auto;
+            background: #ffffff;
+        }
+        .table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .table thead th {
+            background: #f8fafc;
+            color: #334155;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            font-weight: 700;
+            padding: 11px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            white-space: nowrap;
+        }
+        .table tbody td {
+            padding: 11px 10px;
+            border-bottom: 1px solid #eef2f7;
+            color: #0f172a;
+            vertical-align: top;
+            font-size: 0.9rem;
+        }
+        .table tbody tr:hover {
+            background: #f9fbff;
+        }
+        .manage-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border: 1px solid transparent;
+        }
+        .badge-secondary { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+        .badge-warning { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+        .badge-primary { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
+        .badge-success { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+        .badge-danger { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
+        .badge-default { background: #f1f5f9; color: #334155; border-color: #e2e8f0; }
+        .lesson-form-collapsible {
+            display: none;
+            margin-top: 0.8rem;
+            padding-top: 0.8rem;
+            border-top: 1px solid #e2e8f0;
+        }
+        .lesson-form-collapsible.active {
+            display: block;
+        }
+        .toggle-form-btn {
+            margin-left: auto;
+        }
+        @media (max-width: 992px) {
+            .content-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+        @media (max-width: 768px) {
+            .content-header,
+            .lesson-section,
+            .search-filter,
+            .quick-actions,
+            .analytics-section {
+                padding: 0.9rem;
+            }
+            .admin-stats {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .search-form {
+                grid-template-columns: 1fr;
+            }
+            .form-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+        @media (max-width: 520px) {
+            .admin-stats {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -624,7 +900,7 @@ function getStatusBadge($status) {
                 <h2><i class="fas fa-clipboard-list"></i> Lesson Plans Management</h2>
                 <p class="small-muted"><?php echo $is_principal ? 'Review, approve, and manage all lesson plans' : 'Create and manage your lesson plans'; ?></p>
             </div>
-            <a href="index.php" class="btn btn-secondary-std" style="background: var(--primary-color); color: white;">
+            <a href="index.php" class="btn btn-primary-std">
                 <i class="fas fa-tachometer-alt"></i> Dashboard
             </a>
         </div>
@@ -732,8 +1008,8 @@ function getStatusBadge($status) {
         <!-- Create / Edit Form -->
         <section class="lesson-section">
             <div class="lesson-card">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <h3 style="margin-bottom: 0;">
+                <div class="section-topbar">
+                    <h3>
                         <i class="fas <?php echo $edit_plan ? 'fa-edit' : 'fa-plus-circle'; ?>"></i>
                         <?php echo $edit_plan ? 'Edit Lesson Plan' : 'Create New Lesson Plan'; ?>
                     </h3>
@@ -912,7 +1188,7 @@ function getStatusBadge($status) {
 
         <!-- Search and Filter -->
         <section class="search-filter">
-            <h3 style="margin-top: 0; margin-bottom: 1rem; color: var(--secondary-color);">
+            <h3 class="section-title">
                 <i class="fas fa-search"></i> Search & Filter
             </h3>
             <form method="GET" class="search-form">

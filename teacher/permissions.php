@@ -3,6 +3,7 @@
 session_start();
 require_once '../config/db.php';
 require_once '../includes/functions.php';
+require_once '../includes/permissions_helpers.php';
 
 
 // Check if user is logged in and is a teacher
@@ -13,10 +14,20 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
 
 // School authentication and context
 $current_school_id = require_school_auth();
+ensure_permissions_schema($pdo);
 
 $user_id = $_SESSION['user_id'];
 $message = '';
 $error = '';
+
+if (!empty($_SESSION['message'])) {
+    $message = (string)$_SESSION['message'];
+    unset($_SESSION['message']);
+}
+if (!empty($_SESSION['error'])) {
+    $error = (string)$_SESSION['error'];
+    unset($_SESSION['error']);
+}
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -29,20 +40,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $priority = $_POST['priority'] ?? 'medium';
 
     // Validate inputs
-    if (empty($title) || empty($start_date)) {
-        $error = "Title and start date are required!";
+    $start_date_mysql = to_mysql_datetime_or_null($start_date);
+    $end_date_mysql = to_mysql_datetime_or_null($end_date);
+
+    if (empty($request_type) || empty($title) || $start_date_mysql === null) {
+        $error = "Request type, title and start date are required!";
     } else {
         try {
             // Handle file upload
             $attachment_path = null;
             if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
-                $upload_dir = 'uploads/permissions/';
-                if (!is_dir($upload_dir)) {
-                    mkdir($upload_dir, 0755, true);
+                $upload_dir_fs = __DIR__ . '/uploads/permissions/';
+                $upload_dir_web = '../teacher/uploads/permissions/';
+                if (!is_dir($upload_dir_fs)) {
+                    mkdir($upload_dir_fs, 0755, true);
                 }
 
-                $file_name = time() . '_' . basename($_FILES['attachment']['name']);
-                $target_file = $upload_dir . $file_name;
+                $file_name = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', basename($_FILES['attachment']['name']));
+                $target_file_fs = $upload_dir_fs . $file_name;
 
                 // Check file type and size
                 $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
@@ -50,9 +65,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if (in_array($_FILES['attachment']['type'], $allowed_types) &&
                     $_FILES['attachment']['size'] <= $max_size) {
-                    move_uploaded_file($_FILES['attachment']['tmp_name'], $target_file);
-                    $attachment_path = $target_file;
+                    if (move_uploaded_file($_FILES['attachment']['tmp_name'], $target_file_fs)) {
+                        $attachment_path = $upload_dir_web . $file_name;
+                    } else {
+                        $error = "Attachment upload failed. Please try again.";
+                    }
+                } else {
+                    $error = "Invalid attachment type or file too large (max 5MB).";
                 }
+            }
+
+            if ($error !== '') {
+                throw new RuntimeException($error);
             }
 
             // Insert permission request
@@ -66,13 +90,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmt->execute([
                 $current_school_id, $user_id, $request_type, $title, $description,
-                $start_date, $end_date ?: null, $duration_hours ?: null,
+                $start_date_mysql, $end_date_mysql, $duration_hours !== '' ? $duration_hours : null,
                 $priority, $attachment_path
             ]);
 
             $message = "Permission request submitted successfully!";
 
-        } catch (PDOException $e) {
+        } catch (Exception $e) {
             $error = "Error submitting request: " . $e->getMessage();
         }
     }
@@ -203,8 +227,9 @@ try {
     $pendingRequests = count(array_filter($requests, function($r) { return $r['status'] === 'pending'; }));
     $approvedRequests = count(array_filter($requests, function($r) { return $r['status'] === 'approved'; }));
     $rejectedRequests = count(array_filter($requests, function($r) { return $r['status'] === 'rejected'; }));
+    $cancelledRequests = count(array_filter($requests, function($r) { return $r['status'] === 'cancelled'; }));
 } catch (Exception $e) {
-    $totalRequests = $pendingRequests = $approvedRequests = $rejectedRequests = 0;
+    $totalRequests = $pendingRequests = $approvedRequests = $rejectedRequests = $cancelledRequests = 0;
 }
 ?>
 
@@ -301,6 +326,12 @@ try {
                         <div class="count"><?php echo $rejectedRequests; ?></div>
                         <p class="stat-description">Rejected requests</p>
                     </div>
+                    <div class="stat-card">
+                        <i class="fas fa-ban"></i>
+                        <h3>Cancelled</h3>
+                        <div class="count"><?php echo $cancelledRequests; ?></div>
+                        <p class="stat-description">Cancelled requests</p>
+                    </div>
                 </div>
 
                 <?php if ($error): ?>
@@ -326,6 +357,7 @@ try {
                         <button class="btn secondary" onclick="filterByStatus('pending')">Pending</button>
                         <button class="btn secondary" onclick="filterByStatus('approved')">Approved</button>
                         <button class="btn secondary" onclick="filterByStatus('rejected')">Rejected</button>
+                        <button class="btn secondary" onclick="filterByStatus('cancelled')">Cancelled</button>
                     </div>
                 </section>
 
@@ -360,7 +392,11 @@ try {
                                     <?php foreach ($requests as $request): ?>
                                         <?php
                                             $priorityClass = $request['priority'] === 'high' ? 'badge-warning' : ($request['priority'] === 'low' ? 'badge-success' : 'badge-info');
-                                            $statusClass = $request['status'] === 'approved' ? 'badge-success' : ($request['status'] === 'rejected' ? 'badge-info' : 'badge-warning');
+                                            $statusClass = $request['status'] === 'approved'
+                                                ? 'badge-success'
+                                                : ($request['status'] === 'rejected'
+                                                    ? 'badge-danger'
+                                                    : ($request['status'] === 'cancelled' ? 'badge-secondary' : 'badge-warning'));
                                             $dateLabel = date('M d, Y', strtotime($request['start_date']));
                                             if (!empty($request['end_date'])) {
                                                 $dateLabel .= ' - ' . date('M d, Y', strtotime($request['end_date']));
@@ -373,7 +409,11 @@ try {
                                             data-duration="<?php echo $request['duration_hours'] ? $request['duration_hours'] . ' hours' : 'Full day'; ?>"
                                             data-priority="<?php echo htmlspecialchars(ucfirst($request['priority'])); ?>"
                                             data-status="<?php echo htmlspecialchars(ucfirst($request['status'])); ?>"
-                                            data-approved-by="<?php echo htmlspecialchars($request['approved_by_name'] ?: 'Not approved'); ?>">
+                                            data-approved-by="<?php echo htmlspecialchars($request['approved_by_name'] ?: 'Not approved'); ?>"
+                                            data-description="<?php echo htmlspecialchars($request['description'] ?? ''); ?>"
+                                            data-rejection-reason="<?php echo htmlspecialchars($request['rejection_reason'] ?? ''); ?>"
+                                            data-approved-at="<?php echo htmlspecialchars($request['approved_at'] ?? ''); ?>"
+                                            data-attachment-path="<?php echo htmlspecialchars($request['attachment_path'] ?? ''); ?>">
                                             <td>#<?php echo str_pad($request['id'], 5, '0', STR_PAD_LEFT); ?></td>
                                             <td><?php echo ucfirst(str_replace('_', ' ', $request['request_type'])); ?></td>
                                             <td><?php echo htmlspecialchars($request['title']); ?></td>
@@ -382,7 +422,7 @@ try {
                                             <td><span class="badge <?php echo $priorityClass; ?>"><?php echo ucfirst($request['priority']); ?></span></td>
                                             <td><span class="badge <?php echo $statusClass; ?>"><?php echo ucfirst($request['status']); ?></span></td>
                                             <td>
-                                                <?php echo $request['approved_by_name'] ?: '?'; ?>
+                                                <?php echo $request['approved_by_name'] ?: 'Not approved'; ?>
                                                 <?php if (!empty($request['approved_at'])): ?>
                                                     <br><small><?php echo date('M d', strtotime($request['approved_at'])); ?></small>
                                                 <?php endif; ?>
@@ -522,7 +562,11 @@ try {
                 duration: row.dataset.duration || '- ',
                 priority: row.dataset.priority || '- ',
                 status: row.dataset.status || '- ',
-                approved_by: row.dataset.approvedBy || 'Not approved yet'
+                approved_by: row.dataset.approvedBy || 'Not approved yet',
+                description: row.dataset.description || '',
+                rejection_reason: row.dataset.rejectionReason || '',
+                approved_at: row.dataset.approvedAt || '',
+                attachment_path: row.dataset.attachmentPath || ''
             };
 
             const contentHtml = `
@@ -535,7 +579,26 @@ try {
                         <div><strong>Priority:</strong> ${requestData.priority}</div>
                         <div><strong>Status:</strong> ${requestData.status}</div>
                         <div><strong>Approved By:</strong> ${requestData.approved_by}</div>
+                        ${requestData.approved_at ? `<div><strong>Approved At:</strong> ${new Date(requestData.approved_at).toLocaleString()}</div>` : ''}
                     </div>
+                    <hr style="margin: 1rem 0;">
+                    <div><strong>Description:</strong></div>
+                    <div style="margin-top: 0.4rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.75rem;">
+                        ${requestData.description || 'No description provided.'}
+                    </div>
+                    ${requestData.rejection_reason ? `
+                        <div style="margin-top: 1rem;"><strong>Rejection Reason:</strong></div>
+                        <div style="margin-top: 0.4rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 0.75rem;">
+                            ${requestData.rejection_reason}
+                        </div>
+                    ` : ''}
+                    ${requestData.attachment_path ? `
+                        <div style="margin-top: 1rem;">
+                            <a href="${requestData.attachment_path}" target="_blank" class="btn secondary">
+                                <i class="fas fa-paperclip"></i> View Attachment
+                            </a>
+                        </div>
+                    ` : ''}
                 </div>
             `;
             document.getElementById('detailsContent').innerHTML = contentHtml;

@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/db.php';
 require_once '../includes/functions.php';
+require_once '../includes/cbt_helpers.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     header("Location: ../index.php");
@@ -9,6 +10,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
 }
 
 $current_school_id = require_school_auth();
+ensure_cbt_schema($pdo);
 $teacher_id = $_SESSION['user_id'];
 
 $stmt = $pdo->prepare("
@@ -19,6 +21,7 @@ $stmt = $pdo->prepare("
     JOIN classes c ON t.class_id = c.id
     JOIN subjects subj ON t.subject_id = subj.id
     WHERE t.teacher_id = ? AND t.school_id = ?
+      AND a.status = 'submitted'
     ORDER BY a.submitted_at DESC
 ");
 $stmt->execute([$teacher_id, $current_school_id]);
@@ -87,20 +90,29 @@ $attempts = $stmt->fetchAll();
                         <th>Class</th>
                         <th>Subject</th>
                         <th>Score</th>
+                        <th>Percent</th>
                         <th>Submitted</th>
                     </tr>
                     </thead>
                     <tbody>
-                    <?php foreach ($attempts as $a): ?>
+                    <?php if (empty($attempts)): ?>
                         <tr>
-                            <td><?php echo htmlspecialchars($a['full_name']); ?></td>
-                            <td><?php echo htmlspecialchars($a['title']); ?></td>
-                            <td><?php echo htmlspecialchars($a['class_name']); ?></td>
-                            <td><?php echo htmlspecialchars($a['subject_name']); ?></td>
-                            <td><?php echo intval($a['score']); ?> / <?php echo intval($a['total_questions']); ?></td>
-                            <td><?php echo $a['submitted_at'] ? date('M d, Y H:i', strtotime($a['submitted_at'])) : '-'; ?></td>
+                            <td colspan="7">No submitted CBT attempts yet.</td>
                         </tr>
-                    <?php endforeach; ?>
+                    <?php else: ?>
+                        <?php foreach ($attempts as $a): ?>
+                            <?php $percent = ((int)$a['total_questions'] > 0) ? round(((int)$a['score'] / (int)$a['total_questions']) * 100, 1) : 0; ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($a['full_name']); ?></td>
+                                <td><?php echo htmlspecialchars($a['title']); ?></td>
+                                <td><?php echo htmlspecialchars($a['class_name']); ?></td>
+                                <td><?php echo htmlspecialchars($a['subject_name']); ?></td>
+                                <td><?php echo intval($a['score']); ?> / <?php echo intval($a['total_questions']); ?></td>
+                                <td><?php echo $percent; ?>%</td>
+                                <td><?php echo $a['submitted_at'] ? date('M d, Y H:i', strtotime($a['submitted_at'])) : '-'; ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                     </tbody>
                 </table>
             </div>

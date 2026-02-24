@@ -10,22 +10,185 @@ $csrf_token = generate_csrf_token();
 function add_subscription_audit($school_id, $request_id, $action, $message, $metadata = null) {
     global $pdo;
     try {
-        $stmt = $pdo->prepare("
-            INSERT INTO school_subscription_audit_logs
-            (school_id, request_id, action, actor_id, actor_role, message, metadata_json)
-            VALUES (?, ?, ?, ?, 'super_admin', ?, ?)
-        ");
-        $stmt->execute([
-            $school_id,
-            $request_id,
-            $action,
-            $_SESSION['user_id'] ?? 0,
-            $message,
-            $metadata ? json_encode($metadata, JSON_UNESCAPED_UNICODE) : null
-        ]);
+        $columns_stmt = $pdo->query("SHOW COLUMNS FROM school_subscription_audit_logs");
+        $columns = array_map(static function ($row) {
+            return $row['Field'];
+        }, $columns_stmt->fetchAll(PDO::FETCH_ASSOC));
+
+        $insert_columns = ['action'];
+        $insert_values = [$action];
+        if (in_array('school_id', $columns, true)) {
+            $insert_columns[] = 'school_id';
+            $insert_values[] = $school_id;
+        }
+        if (in_array('request_id', $columns, true)) {
+            $insert_columns[] = 'request_id';
+            $insert_values[] = $request_id;
+        }
+        if (in_array('actor_id', $columns, true)) {
+            $insert_columns[] = 'actor_id';
+            $insert_values[] = (int)($_SESSION['user_id'] ?? 0);
+        }
+        if (in_array('actor_role', $columns, true)) {
+            $insert_columns[] = 'actor_role';
+            $insert_values[] = 'super_admin';
+        }
+        if (in_array('message', $columns, true)) {
+            $insert_columns[] = 'message';
+            $insert_values[] = $message;
+        }
+        if (in_array('metadata_json', $columns, true)) {
+            $insert_columns[] = 'metadata_json';
+            $insert_values[] = $metadata ? json_encode($metadata, JSON_UNESCAPED_UNICODE) : null;
+        }
+
+        if (!empty($insert_columns)) {
+            $placeholders = implode(', ', array_fill(0, count($insert_columns), '?'));
+            $columns_sql = implode(', ', $insert_columns);
+            $stmt = $pdo->prepare("INSERT INTO school_subscription_audit_logs ({$columns_sql}) VALUES ({$placeholders})");
+            $stmt->execute($insert_values);
+        }
     } catch (Exception $e) {
         error_log('Super subscription audit log error: ' . $e->getMessage());
     }
+}
+
+function get_table_columns($table_name)
+{
+    global $pdo;
+    static $cache = [];
+
+    if (isset($cache[$table_name])) {
+        return $cache[$table_name];
+    }
+
+    try {
+        $stmt = $pdo->query("SHOW COLUMNS FROM `{$table_name}`");
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $cache[$table_name] = array_map(static function ($row) {
+            return $row['Field'];
+        }, $rows);
+    } catch (Exception $e) {
+        $cache[$table_name] = [];
+    }
+
+    return $cache[$table_name];
+}
+
+function table_has_column($table_name, $column_name)
+{
+    return in_array($column_name, get_table_columns($table_name), true);
+}
+
+function table_exists($table_name)
+{
+    global $pdo;
+    try {
+        $stmt = $pdo->query("SHOW TABLES LIKE " . $pdo->quote($table_name));
+        return (bool)$stmt->fetchColumn();
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+function request_status_enum_values()
+{
+    global $pdo;
+    static $values = null;
+
+    if ($values !== null) {
+        return $values;
+    }
+
+    $values = [];
+    try {
+        $stmt = $pdo->query("SHOW COLUMNS FROM school_subscription_requests LIKE 'status'");
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $type = $row['Type'] ?? '';
+        if (preg_match('/^enum\((.*)\)$/i', (string)$type, $matches)) {
+            $parts = str_getcsv($matches[1], ',', "'");
+            foreach ($parts as $part) {
+                $values[] = trim((string)$part);
+            }
+        }
+    } catch (Exception $e) {
+        $values = [];
+    }
+
+    return $values;
+}
+
+function resolve_request_status($logical_status)
+{
+    $supported = request_status_enum_values();
+    if (empty($supported)) {
+        return $logical_status;
+    }
+
+    $candidates = [
+        'pending_payment' => ['pending_payment', 'pending', 'open'],
+        'under_review' => ['under_review', 'pending_payment', 'pending', 'open'],
+        'approved' => ['approved', 'active'],
+        'rejected' => ['rejected', 'declined']
+    ];
+
+    $candidate_list = $candidates[$logical_status] ?? [$logical_status];
+    foreach ($candidate_list as $candidate) {
+        if (in_array($candidate, $supported, true)) {
+            return $candidate;
+        }
+    }
+    return $supported[0] ?? $logical_status;
+}
+
+function request_status_matches($actual_status, $logical_statuses)
+{
+    $actual_status = (string)$actual_status;
+    if ($actual_status === '' && count(array_intersect((array)$logical_statuses, ['pending_payment', 'under_review'])) > 0) {
+        return true;
+    }
+    foreach ((array)$logical_statuses as $logical_status) {
+        if ($actual_status === resolve_request_status($logical_status)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function update_request_review($request_id, $status_logical, $review_note, $reviewer_id)
+{
+    global $pdo;
+
+    $set_parts = ["status = ?", "review_note = ?"];
+    $params = [resolve_request_status($status_logical), $review_note];
+
+    if (table_has_column('school_subscription_requests', 'reviewed_by')) {
+        $set_parts[] = "reviewed_by = ?";
+        $params[] = $reviewer_id;
+    }
+    if (table_has_column('school_subscription_requests', 'reviewed_at')) {
+        // Works with DATE and DATETIME columns.
+        $set_parts[] = "reviewed_at = ?";
+        $params[] = date('Y-m-d H:i:s');
+    }
+    if (table_has_column('school_subscription_requests', 'updated_at')) {
+        $set_parts[] = "updated_at = NOW()";
+    }
+
+    $params[] = $request_id;
+    $sql = "UPDATE school_subscription_requests SET " . implode(', ', $set_parts) . " WHERE id = ?";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+}
+
+function update_proof_status_if_supported($request_id, $status_value)
+{
+    global $pdo;
+    if (!table_has_column('school_subscription_payment_proofs', 'status')) {
+        return;
+    }
+    $stmt = $pdo->prepare("UPDATE school_subscription_payment_proofs SET status = ? WHERE request_id = ?");
+    $stmt->execute([$status_value, $request_id]);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -49,7 +212,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($errors) && !$request) {
         $errors[] = 'Request not found.';
-    } elseif (empty($errors) && !in_array($request['status'], ['under_review', 'pending_payment'], true)) {
+    } elseif (empty($errors) && !request_status_matches($request['status'], ['under_review', 'pending_payment'])) {
         $errors[] = 'Only pending/under-review requests can be processed.';
     } elseif (empty($errors) && $action === 'approve_request') {
         $review_note = trim($_POST['review_note'] ?? '');
@@ -71,7 +234,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!$request) {
                     throw new RuntimeException('Request not found.');
                 }
-                if (!in_array($request['status'], ['under_review', 'pending_payment'], true)) {
+                if (!request_status_matches($request['status'], ['under_review', 'pending_payment'])) {
                     throw new RuntimeException('This request has already been processed.');
                 }
 
@@ -83,71 +246,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $today = date('Y-m-d');
-                $approved_at = date('Y-m-d H:i:s');
                 $status = 'active';
                 $start_date = $today;
                 $end_date = null;
                 $grace_end_date = null;
 
-                if ($request['billing_cycle'] === 'lifetime') {
-                    $status = 'lifetime_active';
-                    $start_date = $today;
-                } else {
-                    $duration = (int)$request['duration_days'];
-                    if ($duration < 1) {
-                        $duration = $request['billing_cycle'] === 'monthly' ? 30 : 120;
+                if (table_exists('school_subscriptions')) {
+                    if ($request['billing_cycle'] === 'lifetime') {
+                        $status = 'lifetime_active';
+                        $start_date = $today;
+                    } else {
+                        $duration = (int)$request['duration_days'];
+                        if ($duration < 1) {
+                            $duration = $request['billing_cycle'] === 'monthly' ? 30 : 120;
+                        }
+
+                        $existing_stmt = $pdo->prepare("
+                            SELECT * FROM school_subscriptions
+                            WHERE school_id = ?
+                            ORDER BY approved_at DESC, id DESC
+                            LIMIT 1
+                        ");
+                        $existing_stmt->execute([$request['school_id']]);
+                        $existing = $existing_stmt->fetch(PDO::FETCH_ASSOC);
+
+                        if ($existing && !empty($existing['end_date']) && $existing['end_date'] >= $today) {
+                            $start_date = date('Y-m-d', strtotime($existing['end_date'] . ' +1 day'));
+                        }
+
+                        $end_date = date('Y-m-d', strtotime($start_date . ' +' . ($duration - 1) . ' day'));
+                        $grace_days = max(0, (int)$request['grace_days']);
+                        $grace_end_date = date('Y-m-d', strtotime($end_date . ' +' . $grace_days . ' day'));
+                        $status = 'active';
                     }
 
-                    $existing_stmt = $pdo->prepare("
-                        SELECT * FROM school_subscriptions
-                        WHERE school_id = ?
-                        ORDER BY approved_at DESC, id DESC
-                        LIMIT 1
+                    $sub_stmt = $pdo->prepare("
+                        INSERT INTO school_subscriptions
+                        (school_id, plan_id, source_request_id, status, start_date, end_date, grace_end_date, approved_by, approved_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ");
-                    $existing_stmt->execute([$request['school_id']]);
-                    $existing = $existing_stmt->fetch(PDO::FETCH_ASSOC);
-
-                    if ($existing && !empty($existing['end_date']) && $existing['end_date'] >= $today) {
-                        $start_date = date('Y-m-d', strtotime($existing['end_date'] . ' +1 day'));
-                    }
-
-                    $end_date = date('Y-m-d', strtotime($start_date . ' +' . ($duration - 1) . ' day'));
-                    $grace_days = max(0, (int)$request['grace_days']);
-                    $grace_end_date = date('Y-m-d', strtotime($end_date . ' +' . $grace_days . ' day'));
-                    $status = 'active';
+                    $sub_stmt->execute([
+                        $request['school_id'],
+                        $request['plan_id'],
+                        $request_id,
+                        $status,
+                        $start_date,
+                        $end_date,
+                        $grace_end_date,
+                        $_SESSION['user_id'],
+                        date('Y-m-d H:i:s')
+                    ]);
                 }
 
-                $sub_stmt = $pdo->prepare("
-                    INSERT INTO school_subscriptions
-                    (school_id, plan_id, source_request_id, status, start_date, end_date, grace_end_date, approved_by, approved_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ");
-                $sub_stmt->execute([
-                    $request['school_id'],
-                    $request['plan_id'],
+                update_request_review(
                     $request_id,
-                    $status,
-                    $start_date,
-                    $end_date,
-                    $grace_end_date,
-                    $_SESSION['user_id'],
-                    $approved_at
-                ]);
-
-                $request_update_stmt = $pdo->prepare("
-                    UPDATE school_subscription_requests
-                    SET status = 'approved', reviewed_by = ?, reviewed_at = ?, review_note = ?
-                    WHERE id = ?
-                ");
-                $request_update_stmt->execute([
-                    $_SESSION['user_id'],
-                    $approved_at,
+                    'approved',
                     $review_note !== '' ? $review_note : null,
-                    $request_id
-                ]);
+                    (int)($_SESSION['user_id'] ?? 0)
+                );
 
-                $proof_update_stmt = $pdo->prepare("UPDATE school_subscription_payment_proofs SET status = 'approved' WHERE request_id = ?");
-                $proof_update_stmt->execute([$request_id]);
+                update_proof_status_if_supported($request_id, 'approved');
 
                 add_subscription_audit($request['school_id'], $request_id, 'request_approved', 'Super admin approved subscription request', [
                     'plan_id' => $request['plan_id'],
@@ -165,6 +323,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $pdo->rollBack();
                 }
                 $errors[] = 'Approval failed: ' . $e->getMessage();
+            }
+        }
+    } elseif (empty($errors) && $action === 'mark_pending') {
+        $review_note = trim($_POST['review_note'] ?? '');
+        if ($review_note === '') {
+            $errors[] = 'Pending reason is required.';
+        } else {
+            $pdo->beginTransaction();
+            try {
+                $locked_stmt = $pdo->prepare("
+                    SELECT id, status, school_id
+                    FROM school_subscription_requests
+                    WHERE id = ?
+                    FOR UPDATE
+                ");
+                $locked_stmt->execute([$request_id]);
+                $locked_request = $locked_stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$locked_request) {
+                    throw new RuntimeException('Request not found.');
+                }
+                if (!request_status_matches($locked_request['status'], ['under_review', 'pending_payment'])) {
+                    throw new RuntimeException('This request has already been processed.');
+                }
+
+                update_request_review(
+                    $request_id,
+                    'pending_payment',
+                    $review_note,
+                    (int)($_SESSION['user_id'] ?? 0)
+                );
+                update_proof_status_if_supported($request_id, 'rejected');
+
+                add_subscription_audit($request['school_id'], $request_id, 'request_marked_pending', 'Super admin marked request as pending', [
+                    'reason' => $review_note
+                ]);
+                log_super_action('mark_pending_subscription_request', 'subscription_request', $request_id, "Marked request #{$request_id} as pending for school {$request['school_name']}");
+
+                $pdo->commit();
+                $success = 'Subscription request marked as pending.';
+            } catch (Exception $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                $errors[] = 'Pending update failed: ' . $e->getMessage();
             }
         }
     } elseif (empty($errors) && $action === 'reject_request') {
@@ -185,26 +387,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!$locked_request) {
                     throw new RuntimeException('Request not found.');
                 }
-                if (!in_array($locked_request['status'], ['under_review', 'pending_payment'], true)) {
+                if (!request_status_matches($locked_request['status'], ['under_review', 'pending_payment'])) {
                     throw new RuntimeException('This request has already been processed.');
                 }
 
-                $time = date('Y-m-d H:i:s');
-
-                $request_update_stmt = $pdo->prepare("
-                    UPDATE school_subscription_requests
-                    SET status = 'rejected', reviewed_by = ?, reviewed_at = ?, review_note = ?
-                    WHERE id = ?
-                ");
-                $request_update_stmt->execute([
-                    $_SESSION['user_id'],
-                    $time,
+                update_request_review(
+                    $request_id,
+                    'rejected',
                     $review_note,
-                    $request_id
-                ]);
-
-                $proof_update_stmt = $pdo->prepare("UPDATE school_subscription_payment_proofs SET status = 'rejected' WHERE request_id = ? AND status = 'under_review'");
-                $proof_update_stmt->execute([$request_id]);
+                    (int)($_SESSION['user_id'] ?? 0)
+                );
+                update_proof_status_if_supported($request_id, 'rejected');
 
                 add_subscription_audit($request['school_id'], $request_id, 'request_rejected', 'Super admin rejected subscription request', [
                     'reason' => $review_note
@@ -240,8 +433,9 @@ $sql = "
 ";
 $params = [];
 if ($status_filter !== 'all') {
+    $mapped_filter = resolve_request_status($status_filter);
     $sql .= " WHERE sr.status = ?";
-    $params[] = $status_filter;
+    $params[] = $mapped_filter;
 }
 $sql .= " ORDER BY sr.created_at DESC";
 $stmt = $pdo->prepare($sql);
@@ -315,10 +509,12 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .pill { display: inline-block; border-radius: 999px; padding: 4px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
         .pending_payment { background: #e0f2fe; color: #075985; }
         .under_review { background: #ede9fe; color: #5b21b6; }
+        .pending { background: #e0f2fe; color: #075985; }
         .approved { background: #dcfce7; color: #166534; }
         .rejected { background: #fee2e2; color: #991b1b; }
         .btn { border: none; border-radius: 8px; padding: 8px 10px; cursor: pointer; font-weight: 700; }
         .approve { background: #16a34a; color: #fff; }
+        .pending { background: #d97706; color: #fff; }
         .reject { background: #dc2626; color: #fff; }
         textarea { width: 100%; min-height: 60px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; }
         .filters a { margin-right: 8px; }
@@ -435,7 +631,10 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <small><?php echo htmlspecialchars(ucfirst($request['billing_cycle'])); ?></small>
                             </td>
                             <td>N<?php echo number_format((float)$request['expected_amount'], 2); ?></td>
-                            <td><span class="pill <?php echo htmlspecialchars($request['status']); ?>"><?php echo htmlspecialchars(str_replace('_', ' ', $request['status'])); ?></span></td>
+                            <td>
+                                <?php $display_status = $request['status'] !== '' ? $request['status'] : 'pending'; ?>
+                                <span class="pill <?php echo htmlspecialchars($display_status); ?>"><?php echo htmlspecialchars(str_replace('_', ' ', $display_status)); ?></span>
+                            </td>
                             <td>
                                 <?php if (!empty($request['proof_file_path'])): ?>
                                     <a href="view_subscription_proof.php?request_id=<?php echo (int)$request['id']; ?>" target="_blank">View Proof</a><br>
@@ -448,13 +647,20 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php if (in_array($request['status'], ['pending_payment', 'under_review'], true)): ?>
+                                <?php if (request_status_matches($request['status'], ['pending_payment', 'under_review'])): ?>
                                     <form method="POST" style="margin-bottom:8px;">
                                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                                         <input type="hidden" name="action" value="approve_request">
                                         <input type="hidden" name="request_id" value="<?php echo (int)$request['id']; ?>">
                                         <textarea name="review_note" placeholder="Optional approval note"></textarea>
                                         <p><button class="btn approve" type="submit">Approve</button></p>
+                                    </form>
+                                    <form method="POST" style="margin-bottom:8px;">
+                                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
+                                        <input type="hidden" name="action" value="mark_pending">
+                                        <input type="hidden" name="request_id" value="<?php echo (int)$request['id']; ?>">
+                                        <textarea name="review_note" placeholder="Pending reason (required)" required></textarea>
+                                        <p><button class="btn pending" type="submit">Mark as Pending</button></p>
                                     </form>
                                     <form method="POST">
                                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">

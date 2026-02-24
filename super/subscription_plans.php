@@ -5,6 +5,65 @@ require_once '../config/db.php';
 $errors = [];
 $success = '';
 $edit_plan = null;
+$edit_bank = null;
+
+try {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS subscription_bank_accounts (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            bank_name VARCHAR(120) NOT NULL,
+            account_name VARCHAR(120) NOT NULL,
+            account_number VARCHAR(50) NOT NULL,
+            payment_note TEXT NULL,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            is_primary TINYINT(1) NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_subscription_bank_active (is_active),
+            INDEX idx_subscription_bank_primary (is_primary)
+        )
+    ");
+} catch (Exception $e) {
+    $errors[] = 'Failed to prepare subscription bank accounts table.';
+}
+
+function upsert_system_setting(PDO $pdo, $setting_key, $setting_value)
+{
+    $stmt = $pdo->prepare("
+        INSERT INTO system_settings (setting_key, setting_value)
+        VALUES (?, ?)
+        ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()
+    ");
+    $stmt->execute([$setting_key, $setting_value]);
+}
+
+function sync_subscription_bank_settings(PDO $pdo)
+{
+    try {
+        $stmt = $pdo->query("
+            SELECT bank_name, account_name, account_number, payment_note
+            FROM subscription_bank_accounts
+            WHERE is_active = 1
+            ORDER BY is_primary DESC, id ASC
+            LIMIT 1
+        ");
+        $bank = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+
+        if ($bank) {
+            upsert_system_setting($pdo, 'subscription_bank_name', $bank['bank_name']);
+            upsert_system_setting($pdo, 'subscription_account_name', $bank['account_name']);
+            upsert_system_setting($pdo, 'subscription_account_number', $bank['account_number']);
+            upsert_system_setting($pdo, 'subscription_payment_note', $bank['payment_note'] ?? 'After transfer, upload your proof from the "My Subscription Requests" section below.');
+        } else {
+            upsert_system_setting($pdo, 'subscription_bank_name', '');
+            upsert_system_setting($pdo, 'subscription_account_name', '');
+            upsert_system_setting($pdo, 'subscription_account_number', '');
+            upsert_system_setting($pdo, 'subscription_payment_note', 'After transfer, upload your proof from the "My Subscription Requests" section below.');
+        }
+    } catch (Exception $e) {
+        // Best effort sync. Do not block plan/bank operations.
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -85,6 +144,141 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$new_state, $plan_id]);
         $success = $new_state ? 'Plan activated.' : 'Plan deactivated.';
         log_super_action('toggle_subscription_plan', 'subscription_plan', $plan_id, $success);
+    } elseif ($action === 'save_bank_info') {
+        $bank_id = (int)($_POST['bank_id'] ?? 0);
+        $bank_name = trim($_POST['bank_name'] ?? '');
+        $account_name = trim($_POST['account_name'] ?? '');
+        $account_number = preg_replace('/\s+/', '', trim($_POST['account_number'] ?? ''));
+        $payment_note = trim($_POST['payment_note'] ?? '');
+        $is_active = isset($_POST['is_active']) ? 1 : 0;
+        $is_primary = isset($_POST['is_primary']) ? 1 : 0;
+
+        if ($bank_name === '') $errors[] = 'Bank name is required.';
+        if ($account_name === '') $errors[] = 'Account name is required.';
+        if ($account_number === '') $errors[] = 'Account number is required.';
+        if (strlen($account_number) > 50) $errors[] = 'Account number is too long.';
+        if ($is_primary === 1 && $is_active === 0) $errors[] = 'Primary bank account must be active.';
+
+        if (empty($errors)) {
+            if ($bank_id > 0) {
+                $stmt = $pdo->prepare("
+                    UPDATE subscription_bank_accounts
+                    SET bank_name = ?, account_name = ?, account_number = ?, payment_note = ?, is_active = ?, is_primary = ?
+                    WHERE id = ?
+                ");
+                $stmt->execute([
+                    $bank_name,
+                    $account_name,
+                    $account_number,
+                    $payment_note !== '' ? $payment_note : null,
+                    $is_active,
+                    $is_primary,
+                    $bank_id
+                ]);
+                $saved_bank_id = $bank_id;
+                $success = 'Subscription bank information updated successfully.';
+                log_super_action('update_subscription_bank_info', 'subscription_bank_account', $bank_id, "Updated subscription bank account {$bank_name}");
+            } else {
+                $stmt = $pdo->prepare("
+                    INSERT INTO subscription_bank_accounts
+                    (bank_name, account_name, account_number, payment_note, is_active, is_primary)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $bank_name,
+                    $account_name,
+                    $account_number,
+                    $payment_note !== '' ? $payment_note : null,
+                    $is_active,
+                    $is_primary
+                ]);
+                $saved_bank_id = (int)$pdo->lastInsertId();
+                $success = 'Subscription bank information created successfully.';
+                log_super_action('create_subscription_bank_info', 'subscription_bank_account', $saved_bank_id, "Created subscription bank account {$bank_name}");
+            }
+
+            if ($is_primary === 1) {
+                $clear_stmt = $pdo->prepare("UPDATE subscription_bank_accounts SET is_primary = 0 WHERE id != ?");
+                $clear_stmt->execute([$saved_bank_id]);
+            } else {
+                $primary_count_stmt = $pdo->query("SELECT COUNT(*) FROM subscription_bank_accounts WHERE is_active = 1 AND is_primary = 1");
+                if ((int)$primary_count_stmt->fetchColumn() === 0) {
+                    $set_primary_stmt = $pdo->prepare("UPDATE subscription_bank_accounts SET is_primary = 1 WHERE id = ?");
+                    $set_primary_stmt->execute([$saved_bank_id]);
+                }
+            }
+
+            sync_subscription_bank_settings($pdo);
+        }
+    } elseif ($action === 'toggle_bank') {
+        $bank_id = (int)($_POST['bank_id'] ?? 0);
+        $new_state = (int)($_POST['new_state'] ?? 0);
+
+        if ($bank_id > 0) {
+            if ($new_state === 1) {
+                $stmt = $pdo->prepare("UPDATE subscription_bank_accounts SET is_active = 1 WHERE id = ?");
+                $stmt->execute([$bank_id]);
+            } else {
+                $stmt = $pdo->prepare("UPDATE subscription_bank_accounts SET is_active = 0, is_primary = 0 WHERE id = ?");
+                $stmt->execute([$bank_id]);
+            }
+
+            $primary_count_stmt = $pdo->query("SELECT COUNT(*) FROM subscription_bank_accounts WHERE is_active = 1 AND is_primary = 1");
+            if ((int)$primary_count_stmt->fetchColumn() === 0) {
+                $fallback_stmt = $pdo->query("SELECT id FROM subscription_bank_accounts WHERE is_active = 1 ORDER BY id ASC LIMIT 1");
+                $fallback_id = (int)($fallback_stmt->fetchColumn() ?: 0);
+                if ($fallback_id > 0) {
+                    $set_primary_stmt = $pdo->prepare("UPDATE subscription_bank_accounts SET is_primary = 1 WHERE id = ?");
+                    $set_primary_stmt->execute([$fallback_id]);
+                }
+            }
+
+            sync_subscription_bank_settings($pdo);
+            $success = $new_state ? 'Bank account activated.' : 'Bank account deactivated.';
+            log_super_action('toggle_subscription_bank_info', 'subscription_bank_account', $bank_id, $success);
+        }
+    } elseif ($action === 'set_primary_bank') {
+        $bank_id = (int)($_POST['bank_id'] ?? 0);
+
+        if ($bank_id > 0) {
+            $check_stmt = $pdo->prepare("SELECT is_active FROM subscription_bank_accounts WHERE id = ? LIMIT 1");
+            $check_stmt->execute([$bank_id]);
+            $bank_row = $check_stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$bank_row) {
+                $errors[] = 'Bank account not found.';
+            } elseif ((int)$bank_row['is_active'] !== 1) {
+                $errors[] = 'Only active bank accounts can be set as primary.';
+            } else {
+                $pdo->exec("UPDATE subscription_bank_accounts SET is_primary = 0");
+                $set_stmt = $pdo->prepare("UPDATE subscription_bank_accounts SET is_primary = 1 WHERE id = ?");
+                $set_stmt->execute([$bank_id]);
+                sync_subscription_bank_settings($pdo);
+                $success = 'Primary subscription bank account updated.';
+                log_super_action('set_primary_subscription_bank_info', 'subscription_bank_account', $bank_id, $success);
+            }
+        }
+    } elseif ($action === 'delete_bank') {
+        $bank_id = (int)($_POST['bank_id'] ?? 0);
+
+        if ($bank_id > 0) {
+            $delete_stmt = $pdo->prepare("DELETE FROM subscription_bank_accounts WHERE id = ?");
+            $delete_stmt->execute([$bank_id]);
+
+            $primary_count_stmt = $pdo->query("SELECT COUNT(*) FROM subscription_bank_accounts WHERE is_active = 1 AND is_primary = 1");
+            if ((int)$primary_count_stmt->fetchColumn() === 0) {
+                $fallback_stmt = $pdo->query("SELECT id FROM subscription_bank_accounts WHERE is_active = 1 ORDER BY id ASC LIMIT 1");
+                $fallback_id = (int)($fallback_stmt->fetchColumn() ?: 0);
+                if ($fallback_id > 0) {
+                    $set_primary_stmt = $pdo->prepare("UPDATE subscription_bank_accounts SET is_primary = 1 WHERE id = ?");
+                    $set_primary_stmt->execute([$fallback_id]);
+                }
+            }
+
+            sync_subscription_bank_settings($pdo);
+            $success = 'Bank account deleted.';
+            log_super_action('delete_subscription_bank_info', 'subscription_bank_account', $bank_id, $success);
+        }
     }
 }
 
@@ -95,7 +289,15 @@ if (isset($_GET['edit'])) {
     $edit_plan = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 }
 
+if (isset($_GET['edit_bank'])) {
+    $edit_bank_id = (int)$_GET['edit_bank'];
+    $stmt = $pdo->prepare("SELECT * FROM subscription_bank_accounts WHERE id = ?");
+    $stmt->execute([$edit_bank_id]);
+    $edit_bank = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+
 $plans = $pdo->query("SELECT * FROM subscription_plans ORDER BY created_at DESC")->fetchAll(PDO::FETCH_ASSOC);
+$bank_accounts = $pdo->query("SELECT * FROM subscription_bank_accounts ORDER BY is_primary DESC, is_active DESC, created_at DESC")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -165,8 +367,19 @@ $plans = $pdo->query("SELECT * FROM subscription_plans ORDER BY created_at DESC"
         .btn { border: none; border-radius: 8px; padding: 9px 12px; cursor: pointer; font-weight: 700; }
         .btn-primary { background: #2563eb; color: #fff; }
         .btn-gray { background: #e2e8f0; color: #0f172a; }
+        .btn-danger { background: #dc2626; color: #fff; }
         .table { width: 100%; border-collapse: collapse; }
         .table th, .table td { border-bottom: 1px solid #e2e8f0; padding: 10px; text-align: left; }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .badge-primary { background: #dbeafe; color: #1d4ed8; }
+        .badge-success { background: #dcfce7; color: #166534; }
+        .badge-muted { background: #e2e8f0; color: #475569; }
     </style>
 </head>
 <body>
@@ -310,6 +523,89 @@ $plans = $pdo->query("SELECT * FROM subscription_plans ORDER BY created_at DESC"
                     <?php endforeach; ?>
                 </tbody>
             </table>
+        </div>
+
+        <div class="card">
+            <h3><?php echo $edit_bank ? 'Edit Subscription Bank Information' : 'Add Subscription Bank Information'; ?></h3>
+            <form method="POST">
+                <input type="hidden" name="action" value="save_bank_info">
+                <input type="hidden" name="bank_id" value="<?php echo (int)($edit_bank['id'] ?? 0); ?>">
+                <div class="grid">
+                    <div><label>Bank Name</label><input name="bank_name" required value="<?php echo htmlspecialchars($edit_bank['bank_name'] ?? ''); ?>" placeholder="First Bank"></div>
+                    <div><label>Account Name</label><input name="account_name" required value="<?php echo htmlspecialchars($edit_bank['account_name'] ?? ''); ?>" placeholder="SahabFormMaster Limited"></div>
+                    <div><label>Account Number</label><input name="account_number" required value="<?php echo htmlspecialchars($edit_bank['account_number'] ?? ''); ?>" placeholder="0123456789"></div>
+                    <div style="grid-column: 1 / -1;"><label>Payment Note</label><textarea name="payment_note" placeholder='After transfer, upload proof from "My Subscription Requests".'><?php echo htmlspecialchars($edit_bank['payment_note'] ?? ''); ?></textarea></div>
+                    <div><label><input type="checkbox" name="is_active" <?php echo (($edit_bank['is_active'] ?? 1) == 1) ? 'checked' : ''; ?>> Active</label></div>
+                    <div><label><input type="checkbox" name="is_primary" <?php echo (($edit_bank['is_primary'] ?? 0) == 1) ? 'checked' : ''; ?>> Primary</label></div>
+                </div>
+                <p>
+                    <button class="btn btn-primary" type="submit"><?php echo $edit_bank ? 'Update Bank Info' : 'Add Bank Info'; ?></button>
+                    <?php if ($edit_bank): ?>
+                        <a class="btn btn-gray" href="subscription_plans.php">Cancel Edit</a>
+                    <?php endif; ?>
+                </p>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>Subscription Bank Accounts</h3>
+            <?php if (empty($bank_accounts)): ?>
+                <p>No subscription bank account added yet.</p>
+            <?php else: ?>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Bank</th>
+                            <th>Account Name</th>
+                            <th>Account Number</th>
+                            <th>Note</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($bank_accounts as $bank): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($bank['bank_name']); ?></td>
+                                <td><?php echo htmlspecialchars($bank['account_name']); ?></td>
+                                <td><?php echo htmlspecialchars($bank['account_number']); ?></td>
+                                <td><?php echo htmlspecialchars($bank['payment_note'] ?? 'N/A'); ?></td>
+                                <td>
+                                    <?php if ((int)$bank['is_active'] === 1): ?>
+                                        <span class="badge badge-success">Active</span>
+                                    <?php else: ?>
+                                        <span class="badge badge-muted">Inactive</span>
+                                    <?php endif; ?>
+                                    <?php if ((int)$bank['is_primary'] === 1): ?>
+                                        <span class="badge badge-primary">Primary</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <a href="subscription_plans.php?edit_bank=<?php echo (int)$bank['id']; ?>">Edit</a>
+                                    <form method="POST" style="display:inline;">
+                                        <input type="hidden" name="action" value="toggle_bank">
+                                        <input type="hidden" name="bank_id" value="<?php echo (int)$bank['id']; ?>">
+                                        <input type="hidden" name="new_state" value="<?php echo (int)$bank['is_active'] === 1 ? 0 : 1; ?>">
+                                        <button class="btn btn-gray" type="submit"><?php echo (int)$bank['is_active'] === 1 ? 'Deactivate' : 'Activate'; ?></button>
+                                    </form>
+                                    <?php if ((int)$bank['is_primary'] !== 1 && (int)$bank['is_active'] === 1): ?>
+                                        <form method="POST" style="display:inline;">
+                                            <input type="hidden" name="action" value="set_primary_bank">
+                                            <input type="hidden" name="bank_id" value="<?php echo (int)$bank['id']; ?>">
+                                            <button class="btn btn-primary" type="submit">Set Primary</button>
+                                        </form>
+                                    <?php endif; ?>
+                                    <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this bank account information?');">
+                                        <input type="hidden" name="action" value="delete_bank">
+                                        <input type="hidden" name="bank_id" value="<?php echo (int)$bank['id']; ?>">
+                                        <button class="btn btn-danger" type="submit">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
         </div>
     </main>
 </div>

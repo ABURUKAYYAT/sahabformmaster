@@ -1,12 +1,17 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
+require_once '../includes/permissions_helpers.php';
 
 // Check if user is logged in and is a principal
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'principal') {
-    header('Location: login.php');
+    header('Location: ../index.php');
     exit();
 }
+
+$current_school_id = require_school_auth();
+ensure_permissions_schema($pdo);
 
 $user_id = $_SESSION['user_id'];
 $message = '';
@@ -16,76 +21,118 @@ $principal_name = $_SESSION['full_name'];
 
 // Handle approval/rejection/cancellation/edit/delete
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    $permission_id = $_POST['permission_id'] ?? '';
-    $action = $_POST['action'] ?? '';
-    $rejection_reason = $_POST['rejection_reason'] ?? '';
+    $permission_id = (int)($_POST['permission_id'] ?? 0);
+    $action = trim((string)($_POST['action'] ?? ''));
+    $rejection_reason = trim((string)($_POST['rejection_reason'] ?? ''));
 
-    try {
-        if ($action === 'approve') {
-            $stmt = $pdo->prepare("
-                UPDATE permissions
-                SET status = 'approved',
-                    approved_by = ?,
-                    approved_at = NOW()
-                WHERE id = ?
-            ");
-            $stmt->execute([$user_id, $permission_id]);
-            $message = "Request approved successfully!";
+    if ($permission_id <= 0) {
+        $error = "Invalid permission request selected.";
+    } else {
+        try {
+            $targetStmt = $pdo->prepare("SELECT * FROM permissions WHERE id = ? AND school_id = ? LIMIT 1");
+            $targetStmt->execute([$permission_id, $current_school_id]);
+            $target = $targetStmt->fetch(PDO::FETCH_ASSOC);
 
-        } elseif ($action === 'reject') {
-            if (empty($rejection_reason)) {
-                $error = "Please provide a reason for rejection.";
+            if (!$target) {
+                $error = "Permission request not found for your school.";
+            } elseif ($action === 'approve') {
+                if ($target['status'] !== 'pending') {
+                    $error = "Only pending requests can be approved.";
+                } else {
+                    $stmt = $pdo->prepare("
+                        UPDATE permissions
+                        SET status = 'approved',
+                            rejection_reason = NULL,
+                            approved_by = ?,
+                            approved_at = NOW(),
+                            updated_at = NOW()
+                        WHERE id = ? AND school_id = ?
+                    ");
+                    $stmt->execute([(string)$user_id, $permission_id, $current_school_id]);
+                    $message = "Request approved successfully!";
+                }
+            } elseif ($action === 'reject') {
+                if ($target['status'] !== 'pending') {
+                    $error = "Only pending requests can be rejected.";
+                } elseif ($rejection_reason === '') {
+                    $error = "Please provide a reason for rejection.";
+                } else {
+                    $stmt = $pdo->prepare("
+                        UPDATE permissions
+                        SET status = 'rejected',
+                            rejection_reason = ?,
+                            approved_by = ?,
+                            approved_at = NOW(),
+                            updated_at = NOW()
+                        WHERE id = ? AND school_id = ?
+                    ");
+                    $stmt->execute([$rejection_reason, (string)$user_id, $permission_id, $current_school_id]);
+                    $message = "Request rejected successfully!";
+                }
+            } elseif ($action === 'cancel') {
+                if ($target['status'] !== 'approved') {
+                    $error = "Only approved requests can be cancelled.";
+                } else {
+                    $stmt = $pdo->prepare("
+                        UPDATE permissions
+                        SET status = 'cancelled',
+                            approved_by = ?,
+                            approved_at = NOW(),
+                            updated_at = NOW()
+                        WHERE id = ? AND school_id = ?
+                    ");
+                    $stmt->execute([(string)$user_id, $permission_id, $current_school_id]);
+                    $message = "Request cancelled successfully!";
+                }
+            } elseif ($action === 'edit') {
+                $title = trim((string)($_POST['title'] ?? ''));
+                $description = trim((string)($_POST['description'] ?? ''));
+                $request_type = trim((string)($_POST['request_type'] ?? ''));
+                $start_date = to_mysql_datetime_or_null($_POST['start_date'] ?? '');
+                $end_date = to_mysql_datetime_or_null($_POST['end_date'] ?? '');
+                $priority = trim((string)($_POST['priority'] ?? 'medium'));
+
+                if ($title === '' || $request_type === '' || $start_date === null) {
+                    $error = "Please fill in all required fields with valid values.";
+                } else {
+                    $allowedPriorities = ['low', 'medium', 'high', 'urgent'];
+                    if (!in_array($priority, $allowedPriorities, true)) {
+                        $priority = 'medium';
+                    }
+
+                    $stmt = $pdo->prepare("
+                        UPDATE permissions
+                        SET title = ?,
+                            description = ?,
+                            request_type = ?,
+                            start_date = ?,
+                            end_date = ?,
+                            priority = ?,
+                            updated_at = NOW()
+                        WHERE id = ? AND school_id = ?
+                    ");
+                    $stmt->execute([
+                        $title,
+                        $description !== '' ? $description : null,
+                        $request_type,
+                        $start_date,
+                        $end_date,
+                        $priority,
+                        $permission_id,
+                        $current_school_id
+                    ]);
+                    $message = "Request updated successfully!";
+                }
+            } elseif ($action === 'delete') {
+                $stmt = $pdo->prepare("DELETE FROM permissions WHERE id = ? AND school_id = ?");
+                $stmt->execute([$permission_id, $current_school_id]);
+                $message = "Request deleted successfully!";
             } else {
-                $stmt = $pdo->prepare("
-                    UPDATE permissions
-                    SET status = 'rejected',
-                        rejection_reason = ?,
-                        approved_by = ?,
-                        approved_at = NOW()
-                    WHERE id = ?
-                ");
-                $stmt->execute([$rejection_reason, $user_id, $permission_id]);
-                $message = "Request rejected successfully!";
+                $error = "Unsupported action.";
             }
-        } elseif ($action === 'cancel') {
-            $stmt = $pdo->prepare("
-                UPDATE permissions
-                SET status = 'cancelled',
-                    approved_by = ?,
-                    approved_at = NOW()
-                WHERE id = ?
-            ");
-            $stmt->execute([$user_id, $permission_id]);
-            $message = "Request cancelled successfully!";
-
-        } elseif ($action === 'edit') {
-            $title = $_POST['title'] ?? '';
-            $description = $_POST['description'] ?? '';
-            $request_type = $_POST['request_type'] ?? '';
-            $start_date = $_POST['start_date'] ?? '';
-            $end_date = $_POST['end_date'] ?? '';
-            $priority = $_POST['priority'] ?? 'medium';
-
-            if (empty($title) || empty($request_type) || empty($start_date)) {
-                $error = "Please fill in all required fields.";
-            } else {
-                $stmt = $pdo->prepare("
-                    UPDATE permissions
-                    SET title = ?, description = ?, request_type = ?,
-                        start_date = ?, end_date = ?, priority = ?
-                    WHERE id = ?
-                ");
-                $stmt->execute([$title, $description, $request_type, $start_date, $end_date, $priority, $permission_id]);
-                $message = "Request updated successfully!";
-            }
-
-        } elseif ($action === 'delete') {
-            $stmt = $pdo->prepare("DELETE FROM permissions WHERE id = ?");
-            $stmt->execute([$permission_id]);
-            $message = "Request deleted successfully!";
+        } catch (PDOException $e) {
+            $error = "Error processing request: " . $e->getMessage();
         }
-    } catch (PDOException $e) {
-        $error = "Error processing request: " . $e->getMessage();
     }
 }
 
@@ -101,10 +148,10 @@ $sql = "
     FROM permissions p
     JOIN users u ON p.staff_id = u.id
     LEFT JOIN users ap ON p.approved_by = ap.id
-    WHERE 1=1
+    WHERE p.school_id = ?
 ";
 
-$params = [];
+$params = [$current_school_id];
 
 if ($filter_status !== 'all') {
     $sql .= " AND p.status = ?";
@@ -149,12 +196,26 @@ try {
             SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected,
             SUM(CASE WHEN priority = 'urgent' AND status = 'pending' THEN 1 ELSE 0 END) as urgent_pending
         FROM permissions
-        WHERE status != 'cancelled'
+        WHERE school_id = ? AND status != 'cancelled'
     ");
-    $stats_stmt->execute();
+    $stats_stmt->execute([$current_school_id]);
     $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $stats = ['total' => 0, 'pending' => 0, 'approved' => 0, 'rejected' => 0, 'urgent_pending' => 0];
+}
+
+$request_types = [];
+try {
+    $typeStmt = $pdo->prepare("
+        SELECT DISTINCT request_type
+        FROM permissions
+        WHERE school_id = ? AND request_type IS NOT NULL AND request_type != ''
+        ORDER BY request_type ASC
+    ");
+    $typeStmt->execute([$current_school_id]);
+    $request_types = $typeStmt->fetchAll(PDO::FETCH_COLUMN);
+} catch (PDOException $e) {
+    $request_types = [];
 }
 ?>
 
@@ -221,14 +282,14 @@ try {
         <!-- Messages -->
         <?php if ($message): ?>
             <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <?php echo $message; ?>
+                <?php echo htmlspecialchars($message); ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         <?php endif; ?>
         
         <?php if ($error): ?>
             <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <?php echo $error; ?>
+                <?php echo htmlspecialchars($error); ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         <?php endif; ?>
@@ -318,16 +379,18 @@ try {
                             <option value="pending" <?php echo $filter_status === 'pending' ? 'selected' : ''; ?>>Pending</option>
                             <option value="approved" <?php echo $filter_status === 'approved' ? 'selected' : ''; ?>>Approved</option>
                             <option value="rejected" <?php echo $filter_status === 'rejected' ? 'selected' : ''; ?>>Rejected</option>
+                            <option value="cancelled" <?php echo $filter_status === 'cancelled' ? 'selected' : ''; ?>>Cancelled</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Request Type</label>
                         <select class="form-control" name="type">
                             <option value="all" <?php echo $filter_type === 'all' ? 'selected' : ''; ?>>All Types</option>
-                            <option value="leave" <?php echo $filter_type === 'leave' ? 'selected' : ''; ?>>Leave</option>
-                            <option value="early_departure" <?php echo $filter_type === 'early_departure' ? 'selected' : ''; ?>>Early Departure</option>
-                            <option value="late_arrival" <?php echo $filter_type === 'late_arrival' ? 'selected' : ''; ?>>Late Arrival</option>
-                            <option value="training" <?php echo $filter_type === 'training' ? 'selected' : ''; ?>>Training</option>
+                            <?php foreach ($request_types as $type): ?>
+                                <option value="<?php echo htmlspecialchars($type); ?>" <?php echo $filter_type === $type ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $type))); ?>
+                                </option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="form-group">
@@ -453,6 +516,7 @@ try {
 
     
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Mobile Menu Toggle
         const mobileMenuToggle = document.getElementById('mobileMenuToggle');
@@ -582,12 +646,19 @@ try {
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                            <label class="form-label">Request Type *</label>
+                                    <label class="form-label">Request Type *</label>
                             <select class="form-control" id="editRequestType" name="request_type" required>
-                                        <option value="leave">Leave</option>
-                                        <option value="early_departure">Early Departure</option>
-                                        <option value="late_arrival">Late Arrival</option>
-                                        <option value="training">Training</option>
+                                        <?php if (!empty($request_types)): ?>
+                                            <?php foreach ($request_types as $type): ?>
+                                                <option value="<?php echo htmlspecialchars($type); ?>">
+                                                    <?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $type))); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <option value="leave">Leave</option>
+                                            <option value="training">Training</option>
+                                            <option value="other">Other</option>
+                                        <?php endif; ?>
                                     </select>
                                 </div>
                             </div>
@@ -665,17 +736,50 @@ try {
     </div>
 
     <script>
+        function toDateTimeLocalValue(rawValue) {
+            if (!rawValue) return '';
+            const normalized = String(rawValue).trim().replace(' ', 'T');
+            if (normalized.length >= 16) {
+                return normalized.slice(0, 16);
+            }
+            if (normalized.length === 10) {
+                return normalized + 'T00:00';
+            }
+            return '';
+        }
+
+        function ensureRequestTypeOption(selectElement, requestType) {
+            if (!selectElement || !requestType) return;
+            const exists = Array.from(selectElement.options).some(opt => opt.value === requestType);
+            if (!exists) {
+                const dynamicOption = document.createElement('option');
+                dynamicOption.value = requestType;
+                dynamicOption.textContent = requestType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                selectElement.appendChild(dynamicOption);
+            }
+        }
+
+        function resolveAttachmentPath(path) {
+            const raw = String(path || '').trim();
+            if (!raw) return '';
+            if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('/') || raw.startsWith('../')) {
+                return raw;
+            }
+            return `../teacher/${raw.replace(/^\.?\//, '')}`;
+        }
+
         // View details
         document.querySelectorAll('.view-details').forEach(button => {
             button.addEventListener('click', function() {
                 const request = JSON.parse(this.getAttribute('data-request'));
+                const attachmentPath = resolveAttachmentPath(request.attachment_path);
                 const content = `
                     <div class="row">
                         <div class="col-md-6">
                             <h6>Request Information</h6>
                             <p><strong>Staff:</strong> ${request.staff_name}</p>
                             <p><strong>Designation:</strong> ${request.staff_designation || 'N/A'}</p>
-                            <p><strong>Type:</strong> ${request.request_type.replace('_', ' ')}</p>
+                            <p><strong>Type:</strong> ${(request.request_type || '').replace(/_/g, ' ')}</p>
                             <p><strong>Priority:</strong> <span class="priority-badge priority-${request.priority}">${request.priority}</span></p>
                             <p><strong>Status:</strong> <span class="status-badge status-${request.status}">${request.status}</span></p>
                         </div>
@@ -711,11 +815,11 @@ try {
                         </div>
                     </div>` : ''}
 
-                    ${request.attachment_path ? `
+                    ${attachmentPath ? `
                     <div class="row mt-3">
                         <div class="col-12">
                             <h6>Attachment</h6>
-                            <a href="${request.attachment_path}" target="_blank" class="btn btn-outline-primary">
+                            <a href="${attachmentPath}" target="_blank" class="btn btn-outline-primary">
                                 <i class="fas fa-file me-1"></i>View Attachment
                             </a>
                         </div>
@@ -761,9 +865,10 @@ try {
                 const request = JSON.parse(this.getAttribute('data-request'));
                 document.getElementById('editPermissionId').value = request.id;
                 document.getElementById('editTitle').value = request.title;
+                ensureRequestTypeOption(document.getElementById('editRequestType'), request.request_type);
                 document.getElementById('editRequestType').value = request.request_type;
-                document.getElementById('editStartDate').value = request.start_date.slice(0, 16); // Remove seconds
-                document.getElementById('editEndDate').value = request.end_date ? request.end_date.slice(0, 16) : '';
+                document.getElementById('editStartDate').value = toDateTimeLocalValue(request.start_date);
+                document.getElementById('editEndDate').value = toDateTimeLocalValue(request.end_date);
                 document.getElementById('editPriority').value = request.priority;
                 document.getElementById('editDescription').value = request.description || '';
             });
@@ -794,4 +899,3 @@ try {
 
 </body>
 </html>
-

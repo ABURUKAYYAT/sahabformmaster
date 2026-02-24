@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/db.php';
 require_once '../includes/functions.php';
+require_once '../includes/cbt_helpers.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
     header("Location: ../index.php");
@@ -9,9 +10,21 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
 }
 
 $current_school_id = require_school_auth();
+ensure_cbt_schema($pdo);
 $teacher_id = $_SESSION['user_id'];
 $action = $_GET['action'] ?? 'list';
 $test_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+$message = '';
+$error = '';
+
+if (!empty($_SESSION['cbt_message'])) {
+    $message = (string)$_SESSION['cbt_message'];
+    unset($_SESSION['cbt_message']);
+}
+if (!empty($_SESSION['cbt_error'])) {
+    $error = (string)$_SESSION['cbt_error'];
+    unset($_SESSION['cbt_error']);
+}
 
 // Fetch classes and subjects assigned to teacher
 $class_stmt = $pdo->prepare("
@@ -22,6 +35,9 @@ $class_stmt = $pdo->prepare("
 ");
 $class_stmt->execute([$teacher_id, $current_school_id]);
 $classes = $class_stmt->fetchAll();
+$class_ids = array_map(static function ($row) {
+    return (int)$row['id'];
+}, $classes);
 
 $subject_stmt = $pdo->prepare("
     SELECT DISTINCT s.id, s.subject_name
@@ -31,6 +47,9 @@ $subject_stmt = $pdo->prepare("
 ");
 $subject_stmt->execute([$teacher_id, $current_school_id]);
 $subjects = $subject_stmt->fetchAll();
+$subject_ids = array_map(static function ($row) {
+    return (int)$row['id'];
+}, $subjects);
 
 // Create or update test
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_test'])) {
@@ -38,27 +57,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_test'])) {
     $class_id = intval($_POST['class_id'] ?? 0);
     $subject_id = intval($_POST['subject_id'] ?? 0);
     $duration = intval($_POST['duration_minutes'] ?? 30);
-    $starts_at = $_POST['starts_at'] ?: null;
-    $ends_at = $_POST['ends_at'] ?: null;
-    $status = $_POST['status'] ?? 'draft';
+    $starts_at = cbt_to_mysql_datetime_or_null($_POST['starts_at'] ?? '');
+    $ends_at = cbt_to_mysql_datetime_or_null($_POST['ends_at'] ?? '');
+    $status = trim((string)($_POST['status'] ?? 'draft'));
+    $allowed_statuses = ['draft', 'published', 'closed'];
+    if (!in_array($status, $allowed_statuses, true)) {
+        $status = 'draft';
+    }
+    $duration = max(5, min(300, $duration));
 
-    if ($test_id > 0) {
-        $stmt = $pdo->prepare("
-            UPDATE cbt_tests
-            SET title = ?, class_id = ?, subject_id = ?, duration_minutes = ?, starts_at = ?, ends_at = ?, status = ?
-            WHERE id = ? AND teacher_id = ? AND school_id = ?
-        ");
-        $stmt->execute([$title, $class_id, $subject_id, $duration, $starts_at, $ends_at, $status, $test_id, $teacher_id, $current_school_id]);
+    if ($title === '') {
+        $_SESSION['cbt_error'] = 'Test title is required.';
+    } elseif (!in_array($class_id, $class_ids, true)) {
+        $_SESSION['cbt_error'] = 'Selected class is not assigned to you.';
+    } elseif (!in_array($subject_id, $subject_ids, true)) {
+        $_SESSION['cbt_error'] = 'Selected subject is not assigned to you.';
+    } elseif ($starts_at !== null && $ends_at !== null && strtotime($ends_at) <= strtotime($starts_at)) {
+        $_SESSION['cbt_error'] = 'End time must be after start time.';
     } else {
-        $stmt = $pdo->prepare("
-            INSERT INTO cbt_tests (school_id, teacher_id, class_id, subject_id, title, duration_minutes, starts_at, ends_at, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-        $stmt->execute([$current_school_id, $teacher_id, $class_id, $subject_id, $title, $duration, $starts_at, $ends_at, $status]);
-        $test_id = $pdo->lastInsertId();
+        if ($test_id > 0) {
+            $stmt = $pdo->prepare("
+                UPDATE cbt_tests
+                SET title = ?, class_id = ?, subject_id = ?, duration_minutes = ?, starts_at = ?, ends_at = ?, status = ?, updated_at = NOW()
+                WHERE id = ? AND teacher_id = ? AND school_id = ?
+            ");
+            $stmt->execute([$title, $class_id, $subject_id, $duration, $starts_at, $ends_at, $status, $test_id, $teacher_id, $current_school_id]);
+        } else {
+            $stmt = $pdo->prepare("
+                INSERT INTO cbt_tests (school_id, teacher_id, class_id, subject_id, title, duration_minutes, starts_at, ends_at, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([$current_school_id, $teacher_id, $class_id, $subject_id, $title, $duration, $starts_at, $ends_at, $status]);
+            $test_id = (int)$pdo->lastInsertId();
+        }
+        $_SESSION['cbt_message'] = 'CBT test saved successfully.';
     }
 
-    header("Location: cbt_tests.php?action=edit&id=" . $test_id);
+    header("Location: cbt_tests.php?action=edit&id=" . (int)$test_id);
     exit;
 }
 
@@ -71,19 +106,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_question']) && $t
     $option_d = trim($_POST['option_d'] ?? '');
     $correct_option = $_POST['correct_option'] ?? 'A';
 
-    $stmt = $pdo->prepare("
-        INSERT INTO cbt_questions (test_id, question_text, option_a, option_b, option_c, option_d, correct_option)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ");
-    $stmt->execute([$test_id, $question_text, $option_a, $option_b, $option_c, $option_d, $correct_option]);
+    $allowed_options = ['A', 'B', 'C', 'D'];
+    if (!in_array($correct_option, $allowed_options, true)) {
+        $correct_option = 'A';
+    }
 
-    header("Location: cbt_tests.php?action=edit&id=" . $test_id);
+    $owner_stmt = $pdo->prepare("SELECT id FROM cbt_tests WHERE id = ? AND teacher_id = ? AND school_id = ?");
+    $owner_stmt->execute([$test_id, $teacher_id, $current_school_id]);
+    $owns_test = (bool)$owner_stmt->fetchColumn();
+
+    if (!$owns_test) {
+        $_SESSION['cbt_error'] = 'You are not allowed to modify this test.';
+    } elseif ($question_text === '' || $option_a === '' || $option_b === '' || $option_c === '' || $option_d === '') {
+        $_SESSION['cbt_error'] = 'Question text and all options are required.';
+    } else {
+        $stmt = $pdo->prepare("
+            INSERT INTO cbt_questions (test_id, question_text, option_a, option_b, option_c, option_d, correct_option)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([$test_id, $question_text, $option_a, $option_b, $option_c, $option_d, $correct_option]);
+        $_SESSION['cbt_message'] = 'Question added successfully.';
+    }
+
+    header("Location: cbt_tests.php?action=edit&id=" . (int)$test_id);
     exit;
 }
 
 // Import questions from question bank
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_questions']) && $test_id > 0) {
+    $owner_stmt = $pdo->prepare("SELECT id FROM cbt_tests WHERE id = ? AND teacher_id = ? AND school_id = ?");
+    $owner_stmt->execute([$test_id, $teacher_id, $current_school_id]);
+    if (!$owner_stmt->fetchColumn()) {
+        $_SESSION['cbt_error'] = 'You are not allowed to import questions for this test.';
+        header("Location: cbt_tests.php?action=edit&id=" . (int)$test_id);
+        exit;
+    }
+
     $question_ids = $_POST['question_ids'] ?? [];
+    $imported_count = 0;
     if (!empty($question_ids)) {
         foreach ($question_ids as $qid) {
             $qid = intval($qid);
@@ -140,9 +200,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_questions']) &
                 $option_map['D'],
                 $correct
             ]);
+            $imported_count++;
         }
     }
-    header("Location: cbt_tests.php?action=edit&id=" . $test_id);
+    $_SESSION['cbt_message'] = $imported_count > 0
+        ? "Imported {$imported_count} question(s) from bank."
+        : 'No questions were imported. Check selection/duplicates/options.';
+    header("Location: cbt_tests.php?action=edit&id=" . (int)$test_id);
     exit;
 }
 
@@ -155,7 +219,8 @@ if (isset($_GET['delete_q']) && $test_id > 0) {
         WHERE q.id = ? AND t.teacher_id = ? AND t.school_id = ?
     ");
     $stmt->execute([$qid, $teacher_id, $current_school_id]);
-    header("Location: cbt_tests.php?action=edit&id=" . $test_id);
+    $_SESSION['cbt_message'] = 'Question deleted.';
+    header("Location: cbt_tests.php?action=edit&id=" . (int)$test_id);
     exit;
 }
 
@@ -167,9 +232,14 @@ if ($test_id > 0) {
     $stmt->execute([$test_id, $teacher_id, $current_school_id]);
     $test = $stmt->fetch();
 
-    $qstmt = $pdo->prepare("SELECT * FROM cbt_questions WHERE test_id = ? ORDER BY id DESC");
+    $qstmt = $pdo->prepare("SELECT * FROM cbt_questions WHERE test_id = ? ORDER BY question_order ASC, id ASC");
     $qstmt->execute([$test_id]);
     $questions = $qstmt->fetchAll();
+
+    if (!$test && $action === 'edit') {
+        $action = 'list';
+        $error = 'Test not found or you do not have access to it.';
+    }
 }
 
 // Bank questions for import (only on edit)
@@ -188,7 +258,12 @@ if ($action === 'edit' && $test_id > 0 && $test) {
 }
 // List tests
 $tests_stmt = $pdo->prepare("
-    SELECT t.*, c.class_name, s.subject_name
+    SELECT
+        t.*,
+        c.class_name,
+        s.subject_name,
+        (SELECT COUNT(*) FROM cbt_questions q WHERE q.test_id = t.id) AS question_count,
+        (SELECT COUNT(*) FROM cbt_attempts a WHERE a.test_id = t.id AND a.status = 'submitted') AS submitted_count
     FROM cbt_tests t
     JOIN classes c ON t.class_id = c.id
     JOIN subjects s ON t.subject_id = s.id
@@ -254,6 +329,17 @@ $tests = $tests_stmt->fetchAll();
                 </a>
             </div>
         </div>
+
+        <?php if ($message): ?>
+            <div class="alert alert-success" style="margin-bottom: 1rem;">
+                <?php echo htmlspecialchars($message); ?>
+            </div>
+        <?php endif; ?>
+        <?php if ($error): ?>
+            <div class="alert alert-danger" style="margin-bottom: 1rem;">
+                <?php echo htmlspecialchars($error); ?>
+            </div>
+        <?php endif; ?>
 
         <?php if ($action === 'create' || $action === 'edit'): ?>
             <div class="form-page-modern">
@@ -465,7 +551,10 @@ $tests = $tests_stmt->fetchAll();
                             <th>Title</th>
                             <th>Class</th>
                             <th>Subject</th>
+                            <th>Schedule</th>
                             <th>Duration</th>
+                            <th>Questions</th>
+                            <th>Submissions</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -476,7 +565,19 @@ $tests = $tests_stmt->fetchAll();
                                 <td><?php echo htmlspecialchars($t['title']); ?></td>
                                 <td><?php echo htmlspecialchars($t['class_name']); ?></td>
                                 <td><?php echo htmlspecialchars($t['subject_name']); ?></td>
+                                <td>
+                                    <?php if (!empty($t['starts_at'])): ?>
+                                        <?php echo date('M d, Y H:i', strtotime($t['starts_at'])); ?>
+                                        <?php if (!empty($t['ends_at'])): ?>
+                                            <br><small>to <?php echo date('M d, Y H:i', strtotime($t['ends_at'])); ?></small>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <span class="text-muted">No schedule</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?php echo intval($t['duration_minutes']); ?> mins</td>
+                                <td><?php echo (int)$t['question_count']; ?></td>
+                                <td><?php echo (int)$t['submitted_count']; ?></td>
                                 <td><?php echo htmlspecialchars($t['status']); ?></td>
                                 <td>
                                     <a href="cbt_tests.php?action=edit&id=<?php echo $t['id']; ?>" class="btn btn-sm btn-outline-primary">Edit</a>

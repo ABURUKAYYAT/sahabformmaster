@@ -8,6 +8,29 @@ require_once '../../config/db.php';
 
 header('Content-Type: application/json');
 
+function ensure_calendar_events_table(PDO $pdo)
+{
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS calendar_events (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            school_id INT UNSIGNED NULL,
+            title VARCHAR(255) NOT NULL,
+            event_date DATE NOT NULL,
+            event_type ENUM('academic', 'holiday', 'exam', 'sports', 'ceremony', 'meeting', 'other') NOT NULL DEFAULT 'academic',
+            description TEXT NULL,
+            location VARCHAR(255) NULL,
+            event_time TIME NULL,
+            is_all_day TINYINT(1) NOT NULL DEFAULT 0,
+            color VARCHAR(20) NULL,
+            created_by INT UNSIGNED NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_calendar_school_date (school_id, event_date),
+            INDEX idx_calendar_type (event_type)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+}
+
 // Check if principal is logged in
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'principal') {
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
@@ -21,6 +44,8 @@ $month = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
 $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
 
 try {
+    ensure_calendar_events_table($pdo);
+
     // Get events for the specified month
     $stmt = $pdo->prepare("
         SELECT id, title, event_date, event_type, description, location, event_time, is_all_day, color

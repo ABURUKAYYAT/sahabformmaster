@@ -192,46 +192,39 @@ $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
     <style>
         /* Custom styles for School Diary page */
 
-        /* Welcome Section Enhancement */
+        /* Welcome Section (simple white, professional) */
         .welcome-section {
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-            color: #ffffff;
-            padding: 2rem;
+            background: #ffffff;
+            color: #0f172a;
+            padding: 1.5rem;
             border-radius: var(--border-radius-xl);
-            margin-bottom: 2rem;
-            box-shadow: var(--shadow-lg);
-            position: relative;
-            overflow: hidden;
+            margin-bottom: 1.25rem;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
         }
 
         .welcome-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 200px;
-            height: 200px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            transform: translate(50%, -50%);
+            display: none;
         }
 
         .welcome-section h2 {
-            font-size: 2.2rem;
+            font-size: 1.65rem;
             font-weight: 700;
-            margin-bottom: 0.5rem;
-            position: relative;
-            z-index: 2;
-            color: #ffffff;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            margin-bottom: 0.4rem;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+        }
+
+        .welcome-section h2 i {
+            color: #334155;
+            font-size: 1.1rem;
         }
 
         .welcome-section p {
-            font-size: 1.1rem;
-            color: rgba(255, 255, 255, 0.95);
-            position: relative;
-            z-index: 2;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            font-size: 1rem;
+            color: #475569;
         }
 
         /* Header Actions Enhancement */
@@ -548,11 +541,11 @@ $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
 
         @media (max-width: 768px) {
             .welcome-section {
-                padding: 1.5rem;
+                padding: 1.25rem;
             }
 
             .welcome-section h2 {
-                font-size: 1.8rem;
+                font-size: 1.35rem;
             }
 
             .form-row {
@@ -601,13 +594,12 @@ $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
         @media (max-width: 480px) {
-            .welcome-section::before {
-                width: 150px;
-                height: 150px;
+            .welcome-section {
+                padding: 1rem;
             }
 
             .welcome-section h2 {
-                font-size: 1.5rem;
+                font-size: 1.2rem;
             }
 
             .form-row {
@@ -845,7 +837,7 @@ $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
         <main class="main-content">
             <div class="content-header">
                 <div class="welcome-section">
-                    <h2>📔 School Diary Management</h2>
+                    <h2><i class="fas fa-book-open"></i> School Diary Management</h2>
                     <p>Manage and track all school activities, events, and programs</p>
                 </div>
                 <div class="header-actions">

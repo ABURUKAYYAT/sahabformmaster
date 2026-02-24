@@ -178,6 +178,8 @@ try {
             background: #ffffff;
             border: 1px solid rgba(37, 99, 235, 0.12);
             box-shadow: 0 12px 30px rgba(30, 58, 138, 0.08);
+            padding: 1.5rem 2rem;
+            border-radius: 14px;
         }
 
         .card {
@@ -199,6 +201,12 @@ try {
 
         .notification-badge {
             background: var(--primary-color);
+        }
+
+        @media (max-width: 768px) {
+            .content-header {
+                padding: 1.25rem 1rem;
+            }
         }
     </style>
 </head>

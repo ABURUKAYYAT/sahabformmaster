@@ -2,6 +2,7 @@
 session_start();
 require_once '../config/db.php';
 require_once '../includes/functions.php';
+require_once '../includes/permissions_helpers.php';
 
 // Check if user is logged in and is a teacher
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
@@ -10,6 +11,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
 }
 
 $current_school_id = require_school_auth();
+ensure_permissions_schema($pdo);
 
 $user_id = $_SESSION['user_id'];
 $request_id = $_GET['id'] ?? '';
