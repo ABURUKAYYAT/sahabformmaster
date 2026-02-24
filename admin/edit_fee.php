@@ -706,5 +706,6 @@ $feeTypes = [
             });
         });
     </script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

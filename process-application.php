@@ -320,7 +320,8 @@ function sendConfirmationEmail($email, $appNumber, $name) {
             Admissions Office<br>
             Sahab Academy</p>
         </div>
-    </body>
+    <?php include 'includes/floating-button.php'; ?>
+</body>
     </html>
     ";
     

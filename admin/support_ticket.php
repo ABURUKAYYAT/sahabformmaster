@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 session_start();
 require_once '../config/db.php';
 require_once '../includes/functions.php';
@@ -219,6 +219,7 @@ $read_stmt->execute([$ticket_id, $principal_id]);
         </div>
     </main>
 </div>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>
 

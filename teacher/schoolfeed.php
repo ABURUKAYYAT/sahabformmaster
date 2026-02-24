@@ -445,5 +445,6 @@ if (!empty($news_items)) {
             location.reload();
         }, 45000);
     </script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

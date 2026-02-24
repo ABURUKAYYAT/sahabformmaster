@@ -288,5 +288,6 @@ function toggleComplaint(id){
     el.classList.toggle('hidden');
 }
 </script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

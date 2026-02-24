@@ -979,5 +979,6 @@ $fix_scripts = [
             document.querySelector('.sidebar').classList.toggle('show');
         }
     </script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

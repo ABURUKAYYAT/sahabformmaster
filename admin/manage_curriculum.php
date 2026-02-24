@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // admin/manage_curriculum.php
 session_start();
 require_once '../config/db.php';
@@ -1068,6 +1068,7 @@ $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
         });
     </script>
 
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>
 

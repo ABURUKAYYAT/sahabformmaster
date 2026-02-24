@@ -281,5 +281,6 @@ function request_status_badge_class($status)
         </section>
     </main>
 </div>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

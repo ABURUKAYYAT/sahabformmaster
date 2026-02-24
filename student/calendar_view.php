@@ -432,5 +432,6 @@ $next_year = $month == 12 ? $year + 1 : $year;
             alert('Calendar export feature would be implemented here. Would export to PDF or CSV.');
         }
     </script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 session_start();
 require_once '../config/db.php';
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'principal') { header("Location: ../index.php"); exit; }
@@ -874,6 +874,7 @@ function renderCalendar($month, $year, $events) {
             });
         }
     </script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>
 

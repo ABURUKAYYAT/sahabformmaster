@@ -978,5 +978,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['set_reminder'])) {
             $('[data-bs-toggle="tooltip"]').tooltip();
         });
     </script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

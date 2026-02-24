@@ -951,7 +951,8 @@ try {
             </div>
             
         </div>
-    </body>
+    <?php include '../includes/floating-button.php'; ?>
+</body>
     </html>
     <?php
     echo ob_get_clean();

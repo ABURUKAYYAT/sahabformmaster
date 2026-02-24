@@ -588,5 +588,6 @@ log_super_action('view_edit_user', 'user', $user_id, 'Accessed edit user page fo
             document.querySelector('.sidebar').classList.toggle('show');
         }
     </script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

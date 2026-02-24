@@ -98,6 +98,7 @@ $nowTs = time();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CBT Tests</title>
     <link rel="stylesheet" href="../assets/css/student-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/cbt-schoolfeed-theme.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
@@ -128,6 +129,7 @@ $nowTs = time();
 <div class="dashboard-container">
     <?php include '../includes/student_sidebar.php'; ?>
     <main class="main-content">
+        <div class="main-container">
         <div class="content-header">
             <div class="welcome-section">
                 <h2>CBT Tests</h2>
@@ -145,6 +147,7 @@ $nowTs = time();
                 <?php echo htmlspecialchars($error); ?>
             </div>
         <?php endif; ?>
+        <div id="cbt-offline-status" style="display:none;"></div>
 
         <div class="modern-card">
             <div class="card-body-modern">
@@ -220,7 +223,9 @@ $nowTs = time();
                                             <?php echo $isInProgress ? 'Resume' : 'Start'; ?>
                                         </a>
                                     <?php elseif ($isSubmitted): ?>
-                                        <span class="text-muted">Submitted</span>
+                                        <a class="btn btn-sm btn-outline-primary" href="generate_cbt_result_pdf.php?test_id=<?php echo (int)$t['id']; ?>">
+                                            Generate CBT Result
+                                        </a>
                                     <?php elseif ($isScheduled): ?>
                                         <span class="text-muted">Wait for start</span>
                                     <?php elseif (!$hasQuestions): ?>
@@ -236,7 +241,19 @@ $nowTs = time();
                 <?php endif; ?>
             </div>
         </div>
+        </div>
     </main>
 </div>
+<script src="../assets/js/cbt-offline-sync.js"></script>
+<script>
+    CBTOfflineSync.init({
+        queueKey: 'cbt_student_offline_queue_v1',
+        formSelector: 'form[data-offline-sync="true"]',
+        statusElementId: 'cbt-offline-status',
+        statusPrefix: 'Student CBT Sync:',
+        swPath: '../cbt-sw.js'
+    });
+</script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

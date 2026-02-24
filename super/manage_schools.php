@@ -1403,5 +1403,6 @@ $status_counts = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
             document.querySelector('.sidebar').classList.toggle('show');
         }
     </script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

@@ -205,5 +205,6 @@ $schoolInfo = $pdo->query("SELECT * FROM school_profile LIMIT 1")->fetch();
             window.print();
         }
     </script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

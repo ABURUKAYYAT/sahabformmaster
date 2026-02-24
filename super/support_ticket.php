@@ -246,5 +246,6 @@ $read_stmt->execute([$ticket_id, $super_id]);
         </div>
     </main>
 </div>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

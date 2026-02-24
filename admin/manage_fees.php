@@ -292,5 +292,6 @@ $fees = $pdo->query("SELECT fs.*, c.class_name
             </form>
         </div>
     </div>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

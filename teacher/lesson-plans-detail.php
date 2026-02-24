@@ -1222,5 +1222,6 @@ function getApprovalBadge($status) {
 
     
 
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

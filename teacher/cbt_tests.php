@@ -97,6 +97,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_test'])) {
     exit;
 }
 
+// Quick status update (publish/draft/close)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['set_test_status'])) {
+    $target_test_id = (int)($_POST['target_test_id'] ?? 0);
+    $target_status = trim((string)($_POST['target_status'] ?? 'draft'));
+    $redirect_mode = trim((string)($_POST['redirect_mode'] ?? 'list'));
+    $allowed_statuses = ['draft', 'published', 'closed'];
+
+    if (!in_array($target_status, $allowed_statuses, true)) {
+        $_SESSION['cbt_error'] = 'Invalid CBT status selected.';
+    } elseif ($target_test_id <= 0) {
+        $_SESSION['cbt_error'] = 'Invalid test selected.';
+    } else {
+        $own_stmt = $pdo->prepare("
+            SELECT t.id,
+                   t.status,
+                   (SELECT COUNT(*) FROM cbt_questions q WHERE q.test_id = t.id) AS question_count
+            FROM cbt_tests t
+            WHERE t.id = ? AND t.teacher_id = ? AND t.school_id = ?
+            LIMIT 1
+        ");
+        $own_stmt->execute([$target_test_id, $teacher_id, $current_school_id]);
+        $target_test = $own_stmt->fetch();
+
+        if (!$target_test) {
+            $_SESSION['cbt_error'] = 'Test not found or access denied.';
+        } elseif ($target_status === 'published' && (int)$target_test['question_count'] <= 0) {
+            $_SESSION['cbt_error'] = 'Add at least one question before publishing.';
+        } else {
+            $upd = $pdo->prepare("
+                UPDATE cbt_tests
+                SET status = ?, updated_at = NOW()
+                WHERE id = ? AND teacher_id = ? AND school_id = ?
+            ");
+            $upd->execute([$target_status, $target_test_id, $teacher_id, $current_school_id]);
+            $_SESSION['cbt_message'] = 'Test status updated to ' . ucfirst($target_status) . '.';
+        }
+    }
+
+    if ($redirect_mode === 'edit') {
+        header("Location: cbt_tests.php?action=edit&id=" . (int)$target_test_id);
+    } else {
+        header("Location: cbt_tests.php");
+    }
+    exit;
+}
+
 // Add question
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_question']) && $test_id > 0) {
     $question_text = trim($_POST['question_text'] ?? '');
@@ -281,6 +327,7 @@ $tests = $tests_stmt->fetchAll();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CBT Tests - Teacher</title>
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/cbt-schoolfeed-theme.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -313,6 +360,7 @@ $tests = $tests_stmt->fetchAll();
 <div class="dashboard-container">
     <?php include '../includes/teacher_sidebar.php'; ?>
     <main class="main-content">
+        <div class="main-container">
         <div class="content-header">
             <div class="welcome-section">
                 <h2>CBT Tests</h2>
@@ -340,6 +388,7 @@ $tests = $tests_stmt->fetchAll();
                 <?php echo htmlspecialchars($error); ?>
             </div>
         <?php endif; ?>
+        <div id="cbt-offline-status" style="display:none;"></div>
 
         <?php if ($action === 'create' || $action === 'edit'): ?>
             <div class="form-page-modern">
@@ -408,6 +457,7 @@ $tests = $tests_stmt->fetchAll();
                                         <option value="published" <?php echo ($test['status'] ?? '') === 'published' ? 'selected' : ''; ?>>Published</option>
                                         <option value="closed" <?php echo ($test['status'] ?? '') === 'closed' ? 'selected' : ''; ?>>Closed</option>
                                     </select>
+                                    <small class="text-muted">Only tests with status <strong>Published</strong> are shown to students.</small>
                                 </div>
                             </div>
 
@@ -422,6 +472,34 @@ $tests = $tests_stmt->fetchAll();
                                 </button>
                             </div>
                         </form>
+
+                        <?php if ($action === 'edit' && !empty($test['id'])): ?>
+                            <div class="d-flex justify-content-end align-items-center mt-3" style="gap: 0.75rem;">
+                                <?php if (($test['status'] ?? '') !== 'published'): ?>
+                                    <form method="POST" style="display: inline;">
+                                        <input type="hidden" name="set_test_status" value="1">
+                                        <input type="hidden" name="target_test_id" value="<?php echo (int)$test['id']; ?>">
+                                        <input type="hidden" name="target_status" value="published">
+                                        <input type="hidden" name="redirect_mode" value="edit">
+                                        <button type="submit" class="btn-modern-primary">
+                                            <i class="fas fa-bullhorn"></i>
+                                            <span>Publish Now</span>
+                                        </button>
+                                    </form>
+                                <?php else: ?>
+                                    <form method="POST" style="display: inline;">
+                                        <input type="hidden" name="set_test_status" value="1">
+                                        <input type="hidden" name="target_test_id" value="<?php echo (int)$test['id']; ?>">
+                                        <input type="hidden" name="target_status" value="draft">
+                                        <input type="hidden" name="redirect_mode" value="edit">
+                                        <button type="submit" class="btn-modern-outline">
+                                            <i class="fas fa-eye-slash"></i>
+                                            <span>Move to Draft</span>
+                                        </button>
+                                    </form>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -581,6 +659,25 @@ $tests = $tests_stmt->fetchAll();
                                 <td><?php echo htmlspecialchars($t['status']); ?></td>
                                 <td>
                                     <a href="cbt_tests.php?action=edit&id=<?php echo $t['id']; ?>" class="btn btn-sm btn-outline-primary">Edit</a>
+                                    <?php if (($t['status'] ?? '') !== 'published'): ?>
+                                        <form method="POST" style="display:inline-block; margin-left: 0.35rem;">
+                                            <input type="hidden" name="set_test_status" value="1">
+                                            <input type="hidden" name="target_test_id" value="<?php echo (int)$t['id']; ?>">
+                                            <input type="hidden" name="target_status" value="published">
+                                            <input type="hidden" name="redirect_mode" value="list">
+                                            <button type="submit" class="btn btn-sm btn-success" <?php echo ((int)$t['question_count'] <= 0) ? 'disabled title="Add questions before publishing"' : ''; ?>>
+                                                Publish
+                                            </button>
+                                        </form>
+                                    <?php else: ?>
+                                        <form method="POST" style="display:inline-block; margin-left: 0.35rem;">
+                                            <input type="hidden" name="set_test_status" value="1">
+                                            <input type="hidden" name="target_test_id" value="<?php echo (int)$t['id']; ?>">
+                                            <input type="hidden" name="target_status" value="draft">
+                                            <input type="hidden" name="redirect_mode" value="list">
+                                            <button type="submit" class="btn btn-sm btn-warning">Move to Draft</button>
+                                        </form>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -589,9 +686,20 @@ $tests = $tests_stmt->fetchAll();
                 </div>
             </div>
         <?php endif; ?>
+        </div>
     </main>
 </div>
 
 <?php include '../includes/floating-button.php'; ?>
+<script src="../assets/js/cbt-offline-sync.js"></script>
+<script>
+    CBTOfflineSync.init({
+        queueKey: 'cbt_teacher_offline_queue_v1',
+        formSelector: 'form[method="POST"], form[method="post"]',
+        statusElementId: 'cbt-offline-status',
+        statusPrefix: 'Teacher CBT Sync:',
+        swPath: '../cbt-sw.js'
+    });
+</script>
 </body>
 </html>

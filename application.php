@@ -871,5 +871,6 @@ document.getElementById('applicationForm').addEventListener('submit', async func
     }
 });
     </script>
+<?php include 'includes/floating-button.php'; ?>
 </body>
 </html>

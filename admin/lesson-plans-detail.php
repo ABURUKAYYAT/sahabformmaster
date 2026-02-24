@@ -445,5 +445,6 @@ function getApprovalBadge($status) {
     </div>
 </footer>
 
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

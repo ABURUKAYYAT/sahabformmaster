@@ -609,5 +609,6 @@ $bank_accounts = $pdo->query("SELECT * FROM subscription_bank_accounts ORDER BY 
         </div>
     </main>
 </div>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

@@ -1179,5 +1179,6 @@ $updated = isset($_GET['updated']);
             document.querySelector('.sidebar').classList.toggle('show');
         }
     </script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

@@ -1249,5 +1249,6 @@ window.addEventListener('resize', handleResponsiveLayout);
 handleResponsiveLayout(); // Initial call
 </script>
 
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

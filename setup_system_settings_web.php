@@ -136,5 +136,6 @@ try {
         <a href="super/system_settings.php" class="btn">Go to System Settings</a>
         <a href="super/dashboard.php" class="btn" style="margin-left: 10px; background: #6c757d;">Back to Dashboard</a>
     </div>
+<?php include 'includes/floating-button.php'; ?>
 </body>
 </html>

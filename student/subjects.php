@@ -93,5 +93,6 @@ $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </table>
     <?php endif; ?>
 </main>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

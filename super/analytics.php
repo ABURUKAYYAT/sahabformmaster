@@ -965,5 +965,6 @@ try {
             document.querySelector('.sidebar').classList.toggle('active');
         }
     </script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

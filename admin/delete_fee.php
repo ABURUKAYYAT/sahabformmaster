@@ -483,5 +483,6 @@ $similarFees = $similarFees->fetchAll();
             });
         });
     </script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

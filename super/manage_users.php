@@ -1458,5 +1458,6 @@ $roles = $pdo->query("SELECT DISTINCT role FROM users ORDER BY role")->fetchAll(
             alert('Bulk import functionality coming soon! This will allow CSV upload for batch user creation.');
         }
     </script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

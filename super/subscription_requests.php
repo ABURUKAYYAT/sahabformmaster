@@ -681,5 +681,6 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </main>
 </div>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

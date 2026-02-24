@@ -1155,5 +1155,6 @@ if ($proof_error === 'invalid_request') {
         });
     })();
 </script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

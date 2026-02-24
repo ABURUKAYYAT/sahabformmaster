@@ -35,6 +35,7 @@ $attempts = $stmt->fetchAll();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CBT Results - Teacher</title>
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/cbt-schoolfeed-theme.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -67,6 +68,7 @@ $attempts = $stmt->fetchAll();
 <div class="dashboard-container">
     <?php include '../includes/teacher_sidebar.php'; ?>
     <main class="main-content">
+        <div class="main-container">
         <div class="content-header">
             <div class="welcome-section">
                 <h2>CBT Results</h2>
@@ -79,6 +81,7 @@ $attempts = $stmt->fetchAll();
                 </a>
             </div>
         </div>
+        <div id="cbt-offline-status" style="display:none;"></div>
 
         <div class="modern-card">
             <div class="card-body-modern">
@@ -117,9 +120,20 @@ $attempts = $stmt->fetchAll();
                 </table>
             </div>
         </div>
+        </div>
     </main>
 </div>
 
 <?php include '../includes/floating-button.php'; ?>
+<script src="../assets/js/cbt-offline-sync.js"></script>
+<script>
+    CBTOfflineSync.init({
+        queueKey: 'cbt_teacher_offline_queue_v1',
+        formSelector: 'form[data-offline-sync="true"]',
+        statusElementId: 'cbt-offline-status',
+        statusPrefix: 'Teacher CBT Sync:',
+        swPath: '../cbt-sw.js'
+    });
+</script>
 </body>
 </html>

@@ -1133,5 +1133,6 @@ try {
             setTimeout(animateProgressBars, 500);
         });
     </script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

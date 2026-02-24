@@ -74,5 +74,6 @@ $usage_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <body>
     <!-- Similar detailed view structure as student_details.php -->
     <!-- Implementation would show complete question details -->
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

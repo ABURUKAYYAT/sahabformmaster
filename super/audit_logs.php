@@ -904,5 +904,6 @@ $stats['super_admin_logs'] = $pdo->query("SELECT COUNT(*) FROM access_logs al JO
             document.querySelector('.sidebar').classList.toggle('show');
         }
     </script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

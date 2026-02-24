@@ -136,9 +136,32 @@ if ($remaining_seconds <= 0) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Take CBT</title>
     <link rel="stylesheet" href="../assets/css/student-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/cbt-schoolfeed-theme.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .cbt-question { display: none; }
+        .cbt-question.active { display: block; }
+        .cbt-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        .cbt-progress {
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 0.5rem;
+        }
+    </style>
     <script>
         let duration = <?php echo (int)$remaining_seconds; ?>;
+        let currentQuestionIndex = 0;
+        let totalQuestions = <?php echo (int)count($questions); ?>;
+        const attemptId = <?php echo (int)$attempt_id; ?>;
+        const localAnswersKey = `cbt_local_answers_${attemptId}`;
+
         function startTimer() {
             const el = document.getElementById('timer');
             const tick = () => {
@@ -154,7 +177,98 @@ if ($remaining_seconds <= 0) {
             setInterval(tick, 1000);
             tick();
         }
-        window.onload = startTimer;
+
+        function showQuestion(index) {
+            const questions = document.querySelectorAll('.cbt-question');
+            if (!questions.length) return;
+
+            if (index < 0) index = 0;
+            if (index >= questions.length) index = questions.length - 1;
+            currentQuestionIndex = index;
+
+            questions.forEach((q, i) => {
+                q.classList.toggle('active', i === index);
+            });
+
+            const progress = document.getElementById('question-progress');
+            if (progress) {
+                progress.textContent = `Question ${index + 1} of ${questions.length}`;
+            }
+
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const submitBtn = document.getElementById('submit-btn');
+
+            if (prevBtn) prevBtn.style.display = index === 0 ? 'none' : 'inline-block';
+            if (nextBtn) nextBtn.style.display = index === questions.length - 1 ? 'none' : 'inline-block';
+            if (submitBtn) submitBtn.style.display = index === questions.length - 1 ? 'inline-block' : 'none';
+        }
+
+        function goNext() {
+            const questions = document.querySelectorAll('.cbt-question');
+            if (!questions.length) return;
+
+            const currentQuestion = questions[currentQuestionIndex];
+            const selected = currentQuestion.querySelector('input[type="radio"]:checked');
+            if (!selected) {
+                alert('Please select an answer before moving to the next question.');
+                return;
+            }
+
+            showQuestion(currentQuestionIndex + 1);
+        }
+
+        function goPrev() {
+            showQuestion(currentQuestionIndex - 1);
+        }
+
+        function saveAnswersToLocal() {
+            const answers = {};
+            document.querySelectorAll('.cbt-question input[type="radio"]:checked').forEach((input) => {
+                const match = input.name.match(/^answers\[(\d+)\]$/);
+                if (match) {
+                    answers[match[1]] = input.value;
+                }
+            });
+            localStorage.setItem(localAnswersKey, JSON.stringify(answers));
+        }
+
+        function restoreAnswersFromLocal() {
+            let stored = {};
+            try {
+                stored = JSON.parse(localStorage.getItem(localAnswersKey) || '{}');
+            } catch (e) {
+                stored = {};
+            }
+
+            Object.keys(stored).forEach((questionId) => {
+                const value = stored[questionId];
+                const selector = `input[name="answers[${questionId}]"][value="${value}"]`;
+                const input = document.querySelector(selector);
+                if (input && !input.checked) {
+                    input.checked = true;
+                }
+            });
+        }
+
+        window.onload = function () {
+            startTimer();
+            restoreAnswersFromLocal();
+            document.querySelectorAll('.cbt-question input[type="radio"]').forEach((input) => {
+                input.addEventListener('change', saveAnswersToLocal);
+            });
+            const form = document.getElementById('cbt-form');
+            if (form) {
+                form.addEventListener('submit', function () {
+                    if (navigator.onLine) {
+                        localStorage.removeItem(localAnswersKey);
+                    } else {
+                        saveAnswersToLocal();
+                    }
+                });
+            }
+            showQuestion(0);
+        };
     </script>
 </head>
 <body>
@@ -181,13 +295,24 @@ if ($remaining_seconds <= 0) {
 <div class="dashboard-container">
     <?php include '../includes/student_sidebar.php'; ?>
     <main class="main-content">
-        <form id="cbt-form" method="POST" action="cbt_submit.php">
+        <div class="main-container">
+        <div id="cbt-offline-status" style="display:none; margin-bottom: 1rem;"></div>
+        <form id="cbt-form" method="POST" action="cbt_submit.php" data-offline-sync="true" data-offline-message="You are offline. Your CBT submission was queued and will auto-sync when internet returns.">
             <input type="hidden" name="test_id" value="<?php echo (int)$test_id; ?>">
             <input type="hidden" name="attempt_id" value="<?php echo (int)$attempt_id; ?>">
 
+            <div class="modern-card" style="margin-bottom: 1rem;">
+                <div class="card-body-modern">
+                    <div class="cbt-progress" id="question-progress"></div>
+                    <p style="margin: 0; color: #64748b;">
+                        Answer each question and click <strong>Next</strong> to continue.
+                    </p>
+                </div>
+            </div>
+
             <?php foreach ($questions as $index => $q): ?>
                 <?php $qid = (int)$q['id']; ?>
-                <div class="modern-card" style="margin-bottom: 1.5rem;">
+                <div class="modern-card cbt-question" data-index="<?php echo $index; ?>" style="margin-bottom: 1.5rem;">
                     <div class="card-body-modern">
                         <h4>Q<?php echo $index + 1; ?>. <?php echo htmlspecialchars($q['question_text']); ?></h4>
                         <div>
@@ -200,9 +325,27 @@ if ($remaining_seconds <= 0) {
                 </div>
             <?php endforeach; ?>
 
-            <button type="submit" class="btn btn-primary">Submit</button>
+            <div class="cbt-nav">
+                <button type="button" id="prev-btn" class="btn btn-secondary" onclick="goPrev()">Previous</button>
+                <div>
+                    <button type="button" id="next-btn" class="btn btn-primary" onclick="goNext()">Next</button>
+                    <button type="submit" id="submit-btn" class="btn btn-success" style="display:none;">Submit</button>
+                </div>
+            </div>
         </form>
+        </div>
     </main>
 </div>
+<script src="../assets/js/cbt-offline-sync.js"></script>
+<script>
+    CBTOfflineSync.init({
+        queueKey: 'cbt_student_offline_queue_v1',
+        formSelector: 'form[data-offline-sync="true"]',
+        statusElementId: 'cbt-offline-status',
+        statusPrefix: 'Student CBT Sync:',
+        swPath: '../cbt-sw.js'
+    });
+</script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 session_start();
 require_once '../config/db.php';
 require_once 'helpers.php';
@@ -1093,6 +1093,7 @@ function calculateSummary($data) {
             window.location.href = 'export_report.php?' + params.toString();
         }
     </script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>
 

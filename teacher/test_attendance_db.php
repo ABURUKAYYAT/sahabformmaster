@@ -171,6 +171,7 @@ echo "
     <h2>Summary</h2>
     <p>If all tests passed, the database should be working correctly for attendance functionality.</p>
     <p><a href='class_attendance.php'>Return to Class Attendance</a></p>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>";
 ?>

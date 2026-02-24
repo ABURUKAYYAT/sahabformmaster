@@ -245,5 +245,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             classSelection.style.display = value === 'Specific Classes' ? 'block' : 'none';
         }
     </script>
+<?php include '../includes/floating-button.php'; ?>
 </body>
 </html>
