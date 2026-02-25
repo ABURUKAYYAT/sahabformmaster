@@ -40,7 +40,18 @@ $students_stmt->execute([$class_id]);
 $students = $students_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get school info
-$school = $pdo->query("SELECT * FROM school_profile WHERE id = 1")->fetch();
+$school_id = $_SESSION['school_id'] ?? 1;
+$school_stmt = $pdo->prepare("SELECT * FROM school_profile WHERE school_id = ? ORDER BY id ASC LIMIT 1");
+$school_stmt->execute([$school_id]);
+$school = $school_stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$school) {
+    $school = $pdo->query("SELECT * FROM school_profile ORDER BY id ASC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+}
+
+if (!$school) {
+    die("School profile not found.");
+}
 
 // Extend TCPDF class for custom student list
 class StudentListPDF extends TCPDF {
@@ -256,12 +267,14 @@ $pdf->Output($filepath, 'F');
 
 // Log the export
 $stmt = $pdo->prepare("
-    INSERT INTO export_logs (user_id, export_type, file_path, exported_at, ip_address, metadata)
-    VALUES (?, 'student_list_pdf', ?, NOW(), ?, ?)
+    INSERT INTO export_logs (user_id, export_type, params)
+    VALUES (?, 'student_list_pdf', ?)
 ");
-$metadata = json_encode([
+$params = json_encode([
+    'file_path' => $filepath,
+    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
     'class_id' => $class_id,
-    'class_name' => $class['class_name'],
+    'class_name' => $class['class_name'] ?? null,
     'export_type' => $export_type,
     'orientation' => $orientation,
     'include_photos' => $include_photos,
@@ -269,9 +282,7 @@ $metadata = json_encode([
 ]);
 $stmt->execute([
     $_SESSION['user_id'] ?? null,
-    $filepath,
-    $_SERVER['REMOTE_ADDR'] ?? 'unknown',
-    $metadata
+    $params
 ]);
 
 // Output PDF to browser
