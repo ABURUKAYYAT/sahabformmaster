@@ -96,8 +96,8 @@ $pending_activities = $activities_stmt->fetch()['pending_activities'];
             <div class="header-right">
                 <div class="student-info">
                     <p class="student-label">Student</p>
-                    <span class="student-name"><?php echo htmlspecialchars($student_name); ?></span>
-                    <span class="admission-number"><?php echo htmlspecialchars($admission_number); ?></span>
+                    <span class="student-name"><?php echo htmlspecialchars((string) ($student_name ?? '')); ?></span>
+                    <span class="admission-number"><?php echo htmlspecialchars((string) ($admission_number ?? '')); ?></span>
                 </div>
                 <a href="logout.php" class="btn-logout">
                     <i class="fas fa-sign-out-alt"></i>
@@ -191,7 +191,7 @@ $pending_activities = $activities_stmt->fetch()['pending_activities'];
         <main class="main-content">
             <div class="content-header">
                 <div class="welcome-section">
-                    <h2>Welcome back, <?php echo htmlspecialchars($student_name); ?>! 🎓</h2>
+                    <h2>Welcome back, <?php echo htmlspecialchars((string) ($student_name ?? '')); ?>! 🎓</h2>
                     <p>Here's your academic overview for today</p>
                 </div>
                 <div class="header-stats">

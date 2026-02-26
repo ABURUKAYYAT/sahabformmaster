@@ -18,28 +18,9 @@
 <div id="ai-assistant-modal" class="ai-modal">
     <div class="ai-modal-overlay"></div>
     <div class="ai-modal-content">
-        <div class="ai-modal-header">
-            <div class="ai-header-left">
-                <div class="ai-avatar">
-                    <i class="fas fa-robot"></i>
-                </div>
-                <div class="ai-info">
-                    <h3>SahabFormMaster AI Assistant</h3>
-                    <p>Intelligent help & analytics</p>
-                </div>
-            </div>
-            <div class="ai-header-actions">
-                <button class="ai-blur-toggle-btn" id="ai-blur-toggle" title="Toggle blur effects">
-                    <i class="fas fa-eye"></i>
-                </button>
-                <button class="ai-minimize-btn" id="ai-minimize-btn" title="Minimize">
-                    <i class="fas fa-minus"></i>
-                </button>
-                <button class="ai-modal-close" id="ai-modal-close" title="Close">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
+        <button class="ai-modal-close ai-modal-close-floating" id="ai-modal-close" title="Close">
+            <i class="fas fa-times"></i>
+        </button>
 
         <div class="ai-chat-container" id="ai-chat-container">
             <div class="ai-welcome-message">
@@ -49,22 +30,8 @@
                 </div>
                     <div class="ai-message-content">
                         <div class="ai-message-text">
-                            <p>Hello! I'm your AI assistant for SahabFormMaster. I can help you with:</p>
-                            <div class="ai-capabilities">
-                                <div class="ai-capability-item">
-                                    <i class="fas fa-user-plus"></i>
-                                    <span>System Guidance</span>
-                                </div>
-                                <div class="ai-capability-item">
-                                    <i class="fas fa-chart-bar"></i>
-                                    <span>Analytics & Reports</span>
-                                </div>
-                                <div class="ai-capability-item">
-                                    <i class="fas fa-tools"></i>
-                                    <span>Troubleshooting</span>
-                                </div>
-                            </div>
-                            <p class="ai-welcome-question">What would you like to know?</p>
+                            <p>Hi, I am your SahabFormMaster assistant. Ask about workflows, reports, or troubleshooting.</p>
+                            <p class="ai-welcome-question">How can I help?</p>
                         </div>
                         <div class="ai-message-time">Just now</div>
                     </div>
@@ -87,32 +54,14 @@
         </div>
 
         <div class="ai-input-container">
-            <div class="ai-quick-actions">
-                <button class="ai-quick-btn" data-query="How do I add a new student?">
-                    <i class="fas fa-user-plus"></i>
-                    <span>Add Student</span>
-                </button>
-                <button class="ai-quick-btn" data-query="How do I compile results?">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Compile Results</span>
-                </button>
-                <button class="ai-quick-btn" data-query="Show me attendance analytics">
-                    <i class="fas fa-calendar-check"></i>
-                    <span>Attendance Stats</span>
-                </button>
-                <button class="ai-quick-btn" data-query="What's the fee collection status?">
-                    <i class="fas fa-money-bill-wave"></i>
-                    <span>Fee Report</span>
-                </button>
-            </div>
             <div class="ai-input-group">
-                <textarea id="ai-input" placeholder="Ask me anything about SahabFormMaster..." rows="1"></textarea>
+                <textarea id="ai-input" placeholder="Ask about SahabFormMaster..." rows="1"></textarea>
                 <button id="ai-submit" class="ai-submit-btn" disabled>
                     <i class="fas fa-paper-plane"></i>
                 </button>
             </div>
             <div class="ai-input-footer">
-                <span class="ai-disclaimer">Powered by AI • Responses may not be 100% accurate</span>
+                <span class="ai-disclaimer">Powered by AI - responses may not be 100% accurate</span>
             </div>
         </div>
     </div>
@@ -210,7 +159,7 @@ if (strpos($currentPath, '/admin/') !== false ||
 }
 
 #ai-assistant-modal.fallback .ai-submit-btn {
-    background: #6366f1 !important;
+    background: #1d4ed8 !important;
     color: white !important;
     border: none !important;
     padding: 10px 16px !important;
@@ -514,7 +463,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const aiModal = document.getElementById('ai-assistant-modal');
     const aiModalClose = document.getElementById('ai-modal-close');
     const aiMinimizeBtn = document.getElementById('ai-minimize-btn');
-    const aiBlurToggle = document.getElementById('ai-blur-toggle');
     const aiInput = document.getElementById('ai-input');
     const aiSubmit = document.getElementById('ai-submit');
     const aiChatContainer = document.getElementById('ai-chat-container');
@@ -597,74 +545,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let isMinimized = false;
 
     // Blur effect management - default to disabled for better clarity
-    let blurEnabled = false;
-
-    // Browser compatibility detection
-    function detectBackdropFilterSupport() {
-        // Check if backdrop-filter is supported
-        const testEl = document.createElement('div');
-        testEl.style.backdropFilter = 'blur(1px)';
-        const supported = testEl.style.backdropFilter !== '';
-        testEl.remove();
-        return supported;
-    }
-
-    // Initialize blur settings
-    function initializeBlurSettings() {
-        const backdropSupported = detectBackdropFilterSupport();
-
-        // Set CSS variable for browser support
-        document.documentElement.style.setProperty('--ai-backdrop-supported', backdropSupported ? '1' : '0');
-
-        // Load user preference from localStorage, default to false (reduced blur)
-        const savedPreference = localStorage.getItem('ai-blur-enabled');
-        blurEnabled = savedPreference !== null ? JSON.parse(savedPreference) : false;
-
-        // If browser doesn't support backdrop-filter, disable blur by default
-        if (!backdropSupported) {
-            blurEnabled = false;
-            localStorage.setItem('ai-blur-enabled', 'false');
-        }
-
-        updateBlurState();
-        updateBlurToggleButton();
-    }
-
-    // Update blur state
-    function updateBlurState() {
-        const root = document.documentElement;
-
-        if (blurEnabled) {
-            root.style.setProperty('--ai-blur-overlay', 'blur(2px)');
-            root.style.setProperty('--ai-blur-modal', 'blur(1px)');
-        } else {
-            root.style.setProperty('--ai-blur-overlay', 'blur(0.5px)');
-            root.style.setProperty('--ai-blur-modal', 'none');
-        }
-    }
-
-    // Update toggle button appearance
-    function updateBlurToggleButton() {
-        if (aiBlurToggle) {
-            if (blurEnabled) {
-                aiBlurToggle.classList.add('active');
-                aiBlurToggle.innerHTML = '<i class="fas fa-eye-slash"></i>';
-                aiBlurToggle.title = 'Disable blur effects';
-            } else {
-                aiBlurToggle.classList.remove('active');
-                aiBlurToggle.innerHTML = '<i class="fas fa-eye"></i>';
-                aiBlurToggle.title = 'Enable blur effects';
-            }
-        }
-    }
-
-    // Toggle blur effects
-    function toggleBlur() {
-        blurEnabled = !blurEnabled;
-        localStorage.setItem('ai-blur-enabled', JSON.stringify(blurEnabled));
-        updateBlurState();
-        updateBlurToggleButton();
-    }
 
     // Open modal with error handling and enhanced debugging
     try {
@@ -779,8 +659,6 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error('[AI Assistant] Error attaching minimize button listener:', error);
         }
-    } else {
-        console.warn('[AI Assistant] Minimize button not found');
     }
 
     // Close modal when clicking outside (on overlay only)
@@ -820,8 +698,6 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error('[AI Assistant] Error attaching quick action button listeners:', error);
         }
-    } else {
-        console.warn('[AI Assistant] Quick action buttons not found');
     }
 
     // Handle enter key in textarea with null check
@@ -895,13 +771,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Handle blur toggle button
-    if (aiBlurToggle) {
-        aiBlurToggle.addEventListener('click', toggleBlur);
-    }
-
-    // Initialize blur settings on load
-    initializeBlurSettings();
 
     // Handle submit button with null check
     if (aiSubmit) {
@@ -1135,3 +1004,4 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('[AI Assistant] Debug function available: window.debugAIModal()');
 });
 </script>
+
