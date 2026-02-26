@@ -63,6 +63,8 @@
   --error: #dc2626;    /* Red for error */
   --error-light: rgba(220, 38, 38, 0.1);
   --error-dark: #b91c1c;
+  --error-600: #dc2626;
+  --error-700: #b91c1c;
 
   --info: #0891b2;     /* Blue for info */
   --info-light: rgba(8, 145, 178, 0.1);
