@@ -1,332 +1,185 @@
 <?php
-// index.php
-session_start();
-
-// Load security framework
-define('SECURE_ACCESS', true);
-require_once 'includes/security.php';
-require_once 'config/db.php';
-
-// Check session timeout
-if (!Security::checkSessionTimeout()) {
-    header("Location: logout.php");
-    exit;
-}
-
-$error = '';
-$csrf_token = Security::generateCsrfToken();
-
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Validate CSRF token
-    if (!Security::validateCsrfToken($_POST['csrf_token'] ?? '')) {
-        $error = "Security validation failed. Please refresh the page.";
-        Security::logSecurityEvent('csrf_violation', ['action' => 'login_attempt']);
-    } else {
-        $username = Security::sanitizeString($_POST['username'] ?? '', 100);
-        $password = $_POST['password'] ?? '';
-
-        if (empty($username) || empty($password)) {
-            $error = "Please enter both username and password.";
-        } else {
-            // Check rate limiting
-            $rateLimit = Security::checkLoginAttempts($username);
-            if (!$rateLimit['allowed']) {
-                $error = "Too many login attempts. Please wait " . ($rateLimit['wait_time'] / 60) . " minutes.";
-                Security::logSecurityEvent('rate_limit_exceeded', ['username' => $username]);
-            } else {
-                try {
-                    // Prepare SQL to find user
-                    $stmt = $pdo->prepare("SELECT id, username, password, role, full_name, school_id, email, is_active FROM users WHERE username = :username AND is_active = 1");
-                    $stmt->execute(['username' => $username]);
-                    $user = $stmt->fetch();
-
-                    // Verify user exists and password is correct
-                    if ($user && password_verify($password, $user['password'])) {
-                        // Reset login attempts on successful login
-                        Security::resetLoginAttempts($username);
-
-                        // Login Success
-                        $_SESSION['user_id'] = $user['id'];
-                        $_SESSION['role'] = $user['role'];
-                        $_SESSION['full_name'] = $user['full_name'];
-                        $_SESSION['school_id'] = $user['school_id'];
-                        $_SESSION['email'] = $user['email'];
-                        $_SESSION['last_activity'] = time();
-
-                        // Regenerate session for security
-                        Security::regenerateSession();
-
-                        Security::logSecurityEvent('successful_login', ['user_id' => $user['id'], 'role' => $user['role']]);
-
-                        // Redirect based on Role
-                        if ($user['role'] === 'principal') {
-                            header("Location: admin/index.php");
-                        } elseif ($user['role'] === 'teacher') {
-                            header("Location: teacher/index.php");
-                        } elseif ($user['role'] === 'clerk') {
-                            header("Location: clerk/index.php");
-                        } elseif ($user['role'] === 'student') {
-                            header("Location: student/index.php");
-                        } else {
-                            $error = "Invalid user role.";
-                        }
-                        exit;
-                    } else {
-                        $error = "Invalid username or password.";
-                        Security::logSecurityEvent('failed_login', ['username' => $username]);
-                    }
-                } catch (Exception $e) {
-                    $error = "System error. Please try again later.";
-                    Security::logSecurityEvent('login_error', ['error' => $e->getMessage()]);
-                }
-            }
-        }
-    }
-}
+$pageTitle = 'iSchool | Unified School Management';
+$activePage = 'home';
+require_once 'includes/landing-header.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | iSchool</title>
-    <link rel="stylesheet" href="assets/css/education-theme-main.css">
-            <style>
-        :root {
-            --fb-blue: #1877f2;
-            --fb-blue-dark: #166fe5;
-            --fb-bg: #f0f2f5;
-            --text: #1c1e21;
-            --muted: #606770;
-            --border: #dddfe2;
-            --card: #ffffff;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: "Segoe UI", Helvetica, Arial, sans-serif;
-            background: var(--fb-bg);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-            color: var(--text);
-        }
-
-        .login-container {
-            width: 100%;
-            max-width: 420px;
-            background: var(--card);
-            border-radius: 8px;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
-            overflow: hidden;
-        }
-
-        .login-header {
-            padding: 24px 24px 12px;
-            text-align: center;
-            border-bottom: 1px solid var(--border);
-            background: #fff;
-        }
-
-        .login-header h1,
-        .login-header h2 {
-            font-size: 24px;
-            font-weight: 700;
-            margin: 0 0 6px;
-        }
-
-        .login-header p {
-            margin: 0;
-            font-size: 14px;
-            color: var(--muted);
-        }
-
-        .login-body,
-        .login-form {
-            padding: 20px 24px 24px;
-        }
-
-        .form-group {
-            margin-bottom: 16px;
-        }
-
-        .form-group label {
-            display: block;
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text);
-            margin-bottom: 6px;
-        }
-
-        .form-control {
-            width: 100%;
-            height: 48px;
-            padding: 12px 14px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            font-size: 15px;
-            background: #fff;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: var(--fb-blue);
-            box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.15);
-        }
-
-        .btn-primary,
-        .btn-login {
-            width: 100%;
-            height: 48px;
-            background: var(--fb-blue);
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .btn-primary:hover,
-        .btn-login:hover {
-            background: var(--fb-blue-dark);
-            box-shadow: 0 2px 8px rgba(24, 119, 242, 0.2);
-        }
-
-        .btn-primary:active,
-        .btn-login:active {
-            transform: translateY(1px);
-        }
-
-        .error-message,
-        .alert {
-            background: #fdecea;
-            color: #b42318;
-            padding: 10px 12px;
-            border-radius: 6px;
-            margin-bottom: 16px;
-            font-size: 13px;
-            border: 1px solid #f5c6cb;
-            text-align: center;
-        }
-
-        .alert-danger {
-            background: #fdecea;
-            color: #b42318;
-            border: 1px solid #f5c6cb;
-        }
-
-        .alert-success {
-            background: #ecfdf3;
-            color: #067647;
-            border: 1px solid #abefc6;
-        }
-
-        .login-links,
-        .login-footer {
-            text-align: center;
-            padding: 16px 24px 20px;
-            border-top: 1px solid var(--border);
-            background: #fff;
-        }
-
-        .login-links a,
-        .back-link {
-            color: var(--fb-blue);
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .login-links a:hover,
-        .back-link:hover {
-            text-decoration: underline;
-        }
-
-        .admin-badge {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            background: #f04438;
-            color: #fff;
-            padding: 4px 10px;
-            border-radius: 999px;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-        }
-
-        .security-notice {
-            background: #fffaeb;
-            border: 1px solid #fcefc7;
-            color: #7a5600;
-            padding: 10px 12px;
-            border-radius: 6px;
-            font-size: 13px;
-            margin-bottom: 16px;
-        }
-
-        @media (max-width: 480px) {
-            body {
-                padding: 16px;
-            }
-
-            .login-header {
-                padding: 20px 20px 10px;
-            }
-
-            .login-body,
-            .login-form {
-                padding: 16px 20px 20px;
-            }
-        }
-    </style>
-</head>
-<body>
-
-    <div class="login-container">
-        <div class="login-header">
-            <h2>iSchool</h2>
-            <p>Staff Access Portal</p>
-        </div>
-
-        <div class="login-body">
-            <?php if($error): ?>
-                <div class="alert alert-error">
-                    <?php echo htmlspecialchars($error); ?>
-                </div>
-            <?php endif; ?>
-
-            <form action="index.php" method="POST" class="fade-in">
-                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" name="username" id="username" class="form-control" placeholder="Enter your username" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" name="password" id="password" class="form-control" placeholder="Enter your password" required>
-                </div>
-
-                <button type="submit" class="btn-primary">Login Securely</button>
-            </form>
-
-            <div class="login-links">
-                <a href="student/index.php" class="student-link">Are you a Student? Click here to Login</a>
+<main>
+    <section class="hero container">
+        <div data-reveal>
+            <h1>Operate your school with clarity, control, and confidence.</h1>
+            <p>iSchool unifies attendance, results, fees, communication, and analytics in one secure platform built for principals, teachers, and proprietors.</p>
+            <div class="hero-actions">
+                <a class="btn btn-primary" href="contact.php">Request Demo</a>
+                <a class="btn btn-outline" href="#features">Explore Features</a>
+            </div>
+            <div class="hero-highlights">
+                <span>Role-based access</span>
+                <span>Offline-ready workflows</span>
+                <span>Real-time reporting</span>
             </div>
         </div>
-    </div>
+        <div class="hero-visual" data-reveal data-reveal-delay="120">
+            <div class="dashboard-mock">
+                <div class="mock-card">
+                    <div class="mock-title">Principal Overview</div>
+                    <div class="mock-bar"></div>
+                </div>
+                <div class="mock-card">
+                    <div class="mock-title">Attendance Accuracy</div>
+                    <div class="mock-bar"></div>
+                </div>
+                <div class="mock-card">
+                    <div class="mock-title">Fee Collections</div>
+                    <div class="mock-bar"></div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-</body>
-</html>
+    <section class="container" data-reveal>
+        <div class="stats">
+            <div class="stat-card">
+                <h3>98%</h3>
+                <p>Attendance accuracy</p>
+            </div>
+            <div class="stat-card">
+                <h3>40%</h3>
+                <p>Admin time saved</p>
+            </div>
+            <div class="stat-card">
+                <h3>24/7</h3>
+                <p>Access to dashboards</p>
+            </div>
+            <div class="stat-card">
+                <h3>100%</h3>
+                <p>Secure audit trails</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="container" id="features">
+        <h2 class="section-title" data-reveal>Core tools that keep your school aligned.</h2>
+        <p class="section-subtitle" data-reveal data-reveal-delay="80">All essential workflows live in one place, so your team stays informed and students stay supported.</p>
+        <div class="feature-grid" data-reveal data-reveal-delay="120">
+            <div class="feature-card">
+                <span>Attendance Automation</span>
+                <p>Mark attendance in seconds with real-time summaries for staff and leadership.</p>
+            </div>
+            <div class="feature-card">
+                <span>Results &amp; Report Cards</span>
+                <p>Generate clean, accurate reports with built-in grading workflows.</p>
+            </div>
+            <div class="feature-card">
+                <span>Fee Management</span>
+                <p>Track payments, arrears, and receipts with transparent dashboards.</p>
+            </div>
+            <div class="feature-card">
+                <span>Communication Hub</span>
+                <p>Share announcements and updates across teachers, students, and parents.</p>
+            </div>
+            <div class="feature-card">
+                <span>Class Activities</span>
+                <p>Plan and monitor class activities with evidence-based reporting.</p>
+            </div>
+            <div class="feature-card">
+                <span>Analytics &amp; Compliance</span>
+                <p>Stay audit-ready with centralized logs, permissions, and reports.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="container" id="solutions">
+        <h2 class="section-title" data-reveal>Built for every leadership role.</h2>
+        <p class="section-subtitle" data-reveal data-reveal-delay="80">iSchool keeps the entire school aligned while honoring the unique needs of principals, teachers, and proprietors.</p>
+        <div class="role-grid" data-reveal data-reveal-delay="120">
+            <div class="role-card">
+                <span>Principals</span>
+                <p>Monitor performance, compliance, and staff activity through unified dashboards.</p>
+                <p>Get instant visibility into attendance, lesson delivery, and results.</p>
+            </div>
+            <div class="role-card">
+                <span>Teachers</span>
+                <p>Capture attendance, assessments, and class notes without paperwork delays.</p>
+                <p>Spend more time teaching and less time compiling reports.</p>
+            </div>
+            <div class="role-card">
+                <span>Proprietors</span>
+                <p>See fee collections, operational trends, and staffing health in one view.</p>
+                <p>Make confident decisions backed by real-time data.</p>
+            </div>
+        </div>
+    </section>
+
+    <article class="container story-wrap" id="story">
+        <div class="story-panel" data-reveal>
+            <h2 class="section-title">Why schools switch to iSchool.</h2>
+            <p>Paper-based management slows down leadership decisions and reduces visibility. iSchool connects your data, staff, and finance workflows so every stakeholder can move faster with confidence.</p>
+            <p>From admissions to report cards, your entire school runs on one platform with measurable improvements.</p>
+        </div>
+        <aside class="proof-panel" data-reveal data-reveal-delay="120">
+            <p class="quote">“We cut reporting time in half and gained full visibility into teacher activity within the first term.”</p>
+            <p><strong>— Proprietor, Leading Private School</strong></p>
+            <p>Encrypted data, role-based access, and audit-ready reports keep your school protected.</p>
+        </aside>
+    </article>
+
+    <section class="container" id="workflow">
+        <h2 class="section-title" data-reveal>From enrollment to results — one workflow.</h2>
+        <p class="section-subtitle" data-reveal data-reveal-delay="80">iSchool keeps every department aligned with a simple, connected flow.</p>
+        <div class="workflow" data-reveal data-reveal-delay="120">
+            <div class="workflow-step">
+                <span>1</span>
+                <div>
+                    <strong>Enroll &amp; manage students</strong>
+                    <p>Keep complete student profiles, documents, and class placements in one view.</p>
+                </div>
+            </div>
+            <div class="workflow-step">
+                <span>2</span>
+                <div>
+                    <strong>Track attendance &amp; performance</strong>
+                    <p>Capture daily attendance, assessments, and evaluations with instant summaries.</p>
+                </div>
+            </div>
+            <div class="workflow-step">
+                <span>3</span>
+                <div>
+                    <strong>Publish reports &amp; payments</strong>
+                    <p>Generate results and track fee collections with audit-ready exports.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="container" id="resources">
+        <h2 class="section-title" data-reveal>Implementation support that fits your school.</h2>
+        <p class="section-subtitle" data-reveal data-reveal-delay="80">From onboarding to training, we help your teams adopt iSchool with confidence.</p>
+        <div class="resource-grid" data-reveal data-reveal-delay="120">
+            <div class="resource-card">
+                <strong>Onboarding Guide</strong>
+                <p>Structured rollout plans for term-by-term adoption.</p>
+            </div>
+            <div class="resource-card">
+                <strong>Training Sessions</strong>
+                <p>Live sessions for principals, teachers, and bursars.</p>
+            </div>
+            <div class="resource-card">
+                <strong>Dedicated Support</strong>
+                <p>Priority support for technical setup and data migration.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="container" data-reveal>
+        <div class="cta-band">
+            <div>
+                <h2 class="section-title">Ready to modernize your school operations?</h2>
+                <p>Book a personalized walkthrough and see how iSchool fits your workflows.</p>
+            </div>
+            <a class="btn btn-primary" href="contact.php">Book a Demo</a>
+        </div>
+    </section>
+</main>
+
+<?php require_once 'includes/landing-footer.php'; ?>
