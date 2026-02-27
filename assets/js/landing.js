@@ -20,6 +20,23 @@
         });
     });
 
+    const nav = document.querySelector('.site-nav');
+    document.addEventListener('click', (event) => {
+        if (!body.classList.contains('nav-open')) {
+            return;
+        }
+
+        const target = event.target;
+        if ((toggle && toggle.contains(target)) || (nav && nav.contains(target))) {
+            return;
+        }
+
+        body.classList.remove('nav-open');
+        if (toggle) {
+            toggle.setAttribute('aria-expanded', 'false');
+        }
+    });
+
     const items = Array.from(document.querySelectorAll('[data-reveal]'));
     if (!items.length) return;
 

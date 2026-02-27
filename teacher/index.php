@@ -52,7 +52,6 @@ $query = "
 $subject_stmt = $pdo->prepare($query);
 $subject_stmt->execute([$teacher_id, $current_school_id, $current_school_id]);
 $subject_count = $subject_stmt->fetch()['subject_count'];
-
 ?>
 
 <!DOCTYPE html>
@@ -61,38 +60,33 @@ $subject_count = $subject_stmt->fetch()['subject_count'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher Dashboard | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
-    <link rel="stylesheet" href="../assets/css/education-theme-main.css">
+    <link rel="stylesheet" href="../assets/css/tailwind.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body>
-
-    <!-- Mobile Navigation Component -->
-    <?php include '../includes/mobile_navigation.php'; ?>
-
-    <!-- Header -->
-    <header class="dashboard-header">
-        <div class="header-container">
-            <!-- Logo and School Name -->
-            <div class="header-left">
-                <div class="school-logo-container">
-                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
-                    <div class="school-info">
-                        <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
-                        <p class="school-tagline">Teacher Portal</p>
+<body class="landing">
+    <header class="site-header">
+        <div class="container nav-wrap">
+            <div class="flex items-center gap-4">
+                <button class="nav-toggle lg:hidden" type="button" data-sidebar-toggle aria-label="Open menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div class="flex items-center gap-3">
+                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="w-10 h-10 rounded-xl object-cover">
+                    <div class="hidden sm:block">
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Teacher Portal</p>
+                        <p class="text-lg font-semibold text-ink-900"><?php echo htmlspecialchars(get_school_display_name()); ?></p>
                     </div>
                 </div>
             </div>
-
-            <!-- Teacher Info and Logout -->
-            <div class="header-right">
-                <div class="teacher-info">
-                    <p class="teacher-label">Teacher</p>
-                    <span class="teacher-name"><?php echo htmlspecialchars($teacher_name); ?></span>
-                </div>
-                <a href="logout.php" class="btn-logout">
+            <div class="flex items-center gap-3">
+                <span class="hidden md:block text-sm text-slate-600">Welcome, <?php echo htmlspecialchars($teacher_name); ?></span>
+                <a class="btn btn-outline" href="../index.php">Home</a>
+                <a class="btn btn-primary" href="logout.php">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </a>
@@ -100,406 +94,312 @@ $subject_count = $subject_stmt->fetch()['subject_count'];
         </div>
     </header>
 
-    <!-- Main Container -->
-    <div class="dashboard-container">
-        <!-- Sidebar Navigation -->
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <h3>Navigation</h3>
-                <button class="sidebar-close" id="sidebarClose">✕</button>
+    <div class="fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity lg:hidden" data-sidebar-overlay></div>
+
+    <div class="container grid gap-6 lg:grid-cols-[280px_1fr] py-8">
+        <aside class="fixed inset-y-0 left-0 z-40 w-72 bg-white shadow-lift border-r border-ink-900/10 transform -translate-x-full transition-transform duration-200 lg:static lg:inset-auto lg:translate-x-0" data-sidebar>
+            <div class="p-6 border-b border-ink-900/10">
+                <h2 class="text-lg font-semibold text-ink-900">Navigation</h2>
+                <p class="text-sm text-slate-500">Teacher workspace</p>
             </div>
-            <nav class="sidebar-nav">
-                <ul class="nav-list">
-                    <li class="nav-item">
-                        <a href="index.php" class="nav-link active">
-                            <i class="fas fa-tachometer-alt nav-icon"></i>
-                            <span class="nav-text">Dashboard</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="schoolfeed.php" class="nav-link">
-                            <i class="fas fa-newspaper nav-icon"></i>
-                            <span class="nav-text">School Feeds</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="school_diary.php" class="nav-link">
-                            <i class="fas fa-book nav-icon"></i>
-                            <span class="nav-text">School Diary</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="students.php" class="nav-link">
-                            <i class="fas fa-users nav-icon"></i>
-                            <span class="nav-text">Students</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="results.php" class="nav-link">
-                            <i class="fas fa-chart-line nav-icon"></i>
-                            <span class="nav-text">Results</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="subjects.php" class="nav-link">
-                            <i class="fas fa-book-open nav-icon"></i>
-                            <span class="nav-text">Subjects</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="questions.php" class="nav-link">
-                            <i class="fas fa-question-circle nav-icon"></i>
-                            <span class="nav-text">Questions</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="lesson-plan.php" class="nav-link">
-                            <i class="fas fa-clipboard-list nav-icon"></i>
-                            <span class="nav-text">Lesson Plans</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="curricullum.php" class="nav-link">
-                            <i class="fas fa-graduation-cap nav-icon"></i>
-                            <span class="nav-text">Curriculum</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="teacher_class_activities.php" class="nav-link">
-                            <i class="fas fa-tasks nav-icon"></i>
-                            <span class="nav-text">Class Activities</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="cbt_tests.php" class="nav-link">
-                            <i class="fas fa-laptop-code nav-icon"></i>
-                            <span class="nav-text">CBT Tests</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="student-evaluation.php" class="nav-link">
-                            <i class="fas fa-star nav-icon"></i>
-                            <span class="nav-text">Evaluations</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="class_attendance.php" class="nav-link">
-                            <i class="fas fa-calendar-check nav-icon"></i>
-                            <span class="nav-text">Attendance</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="timebook.php" class="nav-link">
-                            <i class="fas fa-clock nav-icon"></i>
-                            <span class="nav-text">Time Book</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="permissions.php" class="nav-link">
-                            <i class="fas fa-key nav-icon"></i>
-                            <span class="nav-text">Permissions</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="payments.php" class="nav-link">
-                            <i class="fas fa-money-bill-wave nav-icon"></i>
-                            <span class="nav-text">Payments</span>
-                        </a>
-                    </li>
-                </ul>
+            <nav class="p-4 space-y-1 text-sm">
+                <a href="index.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold bg-teal-600/10 text-teal-700">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="schoolfeed.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                    <i class="fas fa-newspaper"></i>
+                    <span>School Feeds</span>
+                </a>
+                <a href="school_diary.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                    <i class="fas fa-book"></i>
+                    <span>School Diary</span>
+                </a>
+                <a href="students.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                    <i class="fas fa-users"></i>
+                    <span>Students</span>
+                </a>
+                <a href="results.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Results</span>
+                </a>
+                <a href="subjects.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                    <i class="fas fa-book-open"></i>
+                    <span>Subjects</span>
+                </a>
+                <a href="questions.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                    <i class="fas fa-question-circle"></i>
+                    <span>Question Bank</span>
+                </a>
+                <a href="lesson-plan.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>Lesson Plans</span>
+                </a>
+                <a href="curricullum.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                    <i class="fas fa-graduation-cap"></i>
+                    <span>Curriculum</span>
+                </a>
+                <a href="teacher_class_activities.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                    <i class="fas fa-tasks"></i>
+                    <span>Class Activities</span>
+                </a>
+                <a href="cbt_tests.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                    <i class="fas fa-laptop-code"></i>
+                    <span>CBT Tests</span>
+                </a>
+                <a href="student-evaluation.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                    <i class="fas fa-star"></i>
+                    <span>Evaluations</span>
+                </a>
+                <a href="class_attendance.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                    <i class="fas fa-calendar-check"></i>
+                    <span>Attendance</span>
+                </a>
+                <a href="timebook.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                    <i class="fas fa-clock"></i>
+                    <span>Time Book</span>
+                </a>
+                <a href="permissions.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                    <i class="fas fa-key"></i>
+                    <span>Permissions</span>
+                </a>
+                <a href="payments.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                    <i class="fas fa-money-bill-wave"></i>
+                    <span>Payments</span>
+                </a>
             </nav>
         </aside>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <div class="content-header">
-                <div class="welcome-section">
-                    <h2>Welcome back, <?php echo htmlspecialchars($teacher_name); ?>! 👋</h2>
-                    <p>Here's what's happening in your classes today</p>
+        <main class="space-y-6">
+            <section class="rounded-3xl bg-white p-6 shadow-lift border border-ink-900/5">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <h1 class="text-3xl font-display text-ink-900">Welcome back, <?php echo htmlspecialchars($teacher_name); ?></h1>
+                        <p class="text-slate-600">Here is a quick snapshot of your classes and activities today.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-3">
+                        <div class="rounded-xl bg-mist-50 px-4 py-3 border border-ink-900/5">
+                            <p class="text-xs uppercase tracking-wide text-slate-500">Students</p>
+                            <p class="text-2xl font-semibold text-ink-900"><?php echo $student_count; ?></p>
+                        </div>
+                        <div class="rounded-xl bg-mist-50 px-4 py-3 border border-ink-900/5">
+                            <p class="text-xs uppercase tracking-wide text-slate-500">Classes</p>
+                            <p class="text-2xl font-semibold text-ink-900"><?php echo $class_count; ?></p>
+                        </div>
+                        <div class="rounded-xl bg-mist-50 px-4 py-3 border border-ink-900/5">
+                            <p class="text-xs uppercase tracking-wide text-slate-500">Subjects</p>
+                            <p class="text-2xl font-semibold text-ink-900"><?php echo $subject_count; ?></p>
+                        </div>
+                    </div>
                 </div>
-                <div class="header-stats">
-                    <div class="quick-stat">
-                        <span class="quick-stat-value"><?php echo $student_count; ?></span>
-                        <span class="quick-stat-label">Students</span>
-                    </div>
-                    <div class="quick-stat">
-                        <span class="quick-stat-value"><?php echo $class_count; ?></span>
-                        <span class="quick-stat-label">Classes</span>
-                    </div>
-                    <div class="quick-stat">
-                        <span class="quick-stat-value"><?php echo $subject_count; ?></span>
-                        <span class="quick-stat-label">Subjects</span>
-                    </div>
-                </div>
-            </div>
+            </section>
 
-            <!-- Dashboard Cards -->
-            <div class="dashboard-cards">
-                <div class="card card-gradient-1">
-                    <div class="card-icon-wrapper">
-                        <div class="card-icon"><i class="fas fa-users"></i></div>
-                    </div>
-                    <div class="card-content">
-                        <h3>My Students</h3>
-                        <p class="card-value"><?php echo $student_count; ?></p>
-                        <div class="card-footer">
-                            <span class="card-badge">Active</span>
-                            <a href="students.php" class="card-link">Manage Students →</a>
+            <section>
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-xl font-semibold text-ink-900">Your Workspace</h2>
+                    <a class="text-sm font-semibold text-teal-700 hover:text-teal-600" href="lesson-plan.php">New lesson plan</a>
+                </div>
+                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    <div class="rounded-2xl bg-white p-5 shadow-soft border border-ink-900/5">
+                        <div class="flex items-center gap-3">
+                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-teal-600/10 text-teal-700">
+                                <i class="fas fa-users"></i>
+                            </span>
+                            <div>
+                                <p class="text-sm text-slate-500">My Students</p>
+                                <p class="text-2xl font-semibold text-ink-900"><?php echo $student_count; ?></p>
+                            </div>
                         </div>
+                        <a class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:text-teal-600" href="students.php">Manage students</a>
+                    </div>
+                    <div class="rounded-2xl bg-white p-5 shadow-soft border border-ink-900/5">
+                        <div class="flex items-center gap-3">
+                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-teal-600/10 text-teal-700">
+                                <i class="fas fa-chalkboard-teacher"></i>
+                            </span>
+                            <div>
+                                <p class="text-sm text-slate-500">My Classes</p>
+                                <p class="text-2xl font-semibold text-ink-900"><?php echo $class_count; ?></p>
+                            </div>
+                        </div>
+                        <a class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:text-teal-600" href="students.php">View classes</a>
+                    </div>
+                    <div class="rounded-2xl bg-white p-5 shadow-soft border border-ink-900/5">
+                        <div class="flex items-center gap-3">
+                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-teal-600/10 text-teal-700">
+                                <i class="fas fa-clipboard-list"></i>
+                            </span>
+                            <div>
+                                <p class="text-sm text-slate-500">Lesson Plans</p>
+                                <p class="text-2xl font-semibold text-ink-900"><?php echo $lesson_count; ?></p>
+                            </div>
+                        </div>
+                        <a class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:text-teal-600" href="lesson-plan.php">Create new</a>
+                    </div>
+                    <div class="rounded-2xl bg-white p-5 shadow-soft border border-ink-900/5">
+                        <div class="flex items-center gap-3">
+                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-teal-600/10 text-teal-700">
+                                <i class="fas fa-book-open"></i>
+                            </span>
+                            <div>
+                                <p class="text-sm text-slate-500">Subjects</p>
+                                <p class="text-2xl font-semibold text-ink-900"><?php echo $subject_count; ?></p>
+                            </div>
+                        </div>
+                        <a class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:text-teal-600" href="subjects.php">View subjects</a>
+                    </div>
+                    <div class="rounded-2xl bg-white p-5 shadow-soft border border-ink-900/5">
+                        <div class="flex items-center gap-3">
+                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-teal-600/10 text-teal-700">
+                                <i class="fas fa-chart-line"></i>
+                            </span>
+                            <div>
+                                <p class="text-sm text-slate-500">Results</p>
+                                <p class="text-2xl font-semibold text-ink-900">Pending</p>
+                            </div>
+                        </div>
+                        <a class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:text-teal-600" href="results.php">Enter results</a>
+                    </div>
+                    <div class="rounded-2xl bg-white p-5 shadow-soft border border-ink-900/5">
+                        <div class="flex items-center gap-3">
+                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-teal-600/10 text-teal-700">
+                                <i class="fas fa-question-circle"></i>
+                            </span>
+                            <div>
+                                <p class="text-sm text-slate-500">Question Bank</p>
+                                <p class="text-2xl font-semibold text-ink-900">Active</p>
+                            </div>
+                        </div>
+                        <a class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:text-teal-600" href="questions.php">View questions</a>
+                    </div>
+                </div>
+            </section>
+
+            <section class="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+                <div class="rounded-3xl bg-white p-6 shadow-soft border border-ink-900/5">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg font-semibold text-ink-900">Quick Actions</h2>
+                        <span class="text-xs uppercase tracking-wide text-slate-500">Frequently used</span>
+                    </div>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <a href="lesson-plan.php" class="flex items-center gap-3 rounded-xl border border-ink-900/10 px-4 py-3 text-sm font-semibold text-ink-900 hover:border-teal-600/40 hover:bg-teal-600/10">
+                            <i class="fas fa-plus-circle text-teal-700"></i>
+                            Create lesson plan
+                        </a>
+                        <a href="class_attendance.php" class="flex items-center gap-3 rounded-xl border border-ink-900/10 px-4 py-3 text-sm font-semibold text-ink-900 hover:border-teal-600/40 hover:bg-teal-600/10">
+                            <i class="fas fa-calendar-check text-teal-700"></i>
+                            Mark attendance
+                        </a>
+                        <a href="results.php" class="flex items-center gap-3 rounded-xl border border-ink-900/10 px-4 py-3 text-sm font-semibold text-ink-900 hover:border-teal-600/40 hover:bg-teal-600/10">
+                            <i class="fas fa-chart-bar text-teal-700"></i>
+                            Enter results
+                        </a>
+                        <a href="teacher_class_activities.php" class="flex items-center gap-3 rounded-xl border border-ink-900/10 px-4 py-3 text-sm font-semibold text-ink-900 hover:border-teal-600/40 hover:bg-teal-600/10">
+                            <i class="fas fa-tasks text-teal-700"></i>
+                            Class activities
+                        </a>
+                        <a href="permissions.php" class="flex items-center gap-3 rounded-xl border border-ink-900/10 px-4 py-3 text-sm font-semibold text-ink-900 hover:border-teal-600/40 hover:bg-teal-600/10">
+                            <i class="fas fa-key text-teal-700"></i>
+                            Request permission
+                        </a>
+                        <a href="timebook.php" class="flex items-center gap-3 rounded-xl border border-ink-900/10 px-4 py-3 text-sm font-semibold text-ink-900 hover:border-teal-600/40 hover:bg-teal-600/10">
+                            <i class="fas fa-clock text-teal-700"></i>
+                            Time book
+                        </a>
                     </div>
                 </div>
 
-                <div class="card card-gradient-2">
-                    <div class="card-icon-wrapper">
-                        <div class="card-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                <div class="rounded-3xl bg-white p-6 shadow-soft border border-ink-900/5">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg font-semibold text-ink-900">Recent Activity</h2>
+                        <a class="text-sm font-semibold text-teal-700 hover:text-teal-600" href="#">View all</a>
                     </div>
-                    <div class="card-content">
-                        <h3>My Classes</h3>
-                        <p class="card-value"><?php echo $class_count; ?></p>
-                        <div class="card-footer">
-                            <span class="card-badge">Assigned</span>
-                            <a href="students.php" class="card-link">View Classes →</a>
+                    <div class="space-y-4">
+                        <div class="flex items-start gap-3">
+                            <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-teal-600/10 text-teal-700">
+                                <i class="fas fa-check"></i>
+                            </span>
+                            <div>
+                                <p class="text-sm font-semibold text-ink-900">Lesson plan approved for Mathematics</p>
+                                <p class="text-xs text-slate-500">Today, 10:30 AM</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
+                                <i class="fas fa-chart-line"></i>
+                            </span>
+                            <div>
+                                <p class="text-sm font-semibold text-ink-900">Results submitted for Biology class</p>
+                                <p class="text-xs text-slate-500">Yesterday, 3:45 PM</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-teal-600/10 text-teal-700">
+                                <i class="fas fa-calendar-check"></i>
+                            </span>
+                            <div>
+                                <p class="text-sm font-semibold text-ink-900">Attendance marked for JSS 1A</p>
+                                <p class="text-xs text-slate-500">2 days ago</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-500/10 text-slate-600">
+                                <i class="fas fa-question-circle"></i>
+                            </span>
+                            <div>
+                                <p class="text-sm font-semibold text-ink-900">New questions added to Mathematics bank</p>
+                                <p class="text-xs text-slate-500">3 days ago</p>
+                            </div>
                         </div>
                     </div>
                 </div>
-
-                <div class="card card-gradient-3">
-                    <div class="card-icon-wrapper">
-                        <div class="card-icon"><i class="fas fa-clipboard-list"></i></div>
-                    </div>
-                    <div class="card-content">
-                        <h3>Lesson Plans</h3>
-                        <p class="card-value"><?php echo $lesson_count; ?></p>
-                        <div class="card-footer">
-                            <span class="card-badge">Created</span>
-                            <a href="lesson-plan.php" class="card-link">Create New →</a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card card-gradient-4">
-                    <div class="card-icon-wrapper">
-                        <div class="card-icon"><i class="fas fa-book-open"></i></div>
-                    </div>
-                    <div class="card-content">
-                        <h3>Subjects</h3>
-                        <p class="card-value"><?php echo $subject_count; ?></p>
-                        <div class="card-footer">
-                            <span class="card-badge">Teaching</span>
-                            <a href="subjects.php" class="card-link">View Subjects →</a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card card-gradient-5">
-                    <div class="card-icon-wrapper">
-                        <div class="card-icon"><i class="fas fa-chart-line"></i></div>
-                    </div>
-                    <div class="card-content">
-                        <h3>Results</h3>
-                        <p class="card-value">Pending</p>
-                        <div class="card-footer">
-                            <span class="card-badge">Update</span>
-                            <a href="results.php" class="card-link">Enter Results →</a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card card-gradient-6">
-                    <div class="card-icon-wrapper">
-                        <div class="card-icon"><i class="fas fa-question-circle"></i></div>
-                    </div>
-                    <div class="card-content">
-                        <h3>Question Bank</h3>
-                        <p class="card-value">Active</p>
-                        <div class="card-footer">
-                            <span class="card-badge">Manage</span>
-                            <a href="questions.php" class="card-link">View Questions →</a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card card-gradient-7">
-                    <div class="card-icon-wrapper">
-                        <div class="card-icon"><i class="fas fa-mobile-alt"></i></div>
-                    </div>
-                    <div class="card-content">
-                        <h3>VTU Services</h3>
-                        <p class="card-value">Available</p>
-                        <div class="card-footer">
-                            <span class="card-badge">Buy Now</span>
-                            <a href="https://www.sahabdata.com.ng" target="_blank" class="card-link">Shop VTU →</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Actions Section -->
-            <div class="quick-actions-section">
-                <div class="section-header">
-                    <h3>⚡ Quick Actions</h3>
-                    <span class="section-badge">Frequently Used</span>
-                </div>
-                <div class="quick-actions-grid">
-                    <a href="lesson-plan.php" class="quick-action-card academic">
-                        <i class="fas fa-plus-circle"></i>
-                        <span>Create Lesson Plan</span>
-                    </a>
-                    <a href="class_attendance.php" class="quick-action-card attendance">
-                        <i class="fas fa-calendar-check"></i>
-                        <span>Mark Attendance</span>
-                    </a>
-                    <a href="results.php" class="quick-action-card academic">
-                        <i class="fas fa-chart-bar"></i>
-                        <span>Enter Results</span>
-                    </a>
-                    <a href="teacher_class_activities.php" class="quick-action-card academic">
-                        <i class="fas fa-tasks"></i>
-                        <span>Class Activities</span>
-                    </a>
-                    <a href="permissions.php" class="quick-action-card admin">
-                        <i class="fas fa-key"></i>
-                        <span>Request Permission</span>
-                    </a>
-                    <a href="timebook.php" class="quick-action-card attendance">
-                        <i class="fas fa-clock"></i>
-                        <span>Time Book</span>
-                    </a>
-                    <a href="https://www.sahabdata.com.ng" target="_blank" class="quick-action-card general">
-                        <i class="fas fa-mobile-alt"></i>
-                        <span>Buy VTU Services</span>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Recent Activity Section -->
-            <div class="activity-section">
-                <div class="section-header">
-                    <h3>📋 Recent Activity</h3>
-                    <a href="#" class="view-all-link">View All</a>
-                </div>
-                <div class="activity-list">
-                    <div class="activity-item">
-                        <div class="activity-icon activity-icon-success">
-                            <i class="fas fa-check"></i>
-                        </div>
-                        <div class="activity-content">
-                            <span class="activity-text">Lesson plan approved for <strong>Mathematics</strong></span>
-                            <span class="activity-date">Today, 10:30 AM</span>
-                        </div>
-                    </div>
-                    <div class="activity-item">
-                        <div class="activity-icon activity-icon-info">
-                            <i class="fas fa-chart-line"></i>
-                        </div>
-                        <div class="activity-content">
-                            <span class="activity-text">Results submitted for <strong>Biology Class</strong></span>
-                            <span class="activity-date">Yesterday, 3:45 PM</span>
-                        </div>
-                    </div>
-                    <div class="activity-item">
-                        <div class="activity-icon activity-icon-warning">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <div class="activity-content">
-                            <span class="activity-text">Attendance marked for <strong>JSS 1A</strong></span>
-                            <span class="activity-date">2 days ago</span>
-                        </div>
-                    </div>
-                    <div class="activity-item">
-                        <div class="activity-icon activity-icon-primary">
-                            <i class="fas fa-question-circle"></i>
-                        </div>
-                        <div class="activity-content">
-                            <span class="activity-text">New questions added to <strong>Mathematics</strong> bank</span>
-                            <span class="activity-date">3 days ago</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            </section>
         </main>
     </div>
 
+    <?php include '../includes/floating-button.php'; ?>
+
     <script>
+        const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
+        const sidebar = document.querySelector('[data-sidebar]');
+        const overlay = document.querySelector('[data-sidebar-overlay]');
+        const body = document.body;
 
-        // Smooth scroll for internal links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth' });
-                }
-            });
-        });
-
-        // Add active class on scroll for header
-        window.addEventListener('scroll', () => {
-            const header = document.querySelector('.dashboard-header');
-            if (window.scrollY > 50) {
-                header.classList.add('scrolled');
-            } else {
-                header.classList.remove('scrolled');
-            }
-        });
-
-        // Animate cards on scroll
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
+        const openSidebar = () => {
+            if (!sidebar || !overlay) return;
+            sidebar.classList.remove('-translate-x-full');
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+            overlay.classList.add('opacity-100');
+            body.classList.add('nav-open');
         };
 
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
+        const closeSidebar = () => {
+            if (!sidebar || !overlay) return;
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+            overlay.classList.remove('opacity-100');
+            body.classList.remove('nav-open');
+        };
+
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', () => {
+                if (sidebar.classList.contains('-translate-x-full')) {
+                    openSidebar();
+                } else {
+                    closeSidebar();
                 }
             });
-        }, observerOptions);
+        }
 
-        // Observe dashboard cards
-        document.querySelectorAll('.card').forEach(card => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px)';
-            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-            observer.observe(card);
-        });
+        if (overlay) {
+            overlay.addEventListener('click', closeSidebar);
+        }
 
-        // Observe quick action cards
-        document.querySelectorAll('.quick-action-card').forEach(card => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px)';
-            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-            observer.observe(card);
-        });
-
-        // Add hover effects for cards
-        document.querySelectorAll('.card').forEach(card => {
-            card.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateY(-5px)';
+        if (sidebar) {
+            sidebar.querySelectorAll('a').forEach((link) => {
+                link.addEventListener('click', closeSidebar);
             });
-
-            card.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateY(0)';
-            });
-        });
-
-        // Quick action cards hover effect
-        document.querySelectorAll('.quick-action-card').forEach(card => {
-            card.addEventListener('mouseenter', function() {
-                this.style.transform = 'scale(1.05)';
-            });
-
-            card.addEventListener('mouseleave', function() {
-                this.style.transform = 'scale(1)';
-            });
-        });
-
-        // Auto-refresh dashboard data every 5 minutes
-        setInterval(() => {
-            // You can add AJAX calls here to refresh dynamic data
-            console.log('Dashboard data refresh check...');
-        }, 300000);
-    </script>`n`n    <?php include '../includes/floating-button.php'; ?>`n`n</body>
+        }
+    </script>
+</body>
 </html>

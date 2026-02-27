@@ -5,7 +5,7 @@ require_once 'includes/landing-header.php';
 ?>
 
 <main>
-    <section class="container hero" style="grid-template-columns: 1fr;">
+    <section class="container hero">
         <div data-reveal>
             <h1>Pricing built for growing schools.</h1>
             <p>Simple packages that scale with your school. Choose a plan and we will customize onboarding, training, and support.</p>
@@ -19,7 +19,7 @@ require_once 'includes/landing-header.php';
     <section class="container">
         <h2 class="section-title" data-reveal>Choose the plan that matches your operations.</h2>
         <p class="section-subtitle" data-reveal data-reveal-delay="80">All plans include core modules, secure access, and onboarding support.</p>
-        <div class="pricing-grid" data-reveal data-reveal-delay="120" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+        <div class="pricing-grid" data-reveal data-reveal-delay="120">
             <div class="pricing-card">
                 <strong>Starter</strong>
                 <p>Ideal for small schools moving from paper to digital.</p>
@@ -30,7 +30,7 @@ require_once 'includes/landing-header.php';
                 </ul>
                 <a class="btn btn-outline" href="contact.php">Request Quote</a>
             </div>
-            <div class="pricing-card" style="border: 2px solid var(--teal-600);">
+            <div class="pricing-card pricing-card--featured">
                 <strong>Growth</strong>
                 <p>Full operational visibility for medium-sized schools.</p>
                 <ul>
@@ -65,3 +65,4 @@ require_once 'includes/landing-header.php';
 </main>
 
 <?php require_once 'includes/landing-footer.php'; ?>
+

@@ -33,7 +33,7 @@ if ($isLoggedIn) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($pageTitle); ?></title>
-    <link rel="stylesheet" href="assets/css/landing.css">
+    <link rel="stylesheet" href="assets/css/tailwind.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -60,6 +60,15 @@ if ($isLoggedIn) {
                 <a href="pricing.php" class="<?php echo $activePage === 'pricing' ? 'is-active' : ''; ?>">Pricing</a>
                 <a href="about.php" class="<?php echo $activePage === 'about' ? 'is-active' : ''; ?>">About</a>
                 <a href="contact.php" class="<?php echo $activePage === 'contact' ? 'is-active' : ''; ?>">Contact</a>
+                <div class="nav-actions-mobile">
+                    <?php if ($isLoggedIn && $dashboardUrl !== ''): ?>
+                        <a class="btn btn-ghost" href="<?php echo htmlspecialchars($dashboardUrl); ?>">Dashboard</a>
+                    <?php else: ?>
+                        <a class="btn btn-ghost" href="login.php">Login</a>
+                    <?php endif; ?>
+                    <a class="btn btn-outline" href="application.php">Download App</a>
+                    <a class="btn btn-primary" href="contact.php">Request Demo</a>
+                </div>
             </nav>
 
             <div class="nav-actions">
@@ -68,6 +77,7 @@ if ($isLoggedIn) {
                 <?php else: ?>
                     <a class="btn btn-ghost" href="login.php">Login</a>
                 <?php endif; ?>
+                <a class="btn btn-outline" href="application.php">Download App</a>
                 <a class="btn btn-primary" href="contact.php">Request Demo</a>
             </div>
         </div>

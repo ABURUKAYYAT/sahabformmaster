@@ -5,7 +5,7 @@ require_once 'includes/landing-header.php';
 ?>
 
 <main>
-    <section class="hero container">
+    <section class="hero hero--split container">
         <div data-reveal>
             <h1>Operate your school with clarity, control, and confidence.</h1>
             <p>iSchool unifies attendance, results, fees, communication, and analytics in one secure platform built for principals, teachers, and proprietors.</p>
@@ -19,7 +19,7 @@ require_once 'includes/landing-header.php';
                 <span>Real-time reporting</span>
             </div>
         </div>
-        <div class="hero-visual" data-reveal data-reveal-delay="120">
+        <div class="hero-visual bg-grid" data-reveal data-reveal-delay="120">
             <div class="dashboard-mock">
                 <div class="mock-card">
                     <div class="mock-title">Principal Overview</div>
@@ -183,3 +183,5 @@ require_once 'includes/landing-header.php';
 </main>
 
 <?php require_once 'includes/landing-footer.php'; ?>
+
+

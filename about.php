@@ -5,7 +5,7 @@ require_once 'includes/landing-header.php';
 ?>
 
 <main>
-    <section class="container hero" style="grid-template-columns: 1fr;">
+    <section class="container hero">
         <div data-reveal>
             <h1>Built for the people who run schools every day.</h1>
             <p>iSchool is a modern school management platform designed to give principals, teachers, and proprietors the visibility they need to lead confidently.</p>
@@ -57,3 +57,4 @@ require_once 'includes/landing-header.php';
 </main>
 
 <?php require_once 'includes/landing-footer.php'; ?>
+
