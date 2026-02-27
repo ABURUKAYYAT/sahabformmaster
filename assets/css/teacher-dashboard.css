@@ -892,6 +892,10 @@ body {
         display: flex;
     }
 
+    .dashboard-header .header-container {
+        padding-left: calc(2rem + 56px);
+    }
+
     .dashboard-cards {
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         gap: 1rem;
@@ -916,6 +920,10 @@ body {
         height: 70px;
         flex-wrap: wrap;
         gap: 0.5rem;
+    }
+
+    .dashboard-header .header-container {
+        padding-left: calc(1rem + 52px);
     }
 
     .school-logo-container {
@@ -1076,6 +1084,10 @@ body {
         padding-top: 0.5rem;
         padding-bottom: 0.5rem;
         position: relative;
+    }
+
+    .dashboard-header .header-container {
+        padding-left: calc(0.75rem + 44px);
     }
 
     .mobile-menu-toggle {

@@ -66,6 +66,10 @@
         width: 100%;
         max-width: 100%;
     }
+
+    .dashboard-header .header-container {
+        padding-left: calc(2rem + 56px);
+    }
 }
 
 /* Mobile optimizations */
@@ -76,6 +80,10 @@
         width: 45px;
         height: 45px;
         font-size: 1.1rem;
+    }
+
+    .dashboard-header .header-container {
+        padding-left: calc(1rem + 52px);
     }
 
     .main-content {
@@ -96,6 +104,10 @@
         width: 40px;
         height: 40px;
         font-size: 1rem;
+    }
+
+    .dashboard-header .header-container {
+        padding-left: calc(0.75rem + 44px);
     }
 
     .sidebar {

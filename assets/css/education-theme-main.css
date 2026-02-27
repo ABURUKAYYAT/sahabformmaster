@@ -56,6 +56,10 @@
   .mobile-nav-dropdown {
     display: block !important;
   }
+
+  .dashboard-header .header-container {
+    padding-left: calc(2rem + 56px);
+  }
 }
 
 /* ===== DASHBOARD HEADER ===== */
@@ -654,6 +658,10 @@
     display: flex !important;
   }
 
+  .dashboard-header .header-container {
+    padding-left: calc(2rem + 56px);
+  }
+
   .dashboard-cards {
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: var(--space-5);
@@ -679,6 +687,10 @@
     height: 70px;
     flex-wrap: wrap;
     gap: var(--space-2);
+  }
+
+  .dashboard-header .header-container {
+    padding-left: calc(var(--space-4) + 52px);
   }
 
   .school-logo-container {
@@ -820,6 +832,10 @@
     padding-top: var(--space-2);
     padding-bottom: var(--space-2);
     position: relative;
+  }
+
+  .dashboard-header .header-container {
+    padding-left: calc(var(--space-3) + 44px);
   }
 
   .mobile-nav-toggle {
