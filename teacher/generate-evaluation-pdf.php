@@ -147,7 +147,7 @@ class StudentEvaluationsPDF extends TCPDF {
 $pdf = new StudentEvaluationsPDF($school, $teacher_name, $total_evaluations);
 
 // Set document information
-$pdf->SetCreator('SahabFormMaster School Management System');
+$pdf->SetCreator($school['school_name'] ?? 'School');
 $pdf->SetAuthor($school['school_name']);
 $pdf->SetTitle('Student Evaluations Report - ' . $teacher_name);
 $pdf->SetSubject('Comprehensive Student Evaluations Report');

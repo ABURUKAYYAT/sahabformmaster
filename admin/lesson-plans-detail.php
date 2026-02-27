@@ -2,6 +2,7 @@
 // filepath: c:\xampp\htdocs\sahabformmaster\admin\lesson-plans-detail.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Only allow principal (admin) and teachers to access
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'] ?? '', ['principal', 'teacher'])) {
@@ -118,7 +119,7 @@ function getApprovalBadge($status) {
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Lesson Plan Details | SahabFormMaster</title>
+    <title>Lesson Plan Details | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
     <link rel="stylesheet" href="../assets/css/dashboard.css">
     <link rel="stylesheet" href="../assets/css/lesson-plan-detail.css">
 </head>
@@ -128,8 +129,8 @@ function getApprovalBadge($status) {
     <div class="header-container">
         <div class="header-right">
             <div class="school-logo-container">
-                <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
-                <h1 class="school-name">SahabFormMaster</h1>
+                <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
+                <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
             </div>
         </div>
 

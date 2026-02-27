@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'principal') { header("Location: ../index.php"); exit; }
 $principal_name = $_SESSION['full_name'];
 $school_id = $_SESSION['school_id'] ?? null;
@@ -85,7 +86,7 @@ function renderCalendar($month, $year, $events) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>School Calendar | SahabFormMaster</title>
+    <title>School Calendar | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
     <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -211,9 +212,9 @@ function renderCalendar($month, $year, $events) {
         <div class="header-container">
             <div class="header-left">
                 <div class="school-logo-container">
-                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
                     <div class="school-info">
-                        <h1 class="school-name">SahabFormMaster</h1>
+                        <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
                         <p class="school-tagline">Principal Portal</p>
                     </div>
                 </div>

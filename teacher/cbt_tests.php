@@ -337,9 +337,9 @@ $tests = $tests_stmt->fetchAll();
     <div class="header-container">
         <div class="header-left">
             <div class="school-logo-container">
-                <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
                 <div class="school-info">
-                    <h1 class="school-name">SahabFormMaster</h1>
+                    <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
                     <p class="school-tagline">CBT Tests</p>
                 </div>
             </div>

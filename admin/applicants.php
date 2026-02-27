@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 // require_once 'includes/auth-check.php';
 
 // Check if user is principal
@@ -189,9 +190,9 @@ $classes = $classesStmt->fetchAll(PDO::FETCH_COLUMN);
             <!-- Logo and School Name -->
             <div class="header-left">
                 <div class="school-logo-container">
-                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
                     <div class="school-info">
-                        <h1 class="school-name">SahabFormMaster</h1>
+                        <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
                         <p class="school-tagline">Principal Portal</p>
                     </div>
                 </div>

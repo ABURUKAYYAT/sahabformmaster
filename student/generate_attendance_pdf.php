@@ -111,8 +111,8 @@ $overall_rate = ($stats['total_days'] > 0)
 $pdf = new AttendanceReportPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
 
 // Set document information
-$pdf->SetCreator(PDF_CREATOR);
-$pdf->SetAuthor('Sahab Academy');
+$pdf->SetCreator($schoolInfo['school_name'] ?? 'School');
+$pdf->SetAuthor($schoolInfo['school_name'] ?? 'School');
 $pdf->SetTitle('Attendance Report - ' . $student['full_name']);
 $pdf->SetSubject('Official Attendance Report');
 $pdf->SetKeywords('attendance, report, school, student');
@@ -456,4 +456,3 @@ $filename = 'Attendance_Report_' . $student['admission_no'] . '_' . $selected_mo
 $pdf->Output($filename, 'D');
 exit;
 ?>
-

@@ -54,6 +54,33 @@
         return withStore('readwrite', (store) => store.delete(id));
     }
 
+    function findBannerAnchor() {
+        const selectors = [
+            '[data-offline-banner-anchor]',
+            '.hero',
+            '.hero-section',
+            '.hero-card',
+            '.attendance-hero',
+            '.profile-hero',
+            '.news-hero',
+            '.timebook-hero',
+            '.form-header',
+            '.content-header',
+            'body > header',
+            '.dashboard-header',
+            '.mobile-nav-header',
+            'main',
+            '.main-content'
+        ];
+
+        for (const selector of selectors) {
+            const element = document.querySelector(selector);
+            if (element) return element;
+        }
+
+        return null;
+    }
+
     function ensureBanner() {
         if (document.getElementById(STATUS_ID)) return;
 
@@ -86,7 +113,18 @@
         banner.appendChild(text);
         banner.appendChild(right);
 
-        document.body.prepend(banner);
+        const anchor = findBannerAnchor();
+        if (anchor && anchor.parentNode) {
+            anchor.insertAdjacentElement('afterend', banner);
+            return;
+        }
+
+        const firstElement = document.body.firstElementChild;
+        if (firstElement) {
+            firstElement.insertAdjacentElement('afterend', banner);
+        } else {
+            document.body.appendChild(banner);
+        }
     }
 
     function updateBanner(state, message, pendingCount = 0) {

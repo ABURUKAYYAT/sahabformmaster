@@ -190,8 +190,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         require_once '../TCPDF-main/TCPDF-main/tcpdf.php';
 
         $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
-        $pdf->SetCreator('SahabFormMaster');
-        $pdf->SetAuthor('Super Admin');
+        $pdf->SetCreator($school['school_name'] ?? 'School');
+        $pdf->SetAuthor($school['school_name'] ?? 'School');
         $pdf->SetTitle('School Report - ' . $school['school_name']);
         $pdf->SetSubject('Comprehensive School Report');
         $pdf->setPrintHeader(false);

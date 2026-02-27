@@ -146,7 +146,7 @@ class PaymentReceiptPDF extends TCPDF {
 $pdf = new PaymentReceiptPDF($school, $payment, $receipt_type);
 
 // Set document information
-$pdf->SetCreator('SahabFormMaster School Management System');
+$pdf->SetCreator($school['school_name'] ?? 'School');
 $pdf->SetAuthor($school['school_name']);
 $pdf->SetTitle('Payment Receipt - ' . $payment['full_name']);
 $pdf->SetSubject('Payment receipt for ' . $payment['full_name']);

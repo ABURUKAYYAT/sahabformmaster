@@ -90,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | SahabFormMaster</title>
+    <title>Login | iSchool</title>
     <link rel="stylesheet" href="assets/css/education-theme-main.css">
             <style>
         :root {
@@ -296,7 +296,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     <div class="login-container">
         <div class="login-header">
-            <h2>SahabFormMaster</h2>
+            <h2>iSchool</h2>
             <p>Staff Access Portal</p>
         </div>
 

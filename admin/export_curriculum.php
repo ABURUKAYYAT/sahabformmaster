@@ -149,8 +149,8 @@ if ($filter_subject) {
 if (empty($filter_info)) $filter_info[] = 'None';
 
 $pdf = new CurriculumExportPDF($school, $_SESSION['full_name'] ?? 'Administrator', $filter_info);
-$pdf->SetCreator('SahabFormMaster School Management System');
-$pdf->SetAuthor($school['school_name'] ?? 'SahabFormMaster');
+$pdf->SetCreator($school['school_name'] ?? 'School');
+$pdf->SetAuthor($school['school_name'] ?? 'School');
 $pdf->SetTitle('Curriculum Export');
 $pdf->SetSubject('Curriculum Export Report');
 

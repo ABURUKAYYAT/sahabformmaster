@@ -153,7 +153,7 @@ $pdf = new StudentListPDF($school, $class, $export_type, $include_photos);
 $pdf->setStudents($students);
 
 // Set document information
-$pdf->SetCreator('SahabFormMaster School Management System');
+$pdf->SetCreator($school['school_name'] ?? 'School');
 $pdf->SetAuthor($school['school_name']);
 $pdf->SetTitle($class['class_name'] . ' - Student List');
 $pdf->SetSubject('Student list for ' . $class['class_name']);

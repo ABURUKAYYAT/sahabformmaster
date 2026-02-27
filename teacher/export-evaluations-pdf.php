@@ -127,7 +127,7 @@ class EvaluationExportPDF extends TCPDF {
 $pdf = new EvaluationExportPDF($school, $teacher_name, $export_type, $stats);
 
 // Set document information
-$pdf->SetCreator('SahabFormMaster School Management System');
+$pdf->SetCreator($school['school_name'] ?? 'School');
 $pdf->SetAuthor($school['school_name']);
 $pdf->SetTitle('Student Evaluations Data Export - ' . $teacher_name);
 $pdf->SetSubject('Comprehensive Student Evaluation Data Export');

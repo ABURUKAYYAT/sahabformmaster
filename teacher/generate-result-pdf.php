@@ -183,7 +183,7 @@ class StudentTranscriptPDF extends TCPDF {
 $pdf = new StudentTranscriptPDF($school, $student, $class, $term);
 
 // Set document information
-$pdf->SetCreator('SahabFormMaster School Management System');
+$pdf->SetCreator($school['school_name'] ?? 'School');
 $pdf->SetAuthor($school['school_name']);
 $pdf->SetTitle('Academic Transcript - ' . $student['full_name']);
 $pdf->SetSubject('Student Academic Results for ' . $term);

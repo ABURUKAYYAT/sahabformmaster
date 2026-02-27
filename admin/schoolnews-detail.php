@@ -2,6 +2,7 @@
 // filepath: c:\xampp\htdocs\sahabformmaster\admin\schoolnews-detail.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Get news ID from URL
 $news_id = intval($_GET['id'] ?? 0);
@@ -187,7 +188,7 @@ $user_role = $_SESSION['role'] ?? 'guest';
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title><?php echo htmlspecialchars($news['title']); ?> | SahabFormMaster</title>
+    <title><?php echo htmlspecialchars($news['title']); ?> | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
     <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -900,9 +901,9 @@ $user_role = $_SESSION['role'] ?? 'guest';
     <div class="header-container">
         <div class="header-left">
             <div class="school-logo-container">
-                <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
                 <div class="school-info">
-                    <h1 class="school-name">SahabFormMaster</h1>
+                    <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
                     <p class="school-tagline">News Detail</p>
                 </div>
             </div>

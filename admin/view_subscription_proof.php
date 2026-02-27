@@ -95,7 +95,7 @@ function request_status_badge_class($status)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>View Subscription Proof | SahabFormMaster</title>
+    <title>View Subscription Proof | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
     <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="stylesheet" href="../assets/css/mobile-navigation.css">
@@ -168,9 +168,9 @@ function request_status_badge_class($status)
     <div class="header-container">
         <div class="header-left">
             <div class="school-logo-container">
-                <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
                 <div class="school-info">
-                    <h1 class="school-name">SahabFormMaster</h1>
+                    <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
                     <p class="school-tagline">Principal Portal</p>
                 </div>
             </div>

@@ -118,7 +118,7 @@ $percent = $totalQuestions > 0 ? round(($score / $totalQuestions) * 100, 2) : 0;
 $resultText = $percent >= 50 ? 'PASS' : 'FAIL';
 
 $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
-$pdf->SetCreator('SahabFormMaster');
+$pdf->SetCreator($schoolName);
 $pdf->SetAuthor($schoolName);
 $pdf->SetTitle('CBT Result Slip');
 $pdf->setPrintHeader(false);

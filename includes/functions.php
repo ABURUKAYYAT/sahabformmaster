@@ -4,6 +4,121 @@
  * Ensures proper school data isolation across the application
  */
 
+function get_app_base_path() {
+    $script_name = $_SERVER['SCRIPT_NAME'] ?? '';
+    $script_dir = str_replace('\\', '/', dirname($script_name));
+
+    if ($script_dir === '.' || $script_dir === '\\') {
+        $script_dir = '/';
+    }
+
+    $parts = array_values(array_filter(explode('/', trim($script_dir, '/')), 'strlen'));
+    $known_dirs = ['admin', 'teacher', 'student', 'clerk', 'super', 'ajax', 'helpers', 'config', 'includes'];
+
+    if (!empty($parts) && in_array(end($parts), $known_dirs, true)) {
+        array_pop($parts);
+    }
+
+    $base = '/' . implode('/', $parts);
+    return rtrim($base, '/');
+}
+
+function normalize_public_path($path) {
+    $path = trim((string)$path);
+    if ($path === '') {
+        return '';
+    }
+
+    if (preg_match('#^https?://#i', $path) || strpos($path, '//') === 0) {
+        return $path;
+    }
+
+    $path = ltrim($path, '/');
+    $base = get_app_base_path();
+    if ($base === '') {
+        return '/' . $path;
+    }
+    return $base . '/' . $path;
+}
+
+function get_school_branding($school_id = null) {
+    static $cache = [];
+
+    if ($school_id === null) {
+        $school_id = get_current_school_id();
+    }
+
+    if (array_key_exists($school_id, $cache)) {
+        return $cache[$school_id];
+    }
+
+    $default = [
+        'name' => 'SahabFormMaster',
+        'logo' => normalize_public_path('assets/images/nysc.jpg')
+    ];
+
+    if (!$school_id) {
+        $cache[$school_id] = $default;
+        return $cache[$school_id];
+    }
+
+    $name = '';
+    $logo = '';
+
+    try {
+        global $pdo;
+        if (!isset($pdo)) {
+            $cache[$school_id] = $default;
+            return $cache[$school_id];
+        }
+        $stmt = $pdo->prepare("SELECT school_name, school_logo FROM school_profile WHERE school_id = ? LIMIT 1");
+        $stmt->execute([$school_id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $name = trim((string)($row['school_name'] ?? ''));
+            $logo = trim((string)($row['school_logo'] ?? ''));
+        }
+    } catch (Exception $e) {
+        // Fallbacks handled below.
+    }
+
+    if ($name === '' || $logo === '') {
+        try {
+            $stmt = $pdo->prepare("SELECT school_name, logo FROM schools WHERE id = ? LIMIT 1");
+            $stmt->execute([$school_id]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row) {
+                if ($name === '' && !empty($row['school_name'])) {
+                    $name = trim((string)$row['school_name']);
+                }
+                if ($logo === '' && !empty($row['logo'])) {
+                    $logo = trim((string)$row['logo']);
+                }
+            }
+        } catch (Exception $e) {
+            // Keep defaults if lookup fails.
+        }
+    }
+
+    $branding = [
+        'name' => $name !== '' ? $name : $default['name'],
+        'logo' => $logo !== '' ? normalize_public_path($logo) : $default['logo']
+    ];
+
+    $cache[$school_id] = $branding;
+    return $cache[$school_id];
+}
+
+function get_school_display_name($school_id = null) {
+    $branding = get_school_branding($school_id);
+    return $branding['name'] ?? 'SahabFormMaster';
+}
+
+function get_school_logo_url($school_id = null) {
+    $branding = get_school_branding($school_id);
+    return $branding['logo'] ?? normalize_public_path('assets/images/nysc.jpg');
+}
+
 // Get current user's school_id with fallback
 function get_current_school_id() {
     // Check if school_id is in session

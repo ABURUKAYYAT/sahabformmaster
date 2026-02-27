@@ -104,11 +104,12 @@ $reportData = processReportData($rawData, $report_type);
 $summary = calculateSummary($rawData);
 
 require_once '../TCPDF-main/TCPDF-main/tcpdf.php';
+$schoolName = get_school_display_name($current_school_id);
 
 // Create new PDF document
 $pdf = new TCPDF('L', PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
-$pdf->SetCreator('SahabFormMaster');
-$pdf->SetAuthor('School Admin');
+$pdf->SetCreator($schoolName);
+$pdf->SetAuthor($schoolName);
 $pdf->SetTitle('Attendance Report');
 $pdf->SetSubject('Teacher Attendance Report');
 $pdf->SetMargins(15, 20, 15);

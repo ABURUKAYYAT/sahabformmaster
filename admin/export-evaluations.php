@@ -233,7 +233,7 @@ function exportToPDF($evaluations, $school, $search, $term, $rating, $class_id) 
     $pdf = new EvaluationExportPDF($school, $_SESSION['full_name'], $filter_info);
 
     // Set document information
-    $pdf->SetCreator('SahabFormMaster School Management System');
+    $pdf->SetCreator($school['school_name'] ?? 'School');
     $pdf->SetAuthor($school['school_name']);
     $pdf->SetTitle('Student Evaluations Export');
     $pdf->SetSubject('Student Evaluations Export Report');

@@ -107,8 +107,9 @@ if (isset($_GET['pdf']) && isset($_GET['id'])) {
         $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
 
         // Set document information
-        $pdf->SetCreator('SahabFormMaster');
-        $pdf->SetAuthor('School Administration');
+        $schoolName = get_school_display_name($current_school_id);
+        $pdf->SetCreator($schoolName);
+        $pdf->SetAuthor($schoolName);
         $pdf->SetTitle('Activity Details - ' . $activity['activity_title']);
         $pdf->SetSubject('School Activity Report');
 
@@ -287,7 +288,7 @@ $teacher_name = $_SESSION['full_name'] ?? 'Teacher';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>School Diary - Teacher Portal | SahabFormMaster</title>
+    <title>School Diary - Teacher Portal | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -377,9 +378,9 @@ $teacher_name = $_SESSION['full_name'] ?? 'Teacher';
             <!-- Logo and School Name -->
             <div class="header-left">
                 <div class="school-logo-container">
-                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
                     <div class="school-info">
-                        <h1 class="school-name">SahabFormMaster</h1>
+                        <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
                         <p class="school-tagline">Teacher Portal</p>
                     </div>
                 </div>

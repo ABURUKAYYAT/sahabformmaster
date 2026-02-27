@@ -55,8 +55,8 @@ function generateFinalExamPaperPDF($paper_id, $user_id, $current_school_id) {
     $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
 
     // Set document information
-    $pdf->SetCreator('Sahab School Management System');
-    $pdf->SetAuthor($paper['teacher_name']);
+    $pdf->SetCreator($paper['school_name'] ?? 'School');
+    $pdf->SetAuthor($paper['school_name'] ?? 'School');
     $pdf->SetTitle($paper['paper_title']);
     $pdf->SetSubject($paper['subject_name'] . ' - ' . $paper['class_name']);
     $pdf->SetKeywords('Exam, Question Paper, ' . $paper['subject_name'] . ', ' . $paper['class_name']);

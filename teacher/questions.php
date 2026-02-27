@@ -427,7 +427,7 @@ $my_questions = $my_questions->fetch(PDO::FETCH_ASSOC)['total'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0f172a">
     <meta name="pwa-sw" content="../sw.js">
-    <title>Questions Bank Management | SahabFormMaster</title>
+    <title>Questions Bank Management | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
     <link rel="manifest" href="../manifest.json">
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
     <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
@@ -1344,9 +1344,9 @@ $my_questions = $my_questions->fetch(PDO::FETCH_ASSOC)['total'];
         <div class="header-container">
             <div class="header-left">
                 <div class="school-logo-container">
-                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
                     <div class="school-info">
-                        <h1 class="school-name">SahabFormMaster</h1>
+                        <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
                         <p class="school-tagline">Teacher Portal</p>
                     </div>
                 </div>

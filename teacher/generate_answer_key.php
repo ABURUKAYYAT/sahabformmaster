@@ -44,7 +44,7 @@ function generateAnswerKeyPDF($selected_questions, $school_name, $school_motto, 
     $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
 
     // Set document information
-    $pdf->SetCreator('Sahab School Management System');
+    $pdf->SetCreator($school_name ?: 'School');
     $pdf->SetTitle('Answer Key - ' . $paper_title);
     $pdf->SetSubject('Exam Answer Key');
 

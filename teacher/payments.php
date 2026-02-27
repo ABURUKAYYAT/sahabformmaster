@@ -106,7 +106,7 @@ $pendingPayments = $pendingPaymentsStmt->fetchColumn();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Management | SahabFormMaster</title>
+    <title>Payment Management | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1024,7 +1024,7 @@ $pendingPayments = $pendingPaymentsStmt->fetchColumn();
                     <i class="fas fa-credit-card"></i>
                 </div>
                 <div class="brand-text">
-                    <h1>SahabFormMaster</h1>
+                    <h1><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
                     <p>Payment Management</p>
                 </div>
             </div>

@@ -127,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0f172a">
     <meta name="pwa-sw" content="../sw.js">
-    <title>Add Student | SahabFormMaster</title>
+    <title>Add Student | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
     <link rel="manifest" href="../manifest.json">
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
     <link rel="stylesheet" href="../assets/css/offline-status.css">

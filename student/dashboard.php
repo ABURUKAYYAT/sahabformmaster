@@ -65,7 +65,7 @@ $pending_activities = $activities_stmt->fetch()['pending_activities'];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Dashboard | SahabFormMaster</title>
+    <title>Student Dashboard | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
     <link rel="stylesheet" href="../assets/css/education-theme-main.css">
     <link rel="stylesheet" href="../assets/css/mobile-navigation.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -84,9 +84,9 @@ $pending_activities = $activities_stmt->fetch()['pending_activities'];
             <!-- Logo and School Name -->
             <div class="header-left">
                 <div class="school-logo-container">
-                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
                     <div class="school-info">
-                        <h1 class="school-name">SahabFormMaster</h1>
+                        <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
                         <p class="school-tagline">Student Portal</p>
                     </div>
                 </div>

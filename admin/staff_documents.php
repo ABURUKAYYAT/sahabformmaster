@@ -2,6 +2,7 @@
 // admin/staff_documents.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Only allow principal (admin) to access this page
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'principal') {
@@ -387,8 +388,8 @@ $document_types = [
     <div class="header-container">
         <div class="header-right">
             <div class="school-logo-container">
-                <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
-                <h1 class="school-name">SahabFormMaster</h1>
+                <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
+                <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
             </div>
         </div>
 

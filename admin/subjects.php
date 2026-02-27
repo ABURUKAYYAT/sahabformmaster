@@ -155,7 +155,7 @@ $stats = $stats_query->fetch(PDO::FETCH_ASSOC);
 $principal_name = $_SESSION['full_name'] ?? 'Principal';
 
 // Get school settings for header
-$school_name = 'SahabFormMaster'; // Default, could be fetched from DB
+$school_name = get_school_display_name();
 $school_tagline = 'Principal Portal'; // Default
 ?>
 <!DOCTYPE html>
@@ -328,7 +328,7 @@ $school_tagline = 'Principal Portal'; // Default
             <!-- Logo and School Name -->
             <div class="header-left">
                 <div class="school-logo-container">
-                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
                     <div class="school-info">
                         <h1 class="school-name"><?php echo htmlspecialchars($school_name); ?></h1>
                         <p class="school-tagline"><?php echo htmlspecialchars($school_tagline); ?></p>

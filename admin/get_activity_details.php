@@ -2,6 +2,7 @@
 
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 // Check if principal is logged in
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'principal') {
@@ -72,7 +73,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Activity Details | <?php echo htmlspecialchars($activity['activity_title']); ?> - SahabFormMaster</title>
+    <title>Activity Details | <?php echo htmlspecialchars($activity['activity_title']); ?> - <?php echo htmlspecialchars(get_school_display_name()); ?></title>
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -178,9 +179,9 @@ try {
             <!-- Logo and School Name -->
             <div class="header-left">
                 <div class="school-logo-container">
-                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
                     <div class="school-info">
-                        <h1 class="school-name">SahabFormMaster</h1>
+                        <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
                         <p class="school-tagline">Principal Portal</p>
                     </div>
                 </div>

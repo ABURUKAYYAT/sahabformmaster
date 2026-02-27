@@ -59,7 +59,7 @@ if (!empty($error_message)) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Student Details | SahabFormMaster</title>
+        <title>Student Details | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
         <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
         <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     </head>
@@ -69,9 +69,9 @@ if (!empty($error_message)) {
             <div class="header-container">
                 <div class="header-left">
                     <div class="school-logo-container">
-                        <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                        <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
                         <div class="school-info">
-                            <h1 class="school-name">SahabFormMaster</h1>
+                            <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
                             <p class="school-tagline">Student Details</p>
                         </div>
                     </div>
@@ -148,8 +148,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
     $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
 
     // Set document information
-    $pdf->SetCreator('SahabFormMaster');
-    $pdf->SetAuthor('School Management System');
+    $pdf->SetCreator($student['school_name'] ?? 'School');
+    $pdf->SetAuthor($student['school_name'] ?? 'School');
     $pdf->SetTitle('Student Information - ' . $student['full_name']);
     $pdf->SetSubject('Student Profile');
 
@@ -310,9 +310,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
             <!-- Logo and School Name -->
             <div class="header-left">
                 <div class="school-logo-container">
-                    <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
+                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
                     <div class="school-info">
-                        <h1 class="school-name">SahabFormMaster</h1>
+                        <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
                         <p class="school-tagline">Student Details</p>
                     </div>
                 </div>

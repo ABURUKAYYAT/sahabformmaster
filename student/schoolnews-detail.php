@@ -191,7 +191,7 @@ $user_role = $_SESSION['role'] ?? 'guest';
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title><?php echo htmlspecialchars($news['title']); ?> | SahabFormMaster</title>
+    <title><?php echo htmlspecialchars($news['title']); ?> | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
     <link rel="stylesheet" href="../assets/css/dashboard.css">
     <link rel="stylesheet" href="../assets/css/schoolnews-detail.css">
 </head>
@@ -201,8 +201,8 @@ $user_role = $_SESSION['role'] ?? 'guest';
     <div class="header-container">
         <div class="header-right">
             <div class="school-logo-container">
-                <img src="../assets/images/nysc.jpg" alt="School Logo" class="school-logo">
-                <h1 class="school-name">SahabFormMaster</h1>
+                <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
+                <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
             </div>
         </div>
 

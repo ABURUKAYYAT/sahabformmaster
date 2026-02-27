@@ -6,15 +6,15 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 10px 16px;
-    width: min(680px, calc(100% - 32px));
+    padding: 0.8rem 1rem;
+    width: min(720px, calc(100% - 32px));
     margin: 12px auto 0;
     border-radius: 10px;
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
-    font-family: "Poppins", "Inter", Arial, sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    border: 1px solid transparent;
+    box-shadow: none;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 500;
 }
 
 .offline-banner-right {
@@ -24,46 +24,54 @@
 }
 
 .offline-banner-count {
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 500;
-    opacity: 0.9;
+    opacity: 0.85;
 }
 
 .offline-banner-retry {
-    border: none;
-    padding: 6px 10px;
+    border: 1px solid currentColor;
+    padding: 0.35rem 0.6rem;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 600;
     cursor: pointer;
+    background: transparent;
+    color: inherit;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.offline-banner-retry:hover {
+    background: currentColor;
+    color: #ffffff;
 }
 
 .offline-banner-online {
-    background: #e9f7ef;
-    color: #0f5132;
+    background: #eff6ff;
+    color: #1e3a8a;
+    border-color: #bfdbfe;
 }
 
 .offline-banner-online .offline-banner-retry {
-    background: #0f5132;
-    color: #ffffff;
+    border-color: #1e3a8a;
 }
 
 .offline-banner-offline {
-    background: #fff4e5;
-    color: #8a4b00;
+    background: #fffbeb;
+    color: #92400e;
+    border-color: #fde68a;
 }
 
 .offline-banner-offline .offline-banner-retry {
-    background: #8a4b00;
-    color: #ffffff;
+    border-color: #92400e;
 }
 
 .offline-banner-syncing {
-    background: #e8f1ff;
-    color: #0a3d91;
+    background: #eff6ff;
+    color: #1e3a8a;
+    border-color: #bfdbfe;
 }
 
 .offline-banner-syncing .offline-banner-retry {
-    background: #0a3d91;
-    color: #ffffff;
+    border-color: #1e3a8a;
 }

@@ -2,6 +2,7 @@
 // student/index.php
 session_start();
 require_once '../config/db.php';
+require_once '../includes/functions.php';
 
 $error = '';
 
@@ -40,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Login | SahabFormMaster</title>
+    <title>Student Login | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
     <link rel="stylesheet" href="../assets/css/education-theme-main.css">
             <style>
         :root {
@@ -246,7 +247,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     <div class="login-container">
         <div class="login-header">
-            <h2>SahabFormMaster</h2>
+            <h2>iSchool</h2>
             <p>Student Portal</p>
         </div>
 

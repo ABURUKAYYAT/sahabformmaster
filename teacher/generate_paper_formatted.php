@@ -142,8 +142,8 @@ if (isset($_POST['download_pdf']) && $_POST['download_pdf'] === '1') {
     require_once '../TCPDF-main/TCPDF-main/tcpdf.php';
 
     $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
-    $pdf->SetCreator('Sahab School Management System');
-    $pdf->SetAuthor($_SESSION['full_name'] ?? 'Teacher');
+    $pdf->SetCreator($school_name ?: 'School');
+    $pdf->SetAuthor($school_name ?: 'School');
     $pdf->SetTitle($paper_title);
     $pdf->SetSubject($subject_name ?: 'Exam Paper');
     $pdf->SetHeaderData('', 0, '', '');

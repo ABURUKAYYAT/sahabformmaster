@@ -76,8 +76,8 @@ $student = $stmt->fetch();
 $pdf = new PaymentReceiptPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
 
 // Set document information
-$pdf->SetCreator(PDF_CREATOR);
-$pdf->SetAuthor('Sahab Academy');
+$pdf->SetCreator($schoolInfo['school_name'] ?? 'School');
+$pdf->SetAuthor($schoolInfo['school_name'] ?? 'School');
 $pdf->SetTitle('Payment Receipt - ' . $paymentDetails['receipt_number']);
 $pdf->SetSubject('Official Payment Receipt');
 $pdf->SetKeywords('payment, receipt, school, fees');
@@ -455,4 +455,3 @@ $filename = 'Payment_Receipt_' . $paymentDetails['receipt_number'] . '_' . date(
 $pdf->Output($filename, 'D');
 exit;
 ?>
-
