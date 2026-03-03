@@ -66,6 +66,30 @@ ksort($category_filters);
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <meta name="theme-color" content="#0f172a">
+    <style>
+        [data-sidebar] {
+            overflow: hidden;
+        }
+
+        .sidebar-scroll-shell {
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-y: contain;
+            touch-action: pan-y;
+            padding-bottom: max(1rem, env(safe-area-inset-bottom));
+        }
+
+        .feed-hero,
+        .feed-hero h1,
+        .feed-hero h2,
+        .feed-hero h3,
+        .feed-hero p,
+        .feed-hero span,
+        .feed-hero i {
+            color: #fff;
+        }
+    </style>
 </head>
 <body class="landing bg-slate-50">
     <header class="site-header">
@@ -98,14 +122,16 @@ ksort($category_filters);
     <div class="fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity lg:hidden" data-sidebar-overlay></div>
 
     <div class="container grid gap-6 lg:grid-cols-[280px_1fr] py-8">
-        <aside class="fixed inset-y-0 left-0 z-40 w-72 bg-white shadow-lift border-r border-ink-900/10 transform -translate-x-full transition-transform duration-200 lg:static lg:inset-auto lg:translate-x-0" data-sidebar>
-            <?php include '../includes/teacher_sidebar.php'; ?>
+        <aside class="fixed inset-y-0 left-0 z-40 h-[100dvh] w-72 bg-white shadow-lift border-r border-ink-900/10 transform -translate-x-full transition-transform duration-200 lg:static lg:inset-auto lg:h-auto lg:translate-x-0" data-sidebar>
+            <div class="sidebar-scroll-shell h-full overflow-y-auto">
+                <?php include '../includes/teacher_sidebar.php'; ?>
+            </div>
         </aside>
 
         <main class="space-y-6">
             <!-- Hero + Stats -->
             <section class="rounded-3xl overflow-hidden shadow-lift border border-ink-900/5">
-                <div class="bg-gradient-to-r from-teal-700 via-emerald-600 to-sky-600 text-white p-6 sm:p-8">
+                <div class="feed-hero bg-gradient-to-r from-teal-700 via-emerald-600 to-sky-600 text-white p-6 sm:p-8">
                     <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                             <p class="text-xs uppercase tracking-wide text-white/80 mb-1">School communications</p>

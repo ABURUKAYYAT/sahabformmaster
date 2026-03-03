@@ -912,6 +912,16 @@ if ($class_id > 0) {
             color: #fff;
         }
 
+        .content-header,
+        .content-header h1,
+        .content-header h2,
+        .content-header h3,
+        .content-header p,
+        .content-header span,
+        .content-header i {
+            color: #fff;
+        }
+
         .content-header h2,
         .panel-header h2,
         .section-header h3 {
@@ -921,6 +931,19 @@ if ($class_id > 0) {
         .content-header p,
         .content-header .quick-stat-label {
             color: rgba(255, 255, 255, 0.82);
+        }
+
+        [data-sidebar] {
+            overflow: hidden;
+        }
+
+        .sidebar-scroll-shell {
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-y: contain;
+            touch-action: pan-y;
+            padding-bottom: max(1rem, env(safe-area-inset-bottom));
         }
 
         .header-stats {
@@ -1539,8 +1562,10 @@ if ($class_id > 0) {
     <div class="fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity lg:hidden" data-sidebar-overlay></div>
 
     <div class="container grid gap-6 py-8 lg:grid-cols-[280px_1fr]">
-        <aside class="fixed inset-y-0 left-0 z-40 w-72 -translate-x-full transform border-r border-ink-900/10 bg-white shadow-lift transition-transform duration-200 lg:static lg:inset-auto lg:translate-x-0" data-sidebar>
-            <?php include '../includes/teacher_sidebar.php'; ?>
+        <aside class="fixed inset-y-0 left-0 z-40 h-[100dvh] w-72 -translate-x-full transform border-r border-ink-900/10 bg-white shadow-lift transition-transform duration-200 lg:static lg:inset-auto lg:h-auto lg:translate-x-0" data-sidebar>
+            <div class="sidebar-scroll-shell h-full overflow-y-auto">
+                <?php include '../includes/teacher_sidebar.php'; ?>
+            </div>
         </aside>
 
         <main class="space-y-6">

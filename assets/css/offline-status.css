@@ -1,6 +1,8 @@
 .offline-banner {
-    position: sticky;
-    top: 12px;
+    position: fixed;
+    left: 50%;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
     z-index: 9999;
     display: flex;
     align-items: center;
@@ -8,10 +10,10 @@
     gap: 12px;
     padding: 0.8rem 1rem;
     width: min(720px, calc(100% - 32px));
-    margin: 12px auto 0;
+    margin: 0;
     border-radius: 10px;
     border: 1px solid transparent;
-    box-shadow: none;
+    box-shadow: 0 14px 32px rgba(15, 31, 45, 0.18);
     font-family: inherit;
     font-size: 0.95rem;
     font-weight: 500;
@@ -74,4 +76,24 @@
 
 .offline-banner-syncing .offline-banner-retry {
     border-color: #1e3a8a;
+}
+
+@media (max-width: 640px) {
+    .offline-banner {
+        width: calc(100% - 20px);
+        bottom: max(10px, env(safe-area-inset-bottom));
+        padding: 0.75rem 0.85rem;
+        gap: 10px;
+        border-radius: 12px;
+        font-size: 0.88rem;
+    }
+
+    .offline-banner-right {
+        gap: 8px;
+    }
+
+    .offline-banner-retry {
+        padding: 0.4rem 0.65rem;
+        font-size: 0.72rem;
+    }
 }

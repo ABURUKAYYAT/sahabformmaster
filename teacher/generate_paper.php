@@ -1265,6 +1265,8 @@ $form_data = [
     'general_instructions' => $_POST['general_instructions'] ?? '',
     'instructions' => $_POST['instructions'] ?? ''
 ];
+$original_php_self = $_SERVER['PHP_SELF'];
+$_SERVER['PHP_SELF'] = 'questions.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1272,6 +1274,7 @@ $form_data = [
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Paper Builder | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
+    <link rel="stylesheet" href="../assets/css/tailwind.css">
     <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
     <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1280,11 +1283,11 @@ $form_data = [
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root {
-            --sky-50: #f3f8ff;
-            --sky-100: #e7f0ff;
-            --sky-300: #9ec5ff;
-            --sky-500: #3f7de6;
-            --sky-700: #2559b6;
+            --sky-50: #f0fdfa;
+            --sky-100: #ccfbf1;
+            --sky-300: #5eead4;
+            --sky-500: #0f766e;
+            --sky-700: #115e59;
             --ink-900: #0f223f;
             --ink-700: #2f4569;
             --ink-500: #4f678d;
@@ -1296,7 +1299,7 @@ $form_data = [
             --amber: #f0a202;
             --danger: #cd3a53;
             --surface: #ffffff;
-            --gradient-primary: linear-gradient(135deg, #2563eb 0%, #1d4ed8 45%, #1e40af 100%);
+            --gradient-primary: linear-gradient(135deg, #0f766e 0%, #0d9488 48%, #115e59 100%);
             --shadow-soft: 0 12px 28px rgba(15, 23, 42, 0.08);
         }
 
@@ -1306,6 +1309,20 @@ $form_data = [
             font-family: 'Plus Jakarta Sans', sans-serif;
             color: var(--ink-900);
             background: #f5f7fb;
+            padding-top: 6.5rem;
+        }
+
+        [data-sidebar] {
+            overflow: hidden;
+        }
+
+        .sidebar-scroll-shell {
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-y: contain;
+            touch-action: pan-y;
+            padding-bottom: max(1rem, env(safe-area-inset-bottom));
         }
 
         .dashboard-container .main-content {
@@ -1316,6 +1333,14 @@ $form_data = [
             max-width: 1400px;
             margin: 0 auto;
             padding: 1.5rem;
+        }
+
+        .site-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 60;
         }
 
         .hero {
@@ -1334,11 +1359,12 @@ $form_data = [
             font-size: 1.7rem;
             font-weight: 800;
             letter-spacing: 0.2px;
+            color: #fff;
         }
 
         .hero p {
             margin: 8px 0 0;
-            color: #d8e8ff;
+            color: rgba(255, 255, 255, 0.88);
             max-width: 760px;
         }
 
@@ -1361,7 +1387,7 @@ $form_data = [
 
         .hero-link {
             background: #ffffff;
-            color: #153f78;
+            color: #115e59;
             border-radius: 999px;
             padding: 8px 12px;
             font-size: 0.84rem;
@@ -1433,9 +1459,9 @@ $form_data = [
         }
 
         .btn-primary { background: var(--sky-500); color: #fff; }
-        .btn-secondary { background: #e7eef9; color: var(--ink-900); }
-        .btn-ghost { background: #fff; color: var(--ink-700); border: 1px solid #c8d9f0; }
-        .btn-success { background: #198754; color: #fff; }
+        .btn-secondary { background: #ccfbf1; color: #115e59; }
+        .btn-ghost { background: #fff; color: #115e59; border: 1px solid #99f6e4; }
+        .btn-success { background: #0f766e; color: #fff; }
 
         .workspace {
             margin-top: 14px;
@@ -1468,7 +1494,14 @@ $form_data = [
 
         .span-2 { grid-column: 1 / -1; }
 
-        .question-list { margin-top: 12px; display: grid; gap: 10px; }
+        .question-list {
+            margin-top: 12px;
+            display: grid;
+            gap: 10px;
+            max-height: 68vh;
+            overflow-y: auto;
+            padding-right: 6px;
+        }
 
         .question-card {
             border: 1px solid #d6e4f6;
@@ -1604,39 +1637,79 @@ $form_data = [
         }
 
         @media (max-width: 768px) {
+            .main-container {
+                padding: 0;
+            }
+
             .hero {
                 grid-template-columns: 1fr;
                 text-align: left;
+                padding: 18px;
             }
 
             .hero-metrics {
                 justify-content: flex-start;
             }
+
+            .setup-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .span-2 {
+                grid-column: auto;
+            }
+
+            .question-head {
+                grid-template-columns: 1fr;
+            }
+
+            .question-head strong {
+                justify-self: start;
+            }
+
+            .question-list {
+                max-height: 55vh;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .toolbar {
+                grid-template-columns: 1fr;
+            }
+
+            .card,
+            .toolbar {
+                padding: 14px;
+                border-radius: 16px;
+            }
+
+            .hero h1 {
+                font-size: 1.4rem;
+            }
         }
     </style>
 </head>
-<body>
-    <!-- Mobile Navigation Component -->
-    <?php include '../includes/mobile_navigation.php'; ?>
-
-    <!-- Header -->
-    <header class="dashboard-header">
-        <div class="header-container">
-            <div class="header-left">
-                <div class="school-logo-container">
-                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
-                    <div class="school-info">
-                        <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
-                        <p class="school-tagline">Teacher Portal</p>
+<body class="landing">
+    <header class="site-header">
+        <div class="container nav-wrap">
+            <div class="flex items-center gap-4">
+                <button class="nav-toggle lg:hidden" type="button" data-sidebar-toggle aria-label="Open menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div class="flex items-center gap-3">
+                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="w-10 h-10 rounded-xl object-cover">
+                    <div class="hidden sm:block">
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Teacher Portal</p>
+                        <p class="text-lg font-semibold text-ink-900"><?php echo htmlspecialchars(get_school_display_name()); ?></p>
                     </div>
                 </div>
             </div>
-            <div class="header-right">
-                <div class="teacher-info">
-                    <p class="teacher-label">Teacher</p>
-                    <span class="teacher-name"><?php echo htmlspecialchars($teacher_name); ?></span>
-                </div>
-                <a href="logout.php" class="btn-logout">
+            <div class="flex items-center gap-3">
+                <span class="hidden md:block text-sm text-slate-600">Welcome, <?php echo htmlspecialchars($teacher_name); ?></span>
+                <a class="btn btn-outline" href="questions.php">Question Bank</a>
+                <a class="btn btn-primary" href="logout.php">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </a>
@@ -1644,9 +1717,16 @@ $form_data = [
         </div>
     </header>
 
-    <div class="dashboard-container">
-        <?php include '../includes/teacher_sidebar.php'; ?>
-        <main class="main-content">
+    <div class="fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity lg:hidden" data-sidebar-overlay></div>
+
+    <div class="container grid gap-6 lg:grid-cols-[280px_1fr] py-8">
+        <aside class="fixed inset-y-0 left-0 z-40 h-[100dvh] w-72 bg-white shadow-lift border-r border-ink-900/10 transform -translate-x-full transition-transform duration-200 lg:static lg:inset-auto lg:h-auto lg:translate-x-0" data-sidebar>
+            <div class="sidebar-scroll-shell h-full overflow-y-auto">
+                <?php include '../includes/teacher_sidebar.php'; ?>
+            </div>
+        </aside>
+
+        <main class="space-y-6">
             <div class="main-container">
     <header class="hero">
         <div>
@@ -1890,6 +1970,7 @@ $form_data = [
         </main>
     </div>
 
+<?php $_SERVER['PHP_SELF'] = $original_php_self; ?>
 <?php include '../includes/floating-button.php'; ?>
 
 <script>
@@ -2061,6 +2142,49 @@ $form_data = [
 
     syncCardStates();
     renderSummary();
+})();
+
+(() => {
+    const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
+    const sidebar = document.querySelector('[data-sidebar]');
+    const overlay = document.querySelector('[data-sidebar-overlay]');
+    const body = document.body;
+
+    const openSidebar = () => {
+        if (!sidebar || !overlay) return;
+        sidebar.classList.remove('-translate-x-full');
+        overlay.classList.remove('opacity-0', 'pointer-events-none');
+        overlay.classList.add('opacity-100');
+        body.classList.add('nav-open');
+    };
+
+    const closeSidebar = () => {
+        if (!sidebar || !overlay) return;
+        sidebar.classList.add('-translate-x-full');
+        overlay.classList.add('opacity-0', 'pointer-events-none');
+        overlay.classList.remove('opacity-100');
+        body.classList.remove('nav-open');
+    };
+
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', () => {
+            if (sidebar.classList.contains('-translate-x-full')) {
+                openSidebar();
+            } else {
+                closeSidebar();
+            }
+        });
+    }
+
+    if (overlay) {
+        overlay.addEventListener('click', closeSidebar);
+    }
+
+    if (sidebar) {
+        sidebar.querySelectorAll('a').forEach((link) => {
+            link.addEventListener('click', closeSidebar);
+        });
+    }
 })();
 </script>
 </body>

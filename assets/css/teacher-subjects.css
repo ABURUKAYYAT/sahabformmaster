@@ -1,0 +1,343 @@
+.subject-page {
+    overflow-x: hidden;
+}
+
+.subject-page main,
+.subject-page section {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.subject-page .container,
+.subject-page main,
+.subject-page section,
+.subject-page article,
+.subject-page form,
+.subject-page label,
+.subject-page div {
+    min-width: 0;
+}
+
+.subject-page .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+.subject-page .nav-wrap {
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 0.85rem;
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+}
+
+.subject-page .nav-wrap > :first-child {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.subject-page [data-sidebar] {
+    overflow: hidden;
+}
+
+.subject-page .sidebar-scroll-shell {
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.subject-header-actions {
+    width: auto;
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+}
+
+.subject-header-actions .btn {
+    width: auto;
+    justify-content: center;
+    padding: 0.5rem 0.85rem;
+    font-size: 0.8125rem;
+}
+
+.subject-page main {
+    gap: 1rem;
+}
+
+.subject-content-grid {
+    gap: 1rem;
+}
+
+.subject-hero {
+    padding: 1.25rem;
+    background:
+        radial-gradient(circle at top right, rgba(248, 198, 102, 0.26), transparent 28%),
+        linear-gradient(135deg, #0f766e 0%, #0f766e 18%, #0f172a 100%);
+}
+
+.subject-hero,
+.subject-hero h1,
+.subject-hero h2,
+.subject-hero h3,
+.subject-hero p {
+    color: #fff;
+}
+
+.subject-hero h1 {
+    font-size: 1.95rem;
+    line-height: 1.15;
+}
+
+.subject-hero-actions {
+    grid-template-columns: 1fr;
+}
+
+.subject-page .subject-hero-actions > a,
+.subject-page .subject-header-actions > a {
+    min-width: 0;
+}
+
+.subject-metrics-grid {
+    grid-template-columns: 1fr;
+}
+
+.subject-metric-card {
+    display: grid;
+    gap: 0.45rem;
+    border: 1px solid rgba(15, 31, 45, 0.06);
+    border-radius: 1.35rem;
+    background: #f8fbfb;
+    padding: 1rem;
+    box-shadow: 0 10px 24px rgba(15, 31, 45, 0.06);
+}
+
+.subject-metric-icon {
+    display: inline-flex;
+    width: 3rem;
+    height: 3rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.subject-toolbar {
+    gap: 1rem;
+}
+
+.subject-toolbar > :last-child {
+    width: 100%;
+}
+
+.subject-toolbar > :last-child > * {
+    width: 100%;
+}
+
+.subject-empty-state {
+    display: grid;
+    place-items: center;
+    text-align: center;
+    border: 1px dashed rgba(15, 31, 45, 0.15);
+    border-radius: 1.5rem;
+    background: linear-gradient(180deg, rgba(240, 249, 255, 0.8), rgba(255, 255, 255, 0.95));
+    padding: 2rem 1.25rem;
+}
+
+.subject-empty-icon {
+    display: inline-flex;
+    width: 4rem;
+    height: 4rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1.4rem;
+    background: rgba(22, 133, 117, 0.1);
+    color: #0f6a5c;
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.subject-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    white-space: nowrap;
+    border: 1px solid rgba(15, 31, 45, 0.1);
+    border-radius: 9999px;
+    background: #fff;
+    color: #475569;
+    padding: 0.75rem 0.95rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    transition: all 0.2s ease;
+    flex: 0 0 auto;
+}
+
+.subject-filter-chip:hover,
+.subject-filter-chip.is-active {
+    border-color: #168575;
+    background: #168575;
+    color: #fff;
+    box-shadow: 0 12px 24px rgba(22, 133, 117, 0.18);
+}
+
+.subject-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    border-radius: 9999px;
+    padding: 0.45rem 0.8rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.subject-pill-success {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.subject-pill-warning {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.subject-pill-info {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.subject-pill-muted {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.subject-table-row {
+    transition: background-color 0.2s ease;
+}
+
+.subject-table-row:hover {
+    background: #f8fbfb;
+}
+
+.subject-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.subject-modal.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.subject-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.58);
+    backdrop-filter: blur(4px);
+}
+
+.subject-modal-dialog {
+    position: relative;
+    width: 100%;
+    max-width: 42rem;
+    border: 1px solid rgba(15, 31, 45, 0.08);
+    border-radius: 1.5rem;
+    background: #fff;
+    box-shadow: 0 25px 80px rgba(15, 23, 42, 0.24);
+    overflow: hidden;
+}
+
+body.modal-open {
+    overflow: hidden;
+}
+
+@media (min-width: 640px) {
+    .subject-page .container {
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+    }
+
+    .subject-hero {
+        padding: 1.5rem 2rem;
+    }
+
+    .subject-hero-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .subject-metrics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .subject-toolbar > :last-child {
+        width: auto;
+    }
+
+    .subject-toolbar > :last-child > * {
+        width: auto;
+    }
+
+    .subject-empty-state {
+        padding: 2.5rem 1.5rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .subject-page main {
+        gap: 1.5rem;
+    }
+
+    .subject-content-grid {
+        gap: 1.5rem;
+    }
+
+    .subject-hero h1 {
+        font-size: 2.4rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .subject-page .nav-wrap {
+        gap: 1rem;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+
+    .subject-header-actions {
+        gap: 0.75rem;
+    }
+
+    .subject-header-actions .btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+    }
+
+    .subject-hero {
+        padding: 1.75rem 2rem;
+    }
+}
+
+@media (min-width: 1200px) {
+    .subject-page .container {
+        padding-left: 2.75rem;
+        padding-right: 2.75rem;
+    }
+}
+
+@media (min-width: 1280px) {
+    .subject-metrics-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+}

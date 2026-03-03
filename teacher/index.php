@@ -65,6 +65,20 @@ $subject_count = $subject_stmt->fetch()['subject_count'];
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        [data-sidebar] {
+            overflow: hidden;
+        }
+
+        .sidebar-scroll-shell {
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-y: contain;
+            touch-action: pan-y;
+            padding-bottom: max(1rem, env(safe-area-inset-bottom));
+        }
+    </style>
 </head>
 <body class="landing">
     <header class="site-header">
@@ -97,77 +111,79 @@ $subject_count = $subject_stmt->fetch()['subject_count'];
     <div class="fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity lg:hidden" data-sidebar-overlay></div>
 
     <div class="container grid gap-6 lg:grid-cols-[280px_1fr] py-8">
-        <aside class="fixed inset-y-0 left-0 z-40 w-72 bg-white shadow-lift border-r border-ink-900/10 transform -translate-x-full transition-transform duration-200 lg:static lg:inset-auto lg:translate-x-0" data-sidebar>
-            <div class="p-6 border-b border-ink-900/10">
-                <h2 class="text-lg font-semibold text-ink-900">Navigation</h2>
-                <p class="text-sm text-slate-500">Teacher workspace</p>
+        <aside class="fixed inset-y-0 left-0 z-40 h-[100dvh] w-72 bg-white shadow-lift border-r border-ink-900/10 transform -translate-x-full transition-transform duration-200 lg:static lg:inset-auto lg:h-auto lg:translate-x-0" data-sidebar>
+            <div class="sidebar-scroll-shell h-full overflow-y-auto">
+                <div class="p-6 border-b border-ink-900/10">
+                    <h2 class="text-lg font-semibold text-ink-900">Navigation</h2>
+                    <p class="text-sm text-slate-500">Teacher workspace</p>
+                </div>
+                <nav class="p-4 space-y-1 text-sm">
+                    <a href="index.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold bg-teal-600/10 text-teal-700">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="schoolfeed.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                        <i class="fas fa-newspaper"></i>
+                        <span>School Feeds</span>
+                    </a>
+                    <a href="school_diary.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                        <i class="fas fa-book"></i>
+                        <span>School Diary</span>
+                    </a>
+                    <a href="students.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                        <i class="fas fa-users"></i>
+                        <span>Students</span>
+                    </a>
+                    <a href="results.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Results</span>
+                    </a>
+                    <a href="subjects.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                        <i class="fas fa-book-open"></i>
+                        <span>Subjects</span>
+                    </a>
+                    <a href="questions.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                        <i class="fas fa-question-circle"></i>
+                        <span>Question Bank</span>
+                    </a>
+                    <a href="lesson-plan.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                        <i class="fas fa-clipboard-list"></i>
+                        <span>Lesson Plans</span>
+                    </a>
+                    <a href="curricullum.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                        <i class="fas fa-graduation-cap"></i>
+                        <span>Curriculum</span>
+                    </a>
+                    <a href="teacher_class_activities.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                        <i class="fas fa-tasks"></i>
+                        <span>Class Activities</span>
+                    </a>
+                    <a href="cbt_tests.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                        <i class="fas fa-laptop-code"></i>
+                        <span>CBT Tests</span>
+                    </a>
+                    <a href="student-evaluation.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                        <i class="fas fa-star"></i>
+                        <span>Evaluations</span>
+                    </a>
+                    <a href="class_attendance.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>Attendance</span>
+                    </a>
+                    <a href="timebook.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                        <i class="fas fa-clock"></i>
+                        <span>Time Book</span>
+                    </a>
+                    <a href="permissions.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                        <i class="fas fa-key"></i>
+                        <span>Permissions</span>
+                    </a>
+                    <a href="payments.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <span>Payments</span>
+                    </a>
+                </nav>
             </div>
-            <nav class="p-4 space-y-1 text-sm">
-                <a href="index.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold bg-teal-600/10 text-teal-700">
-                    <i class="fas fa-tachometer-alt"></i>
-                    <span>Dashboard</span>
-                </a>
-                <a href="schoolfeed.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
-                    <i class="fas fa-newspaper"></i>
-                    <span>School Feeds</span>
-                </a>
-                <a href="school_diary.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
-                    <i class="fas fa-book"></i>
-                    <span>School Diary</span>
-                </a>
-                <a href="students.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
-                    <i class="fas fa-users"></i>
-                    <span>Students</span>
-                </a>
-                <a href="results.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Results</span>
-                </a>
-                <a href="subjects.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
-                    <i class="fas fa-book-open"></i>
-                    <span>Subjects</span>
-                </a>
-                <a href="questions.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
-                    <i class="fas fa-question-circle"></i>
-                    <span>Question Bank</span>
-                </a>
-                <a href="lesson-plan.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
-                    <i class="fas fa-clipboard-list"></i>
-                    <span>Lesson Plans</span>
-                </a>
-                <a href="curricullum.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
-                    <i class="fas fa-graduation-cap"></i>
-                    <span>Curriculum</span>
-                </a>
-                <a href="teacher_class_activities.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
-                    <i class="fas fa-tasks"></i>
-                    <span>Class Activities</span>
-                </a>
-                <a href="cbt_tests.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
-                    <i class="fas fa-laptop-code"></i>
-                    <span>CBT Tests</span>
-                </a>
-                <a href="student-evaluation.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
-                    <i class="fas fa-star"></i>
-                    <span>Evaluations</span>
-                </a>
-                <a href="class_attendance.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
-                    <i class="fas fa-calendar-check"></i>
-                    <span>Attendance</span>
-                </a>
-                <a href="timebook.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
-                    <i class="fas fa-clock"></i>
-                    <span>Time Book</span>
-                </a>
-                <a href="permissions.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
-                    <i class="fas fa-key"></i>
-                    <span>Permissions</span>
-                </a>
-                <a href="payments.php" class="flex items-center gap-3 rounded-xl px-3 py-2 font-semibold text-slate-600 hover:bg-teal-600/10 hover:text-teal-700">
-                    <i class="fas fa-money-bill-wave"></i>
-                    <span>Payments</span>
-                </a>
-            </nav>
         </aside>
 
         <main class="space-y-6">

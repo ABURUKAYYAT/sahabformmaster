@@ -1533,6 +1533,33 @@ $complaint_total = count($complaints);
             overflow-x: hidden;
         }
 
+        .results-page {
+            overflow-x: hidden;
+        }
+
+        .results-page main,
+        .results-page section {
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+
+        .results-page .container,
+        .results-page main,
+        .results-page .main-container,
+        .results-page .modern-card,
+        .results-page .card-body-modern,
+        .results-page .section-card,
+        .results-page .filter-form,
+        .results-page .filter-grid,
+        .results-page .results-stats,
+        .results-page .table-shell,
+        .results-page .tabs-modern,
+        .results-page .tab-content,
+        .results-page .result-action-group,
+        .results-page .complaint-response-form {
+            min-width: 0;
+        }
+
         .main-container {
             max-width: 1120px;
             padding: 0;
@@ -1554,6 +1581,16 @@ $complaint_total = count($complaints);
         .card-header-modern {
             padding: 1.75rem;
             background: var(--gradient-primary);
+        }
+
+        .card-header-modern,
+        .card-header-modern h1,
+        .card-header-modern h2,
+        .card-header-modern h3,
+        .card-header-modern p,
+        .card-header-modern span,
+        .card-header-modern i {
+            color: #fff;
         }
 
         .card-title-modern {
@@ -1873,6 +1910,17 @@ $complaint_total = count($complaints);
             color: var(--gray-500);
         }
 
+        .results-page .nav-wrap {
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: 0.85rem;
+        }
+
+        .results-page .nav-wrap > :first-child {
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+
         @media (max-width: 1024px) {
             .tabs-modern {
                 overflow-x: auto;
@@ -1886,6 +1934,17 @@ $complaint_total = count($complaints);
         }
 
         @media (max-width: 768px) {
+            .results-page .container {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+
+            .results-page .nav-wrap {
+                gap: 0.75rem;
+                padding-top: 0.85rem;
+                padding-bottom: 0.85rem;
+            }
+
             .card-header-modern,
             .card-body-modern,
             .section-card {
@@ -1894,6 +1953,7 @@ $complaint_total = count($complaints);
 
             .card-title-modern {
                 font-size: 1.55rem;
+                line-height: 1.2;
             }
 
             .results-stats {
@@ -1922,6 +1982,11 @@ $complaint_total = count($complaints);
 
             .student-select-panel {
                 padding: 0.9rem;
+            }
+
+            .results-page .main-container {
+                width: 100%;
+                max-width: 100%;
             }
 
             .student-multi-select {
@@ -2003,12 +2068,41 @@ $complaint_total = count($complaints);
         }
 
         @media (max-width: 640px) {
+            .results-page .nav-wrap {
+                align-items: center;
+            }
+
+            .results-page .nav-wrap > :last-child {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                flex: 0 0 auto;
+            }
+
+            .results-page .nav-wrap > :last-child .btn {
+                padding: 0.5rem 0.85rem;
+                font-size: 0.8125rem;
+            }
+
             .results-stats {
                 grid-template-columns: 1fr;
             }
 
             .results-table {
                 min-width: 620px;
+            }
+
+            .card-header-modern {
+                padding: 1.15rem;
+            }
+
+            .card-title-modern {
+                font-size: 1.35rem;
+            }
+
+            .card-subtitle-modern {
+                font-size: 0.92rem;
+                color: rgba(255, 255, 255, 0.9);
             }
 
             .filter-grid,
@@ -2098,9 +2192,22 @@ $complaint_total = count($complaints);
                 width: 100%;
             }
         }
+
+        [data-sidebar] {
+            overflow: hidden;
+        }
+
+        .sidebar-scroll-shell {
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-y: contain;
+            touch-action: pan-y;
+            padding-bottom: max(1rem, env(safe-area-inset-bottom));
+        }
     </style>
 </head>
-<body class="landing bg-slate-50">
+<body class="landing bg-slate-50 results-page">
     <header class="site-header">
         <div class="container nav-wrap">
             <div class="flex items-center gap-4">
@@ -2131,8 +2238,10 @@ $complaint_total = count($complaints);
     <div class="fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity lg:hidden" data-sidebar-overlay></div>
 
     <div class="container grid gap-6 py-8 lg:grid-cols-[280px_1fr]">
-        <aside class="fixed inset-y-0 left-0 z-40 w-72 -translate-x-full transform border-r border-ink-900/10 bg-white shadow-lift transition-transform duration-200 lg:static lg:inset-auto lg:translate-x-0" data-sidebar>
-            <?php include '../includes/teacher_sidebar.php'; ?>
+        <aside class="fixed inset-y-0 left-0 z-40 h-[100dvh] w-72 -translate-x-full transform border-r border-ink-900/10 bg-white shadow-lift transition-transform duration-200 lg:static lg:inset-auto lg:h-auto lg:translate-x-0" data-sidebar>
+            <div class="sidebar-scroll-shell h-full overflow-y-auto">
+                <?php include '../includes/teacher_sidebar.php'; ?>
+            </div>
         </aside>
         <main class="space-y-6">
             <div class="main-container">
