@@ -30,12 +30,10 @@ $stmt->execute(['school_id' => $current_school_id, 'class' => $class_param]);
 $news_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>School Feed | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
+<?php
+// Use shared student header and inject large page styles via $extraHead
+$pageTitle = 'School Feed | ' . (function_exists('get_school_display_name') ? get_school_display_name() : 'iSchool');
+$extraHead = <<<'HTML'
     <link rel="stylesheet" href="../assets/css/mobile-navigation.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -237,6 +235,14 @@ $news_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
             font-weight: 600;
             margin-bottom: 0.25rem;
         }
+    </style>
+HTML;
+
+require_once __DIR__ . '/../includes/student_header.php';
+?>
+
+    <!-- Mobile Navigation Component -->
+    <?php include __DIR__ . '/../includes/mobile_navigation.php'; ?>
 
         .student-name {
             font-size: 1rem;
@@ -1301,7 +1307,6 @@ $news_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <!-- Main Container -->
     <div class="dashboard-container">
-        <?php include '../includes/student_sidebar.php'; ?>
 
         <!-- Main Content -->
         <main class="main-content">
@@ -1677,7 +1682,6 @@ $news_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
         });
     </script>
 
-    <?php include '../includes/floating-button.php'; ?>
+    <?php include __DIR__ . '/../includes/floating-button.php'; ?>
 
-</body>
-</html>
+<?php require_once __DIR__ . '/../includes/student_footer.php'; ?>

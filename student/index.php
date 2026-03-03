@@ -34,57 +34,47 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 }
-?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Login | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
-    <link rel="stylesheet" href="../assets/css/tailwind.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-</head>
-<body class="landing">
-    <main class="auth-shell">
-        <div class="auth-card">
-            <div class="auth-header">
-                <div class="auth-brand">
-                    <span class="brand-mark">iS</span>
-                    <span class="brand-text">iSchool</span>
+?>
+<?php require_once __DIR__ . '/../includes/student_header.php'; ?>
+
+<main class="auth-shell max-w-lg mx-auto">
+        <div class="auth-card bg-white shadow-md rounded-lg p-6">
+            <div class="auth-header mb-4 text-center">
+                <div class="auth-brand mb-2">
+                    <span class="brand-mark bg-teal-600 text-white rounded-md px-2 py-1 font-bold">iS</span>
+                    <span class="brand-text font-semibold ml-2">iSchool</span>
                 </div>
-                <h1 class="auth-title">Student Access</h1>
-                <p class="auth-subtitle">Sign in to view your academic dashboard.</p>
+                <h1 class="auth-title text-xl font-semibold">Student Access</h1>
+                <p class="auth-subtitle text-sm text-slate-500">Sign in to view your academic dashboard.</p>
             </div>
 
             <?php if($error): ?>
-                <div class="auth-error">
+                <div class="auth-error mb-3 text-sm text-red-600">
                     <?php echo htmlspecialchars($error); ?>
                 </div>
             <?php endif; ?>
 
-            <form action="index.php" method="POST" class="auth-form">
-                <div class="auth-field">
-                    <label for="admission_no">Admission Number</label>
-                    <input type="text" name="admission_no" id="admission_no" class="auth-input" placeholder="Enter your admission number" required autofocus>
+            <form action="index.php" method="POST" class="auth-form space-y-4">
+                <div>
+                    <label for="admission_no" class="block text-sm font-medium text-slate-700">Admission Number</label>
+                    <input type="text" name="admission_no" id="admission_no" class="mt-1 block w-full rounded-md border-gray-200 shadow-sm" placeholder="Enter your admission number" required autofocus>
                 </div>
 
-                <div class="auth-field">
-                    <label for="student_name">Full Name</label>
-                    <input type="text" name="student_name" id="student_name" class="auth-input" placeholder="Enter your full name" required>
+                <div>
+                    <label for="student_name" class="block text-sm font-medium text-slate-700">Full Name</label>
+                    <input type="text" name="student_name" id="student_name" class="mt-1 block w-full rounded-md border-gray-200 shadow-sm" placeholder="Enter your full name" required>
                 </div>
 
                 <button type="submit" class="btn btn-primary w-full">Login securely</button>
             </form>
 
-            <div class="auth-footer">
-                <a href="../login.php" class="auth-link">Staff login</a>
-                <span> &middot; </span>
-                <a href="../index.php" class="auth-link">Back to homepage</a>
+            <div class="auth-footer mt-4 text-center text-sm">
+                <a href="../login.php" class="auth-link text-teal-600">Staff login</a>
+                <span class="mx-2">&middot;</span>
+                <a href="../index.php" class="auth-link text-teal-600">Back to homepage</a>
             </div>
         </div>
     </main>
-</body>
-</html>
+
+<?php require_once __DIR__ . '/../includes/student_footer.php'; ?>

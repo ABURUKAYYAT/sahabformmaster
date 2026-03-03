@@ -19,7 +19,7 @@ $current_school_id = require_school_auth();
 $teacher_id = intval($_SESSION['user_id']);
 $teacher_name = $_SESSION['full_name'] ?? 'Teacher';
 
-$class_id = $_GET['id'] ?? $_GET['class_id'] ?? $_REQUEST['class'] ?? $_POST['class_id'] ?? null;
+$class_id = $_GET['filter_class_id'] ?? $_GET['id'] ?? $_GET['class_id'] ?? $_REQUEST['class'] ?? $_POST['class_id'] ?? null;
 
 function normalize_term(string $t): string {
     $map = [
@@ -33,6 +33,7 @@ function normalize_term(string $t): string {
 
 $term = $_GET['term'] ?? $_REQUEST['term'] ?? '1st Term';
 $term = normalize_term($term);
+$admission_no_filter = trim($_GET['admission_no'] ?? '');
 $errors = [];
 $success = '';
 
@@ -76,6 +77,7 @@ if ($filter_class_id) {
 } else {
     $filter_class_id = $class_id;
 }
+$class_id = $filter_class_id;
 
 // Ensure teacher is assigned to this class and class belongs to school
 $stmt = $pdo->prepare("SELECT COUNT(*) FROM subject_assignments sa JOIN classes c ON sa.class_id = c.id WHERE sa.class_id = :class_id AND sa.teacher_id = :teacher_id AND c.school_id = :school_id");
@@ -94,8 +96,15 @@ if (!$class) {
 }
 
 // Fetch students in the class - school-filtered
-$stmt = $pdo->prepare("SELECT * FROM students WHERE class_id = :class_id AND school_id = :school_id ORDER BY full_name ASC");
-$stmt->execute(['class_id' => $class_id, 'school_id' => $current_school_id]);
+$students_sql = "SELECT * FROM students WHERE class_id = :class_id AND school_id = :school_id";
+$students_params = ['class_id' => $class_id, 'school_id' => $current_school_id];
+if ($admission_no_filter !== '') {
+    $students_sql .= " AND admission_no LIKE :admission_no";
+    $students_params['admission_no'] = '%' . $admission_no_filter . '%';
+}
+$students_sql .= " ORDER BY full_name ASC";
+$stmt = $pdo->prepare($students_sql);
+$stmt->execute($students_params);
 $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch subjects assigned to this teacher for this class - school-filtered
@@ -390,10 +399,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'delete_result') {
         $result_id = intval($_POST['result_id'] ?? 0);
         if ($result_id > 0) {
-            $stmt = $pdo->prepare("SELECT r.id FROM results r JOIN students s ON r.student_id = s.id WHERE r.id = :id AND s.class_id = :class_id");
-            $stmt->execute(['id' => $result_id, 'class_id' => $class_id]);
+            $stmt = $pdo->prepare("SELECT r.id FROM results r JOIN students s ON r.student_id = s.id WHERE r.id = :id AND s.class_id = :class_id AND s.school_id = :school_id AND r.school_id = :school_id_result");
+            $stmt->execute(['id' => $result_id, 'class_id' => $class_id, 'school_id' => $current_school_id, 'school_id_result' => $current_school_id]);
             if ($stmt->fetchColumn()) {
-                $pdo->prepare("DELETE FROM results WHERE id = :id")->execute(['id' => $result_id]);
+                $pdo->prepare("DELETE FROM results WHERE id = :id AND school_id = :school_id")->execute(['id' => $result_id, 'school_id' => $current_school_id]);
                 $success = "Result deleted successfully.";
             } else {
                 $errors[] = "Result not found or does not belong to this class.";
@@ -406,11 +415,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $delete_term = $_POST['term'] ?? '';
         if ($student_id > 0 && !empty($delete_term)) {
             // Check if student belongs to class
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE id = :id AND class_id = :class_id");
-            $stmt->execute(['id' => $student_id, 'class_id' => $class_id]);
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM students WHERE id = :id AND class_id = :class_id AND school_id = :school_id");
+            $stmt->execute(['id' => $student_id, 'class_id' => $class_id, 'school_id' => $current_school_id]);
             if ((int)$stmt->fetchColumn() > 0) {
-                $stmt = $pdo->prepare("DELETE FROM results WHERE student_id = :student_id AND term = :term");
-                $stmt->execute(['student_id' => $student_id, 'term' => $delete_term]);
+                $stmt = $pdo->prepare("DELETE FROM results WHERE student_id = :student_id AND term = :term AND school_id = :school_id");
+                $stmt->execute(['student_id' => $student_id, 'term' => $delete_term, 'school_id' => $current_school_id]);
                 $success = "All results for this student in the term have been deleted successfully.";
             } else {
                 $errors[] = "Student not found in this class.";
@@ -424,9 +433,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $complaint_id = intval($_POST['complaint_id'] ?? 0);
         $response = trim($_POST['response'] ?? '');
         if ($complaint_id > 0) {
-            $stmt = $pdo->prepare("UPDATE results_complaints SET status = 'resolved', teacher_response = :response, resolved_at = NOW() WHERE id = :id");
-            $stmt->execute(['response' => $response, 'id' => $complaint_id]);
-            $success = "Complaint marked resolved.";
+            $stmt = $pdo->prepare("
+                UPDATE results_complaints rc
+                JOIN results r ON rc.result_id = r.id
+                JOIN students s ON r.student_id = s.id
+                SET rc.status = 'resolved', rc.teacher_response = :response, rc.resolved_at = NOW()
+                WHERE rc.id = :id AND s.class_id = :class_id AND s.school_id = :school_id AND r.school_id = :school_id_result
+            ");
+            $stmt->execute([
+                'response' => $response,
+                'id' => $complaint_id,
+                'class_id' => $class_id,
+                'school_id' => $current_school_id,
+                'school_id_result' => $current_school_id
+            ]);
+            if ($stmt->rowCount() > 0) {
+                $success = "Complaint marked resolved.";
+            } else {
+                $errors[] = "Complaint not found for this class.";
+            }
         }
     }
 }
@@ -438,9 +463,21 @@ $stmt = $pdo->prepare("
     JOIN students s ON r.student_id = s.id
     JOIN subjects sub ON r.subject_id = sub.id
     WHERE s.class_id = :class_id AND r.term = :term
+      AND s.school_id = :school_id AND r.school_id = :school_id_result AND sub.school_id = :school_id_subject
+      " . ($admission_no_filter !== '' ? " AND s.admission_no LIKE :admission_no " : "") . "
     ORDER BY s.full_name, sub.subject_name
 ");
-$stmt->execute(['class_id' => $class_id, 'term' => $term]);
+$results_params = [
+    'class_id' => $class_id,
+    'term' => $term,
+    'school_id' => $current_school_id,
+    'school_id_result' => $current_school_id,
+    'school_id_subject' => $current_school_id
+];
+if ($admission_no_filter !== '') {
+    $results_params['admission_no'] = '%' . $admission_no_filter . '%';
+}
+$stmt->execute($results_params);
 $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get students with compiled results (have results for all assigned subjects)
@@ -479,9 +516,21 @@ try {
             JOIN students s ON r.student_id = s.id
             JOIN subjects sub ON r.subject_id = sub.id
             WHERE s.class_id = :class_id AND r.term = :term
+              AND s.school_id = :school_id AND r.school_id = :school_id_result AND sub.school_id = :school_id_subject
+              " . ($admission_no_filter !== '' ? " AND s.admission_no LIKE :admission_no " : "") . "
             ORDER BY rc.status ASC, rc.created_at DESC
         ");
-        $stmt->execute(['class_id' => $class_id, 'term' => $term]);
+        $complaint_params = [
+            'class_id' => $class_id,
+            'term' => $term,
+            'school_id' => $current_school_id,
+            'school_id_result' => $current_school_id,
+            'school_id_subject' => $current_school_id
+        ];
+        if ($admission_no_filter !== '') {
+            $complaint_params['admission_no'] = '%' . $admission_no_filter . '%';
+        }
+        $stmt->execute($complaint_params);
         $complaints = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 } catch (PDOException $ex) {
@@ -502,6 +551,11 @@ function calculateGrade($grand_total) {
 $current_year = date('Y');
 $next_year = $current_year + 1;
 $default_academic_session = "{$current_year}/{$next_year}";
+$compiled_count = count($compiled_students);
+$student_total = count($students);
+$pending_count = max(0, $student_total - $compiled_count);
+$result_entry_count = count($results);
+$complaint_total = count($complaints);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -512,12 +566,11 @@ $default_academic_session = "{$current_year}/{$next_year}";
     <meta name="pwa-sw" content="../sw.js">
     <title>Manage Results | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
     <link rel="manifest" href="../manifest.json">
-    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/tailwind.css">
     <link rel="stylesheet" href="../assets/css/offline-status.css">
-    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -1446,30 +1499,628 @@ $default_academic_session = "{$current_year}/{$next_year}";
                 padding: 1rem;
             }
         }
+
+        :root {
+            --primary-500: #168575;
+            --primary-600: #0f6a5c;
+            --primary-700: #0c574b;
+            --accent-500: #1e9bb3;
+            --success-500: #0f9f6e;
+            --success-700: #0a7f58;
+            --error-500: #e11d48;
+            --error-700: #be123c;
+            --warning-500: #d97706;
+            --gray-50: #f8fafc;
+            --gray-100: #eef2f7;
+            --gray-200: #dbe3ee;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-900: #0f1f2d;
+            --gradient-primary: linear-gradient(135deg, #0f6a5c 0%, #168575 56%, #1e9bb3 100%);
+            --gradient-bg: linear-gradient(180deg, #eef7f4 0%, #f7f3ea 54%, #ffffff 100%);
+            --shadow-soft: 0 14px 32px rgba(15, 31, 45, 0.08);
+            --shadow-medium: 0 18px 40px rgba(15, 31, 45, 0.12);
+            --shadow-strong: 0 22px 48px rgba(15, 31, 45, 0.16);
+        }
+
+        body {
+            font-family: 'Manrope', 'Segoe UI', sans-serif;
+            background: var(--gradient-bg);
+            color: var(--gray-900);
+            overflow-x: hidden;
+        }
+
+        .main-container {
+            max-width: 1120px;
+            padding: 0;
+        }
+
+        .modern-card {
+            background: rgba(255, 255, 255, 0.97);
+            border: 1px solid rgba(15, 31, 45, 0.08);
+            border-radius: 1.75rem;
+            box-shadow: var(--shadow-soft);
+            margin-bottom: 1.5rem;
+        }
+
+        .modern-card:hover {
+            transform: none;
+            box-shadow: var(--shadow-medium);
+        }
+
+        .card-header-modern {
+            padding: 1.75rem;
+            background: var(--gradient-primary);
+        }
+
+        .card-title-modern {
+            font-family: 'Fraunces', Georgia, serif;
+        }
+
+        .card-body-modern {
+            padding: 1.5rem;
+        }
+
+        .alert-modern {
+            border: 1px solid rgba(15, 31, 45, 0.08);
+            border-radius: 1.1rem;
+            margin-bottom: 1.25rem;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .results-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .results-stat-card {
+            padding: 1.2rem 1.25rem;
+            border-radius: 1.25rem;
+            border: 1px solid rgba(15, 31, 45, 0.08);
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbfd 100%);
+            box-shadow: var(--shadow-soft);
+        }
+
+        .results-stat-label {
+            display: block;
+            margin-bottom: 0.4rem;
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--gray-500);
+        }
+
+        .results-stat-value {
+            display: block;
+            color: var(--gray-900);
+            font-size: 1.55rem;
+            line-height: 1.15;
+        }
+
+        .results-stat-meta {
+            display: block;
+            margin-top: 0.45rem;
+            font-size: 0.88rem;
+            color: var(--gray-600);
+        }
+
+        .form-input-modern {
+            border-radius: 1rem;
+            border-width: 1px;
+            border-color: rgba(15, 31, 45, 0.12);
+            box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+        }
+
+        .form-input-modern:focus {
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 4px rgba(22, 133, 117, 0.12);
+        }
+
+        .btn-modern-primary,
+        .btn-batch,
+        .btn-pdf,
+        .btn-delete,
+        .btn-small {
+            border-radius: 999px;
+            font-weight: 700;
+            box-shadow: none;
+        }
+
+        .btn-modern-primary,
+        .btn-batch,
+        .btn-pdf {
+            background: var(--gradient-primary);
+            color: #fff;
+        }
+
+        .btn-delete {
+            background: var(--error-500);
+            color: #fff;
+        }
+
+        .btn-small {
+            background: var(--gray-100);
+            color: var(--gray-700);
+            border: 1px solid rgba(15, 31, 45, 0.08);
+        }
+
+        .btn-secondary-soft {
+            background: var(--gray-200);
+            color: var(--gray-700);
+        }
+
+        .btn-danger-soft {
+            background: var(--error-500);
+            color: #fff;
+        }
+
+        .tabs-modern {
+            gap: 0.75rem;
+        }
+
+        .tab-modern {
+            border-radius: 999px;
+            border-width: 1px;
+            padding: 0.9rem 1.2rem;
+            box-shadow: none;
+        }
+
+        .tab-modern.active {
+            border-color: transparent;
+        }
+
+        .section-card {
+            border-radius: 1.35rem;
+            border: 1px solid rgba(15, 31, 45, 0.08);
+            background: rgba(255, 255, 255, 0.97);
+            box-shadow: var(--shadow-soft);
+        }
+
+        .section-card h3 {
+            font-family: 'Fraunces', Georgia, serif;
+            color: var(--gray-900);
+        }
+
+        .results-table {
+            width: 100%;
+            min-width: 760px;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .batch-results-table {
+            min-width: max-content;
+        }
+
+        .results-table th {
+            background: #f8fafc;
+            color: var(--gray-600);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .results-table th,
+        .results-table td {
+            border-color: rgba(15, 31, 45, 0.08);
+        }
+
+        .student-checkbox {
+            border-radius: 1rem;
+            border: 1px solid rgba(15, 31, 45, 0.08);
+            background: #fff;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .student-select-panel {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            border-radius: 1.25rem;
+            border: 1px solid rgba(15, 31, 45, 0.08);
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbfd 100%);
+            box-shadow: var(--shadow-soft);
+        }
+
+        .student-multi-select {
+            min-height: 220px;
+            padding: 0.85rem;
+        }
+
+        .student-multi-select option {
+            padding: 0.7rem 0.85rem;
+            border-radius: 0.75rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .student-batch-column.is-hidden {
+            display: none;
+        }
+
+        .subject-cell {
+            font-weight: 700;
+            min-width: 180px;
+        }
+
+        .filter-grid,
+        .single-form-grid,
+        .single-score-grid,
+        .multi-meta-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .filter-grid,
+        .multi-meta-grid {
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            margin-bottom: 1.5rem;
+        }
+
+        .single-form-grid {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+
+        .single-score-grid {
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            margin-top: 1.25rem;
+        }
+
+        .filter-actions,
+        .batch-actions,
+        .form-submit-row,
+        .multi-actions,
+        .result-action-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .session-row {
+            margin-bottom: 1.25rem;
+        }
+
+        .table-shell {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border-radius: 1rem;
+        }
+
+        .table-shell.batch-table-shell {
+            border: 1px solid rgba(15, 31, 45, 0.08);
+            background: rgba(248, 250, 252, 0.6);
+        }
+
+        .subject-score-shell {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+
+        .complaint-response-form {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .complaint-response-form input[type="text"] {
+            min-width: 180px;
+        }
+
+        .session-select {
+            max-width: 300px;
+        }
+
+        .selection-help {
+            margin-top: 0.75rem;
+        }
+
+        .selection-count {
+            margin-top: 0.4rem;
+            font-weight: 700;
+        }
+
+        .table-align-center {
+            text-align: center;
+        }
+
+        .multi-clear-button {
+            margin-left: 10px;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.35rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+        }
+
+        .status-pill-success {
+            background: rgba(15, 159, 110, 0.12);
+            color: var(--success-700);
+        }
+
+        .inline-action-form {
+            display: inline;
+        }
+
+        .complaint-response-input {
+            padding: 0.8rem 0.95rem;
+            border: 1px solid rgba(15, 31, 45, 0.14);
+            border-radius: 0.85rem;
+            flex: 1 1 220px;
+            min-width: 0;
+            background: #fff;
+        }
+
+        .subject-scores,
+        .multi-subject-form {
+            overflow: hidden;
+        }
+
+        .small-muted {
+            color: var(--gray-500);
+        }
+
+        @media (max-width: 1024px) {
+            .tabs-modern {
+                overflow-x: auto;
+                padding-bottom: 0.25rem;
+                flex-wrap: nowrap;
+            }
+
+            .tab-modern {
+                flex: 0 0 auto;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .card-header-modern,
+            .card-body-modern,
+            .section-card {
+                padding: 1.25rem;
+            }
+
+            .card-title-modern {
+                font-size: 1.55rem;
+            }
+
+            .results-stats {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .filter-actions,
+            .batch-actions,
+            .form-submit-row,
+            .multi-actions,
+            .result-action-group,
+            .complaint-response-form,
+            .subject-score-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .btn-modern-primary,
+            .btn-batch,
+            .btn-pdf,
+            .btn-delete,
+            .btn-small {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .student-select-panel {
+                padding: 0.9rem;
+            }
+
+            .student-multi-select {
+                min-height: 180px;
+                font-size: 0.95rem;
+            }
+
+            .session-select {
+                max-width: none;
+            }
+
+            .results-table th,
+            .results-table td {
+                white-space: nowrap;
+            }
+
+            .batch-table-shell {
+                margin-inline: -0.2rem;
+            }
+
+            .batch-results-table th,
+            .batch-results-table td {
+                padding: 0.65rem 0.45rem;
+                font-size: 0.8rem;
+            }
+
+            .batch-results-table th:first-child,
+            .batch-results-table td:first-child {
+                position: sticky;
+                left: 0;
+                z-index: 1;
+                background: #fff;
+            }
+
+            .batch-results-table thead th:first-child {
+                z-index: 2;
+                background: #f8fafc;
+            }
+
+            .batch-results-table .score-input {
+                width: 4rem;
+                min-width: 4rem;
+                padding: 0.55rem 0.3rem;
+                font-size: 0.82rem;
+            }
+
+            .subject-score-shell {
+                padding: 0.9rem;
+            }
+
+            .subject-score-row {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+                padding: 0.9rem 0;
+            }
+
+            .subject-score-row > div {
+                display: grid;
+                gap: 0.35rem;
+            }
+
+            .subject-score-row > div[data-label]::before {
+                content: attr(data-label);
+                font-size: 0.72rem;
+                font-weight: 800;
+                letter-spacing: 0.05em;
+                text-transform: uppercase;
+                color: var(--gray-500);
+            }
+
+            .complaint-response-form input[type="text"] {
+                width: 100%;
+                min-width: 0;
+            }
+
+            .multi-clear-button {
+                margin-left: 0;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .results-stats {
+                grid-template-columns: 1fr;
+            }
+
+            .results-table {
+                min-width: 620px;
+            }
+
+            .filter-grid,
+            .single-form-grid,
+            .single-score-grid,
+            .multi-meta-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tabs-modern {
+                gap: 0.6rem;
+                margin: 0 -0.1rem;
+                padding-bottom: 0.4rem;
+            }
+
+            .tab-modern {
+                min-width: 170px;
+                justify-content: center;
+            }
+
+            .section-card h3 {
+                font-size: 1.25rem;
+            }
+
+            .subject-score-row.header {
+                display: none;
+            }
+
+            .subject-score-row > div label {
+                font-weight: 700;
+                color: var(--gray-700);
+            }
+
+            .results-table.mobile-card-table {
+                min-width: 0;
+                display: block;
+            }
+
+            .results-table.mobile-card-table thead {
+                display: none;
+            }
+
+            .results-table.mobile-card-table tbody,
+            .results-table.mobile-card-table tr,
+            .results-table.mobile-card-table td {
+                display: block;
+                width: 100%;
+            }
+
+            .results-table.mobile-card-table tbody {
+                padding-top: 0.1rem;
+            }
+
+            .results-table.mobile-card-table tr {
+                margin-bottom: 0.9rem;
+                padding: 1rem;
+                border: 1px solid rgba(15, 31, 45, 0.08);
+                border-radius: 1rem;
+                background: #fff;
+                box-shadow: var(--shadow-soft);
+            }
+
+            .results-table.mobile-card-table td {
+                white-space: normal;
+                border: 0;
+                padding: 0.45rem 0;
+            }
+
+            .results-table.mobile-card-table td::before {
+                content: attr(data-label);
+                display: block;
+                margin-bottom: 0.2rem;
+                font-size: 0.72rem;
+                font-weight: 800;
+                letter-spacing: 0.05em;
+                text-transform: uppercase;
+                color: var(--gray-500);
+            }
+
+            .results-table.mobile-card-table td[data-label="Action"]::before,
+            .results-table.mobile-card-table td[data-label="Response"]::before {
+                margin-bottom: 0.45rem;
+            }
+
+            .inline-action-form {
+                display: block;
+                width: 100%;
+            }
+        }
     </style>
 </head>
-<body>
-    <!-- Mobile Navigation Component -->
-    <?php include '../includes/mobile_navigation.php'; ?>
-
-    <!-- Header -->
-    <header class="dashboard-header">
-        <div class="header-container">
-            <div class="header-left">
-                <div class="school-logo-container">
-                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
-                    <div class="school-info">
-                        <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
-                        <p class="school-tagline">Teacher Portal</p>
+<body class="landing bg-slate-50">
+    <header class="site-header">
+        <div class="container nav-wrap">
+            <div class="flex items-center gap-4">
+                <button class="nav-toggle lg:hidden" type="button" data-sidebar-toggle aria-label="Open menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div class="flex items-center gap-3">
+                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="h-10 w-10 rounded-xl object-cover">
+                    <div class="hidden sm:block">
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Teacher Portal</p>
+                        <p class="text-lg font-semibold text-ink-900"><?php echo htmlspecialchars(get_school_display_name()); ?></p>
                     </div>
                 </div>
             </div>
-            <div class="header-right">
-                <div class="teacher-info">
-                    <p class="teacher-label">Teacher</p>
-                    <span class="teacher-name"><?php echo htmlspecialchars($teacher_name); ?></span>
-                </div>
-                <a href="logout.php" class="btn-logout">
+            <div class="flex items-center gap-3">
+                <span class="hidden md:block text-sm text-slate-600">Welcome, <?php echo htmlspecialchars($teacher_name); ?></span>
+                <a class="btn btn-outline" href="index.php">Dashboard</a>
+                <a class="btn btn-primary" href="logout.php">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </a>
@@ -1477,10 +2128,13 @@ $default_academic_session = "{$current_year}/{$next_year}";
         </div>
     </header>
 
-    <div class="dashboard-container">
-        <?php include '../includes/teacher_sidebar.php'; ?>
-        <main class="main-content">
-            <!-- Main Container -->
+    <div class="fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity lg:hidden" data-sidebar-overlay></div>
+
+    <div class="container grid gap-6 py-8 lg:grid-cols-[280px_1fr]">
+        <aside class="fixed inset-y-0 left-0 z-40 w-72 -translate-x-full transform border-r border-ink-900/10 bg-white shadow-lift transition-transform duration-200 lg:static lg:inset-auto lg:translate-x-0" data-sidebar>
+            <?php include '../includes/teacher_sidebar.php'; ?>
+        </aside>
+        <main class="space-y-6">
             <div class="main-container">
         <!-- Welcome Section -->
         <div class="modern-card animate-fade-in-up">
@@ -1510,11 +2164,35 @@ $default_academic_session = "{$current_year}/{$next_year}";
             </div>
         <?php endif; ?>
 
+        <div class="results-stats">
+            <div class="results-stat-card">
+                <span class="results-stat-label">Class</span>
+                <strong class="results-stat-value"><?php echo htmlspecialchars($class['class_name']); ?></strong>
+                <span class="results-stat-meta"><?php echo htmlspecialchars($term); ?></span>
+            </div>
+            <div class="results-stat-card">
+                <span class="results-stat-label">Students</span>
+                <strong class="results-stat-value"><?php echo $student_total; ?></strong>
+                <span class="results-stat-meta">Visible in current filter</span>
+            </div>
+            <div class="results-stat-card">
+                <span class="results-stat-label">Compiled</span>
+                <strong class="results-stat-value"><?php echo $compiled_count; ?></strong>
+                <span class="results-stat-meta"><?php echo $pending_count; ?> pending</span>
+            </div>
+            <div class="results-stat-card">
+                <span class="results-stat-label">Entries</span>
+                <strong class="results-stat-value"><?php echo $result_entry_count; ?></strong>
+                <span class="results-stat-meta"><?php echo $complaint_total; ?> complaints</span>
+            </div>
+        </div>
+
         <!-- Filter Section -->
         <div class="modern-card animate-fade-in-up">
             <div class="card-body-modern">
                 <form method="GET" class="filter-form">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+                    <input type="hidden" name="id" value="<?php echo intval($class_id); ?>">
+                    <div class="filter-grid">
                         <div class="form-group-modern">
                             <label class="form-label-modern" for="term_filter">Academic Term</label>
                             <select id="term_filter" name="term" class="form-input-modern">
@@ -1542,12 +2220,12 @@ $default_academic_session = "{$current_year}/{$next_year}";
                                    placeholder="Filter by admission number">
                         </div>
                     </div>
-                    <div style="display: flex; gap: 1rem;">
+                    <div class="filter-actions">
                         <button type="submit" class="btn-modern-primary">
                             <i class="fas fa-search"></i>
                             <span>Apply Filter</span>
                         </button>
-                        <a href="results.php?id=<?php echo intval($class_id); ?>" class="btn-modern-primary" style="background: var(--gray-200); color: var(--gray-700);">
+                        <a href="results.php?id=<?php echo intval($class_id); ?>" class="btn-modern-primary btn-secondary-soft">
                             <i class="fas fa-undo"></i>
                             <span>Reset</span>
                         </a>
@@ -1560,23 +2238,23 @@ $default_academic_session = "{$current_year}/{$next_year}";
         <div class="modern-card animate-fade-in-up">
             <div class="card-body-modern">
                 <div class="tabs-modern">
-                    <button class="tab-modern active" onclick="switchTab('batch')">
+                    <button class="tab-modern active" type="button" onclick="switchTab('batch', this)">
                         <i class="fas fa-layer-group"></i>
                         <span>Batch Entry</span>
                     </button>
-                    <button class="tab-modern" onclick="switchTab('single')">
+                    <button class="tab-modern" type="button" onclick="switchTab('single', this)">
                         <i class="fas fa-plus"></i>
                         <span>Single Entry</span>
                     </button>
-                    <button class="tab-modern" onclick="switchTab('multi')">
+                    <button class="tab-modern" type="button" onclick="switchTab('multi', this)">
                         <i class="fas fa-list"></i>
                         <span>Multiple Subjects</span>
                     </button>
-                    <button class="tab-modern" onclick="switchTab('view')">
+                    <button class="tab-modern" type="button" onclick="switchTab('view', this)">
                         <i class="fas fa-eye"></i>
                         <span>View Results</span>
                     </button>
-                    <button class="tab-modern" onclick="switchTab('complaints')">
+                    <button class="tab-modern" type="button" onclick="switchTab('complaints', this)">
                         <i class="fas fa-exclamation-triangle"></i>
                         <span>Complaints</span>
                     </button>
@@ -1592,9 +2270,9 @@ $default_academic_session = "{$current_year}/{$next_year}";
                             <input type="hidden" name="action" value="save_batch_results">
                             
                             <!-- Academic Session Selection -->
-                            <div style="margin-bottom: 20px;">
+                            <div class="session-row">
                                 <label for="academic_session_batch">Academic Session *</label>
-                                <select id="academic_session_batch" name="academic_session" class="form-input-modern" required style="max-width: 300px;">
+                                <select id="academic_session_batch" name="academic_session" class="form-input-modern session-select" required>
                                     <option value="">Select Academic Session</option>
                                     <?php foreach ($academic_sessions as $session): ?>
                                         <option value="<?php echo htmlspecialchars($session); ?>" <?php echo $session == $default_academic_session ? 'selected' : ''; ?>>
@@ -1607,25 +2285,25 @@ $default_academic_session = "{$current_year}/{$next_year}";
                             
                             <!-- Student Selection -->
                             <h4>Select Students</h4>
-                            <div class="batch-form-grid">
-                                <?php foreach ($students as $student): ?>
-                                    <div class="student-checkbox">
-                                        <input type="checkbox" name="student_ids[]" value="<?php echo intval($student['id']); ?>" 
-                                               id="student_<?php echo $student['id']; ?>" class="student-check">
-                                        <label for="student_<?php echo $student['id']; ?>">
-                                            <?php echo htmlspecialchars($student['full_name']); ?>
-                                            <small>(<?php echo htmlspecialchars($student['admission_no']); ?>)</small>
-                                        </label>
-                                    </div>
-                                <?php endforeach; ?>
+                            <div class="student-select-panel">
+                                <label for="batch_student_ids" class="form-label-modern">Choose one or more students</label>
+                                <select id="batch_student_ids" name="student_ids[]" class="form-input-modern student-multi-select" multiple size="<?php echo max(5, min(10, count($students))); ?>">
+                                    <?php foreach ($students as $student): ?>
+                                        <option value="<?php echo intval($student['id']); ?>" selected>
+                                            <?php echo htmlspecialchars($student['full_name'] . ' (' . $student['admission_no'] . ')'); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <p class="small-muted selection-help">Hold Ctrl or Cmd to pick specific students. Only selected students will be saved in this batch.</p>
+                                <p id="batchSelectionCount" class="small-muted selection-count">0 students selected</p>
                             </div>
                             
-                            <div style="margin: 15px 0; display: flex; gap: 10px;">
+                            <div class="batch-actions">
                                 <button type="button" class="btn-modern-primary" onclick="selectAllStudents()">
                                     <i class="fas fa-check-square"></i>
                                     <span>Select All</span>
                                 </button>
-                                <button type="button" class="btn-modern-primary" onclick="deselectAllStudents()" style="background: var(--error-500);">
+                                <button type="button" class="btn-modern-primary btn-danger-soft" onclick="deselectAllStudents()">
                                     <i class="fas fa-square"></i>
                                     <span>Deselect All</span>
                                 </button>
@@ -1635,13 +2313,13 @@ $default_academic_session = "{$current_year}/{$next_year}";
                             <?php if (!empty($subjects)): ?>
                                 <div class="subject-scores">
                                     <h4>Enter Scores</h4>
-                                    <div style="overflow-x: auto;">
-                                        <table class="results-table">
+                                    <div class="table-shell batch-table-shell">
+                                        <table class="results-table batch-results-table">
                                             <thead>
                                                 <tr>
                                                     <th>Subject</th>
                                                     <?php foreach ($students as $student): ?>
-                                                        <th colspan="3" style="text-align: center;">
+                                                        <th colspan="3" class="student-batch-column table-align-center" data-student-id="<?php echo intval($student['id']); ?>">
                                                             <?php echo htmlspecialchars($student['full_name']); ?>
                                                         </th>
                                                     <?php endforeach; ?>
@@ -1649,16 +2327,16 @@ $default_academic_session = "{$current_year}/{$next_year}";
                                                 <tr>
                                                     <th></th>
                                                     <?php foreach ($students as $student): ?>
-                                                        <th>1st CA</th>
-                                                        <th>2nd CA</th>
-                                                        <th>Exam</th>
+                                                        <th class="student-batch-column" data-student-id="<?php echo intval($student['id']); ?>">1st CA</th>
+                                                        <th class="student-batch-column" data-student-id="<?php echo intval($student['id']); ?>">2nd CA</th>
+                                                        <th class="student-batch-column" data-student-id="<?php echo intval($student['id']); ?>">Exam</th>
                                                     <?php endforeach; ?>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <?php foreach ($subjects as $subject): ?>
                                                     <tr>
-                                                        <td style="font-weight: bold;"><?php echo htmlspecialchars($subject['subject_name']); ?></td>
+                                                        <td class="subject-cell"><?php echo htmlspecialchars($subject['subject_name']); ?></td>
                                                         <?php foreach ($students as $student): ?>
                                                             <?php 
                                                                 // Check for existing score
@@ -1670,21 +2348,21 @@ $default_academic_session = "{$current_year}/{$next_year}";
                                                                     }
                                                                 }
                                                             ?>
-                                                            <td>
+                                                            <td class="student-batch-column" data-student-id="<?php echo intval($student['id']); ?>">
                                                                 <input type="number" 
                                                                        name="first_ca_<?php echo $student['id']; ?>_<?php echo $subject['id']; ?>"
                                                                        class="score-input"
                                                                        min="0" max="100" step="0.1"
                                                                        value="<?php echo $existing_score ? htmlspecialchars($existing_score['first_ca']) : '0'; ?>">
                                                             </td>
-                                                            <td>
+                                                            <td class="student-batch-column" data-student-id="<?php echo intval($student['id']); ?>">
                                                                 <input type="number" 
                                                                        name="second_ca_<?php echo $student['id']; ?>_<?php echo $subject['id']; ?>"
                                                                        class="score-input"
                                                                        min="0" max="100" step="0.1"
                                                                        value="<?php echo $existing_score ? htmlspecialchars($existing_score['second_ca']) : '0'; ?>">
                                                             </td>
-                                                            <td>
+                                                            <td class="student-batch-column" data-student-id="<?php echo intval($student['id']); ?>">
                                                                 <input type="number" 
                                                                        name="exam_<?php echo $student['id']; ?>_<?php echo $subject['id']; ?>"
                                                                        class="score-input"
@@ -1699,7 +2377,7 @@ $default_academic_session = "{$current_year}/{$next_year}";
                                     </div>
                                 </div>
                                 
-                                <div style="margin-top: 20px; text-align: center;">
+                                <div class="form-submit-row">
                                     <button type="submit" class="btn-batch">Save All Results</button>
                                 </div>
                             <?php else: ?>
@@ -1718,7 +2396,7 @@ $default_academic_session = "{$current_year}/{$next_year}";
                         <form method="POST" data-offline-sync="1">
                             <input type="hidden" name="action" value="save_single_result">
                             
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                            <div class="single-form-grid">
                                 <div>
                                     <label for="student_id_single">Student *</label>
                                     <select id="student_id_single" name="student_id" class="form-input-modern" required>
@@ -1750,7 +2428,7 @@ $default_academic_session = "{$current_year}/{$next_year}";
                                 </div>
                             </div>
                             
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 20px;">
+                            <div class="single-score-grid">
                                 <div>
                                     <label for="first_ca_single">First C.A.</label>
                                     <input type="number" id="first_ca_single" name="first_ca" class="form-input-modern"
@@ -1770,7 +2448,7 @@ $default_academic_session = "{$current_year}/{$next_year}";
                                 </div>
                             </div>
                             
-                            <div style="margin-top: 20px;">
+                            <div class="form-submit-row">
                                 <button type="submit" class="btn-modern-primary">
                                     <i class="fas fa-save"></i>
                                     <span>Save Result</span>
@@ -1789,7 +2467,7 @@ $default_academic_session = "{$current_year}/{$next_year}";
                         <form method="POST" id="multi-subject-form" class="multi-subject-form" data-offline-sync="1">
                             <input type="hidden" name="action" value="save_multiple_subjects">
                             
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                            <div class="multi-meta-grid">
                                 <div>
                                     <label for="student_id_multi">Select Student *</label>
                                     <select id="student_id_multi" name="student_id_multi" class="form-input-modern" required onchange="loadStudentScores()">
@@ -1804,7 +2482,7 @@ $default_academic_session = "{$current_year}/{$next_year}";
                                 
                                 <div>
                                     <label for="academic_session_multi">Academic Session *</label>
-                                    <select id="academic_session_multi" name="academic_session_multi" class="form-input-modern" required style="max-width: 300px;">
+                                    <select id="academic_session_multi" name="academic_session_multi" class="form-input-modern session-select" required>
                                         <option value="">Select Academic Session</option>
                                         <?php foreach ($academic_sessions as $session): ?>
                                             <option value="<?php echo htmlspecialchars($session); ?>" <?php echo $session == $default_academic_session ? 'selected' : ''; ?>>
@@ -1820,7 +2498,7 @@ $default_academic_session = "{$current_year}/{$next_year}";
                                 <div class="subject-scores">
                                     <h4>Enter Scores for All Subjects</h4>
                                     
-                                    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+                                    <div class="subject-score-shell">
                                         <div class="subject-score-row header">
                                             <div><strong>Subject</strong></div>
                                             <div><strong>1st CA</strong></div>
@@ -1830,12 +2508,12 @@ $default_academic_session = "{$current_year}/{$next_year}";
                                         
                                         <?php foreach ($subjects as $subject): ?>
                                             <div class="subject-score-row">
-                                                <div>
+                                                <div data-label="Subject">
                                                     <label for="subject_<?php echo $subject['id']; ?>">
                                                         <?php echo htmlspecialchars($subject['subject_name']); ?>
                                                     </label>
                                                 </div>
-                                                <div>
+                                                <div data-label="1st CA">
                                                     <input type="number" 
                                                            id="first_ca_multi_<?php echo $subject['id']; ?>"
                                                            name="first_ca_multi_<?php echo $subject['id']; ?>"
@@ -1844,7 +2522,7 @@ $default_academic_session = "{$current_year}/{$next_year}";
                                                            value="0"
                                                            placeholder="0">
                                                 </div>
-                                                <div>
+                                                <div data-label="2nd CA">
                                                     <input type="number" 
                                                            id="second_ca_multi_<?php echo $subject['id']; ?>"
                                                            name="second_ca_multi_<?php echo $subject['id']; ?>"
@@ -1853,7 +2531,7 @@ $default_academic_session = "{$current_year}/{$next_year}";
                                                            value="0"
                                                            placeholder="0">
                                                 </div>
-                                                <div>
+                                                <div data-label="Exam">
                                                     <input type="number" 
                                                            id="exam_multi_<?php echo $subject['id']; ?>"
                                                            name="exam_multi_<?php echo $subject['id']; ?>"
@@ -1866,9 +2544,9 @@ $default_academic_session = "{$current_year}/{$next_year}";
                                         <?php endforeach; ?>
                                     </div>
                                     
-                                    <div style="margin-top: 20px; text-align: center;">
+                                    <div class="multi-actions">
                                         <button type="submit" class="btn-batch">Save All Subjects for This Student</button>
-                                        <button type="button" class="btn-small" onclick="clearAllScores()" style="margin-left: 10px;">Clear All</button>
+                                        <button type="button" class="btn-small multi-clear-button" onclick="clearAllScores()">Clear All</button>
                                     </div>
                                 </div>
                             <?php else: ?>
@@ -1888,8 +2566,8 @@ $default_academic_session = "{$current_year}/{$next_year}";
                         <?php if (empty($compiled_students)): ?>
                             <p class="small-muted">No students with fully compiled results found for this term.</p>
                         <?php else: ?>
-                            <div style="overflow-x: auto;">
-                                <table class="results-table">
+                            <div class="table-shell">
+                                <table class="results-table mobile-card-table">
                                     <thead>
                                         <tr>
                                             <th>S/N</th>
@@ -1906,20 +2584,20 @@ $default_academic_session = "{$current_year}/{$next_year}";
                                             $student = $data['student'];
                                         ?>
                                         <tr>
-                                            <td><?php echo $sn++; ?></td>
-                                            <td><?php echo htmlspecialchars($student['admission_no']); ?></td>
-                                            <td><?php echo htmlspecialchars($student['student_name']); ?></td>
-                                            <td><span style="color: green; font-weight: bold;">Compiled</span></td>
-                                            <td>
-                                                <div style="display: flex; gap: 5px;">
-                                                    <form method="POST" style="display:inline;" onsubmit="return confirm('Delete all results for this student? This action cannot be undone.')">
+                                            <td data-label="S/N"><?php echo $sn++; ?></td>
+                                            <td data-label="Adm No"><?php echo htmlspecialchars($student['admission_no']); ?></td>
+                                            <td data-label="Name"><?php echo htmlspecialchars($student['student_name']); ?></td>
+                                            <td data-label="Status"><span class="status-pill status-pill-success">Compiled</span></td>
+                                            <td data-label="Action">
+                                                <div class="result-action-group">
+                                                    <form method="POST" class="inline-action-form" onsubmit="return confirm('Delete all results for this student? This action cannot be undone.')">
                                                         <input type="hidden" name="action" value="delete_student_results">
                                                         <input type="hidden" name="student_id" value="<?php echo intval($student['student_id']); ?>">
                                                         <input type="hidden" name="term" value="<?php echo htmlspecialchars($term); ?>">
                                                         <button type="submit" class="btn-delete">Delete</button>
                                                     </form>
 
-                                                    <form method="POST" action="generate-result-pdf.php" style="display:inline;">
+                                                    <form method="POST" action="generate-result-pdf.php" class="inline-action-form">
                                                         <input type="hidden" name="student_id" value="<?php echo intval($student['student_id']); ?>">
                                                         <input type="hidden" name="class_id" value="<?php echo intval($class_id); ?>">
                                                         <input type="hidden" name="term" value="<?php echo htmlspecialchars($term); ?>">
@@ -1943,8 +2621,8 @@ $default_academic_session = "{$current_year}/{$next_year}";
                         <?php if (empty($complaints)): ?>
                             <p class="small-muted">No complaints.</p>
                         <?php else: ?>
-                            <div style="overflow-x: auto;">
-                                <table class="results-table">
+                            <div class="table-shell">
+                                <table class="results-table mobile-card-table">
                                     <thead>
                                         <tr>
                                             <th>#</th>
@@ -1960,24 +2638,23 @@ $default_academic_session = "{$current_year}/{$next_year}";
                                     <tbody>
                                         <?php foreach ($complaints as $i => $c): ?>
                                             <tr>
-                                                <td><?php echo $i + 1; ?></td>
-                                                <td><?php echo htmlspecialchars($c['full_name']); ?></td>
-                                                <td><?php echo htmlspecialchars($c['subject_name']); ?></td>
-                                                <td><?php echo htmlspecialchars($c['complaint_text']); ?></td>
-                                                <td>
+                                                <td data-label="#"><?php echo $i + 1; ?></td>
+                                                <td data-label="Student"><?php echo htmlspecialchars($c['full_name']); ?></td>
+                                                <td data-label="Subject"><?php echo htmlspecialchars($c['subject_name']); ?></td>
+                                                <td data-label="Complaint"><?php echo htmlspecialchars($c['complaint_text']); ?></td>
+                                                <td data-label="Status">
                                                     <span class="status-<?php echo $c['status']; ?>">
                                                         <?php echo htmlspecialchars(ucfirst($c['status'])); ?>
                                                     </span>
                                                 </td>
-                                                <td><?php echo date('M d, Y', strtotime($c['created_at'])); ?></td>
-                                                <td><?php echo htmlspecialchars($c['teacher_response'] ?? 'Not responded'); ?></td>
-                                                <td>
+                                                <td data-label="Submitted"><?php echo date('M d, Y', strtotime($c['created_at'])); ?></td>
+                                                <td data-label="Response"><?php echo htmlspecialchars($c['teacher_response'] ?? 'Not responded'); ?></td>
+                                                <td data-label="Action">
                                                     <?php if ($c['status'] !== 'resolved'): ?>
-                                                        <form method="POST" style="display:flex;gap:5px;align-items:center;">
+                                                        <form method="POST" class="complaint-response-form">
                                                             <input type="hidden" name="action" value="resolve_complaint">
                                                             <input type="hidden" name="complaint_id" value="<?php echo intval($c['id']); ?>">
-                                                            <input type="text" name="response" placeholder="Enter response" required 
-                                                                   style="padding:5px;border:1px solid #ddd;border-radius:3px;flex:1;">
+                                                            <input type="text" name="response" placeholder="Enter response" required class="complaint-response-input">
                                                             <button type="submit" class="btn-small">Resolve</button>
                                                         </form>
                                                     <?php else: ?>
@@ -1997,7 +2674,7 @@ $default_academic_session = "{$current_year}/{$next_year}";
     </div>
 
     <script>
-        function switchTab(tabName) {
+        function switchTab(tabName, triggerButton = null) {
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
@@ -2012,26 +2689,71 @@ $default_academic_session = "{$current_year}/{$next_year}";
             document.getElementById(tabName + '-tab').classList.add('active');
 
             // Activate selected tab button
-            event.target.closest('.tab-modern').classList.add('active');
+            if (triggerButton) {
+                triggerButton.classList.add('active');
+            }
+        }
+
+        function getBatchStudentSelect() {
+            return document.getElementById('batch_student_ids');
+        }
+
+        function getSelectedBatchStudentIds() {
+            const select = getBatchStudentSelect();
+            if (!select) return [];
+            return Array.from(select.options)
+                .filter(option => option.selected)
+                .map(option => String(option.value));
+        }
+
+        function updateBatchSelectionCount() {
+            const summary = document.getElementById('batchSelectionCount');
+            if (!summary) return;
+            const count = getSelectedBatchStudentIds().length;
+            summary.textContent = `${count} student${count === 1 ? '' : 's'} selected`;
+        }
+
+        function updateBatchStudentVisibility() {
+            const selectedIds = getSelectedBatchStudentIds();
+            const showAll = selectedIds.length === 0;
+
+            document.querySelectorAll('.student-batch-column').forEach(cell => {
+                const studentId = cell.dataset.studentId;
+                const shouldShow = showAll || selectedIds.includes(String(studentId));
+                cell.classList.toggle('is-hidden', !shouldShow);
+            });
+
+            updateBatchSelectionCount();
         }
         
         function selectAllStudents() {
-            document.querySelectorAll('.student-check').forEach(checkbox => {
-                checkbox.checked = true;
+            const select = getBatchStudentSelect();
+            if (!select) return;
+            Array.from(select.options).forEach(option => {
+                option.selected = true;
             });
+            updateBatchStudentVisibility();
         }
         
         function deselectAllStudents() {
-            document.querySelectorAll('.student-check').forEach(checkbox => {
-                checkbox.checked = false;
+            const select = getBatchStudentSelect();
+            if (!select) return;
+            Array.from(select.options).forEach(option => {
+                option.selected = false;
             });
+            updateBatchStudentVisibility();
         }
         
         // Auto-fill academic session for single entry when batch session changes
-        document.getElementById('academic_session_batch').addEventListener('change', function() {
-            document.getElementById('academic_session_single').value = this.value;
-            document.getElementById('academic_session_multi').value = this.value;
-        });
+        const batchSessionSelect = document.getElementById('academic_session_batch');
+        if (batchSessionSelect) {
+            batchSessionSelect.addEventListener('change', function() {
+                const singleSession = document.getElementById('academic_session_single');
+                const multiSession = document.getElementById('academic_session_multi');
+                if (singleSession) singleSession.value = this.value;
+                if (multiSession) multiSession.value = this.value;
+            });
+        }
         
         // NEW: Function to clear all scores in multi-subject form
         function clearAllScores() {
@@ -2083,10 +2805,51 @@ $default_academic_session = "{$current_year}/{$next_year}";
         
         // Initialize tab switching
         document.addEventListener('DOMContentLoaded', function() {
+            const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
+            const sidebar = document.querySelector('[data-sidebar]');
+            const overlay = document.querySelector('[data-sidebar-overlay]');
+            const body = document.body;
+
+            const openSidebar = () => {
+                if (!sidebar || !overlay) return;
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('opacity-0', 'pointer-events-none');
+                overlay.classList.add('opacity-100');
+                body.classList.add('nav-open');
+            };
+
+            const closeSidebar = () => {
+                if (!sidebar || !overlay) return;
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('opacity-0', 'pointer-events-none');
+                overlay.classList.remove('opacity-100');
+                body.classList.remove('nav-open');
+            };
+
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', () => {
+                    if (sidebar.classList.contains('-translate-x-full')) {
+                        openSidebar();
+                    } else {
+                        closeSidebar();
+                    }
+                });
+            }
+
+            if (overlay) {
+                overlay.addEventListener('click', closeSidebar);
+            }
+
+            const batchStudentSelect = getBatchStudentSelect();
+            if (batchStudentSelect) {
+                batchStudentSelect.addEventListener('change', updateBatchStudentVisibility);
+                updateBatchStudentVisibility();
+            }
+
             // Auto-switch to single entry tab if there's an error in that tab
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('tab') && urlParams.get('tab') === 'multi') {
-                switchTab('multi');
+                switchTab('multi', document.querySelectorAll('.tab-modern')[2] || null);
             }
         });
     </script>

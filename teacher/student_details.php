@@ -12,6 +12,7 @@ if (!isset($_SESSION['user_id']) || strtolower($_SESSION['role'] ?? '') !== 'tea
 // School authentication and context
 $current_school_id = require_school_auth();
 $teacher_id = intval($_SESSION['user_id']);
+$teacher_name = $_SESSION['full_name'] ?? 'Teacher';
 
 // Get student ID from URL
 $student_id = intval($_GET['id'] ?? 0);
@@ -60,54 +61,166 @@ if (!empty($error_message)) {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Student Details | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
-        <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
-        <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
+        <link rel="stylesheet" href="../assets/css/tailwind.css">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+        <style>
+            .error-wrap {
+                max-width: 760px;
+                margin: 0 auto;
+            }
+
+            .error-card {
+                border-radius: 1.75rem;
+                border: 1px solid rgba(15, 31, 45, 0.08);
+                background: rgba(255, 255, 255, 0.96);
+                box-shadow: 0 18px 40px rgba(15, 31, 45, 0.1);
+                padding: 1.75rem;
+            }
+
+            .error-alert {
+                display: flex;
+                gap: 0.9rem;
+                align-items: flex-start;
+                border-radius: 1.2rem;
+                border: 1px solid rgba(225, 29, 72, 0.18);
+                background: #fff1f2;
+                color: #be123c;
+                padding: 1rem 1.1rem;
+            }
+        </style>
     </head>
-    <body>
-        <?php include '../includes/mobile_navigation.php'; ?>
-        <header class="dashboard-header">
-            <div class="header-container">
-                <div class="header-left">
-                    <div class="school-logo-container">
-                        <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
-                        <div class="school-info">
-                            <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
-                            <p class="school-tagline">Student Details</p>
+    <body class="landing bg-slate-50">
+        <header class="site-header">
+            <div class="container nav-wrap">
+                <div class="flex items-center gap-4">
+                    <button class="nav-toggle lg:hidden" type="button" data-sidebar-toggle aria-label="Open menu">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                    <div class="flex items-center gap-3">
+                        <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="h-10 w-10 rounded-xl object-cover">
+                        <div class="hidden sm:block">
+                            <p class="text-xs uppercase tracking-wide text-slate-500">Teacher Portal</p>
+                            <p class="text-lg font-semibold text-ink-900"><?php echo htmlspecialchars(get_school_display_name()); ?></p>
                         </div>
                     </div>
                 </div>
-                <div class="header-right">
-                    <div class="teacher-info">
-                        <p class="teacher-label">Teacher</p>
-                        <span class="teacher-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Teacher'); ?></span>
-                    </div>
-                    <a href="logout.php" class="btn-logout">
+                <div class="flex items-center gap-3">
+                    <span class="hidden md:block text-sm text-slate-600">Welcome, <?php echo htmlspecialchars($teacher_name); ?></span>
+                    <a class="btn btn-outline" href="students.php">Students</a>
+                    <a class="btn btn-primary" href="logout.php">
                         <i class="fas fa-sign-out-alt"></i>
                         <span>Logout</span>
                     </a>
                 </div>
             </div>
         </header>
-        <div class="dashboard-container">
-            <?php include '../includes/teacher_sidebar.php'; ?>
-            <main class="main-content">
-                <div class="main-container">
-                    <div class="alert alert-error">
-                        <i class="fas fa-exclamation-circle"></i>
-                        <span><?php echo htmlspecialchars($error_message); ?></span>
+
+        <div class="fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity lg:hidden" data-sidebar-overlay></div>
+
+        <div class="container grid gap-6 py-8 lg:grid-cols-[280px_1fr]">
+            <aside class="fixed inset-y-0 left-0 z-40 w-72 -translate-x-full transform border-r border-ink-900/10 bg-white shadow-lift transition-transform duration-200 lg:static lg:inset-auto lg:translate-x-0" data-sidebar>
+                <?php include '../includes/teacher_sidebar.php'; ?>
+            </aside>
+            <main class="space-y-6">
+                <div class="error-wrap">
+                    <div class="error-card">
+                        <div class="error-alert">
+                            <i class="fas fa-exclamation-circle mt-1"></i>
+                            <div>
+                                <h1 class="mb-2 text-2xl font-display text-rose-700">Student record unavailable</h1>
+                                <p><?php echo htmlspecialchars($error_message); ?></p>
+                            </div>
+                        </div>
+                        <div class="mt-5 flex flex-wrap gap-3">
+                            <a href="students.php" class="btn btn-primary">
+                                <i class="fas fa-arrow-left"></i>
+                                <span>Back to Students</span>
+                            </a>
+                        </div>
                     </div>
-                    <a href="students.php" class="btn btn-primary">
-                        <i class="fas fa-arrow-left"></i>
-                        <span>Back to Students</span>
-                    </a>
                 </div>
             </main>
         </div>
+        <script>
+            const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
+            const sidebar = document.querySelector('[data-sidebar]');
+            const overlay = document.querySelector('[data-sidebar-overlay]');
+            const body = document.body;
+
+            const openSidebar = () => {
+                if (!sidebar || !overlay) return;
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('opacity-0', 'pointer-events-none');
+                overlay.classList.add('opacity-100');
+                body.classList.add('nav-open');
+            };
+
+            const closeSidebar = () => {
+                if (!sidebar || !overlay) return;
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('opacity-0', 'pointer-events-none');
+                overlay.classList.remove('opacity-100');
+                body.classList.remove('nav-open');
+            };
+
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', () => {
+                    if (sidebar.classList.contains('-translate-x-full')) {
+                        openSidebar();
+                    } else {
+                        closeSidebar();
+                    }
+                });
+            }
+
+            if (overlay) {
+                overlay.addEventListener('click', closeSidebar);
+            }
+        </script>
         <?php include '../includes/floating-button.php'; ?>
     </body>
     </html>
     <?php
     exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+
+    if ($action === 'add_note') {
+        $note = trim($_POST['note'] ?? '');
+        if ($note !== '') {
+            $stmt = $pdo->prepare("INSERT INTO student_notes (student_id, teacher_id, note_text, created_at) VALUES (?, ?, ?, NOW())");
+            $stmt->execute([$student_id, $teacher_id, $note]);
+        }
+        header("Location: student_details.php?id=" . $student_id);
+        exit;
+    }
+
+    if ($action === 'attendance') {
+        $date = $_POST['date'] ?? date('Y-m-d');
+        $status = $_POST['status'] ?? 'present';
+
+        $stmt = $pdo->prepare("SELECT id FROM attendance WHERE student_id = ? AND date = ? AND school_id = ? LIMIT 1");
+        $stmt->execute([$student_id, $date, $current_school_id]);
+        $existing_attendance = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($existing_attendance) {
+            $stmt = $pdo->prepare("UPDATE attendance SET status = ?, recorded_by = ?, recorded_at = NOW() WHERE id = ?");
+            $stmt->execute([$status, $teacher_id, $existing_attendance['id']]);
+        } else {
+            $stmt = $pdo->prepare("INSERT INTO attendance (student_id, class_id, date, status, recorded_by, notes, school_id, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+            $stmt->execute([$student_id, $student['class_id'], $date, $status, $teacher_id, '', $current_school_id]);
+        }
+
+        header("Location: student_details.php?id=" . $student_id);
+        exit;
+    }
 }
 
 // Fetch student notes
@@ -293,38 +406,33 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($student['full_name']); ?> | Student Details</title>
-    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
-    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
+    <link rel="stylesheet" href="../assets/css/tailwind.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/teacher-students.css">
 </head>
-<body style="background-color: #f5f7fb;">
-    <?php include '../includes/mobile_navigation.php'; ?>
-
-    <!-- Header -->
-    <header class="dashboard-header">
-        <div class="header-container">
-            <!-- Logo and School Name -->
-            <div class="header-left">
-                <div class="school-logo-container">
-                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
-                    <div class="school-info">
-                        <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
-                        <p class="school-tagline">Student Details</p>
+<body class="landing bg-slate-50">
+    <header class="site-header">
+        <div class="container nav-wrap">
+            <div class="flex items-center gap-4">
+                <button class="nav-toggle lg:hidden" type="button" data-sidebar-toggle aria-label="Open menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div class="flex items-center gap-3">
+                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="h-10 w-10 rounded-xl object-cover">
+                    <div class="hidden sm:block">
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Teacher Portal</p>
+                        <p class="text-lg font-semibold text-ink-900"><?php echo htmlspecialchars(get_school_display_name()); ?></p>
                     </div>
                 </div>
             </div>
-
-            <!-- Teacher Info and Logout -->
-            <div class="header-right">
-                <div class="teacher-info">
-                    <p class="teacher-label">Teacher</p>
-                    <span class="teacher-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Teacher'); ?></span>
-                </div>
-                <a href="logout.php" class="btn-logout">
+            <div class="flex items-center gap-3">
+                <span class="hidden md:block text-sm text-slate-600">Welcome, <?php echo htmlspecialchars($teacher_name); ?></span>
+                <a class="btn btn-outline" href="students.php">Students</a>
+                <a class="btn btn-primary" href="logout.php">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </a>
@@ -332,9 +440,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
         </div>
     </header>
 
-    <div class="dashboard-container">
-        <?php include '../includes/teacher_sidebar.php'; ?>
-        <main class="main-content">
+    <div class="fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity lg:hidden" data-sidebar-overlay></div>
+
+    <div class="container grid gap-6 py-8 lg:grid-cols-[280px_1fr]">
+        <aside class="fixed inset-y-0 left-0 z-40 w-72 -translate-x-full transform border-r border-ink-900/10 bg-white shadow-lift transition-transform duration-200 lg:static lg:inset-auto lg:translate-x-0" data-sidebar>
+            <?php include '../includes/teacher_sidebar.php'; ?>
+        </aside>
+        <main class="space-y-6">
             <div class="main-container">
             <!-- Breadcrumb -->
             <div style="margin-bottom: 1.5rem;">
@@ -391,7 +503,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
                         <a href="?id=<?php echo $student['id']; ?>&action=download_pdf" class="btn btn-success">
                             <i class="fas fa-download"></i> Download PDF
                         </a>
-                        <a href="students.php" class="btn">
+                        <a href="students.php" class="btn btn-outline">
                             <i class="fas fa-arrow-left"></i> Back to Students
                         </a>
                     </div>
@@ -609,185 +721,126 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
 
     <style>
         :root {
-            --primary-50: #eff6ff;
-            --primary-100: #dbeafe;
-            --primary-200: #bfdbfe;
-            --primary-300: #93c5fd;
-            --primary-400: #60a5fa;
-            --primary-500: #3b82f6;
-            --primary-600: #2563eb;
-            --primary-700: #1d4ed8;
-            --primary-800: #1e40af;
-            --primary-900: #1e3a8a;
-
-            --accent-50: #fdf4ff;
-            --accent-100: #fae8ff;
-            --accent-200: #f5d0fe;
-            --accent-300: #f0abfc;
-            --accent-400: #e879f9;
-            --accent-500: #d946ef;
-            --accent-600: #c026d3;
-            --accent-700: #a21caf;
-            --accent-800: #86198f;
-            --accent-900: #701a75;
-
-            --success-50: #f0fdf4;
-            --success-100: #dcfce7;
-            --success-500: #22c55e;
-            --success-600: #16a34a;
-            --success-700: #15803d;
-
-            --error-50: #fef2f2;
-            --error-100: #fee2e2;
-            --error-500: #ef4444;
-            --error-600: #dc2626;
-
-            --warning-50: #fffbeb;
-            --warning-100: #fef3c7;
-            --warning-500: #f59e0b;
-            --warning-600: #d97706;
-
-            --gray-50: #f9fafb;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-300: #d1d5db;
-            --gray-400: #9ca3af;
-            --gray-500: #6b7280;
-            --gray-600: #4b5563;
-            --gray-700: #374151;
-            --gray-800: #1f2937;
-            --gray-900: #111827;
-
-            --glass-bg: rgba(255, 255, 255, 0.1);
-            --glass-border: rgba(255, 255, 255, 0.2);
-            --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.08);
-            --shadow-medium: 0 8px 32px rgba(0, 0, 0, 0.12);
-            --shadow-strong: 0 16px 48px rgba(0, 0, 0, 0.15);
-
-            --gradient-primary: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-700) 100%);
-            --gradient-accent: linear-gradient(135deg, var(--accent-500) 0%, var(--accent-700) 100%);
-            --gradient-bg: linear-gradient(135deg, var(--primary-50) 0%, var(--accent-50) 50%, var(--primary-100) 100%);
+            --brand-500: #168575;
+            --brand-600: #0f6a5c;
+            --success-500: #0f9f6e;
+            --success-600: #0c7f58;
+            --danger-500: #e11d48;
+            --warning-500: #d97706;
+            --slate-50: #f8fafc;
+            --slate-200: #dbe3ee;
+            --slate-500: #64748b;
+            --slate-700: #334155;
+            --ink-900: #0f1f2d;
+            --shadow-soft: 0 14px 32px rgba(15, 31, 45, 0.08);
+            --hero-gradient: linear-gradient(135deg, #0f6a5c 0%, #168575 55%, #1e9bb3 100%);
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #f5f7fb;
-            color: var(--gray-800);
-            line-height: 1.6;
-            min-height: 100vh;
-        }
-
-        .dashboard-header {
-            background: #ffffff;
-        }
-
-        .dashboard-container .main-content {
-            width: 100%;
+            font-family: 'Manrope', 'Segoe UI', sans-serif;
+            color: var(--ink-900);
         }
 
         .main-container {
-            max-width: 1400px;
+            max-width: 1120px;
             margin: 0 auto;
-            padding: 1.5rem;
+            width: 100%;
         }
 
         .modern-card {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.97);
+            border: 1px solid rgba(15, 31, 45, 0.08);
+            border-radius: 1.75rem;
             box-shadow: var(--shadow-soft);
             overflow: hidden;
             margin-bottom: 2rem;
         }
 
         .card-header-modern {
-            padding: 2rem;
-            background: var(--gradient-primary);
-            color: white;
             position: relative;
+            padding: 1.75rem;
+            background: var(--hero-gradient);
+            color: #fff;
         }
 
         .card-header-modern::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(45deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+            inset: 0;
+            background: linear-gradient(45deg, rgba(255, 255, 255, 0.12) 0%, transparent 100%);
             pointer-events: none;
         }
 
         .card-title-modern {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 1.75rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
             position: relative;
             z-index: 1;
             display: flex;
             align-items: center;
             gap: 0.75rem;
+            margin-bottom: 0.4rem;
+            font-family: 'Fraunces', Georgia, serif;
+            font-size: 1.85rem;
+            font-weight: 600;
         }
 
         .card-subtitle-modern {
-            font-size: 1rem;
-            opacity: 0.9;
             position: relative;
             z-index: 1;
+            color: rgba(255, 255, 255, 0.86);
         }
 
         .card-body-modern {
-            padding: 2rem;
+            padding: 1.75rem;
         }
 
-        .stat-card-modern {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 16px;
-            padding: 1.5rem;
+        .info-card,
+        .panel {
+            border: 1px solid rgba(15, 31, 45, 0.08);
             box-shadow: var(--shadow-soft);
         }
 
         .info-card {
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            border-radius: 14px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbfd 100%);
+            border-radius: 1rem;
             padding: 1rem;
-            box-shadow: var(--shadow-soft);
         }
 
         .info-label {
-            font-weight: 600;
-            color: var(--gray-600);
-            font-size: 0.85rem;
-            margin-bottom: 0.25rem;
+            font-weight: 700;
+            color: var(--slate-500);
+            font-size: 0.78rem;
+            margin-bottom: 0.3rem;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.08em;
         }
 
         .info-value {
-            font-weight: 600;
-            color: var(--gray-900);
+            font-weight: 700;
+            color: var(--ink-900);
             font-size: 1rem;
         }
 
         .panel {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.97);
+            border-radius: 1.35rem;
             padding: 1.5rem;
-            box-shadow: var(--shadow-soft);
             margin-bottom: 1.5rem;
         }
 
+        .panel h2,
+        .panel h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: 0;
+            margin-bottom: 1rem;
+            color: var(--ink-900);
+        }
+
         .breadcrumb-modern {
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(15, 31, 45, 0.08);
+            border-radius: 999px;
             padding: 0.75rem 1rem;
             list-style: none;
             display: flex;
@@ -797,9 +850,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
         }
 
         .breadcrumb-modern a {
-            color: var(--primary-600);
+            color: var(--brand-600);
             text-decoration: none;
-            font-weight: 600;
+            font-weight: 700;
         }
 
         .details-grid {
@@ -814,7 +867,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1rem;
         }
 
@@ -822,13 +875,14 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
             display: flex;
             gap: 1rem;
             flex-wrap: wrap;
+            align-items: center;
         }
 
         .note-item {
-            border-left: 4px solid var(--primary-500);
-            background: var(--gray-50);
+            border-left: 4px solid var(--brand-500);
+            background: var(--slate-50);
             padding: 1rem;
-            border-radius: 12px;
+            border-radius: 1rem;
             margin-bottom: 1rem;
         }
 
@@ -842,6 +896,33 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
             position: relative;
         }
 
+        .form-control {
+            width: 100%;
+            border-radius: 1rem;
+            border: 1px solid rgba(15, 31, 45, 0.12);
+            background: #fff;
+            padding: 0.88rem 1rem;
+            color: var(--ink-900);
+            box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--brand-500);
+            box-shadow: 0 0 0 4px rgba(22, 133, 117, 0.12);
+        }
+
+        .btn-success {
+            background: var(--success-500);
+            color: #fff;
+            box-shadow: 0 12px 24px rgba(15, 159, 110, 0.22);
+        }
+
+        .btn-success:hover {
+            background: var(--success-600);
+        }
+
         @media (max-width: 1024px) {
             .details-grid {
                 grid-template-columns: 1fr;
@@ -850,53 +931,73 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
 
         @media (max-width: 768px) {
             .main-container {
-                padding: 1rem;
+                padding: 0;
             }
 
             .card-header-modern,
-            .card-body-modern {
-                padding: 1.5rem;
-            }
-
+            .card-body-modern,
             .panel {
                 padding: 1.25rem;
             }
 
-            .stats-grid {
-                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            .card-title-modern {
+                font-size: 1.55rem;
+            }
+
+            .breadcrumb-modern {
+                border-radius: 1rem;
+                flex-wrap: wrap;
+                align-items: flex-start;
+            }
+
+            .action-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .action-row .btn,
+            .btn-success,
+            .btn-small {
+                width: 100%;
             }
         }
     </style>
 
 <script>
-    // Mobile Menu Toggle
-    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-    const sidebar = document.getElementById('sidebar');
-    const sidebarClose = document.getElementById('sidebarClose');
+    const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
+    const sidebar = document.querySelector('[data-sidebar]');
+    const overlay = document.querySelector('[data-sidebar-overlay]');
+    const body = document.body;
 
-    if (mobileMenuToggle) {
-        mobileMenuToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('active');
-            mobileMenuToggle.classList.toggle('active');
-        });
-    }
+    const openSidebar = () => {
+        if (!sidebar || !overlay) return;
+        sidebar.classList.remove('-translate-x-full');
+        overlay.classList.remove('opacity-0', 'pointer-events-none');
+        overlay.classList.add('opacity-100');
+        body.classList.add('nav-open');
+    };
 
-    if (sidebarClose) {
-        sidebarClose.addEventListener('click', () => {
-            sidebar.classList.remove('active');
-            if (mobileMenuToggle) mobileMenuToggle.classList.remove('active');
-        });
-    }
+    const closeSidebar = () => {
+        if (!sidebar || !overlay) return;
+        sidebar.classList.add('-translate-x-full');
+        overlay.classList.add('opacity-0', 'pointer-events-none');
+        overlay.classList.remove('opacity-100');
+        body.classList.remove('nav-open');
+    };
 
-    // Close sidebar when clicking outside on mobile
-    document.addEventListener('click', (e) => {
-        if (window.innerWidth <= 768) {
-            if (sidebar && !sidebar.contains(e.target) && mobileMenuToggle && !mobileMenuToggle.contains(e.target)) {
-                sidebar.classList.remove('active');
-                mobileMenuToggle.classList.remove('active');
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', () => {
+            if (sidebar.classList.contains('-translate-x-full')) {
+                openSidebar();
+            } else {
+                closeSidebar();
             }
-        }
-    });
+        });
+    }
+
+    if (overlay) {
+        overlay.addEventListener('click', closeSidebar);
+    }
 </script>
 
     <?php include '../includes/floating-button.php'; ?>

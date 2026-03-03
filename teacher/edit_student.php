@@ -28,9 +28,9 @@ $stmt = $pdo->prepare("
     SELECT s.*, c.class_name
     FROM students s
     JOIN classes c ON s.class_id = c.id
-    WHERE s.id = ?
+    WHERE s.id = ? AND s.school_id = ? AND c.school_id = ?
 ");
-$stmt->execute([$student_id]);
+$stmt->execute([$student_id, $current_school_id, $current_school_id]);
 $student = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$student) {
@@ -42,13 +42,13 @@ if (!$student) {
 $stmt = $pdo->prepare("
     SELECT COUNT(*)
     FROM students s
-    WHERE s.id = ?
+    WHERE s.id = ? AND s.school_id = ?
     AND (
         EXISTS (SELECT 1 FROM subject_assignments sa WHERE sa.class_id = s.class_id AND sa.teacher_id = ?)
         OR EXISTS (SELECT 1 FROM class_teachers ct WHERE ct.class_id = s.class_id AND ct.teacher_id = ?)
     )
 ");
-$stmt->execute([$student_id, $teacher_id, $teacher_id]);
+$stmt->execute([$student_id, $current_school_id, $teacher_id, $teacher_id]);
 if ($stmt->fetchColumn() == 0) {
     header("Location: students.php");
     exit;
@@ -59,18 +59,23 @@ $stmt = $pdo->prepare("
     SELECT DISTINCT c.id, c.class_name
     FROM classes c
     JOIN subject_assignments sa ON c.id = sa.class_id
-    WHERE sa.teacher_id = :tid
+    WHERE sa.teacher_id = :tid AND c.school_id = :school_id
 
     UNION
 
     SELECT DISTINCT c.id, c.class_name
     FROM classes c
     JOIN class_teachers ct ON c.id = ct.class_id
-    WHERE ct.teacher_id = :tid2
+    WHERE ct.teacher_id = :tid2 AND c.school_id = :school_id2
 
     ORDER BY class_name
 ");
-$stmt->execute(['tid'=>$teacher_id, 'tid2'=>$teacher_id]);
+$stmt->execute([
+    'tid' => $teacher_id,
+    'school_id' => $current_school_id,
+    'tid2' => $teacher_id,
+    'school_id2' => $current_school_id,
+]);
 $assigned_classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Handle form submission
@@ -121,11 +126,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 UPDATE students
                 SET class_id = ?, full_name = ?, admission_no = ?, gender = ?, dob = ?,
                     phone = ?, guardian_name = ?, guardian_phone = ?, address = ?, student_type = ?
-                WHERE id = ?
+                WHERE id = ? AND school_id = ?
             ");
             $stmt->execute([
                 $class_id, $full_name, $admission_no, $gender, $dob ?: null,
-                $phone, $guardian_name, $guardian_phone, $address, $student_type, $student_id
+                $phone, $guardian_name, $guardian_phone, $address, $student_type, $student_id, $current_school_id
             ]);
 
             // Add a note about update
@@ -140,9 +145,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 SELECT s.*, c.class_name
                 FROM students s
                 JOIN classes c ON s.class_id = c.id
-                WHERE s.id = ?
+                WHERE s.id = ? AND s.school_id = ? AND c.school_id = ?
             ");
-            $stmt->execute([$student_id]);
+            $stmt->execute([$student_id, $current_school_id, $current_school_id]);
             $student = $stmt->fetch(PDO::FETCH_ASSOC);
 
         } catch (Exception $e) {
@@ -158,38 +163,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Student | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
-    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
-    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
+    <link rel="stylesheet" href="../assets/css/tailwind.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/teacher-students.css">
+    <meta name="theme-color" content="#0f172a">
 </head>
-<body style="background-color: #f5f7fb;">
-    <?php include '../includes/mobile_navigation.php'; ?>
-
-    <!-- Header -->
-    <header class="dashboard-header">
-        <div class="header-container">
-            <!-- Logo and School Name -->
-            <div class="header-left">
-                <div class="school-logo-container">
-                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
-                    <div class="school-info">
-                        <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
-                        <p class="school-tagline">Edit Student</p>
+<body class="landing bg-slate-50">
+    <header class="site-header">
+        <div class="container nav-wrap">
+            <div class="flex items-center gap-4">
+                <button class="nav-toggle lg:hidden" type="button" data-sidebar-toggle aria-label="Open menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div class="flex items-center gap-3">
+                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="h-10 w-10 rounded-xl object-cover">
+                    <div class="hidden sm:block">
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Teacher Portal</p>
+                        <p class="text-lg font-semibold text-ink-900"><?php echo htmlspecialchars(get_school_display_name()); ?></p>
                     </div>
                 </div>
             </div>
-
-            <!-- Teacher Info and Logout -->
-            <div class="header-right">
-                <div class="teacher-info">
-                    <p class="teacher-label">Teacher</p>
-                    <span class="teacher-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Teacher'); ?></span>
-                </div>
-                <a href="logout.php" class="btn-logout">
+            <div class="flex items-center gap-3">
+                <span class="hidden md:block text-sm text-slate-600">Welcome, <?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Teacher'); ?></span>
+                <a class="btn btn-outline" href="students.php">Students</a>
+                <a class="btn btn-primary" href="logout.php">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </a>
@@ -197,16 +198,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </header>
 
-    <div class="dashboard-container">
-        <?php include '../includes/teacher_sidebar.php'; ?>
-        <main class="main-content">
+    <div class="fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity lg:hidden" data-sidebar-overlay></div>
+
+    <div class="container grid gap-6 py-8 lg:grid-cols-[280px_1fr]">
+        <aside class="fixed inset-y-0 left-0 z-40 w-72 -translate-x-full transform border-r border-ink-900/10 bg-white shadow-lift transition-transform duration-200 lg:static lg:inset-auto lg:translate-x-0" data-sidebar>
+            <?php include '../includes/teacher_sidebar.php'; ?>
+        </aside>
+        <main class="space-y-6">
             <div class="main-container">
             <!-- Breadcrumb -->
             <div style="margin-bottom: 1.5rem;">
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb-modern">
                         <li style="display: flex; align-items: center; gap: 0.5rem;">
-                            <a href="students.php" style="color: var(--primary-color); text-decoration: none;">
+                            <a href="students.php">
                                 <i class="fas fa-users"></i> Students
                             </a>
                         </li>
@@ -405,11 +410,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <!-- Action Buttons -->
                     <div class="action-row" style="justify-content: space-between; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--gray-200);">
-                        <a href="students.php<?php echo isset($_GET['class_id']) ? '?class_id=' . intval($_GET['class_id']) : ''; ?>" class="btn btn-danger">
+                        <a href="students.php<?php echo isset($_GET['class_id']) ? '?class_id=' . intval($_GET['class_id']) : ''; ?>" class="btn btn-outline">
                             <i class="fas fa-arrow-left"></i> Back to Students
                         </a>
                         <div class="action-row">
-                            <button type="reset" class="btn">
+                            <button type="reset" class="btn btn-ghost">
                                 <i class="fas fa-undo"></i> Reset Changes
                             </button>
                             <button type="submit" class="btn-gold">
@@ -426,34 +431,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
 
 <script>
-    // Mobile Menu Toggle
-    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-    const sidebar = document.getElementById('sidebar');
-    const sidebarClose = document.getElementById('sidebarClose');
+    const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
+    const sidebar = document.querySelector('[data-sidebar]');
+    const overlay = document.querySelector('[data-sidebar-overlay]');
+    const body = document.body;
 
-    if (mobileMenuToggle) {
-        mobileMenuToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('active');
-            mobileMenuToggle.classList.toggle('active');
-        });
-    }
+    const openSidebar = () => {
+        if (!sidebar || !overlay) return;
+        sidebar.classList.remove('-translate-x-full');
+        overlay.classList.remove('opacity-0', 'pointer-events-none');
+        overlay.classList.add('opacity-100');
+        body.classList.add('nav-open');
+    };
 
-    if (sidebarClose) {
-        sidebarClose.addEventListener('click', () => {
-            sidebar.classList.remove('active');
-            if (mobileMenuToggle) mobileMenuToggle.classList.remove('active');
-        });
-    }
+    const closeSidebar = () => {
+        if (!sidebar || !overlay) return;
+        sidebar.classList.add('-translate-x-full');
+        overlay.classList.add('opacity-0', 'pointer-events-none');
+        overlay.classList.remove('opacity-100');
+        body.classList.remove('nav-open');
+    };
 
-    // Close sidebar when clicking outside on mobile
-    document.addEventListener('click', (e) => {
-        if (window.innerWidth <= 768) {
-            if (sidebar && !sidebar.contains(e.target) && mobileMenuToggle && !mobileMenuToggle.contains(e.target)) {
-                sidebar.classList.remove('active');
-                mobileMenuToggle.classList.remove('active');
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', () => {
+            if (sidebar.classList.contains('-translate-x-full')) {
+                openSidebar();
+            } else {
+                closeSidebar();
             }
-        }
-    });
+        });
+    }
+
+    if (overlay) {
+        overlay.addEventListener('click', closeSidebar);
+    }
 
     // Form validation
     document.querySelectorAll('form').forEach(form => {
@@ -463,14 +474,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             requiredFields.forEach(field => {
                 if (!field.value.trim()) {
-                    field.style.borderColor = 'var(--danger-color)';
+                    field.style.borderColor = 'var(--error-500)';
                     isValid = false;
 
                     // Add error message
                     if (!field.nextElementSibling?.classList.contains('error-message')) {
                         const errorMsg = document.createElement('div');
                         errorMsg.className = 'error-message';
-                        errorMsg.style.color = 'var(--danger-color)';
+                        errorMsg.style.color = 'var(--error-500)';
                         errorMsg.style.fontSize = '0.85rem';
                         errorMsg.style.marginTop = '0.25rem';
                         errorMsg.textContent = 'This field is required';
@@ -502,100 +513,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <style>
     :root {
-        --primary-50: #eff6ff;
-        --primary-100: #dbeafe;
-        --primary-200: #bfdbfe;
-        --primary-300: #93c5fd;
-        --primary-400: #60a5fa;
-        --primary-500: #3b82f6;
-        --primary-600: #2563eb;
-        --primary-700: #1d4ed8;
-        --primary-800: #1e40af;
-        --primary-900: #1e3a8a;
-
-        --accent-50: #fdf4ff;
-        --accent-100: #fae8ff;
-        --accent-200: #f5d0fe;
-        --accent-300: #f0abfc;
-        --accent-400: #e879f9;
-        --accent-500: #d946ef;
-        --accent-600: #c026d3;
-        --accent-700: #a21caf;
-        --accent-800: #86198f;
-        --accent-900: #701a75;
-
-        --success-50: #f0fdf4;
-        --success-100: #dcfce7;
-        --success-500: #22c55e;
-        --success-600: #16a34a;
-        --success-700: #15803d;
-
-        --error-50: #fef2f2;
-        --error-100: #fee2e2;
-        --error-500: #ef4444;
-        --error-600: #dc2626;
-
+        --primary-500: #168575;
+        --primary-600: #0f6a5c;
+        --primary-700: #0c574b;
+        --success-500: #0f9f6e;
+        --success-600: #0a7f58;
+        --error-50: #fff1f2;
+        --error-200: #fecdd3;
+        --error-500: #e11d48;
         --warning-50: #fffbeb;
-        --warning-100: #fef3c7;
-        --warning-500: #f59e0b;
-        --warning-600: #d97706;
-
-        --gray-50: #f9fafb;
-        --gray-100: #f3f4f6;
-        --gray-200: #e5e7eb;
-        --gray-300: #d1d5db;
-        --gray-400: #9ca3af;
-        --gray-500: #6b7280;
-        --gray-600: #4b5563;
-        --gray-700: #374151;
-        --gray-800: #1f2937;
-        --gray-900: #111827;
-
-        --glass-bg: rgba(255, 255, 255, 0.1);
-        --glass-border: rgba(255, 255, 255, 0.2);
-        --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.08);
-        --shadow-medium: 0 8px 32px rgba(0, 0, 0, 0.12);
-        --shadow-strong: 0 16px 48px rgba(0, 0, 0, 0.15);
-
-        --gradient-primary: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-700) 100%);
-        --gradient-accent: linear-gradient(135deg, var(--accent-500) 0%, var(--accent-700) 100%);
-        --gradient-bg: linear-gradient(135deg, var(--primary-50) 0%, var(--accent-50) 50%, var(--primary-100) 100%);
+        --warning-500: #d97706;
+        --warning-600: #b45309;
+        --gray-50: #f8fafc;
+        --gray-100: #eef2f7;
+        --gray-200: #dbe3ee;
+        --gray-400: #94a3b8;
+        --gray-500: #64748b;
+        --gray-600: #475569;
+        --gray-700: #334155;
+        --gray-900: #0f1f2d;
+        --shadow-soft: 0 14px 32px rgba(15, 31, 45, 0.08);
+        --gradient-primary: linear-gradient(135deg, #0f6a5c 0%, #168575 52%, #1e9bb3 100%);
     }
 
     body {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        background: #f5f7fb;
-        color: var(--gray-800);
+        font-family: 'Manrope', 'Segoe UI', sans-serif;
+        color: var(--gray-900);
         line-height: 1.6;
-        min-height: 100vh;
-    }
-
-    .dashboard-header {
-        background: #ffffff;
-    }
-
-    .dashboard-container .main-content {
-        width: 100%;
     }
 
     .main-container {
-        max-width: 1400px;
+        max-width: 1120px;
         margin: 0 auto;
-        padding: 1.5rem;
+        width: 100%;
     }
 
     .modern-card {
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid rgba(15, 31, 45, 0.08);
+        border-radius: 28px;
         box-shadow: var(--shadow-soft);
         overflow: hidden;
-        margin-bottom: 2rem;
     }
 
     .card-header-modern {
-        padding: 2rem;
+        padding: 1.75rem;
         background: var(--gradient-primary);
         color: white;
         position: relative;
@@ -613,9 +575,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     .card-title-modern {
-        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-family: 'Fraunces', Georgia, serif;
         font-size: 1.75rem;
-        font-weight: 700;
+        font-weight: 600;
         margin-bottom: 0.5rem;
         position: relative;
         z-index: 1;
@@ -625,38 +587,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     .card-subtitle-modern {
-        font-size: 1rem;
-        opacity: 0.9;
+        color: rgba(255, 255, 255, 0.86);
         position: relative;
         z-index: 1;
     }
 
     .card-body-modern {
-        padding: 2rem;
+        padding: 1.75rem;
     }
 
-    .info-card {
-        background: rgba(255, 255, 255, 0.95);
-        border: 1px solid rgba(255, 255, 255, 0.4);
-        border-radius: 14px;
-        padding: 1rem;
+    .alert {
+        display: flex;
+        gap: 0.85rem;
+        align-items: flex-start;
+        border-radius: 1.15rem;
+        padding: 1rem 1.1rem;
+        border: 1px solid transparent;
+        background: #fff;
         box-shadow: var(--shadow-soft);
     }
 
+    .alert-error {
+        background: var(--error-50);
+        border-color: var(--error-200);
+        color: #be123c;
+    }
+
+    .alert-success {
+        background: #ecfdf5;
+        border-color: #bbf7d0;
+        color: #166534;
+    }
+
+    .info-card {
+        background: linear-gradient(180deg, #ffffff 0%, #f8fbfd 100%);
+        border: 1px solid rgba(15, 31, 45, 0.08);
+        border-radius: 1.15rem;
+        padding: 1rem 1.05rem;
+        box-shadow: 0 10px 24px rgba(15, 31, 45, 0.05);
+    }
+
     .panel {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        border-radius: 18px;
+        background: #ffffff;
+        border: 1px solid rgba(15, 31, 45, 0.08);
+        border-radius: 1.35rem;
         padding: 1.5rem;
         box-shadow: var(--shadow-soft);
         margin-bottom: 1.5rem;
     }
 
     .breadcrumb-modern {
-        background: rgba(255, 255, 255, 0.9);
-        border: 1px solid rgba(255, 255, 255, 0.4);
-        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(15, 31, 45, 0.08);
+        border-radius: 999px;
         padding: 0.75rem 1rem;
         list-style: none;
         display: flex;
@@ -672,6 +655,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         font-weight: 600;
     }
 
+    .breadcrumb-modern a:hover {
+        color: var(--primary-500);
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.1rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.55rem;
+        color: var(--gray-900);
+        font-size: 0.92rem;
+        font-weight: 700;
+    }
+
+    .form-control {
+        width: 100%;
+        border-radius: 1rem;
+        border: 1px solid rgba(15, 31, 45, 0.12);
+        background: #fff;
+        padding: 0.88rem 1rem;
+        color: var(--gray-900);
+        box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary-500);
+        box-shadow: 0 0 0 4px rgba(22, 133, 117, 0.12);
+    }
+
     .stats-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -683,6 +701,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         gap: 1rem;
         flex-wrap: wrap;
         align-items: center;
+    }
+
+    .btn-gold {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        padding: 0.75rem 1.15rem;
+        font-size: 0.92rem;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg, #d6a548 0%, #f1c25b 100%);
+        box-shadow: 0 14px 30px rgba(214, 165, 72, 0.22);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .btn-gold:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 18px 32px rgba(214, 165, 72, 0.28);
+    }
+
+    .error-message {
+        color: var(--error-500);
+        font-size: 0.85rem;
+        margin-top: 0.35rem;
     }
 
     @media (max-width: 768px) {
@@ -701,6 +746,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .stats-grid {
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        }
+
+        .action-row {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .btn-gold,
+        .action-row .btn {
+            width: 100%;
         }
     }
 </style>

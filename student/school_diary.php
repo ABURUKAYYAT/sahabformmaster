@@ -827,9 +827,18 @@ $upcoming_count = $upcoming_stmt->fetch(PDO::FETCH_ASSOC)['count'];
         }
     </style>
 </head>
-<body>
-    <!-- Header -->
-    <header class="dashboard-header">
+<?php
+// Use shared student header and inject page styles
+$pageTitle = 'School Events | ' . (function_exists('get_school_display_name') ? get_school_display_name() : 'iSchool');
+$extraHead = <<<'HTML'
+    <style>
+        /* (Keep original internal styles already defined above) */
+    </style>
+HTML;
+require_once __DIR__ . '/../includes/student_header.php';
+?>
+
+    <!-- Header (mobile nav still used) -->
         <div class="header-container">
             <!-- Logo and School Name -->
             <div class="header-left">
@@ -859,7 +868,6 @@ $upcoming_count = $upcoming_stmt->fetch(PDO::FETCH_ASSOC)['count'];
 
     <!-- Main Container -->
     <div class="dashboard-container">
-        <?php include '../includes/student_sidebar.php'; ?>
 
         <!-- Main Content -->
         <main class="main-content">
@@ -1063,7 +1071,6 @@ $upcoming_count = $upcoming_stmt->fetch(PDO::FETCH_ASSOC)['count'];
         }
     </script>
 
-    <?php include '../includes/floating-button.php'; ?>
+    <?php include __DIR__ . '/../includes/floating-button.php'; ?>
 
-</body>
-</html>
+<?php require_once __DIR__ . '/../includes/student_footer.php'; ?>

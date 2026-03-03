@@ -37,17 +37,22 @@ $assigned_classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $stmt = $pdo->prepare("
     SELECT COUNT(DISTINCT s.id)
     FROM students s
-    WHERE s.class_id IN (
+    WHERE s.school_id = ?
+    AND s.class_id IN (
         SELECT DISTINCT c.id
         FROM classes c
-        WHERE EXISTS (
-            SELECT 1 FROM subject_assignments sa WHERE sa.class_id = c.id AND sa.teacher_id = ?
-        ) OR EXISTS (
-            SELECT 1 FROM class_teachers ct WHERE ct.class_id = c.id AND ct.teacher_id = ?
+        WHERE c.school_id = ?
+        AND (
+            EXISTS (
+                SELECT 1 FROM subject_assignments sa WHERE sa.class_id = c.id AND sa.teacher_id = ?
+            )
+            OR EXISTS (
+                SELECT 1 FROM class_teachers ct WHERE ct.class_id = c.id AND ct.teacher_id = ?
+            )
         )
     )
 ");
-$stmt->execute([$teacher_id, $teacher_id]);
+$stmt->execute([$current_school_id, $current_school_id, $teacher_id, $teacher_id]);
 $student_count = $stmt->fetchColumn();
 
 // Fetch ALL classes for the dropdown - school-filtered
@@ -441,8 +446,8 @@ if (isset($_GET['export']) && $_GET['export'] === 'students_pdf') {
     $pdf->SetFont('helvetica', '', 12);
 
     // Get school info
-    $stmt = $pdo->prepare("SELECT * FROM school_profile LIMIT 1");
-    $stmt->execute();
+    $stmt = $pdo->prepare("SELECT * FROM school_profile WHERE school_id = ? LIMIT 1");
+    $stmt->execute([$current_school_id]);
     $school = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // Set document information (school metadata)
@@ -581,13 +586,13 @@ if (isset($_GET['generate_exams_record']) && $_GET['generate_exams_record'] == '
     }
 
     // Get school details
-    $stmt = $pdo->prepare("SELECT * FROM school_profile LIMIT 1");
-    $stmt->execute();
+    $stmt = $pdo->prepare("SELECT * FROM school_profile WHERE school_id = ? LIMIT 1");
+    $stmt->execute([$current_school_id]);
     $school = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // Get class details
-    $stmt = $pdo->prepare("SELECT * FROM classes WHERE id = :id");
-    $stmt->execute(['id' => $record_class_id]);
+    $stmt = $pdo->prepare("SELECT * FROM classes WHERE id = :id AND school_id = :school_id");
+    $stmt->execute(['id' => $record_class_id, 'school_id' => $current_school_id]);
     $class = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$class) {
@@ -595,8 +600,8 @@ if (isset($_GET['generate_exams_record']) && $_GET['generate_exams_record'] == '
     }
 
     // Get students in class
-    $stmt = $pdo->prepare("SELECT id, full_name, admission_no FROM students WHERE class_id = :class_id ORDER BY full_name ASC");
-    $stmt->execute(['class_id' => $record_class_id]);
+    $stmt = $pdo->prepare("SELECT id, full_name, admission_no FROM students WHERE class_id = :class_id AND school_id = :school_id ORDER BY full_name ASC");
+    $stmt->execute(['class_id' => $record_class_id, 'school_id' => $current_school_id]);
     $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Create PDF
@@ -694,6 +699,12 @@ if (isset($_GET['generate_exams_record']) && $_GET['generate_exams_record'] == '
 $class_id = intval($_GET['class_id'] ?? 0);
 $search = trim($_GET['search'] ?? '');
 $view_all = isset($_GET['view_all']) ? (bool)$_GET['view_all'] : false;
+$current_page = max(1, intval($_GET['page'] ?? 1));
+$per_page = 10;
+$total_visible_students = 0;
+$total_pages = 1;
+$pagination_start = 0;
+$pagination_end = 0;
 $students = [];
 $class_details = [];
 
@@ -732,38 +743,67 @@ if ($class_id > 0) {
         }
 
         if ($class_id > 0) {
-            // Build query with search - only students in assigned classes
-            $sql = "SELECT s.id, s.full_name, s.admission_no, s.gender, s.phone,
-                           s.guardian_name, s.guardian_phone, s.dob, s.enrollment_date,
-                           s.address, s.student_type, c.class_name
-                    FROM students s
-                    JOIN classes c ON s.class_id = c.id
-                    WHERE s.class_id = :cid
-                    AND s.class_id IN (
-                        SELECT DISTINCT c2.id
-                        FROM classes c2
-                        WHERE EXISTS (
-                            SELECT 1 FROM subject_assignments sa WHERE sa.class_id = c2.id AND sa.teacher_id = :tid
-                        ) OR EXISTS (
-                            SELECT 1 FROM class_teachers ct WHERE ct.class_id = c2.id AND ct.teacher_id = :tid2
-                        )
-                    )";
-            $params = ['cid' => $class_id, 'tid' => $teacher_id, 'tid2' => $teacher_id];
+            $base_sql = "FROM students s
+                        JOIN classes c ON s.class_id = c.id
+                        WHERE s.school_id = :school_id
+                        AND c.school_id = :school_id_class
+                        AND s.class_id = :cid
+                        AND s.class_id IN (
+                            SELECT DISTINCT c2.id
+                            FROM classes c2
+                            WHERE c2.school_id = :school_id_filter
+                            AND (
+                                EXISTS (
+                                    SELECT 1 FROM subject_assignments sa
+                                    WHERE sa.class_id = c2.id AND sa.teacher_id = :tid
+                                )
+                                OR EXISTS (
+                                    SELECT 1 FROM class_teachers ct
+                                    WHERE ct.class_id = c2.id AND ct.teacher_id = :tid2
+                                )
+                            )
+                        )";
+            $params = [
+                'school_id' => $current_school_id,
+                'school_id_class' => $current_school_id,
+                'cid' => $class_id,
+                'school_id_filter' => $current_school_id,
+                'tid' => $teacher_id,
+                'tid2' => $teacher_id
+            ];
 
             if (!empty($search)) {
-                $sql .= " AND (s.full_name LIKE :search
-                        OR s.admission_no LIKE :search
-                        OR s.guardian_name LIKE :search
-                        OR s.guardian_phone LIKE :search
-                        OR s.phone LIKE :search)";
+                $base_sql .= " AND (s.full_name LIKE :search
+                            OR s.admission_no LIKE :search
+                            OR s.guardian_name LIKE :search
+                            OR s.guardian_phone LIKE :search
+                            OR s.phone LIKE :search)";
                 $params['search'] = "%$search%";
             }
 
-            $sql .= " ORDER BY s.full_name";
+            $count_stmt = $pdo->prepare("SELECT COUNT(*) " . $base_sql);
+            $count_stmt->execute($params);
+            $total_visible_students = (int) $count_stmt->fetchColumn();
+            $total_pages = max(1, (int) ceil($total_visible_students / $per_page));
+            $current_page = min($current_page, $total_pages);
+            $offset = ($current_page - 1) * $per_page;
+
+            $sql = "SELECT s.id, s.full_name, s.admission_no, s.gender, s.phone,
+                           s.guardian_name, s.guardian_phone, s.dob, s.enrollment_date,
+                           s.address, s.student_type, c.class_name " . $base_sql . "
+                    ORDER BY s.full_name
+                    LIMIT :limit OFFSET :offset";
 
             $stmt = $pdo->prepare($sql);
-            $stmt->execute($params);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue(':' . $key, $value);
+            }
+            $stmt->bindValue(':limit', $per_page, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+            $stmt->execute();
             $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $pagination_start = $total_visible_students > 0 ? $offset + 1 : 0;
+            $pagination_end = min($offset + $per_page, $total_visible_students);
         }
     } else {
         $errors[] = 'Class not found.';
@@ -771,21 +811,64 @@ if ($class_id > 0) {
     }
 } elseif ($show_all_classes && !empty($search)) {
     // Search across all classes
+    $base_sql = "FROM students s
+                JOIN classes c ON s.class_id = c.id
+                WHERE s.school_id = :school_id
+                AND c.school_id = :school_id_class
+                AND (
+                    s.full_name LIKE :search
+                    OR s.admission_no LIKE :search
+                    OR s.guardian_name LIKE :search
+                    OR s.guardian_phone LIKE :search
+                    OR s.phone LIKE :search
+                )
+                AND s.class_id IN (
+                    SELECT DISTINCT c2.id
+                    FROM classes c2
+                    WHERE c2.school_id = :school_id_filter
+                    AND (
+                        EXISTS (
+                            SELECT 1 FROM subject_assignments sa
+                            WHERE sa.class_id = c2.id AND sa.teacher_id = :tid
+                        )
+                        OR EXISTS (
+                            SELECT 1 FROM class_teachers ct
+                            WHERE ct.class_id = c2.id AND ct.teacher_id = :tid2
+                        )
+                    )
+                )";
+    $params = [
+        'school_id' => $current_school_id,
+        'school_id_class' => $current_school_id,
+        'school_id_filter' => $current_school_id,
+        'search' => "%$search%",
+        'tid' => $teacher_id,
+        'tid2' => $teacher_id
+    ];
+
+    $count_stmt = $pdo->prepare("SELECT COUNT(*) " . $base_sql);
+    $count_stmt->execute($params);
+    $total_visible_students = (int) $count_stmt->fetchColumn();
+    $total_pages = max(1, (int) ceil($total_visible_students / $per_page));
+    $current_page = min($current_page, $total_pages);
+    $offset = ($current_page - 1) * $per_page;
+
     $sql = "SELECT s.id, s.full_name, s.admission_no, s.gender, s.phone,
                    s.guardian_name, s.guardian_phone, s.dob, s.enrollment_date,
-                   s.address, s.student_type, c.class_name, c.id as class_id
-            FROM students s
-            JOIN classes c ON s.class_id = c.id
-            WHERE (s.full_name LIKE :search
-                   OR s.admission_no LIKE :search
-                   OR s.guardian_name LIKE :search
-                   OR s.guardian_phone LIKE :search
-                   OR s.phone LIKE :search)
-            ORDER BY c.class_name, s.full_name";
+                   s.address, s.student_type, c.class_name, c.id as class_id " . $base_sql . "
+            ORDER BY c.class_name, s.full_name
+            LIMIT :limit OFFSET :offset";
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute(['search' => "%$search%"]);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue(':' . $key, $value);
+    }
+    $stmt->bindValue(':limit', $per_page, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
     $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $pagination_start = $total_visible_students > 0 ? $offset + 1 : 0;
+    $pagination_end = min($offset + $per_page, $total_visible_students);
 }
 
 ?>
@@ -796,70 +879,171 @@ if ($class_id > 0) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher Students | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
-    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
-    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
+    <link rel="stylesheet" href="../assets/css/tailwind.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <meta name="theme-color" content="#0f172a">
     <style>
         body {
-            background: #f5f7fb;
-        }
-
-        .dashboard-container .main-content {
-            width: 100%;
+            background: #f8fafc;
         }
 
         .main-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 1.5rem;
+            display: grid;
+            gap: 1.5rem;
         }
 
+        .content-header,
         .panel,
         .quick-actions-section,
-        .content-header,
+        .activity-section,
         .alert {
+            border-radius: 1.5rem;
+            border: 1px solid rgba(15, 31, 45, 0.06);
             background: #ffffff;
-            border: 1px solid #cfe1ff;
-            border-radius: 12px;
-            box-shadow: none;
+            box-shadow: 0 10px 24px rgba(15, 31, 51, 0.08);
         }
 
         .content-header {
-            padding: 1.25rem 1.5rem;
-            margin-bottom: 1rem;
+            padding: 1.75rem;
+            background: linear-gradient(135deg, #0f6a5c 0%, #059669 45%, #0284c7 100%);
+            color: #fff;
         }
 
-        .quick-actions-section {
-            padding: 1.25rem 1.5rem;
+        .content-header h2,
+        .panel-header h2,
+        .section-header h3 {
+            font-family: "Fraunces", Georgia, serif;
         }
 
-        .panel-header {
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid #cfe1ff;
+        .content-header p,
+        .content-header .quick-stat-label {
+            color: rgba(255, 255, 255, 0.82);
+        }
+
+        .header-stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .quick-stat {
+            min-width: 120px;
+            border-radius: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.12);
+            padding: 0.9rem 1rem;
+            backdrop-filter: blur(8px);
+        }
+
+        .quick-stat-value {
+            display: block;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .panel-header,
+        .section-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 1rem;
-            background: #1d4ed8;
-            color: #fff;
-            border-radius: 12px 12px 0 0;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid rgba(15, 31, 45, 0.06);
         }
 
-        .panel-body {
+        .panel-header {
+            background: #fff;
+        }
+
+        .panel-header h2,
+        .section-header h3 {
+            margin: 0;
+            font-size: 1.25rem;
+            color: #0f1f2d;
+        }
+
+        .panel-body,
+        .quick-actions-section,
+        .activity-section {
             padding: 1.5rem;
         }
 
+        .btn,
+        .btn-small,
+        .btn-table,
         .btn-toggle-form {
-            border: 1px solid #1d4ed8;
-            background: #fff;
-            color: #1d4ed8;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
             border-radius: 999px;
-            padding: 0.5rem 0.9rem;
+            border: 1px solid transparent;
+            padding: 0.65rem 1rem;
+            font-size: 0.875rem;
             font-weight: 600;
+            transition: all 0.2s ease;
             cursor: pointer;
+        }
+
+        .btn:hover,
+        .btn-small:hover,
+        .btn-table:hover,
+        .btn-toggle-form:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn,
+        .btn-primary,
+        .quick-action-card {
+            background: #168575;
+            border-color: #168575;
+            color: #fff;
+        }
+
+        .btn-success {
+            background: #0f766e;
+            border-color: #0f766e;
+            color: #fff;
+        }
+
+        .btn-info {
+            background: #0284c7;
+            border-color: #0284c7;
+            color: #fff;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            border-color: #dc2626;
+            color: #fff;
+        }
+
+        .btn-warning {
+            background: #d97706;
+            border-color: #d97706;
+            color: #fff;
+        }
+
+        .btn-secondary,
+        .btn-toggle-form {
+            background: #fff;
+            border-color: rgba(15, 31, 45, 0.12);
+            color: #475569;
+        }
+
+        .btn-table {
+            width: 2.4rem;
+            height: 2.4rem;
+            padding: 0;
+            border-radius: 0.8rem;
+        }
+
+        .inline-form {
+            display: inline-flex;
         }
 
         .form-grid {
@@ -868,9 +1052,34 @@ if ($class_id > 0) {
             gap: 1rem;
         }
 
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #0f1f2d;
+        }
+
+        .form-control {
+            width: 100%;
+            border-radius: 0.95rem;
+            border: 1px solid rgba(15, 31, 45, 0.12);
+            background: #fff;
+            padding: 0.85rem 1rem;
+            color: #0f1f2d;
+            box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.05);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #168575;
+            box-shadow: 0 0 0 4px rgba(22, 133, 117, 0.12);
+        }
+
         .form-actions {
             display: flex;
-            gap: 1rem;
+            flex-wrap: wrap;
+            gap: 0.75rem;
             justify-content: flex-end;
             margin-top: 1rem;
         }
@@ -878,74 +1087,448 @@ if ($class_id > 0) {
         .quick-actions-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 0.75rem;
+            gap: 0.9rem;
         }
 
         .quick-action-card {
-            background: #1d4ed8;
-            color: #fff;
-            border: 1px solid #1d4ed8;
+            min-height: 108px;
+            border-radius: 1.25rem;
+            padding: 1.2rem;
+            text-align: left;
+            box-shadow: 0 12px 24px rgba(22, 133, 117, 0.18);
+        }
+
+        .quick-action-card i {
+            display: inline-flex;
+            margin-bottom: 0.75rem;
+            font-size: 1.25rem;
+        }
+
+        .quick-action-card span {
+            display: block;
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+
+        .students-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            min-width: 880px;
         }
 
         .students-table thead th {
-            background: #1d4ed8;
-            color: #fff;
+            position: sticky;
+            top: 0;
+            background: #f8fafc;
+            color: #475569;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            border-bottom: 1px solid rgba(15, 31, 45, 0.08);
+            padding: 1rem;
+            text-align: left;
         }
 
-        .btn {
-            background: #1d4ed8;
-            color: #fff;
-            border: 1px solid #1d4ed8;
+        .students-table tbody td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(15, 31, 45, 0.06);
+            vertical-align: middle;
+            color: #334155;
         }
 
-        .btn-primary { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
-        .btn-success { background: #16a34a; border-color: #16a34a; color: #fff; }
-        .btn-info { background: #0ea5e9; border-color: #0ea5e9; color: #fff; }
-        .btn-danger { background: #dc2626; border-color: #dc2626; color: #fff; }
-        .btn-warning { background: #f59e0b; border-color: #f59e0b; color: #fff; }
-        .btn-secondary { background: #2563eb; border-color: #2563eb; color: #fff; }
+        .students-table tbody tr:hover {
+            background: rgba(22, 133, 117, 0.03);
+        }
 
-        @media (max-width: 768px) {
-            .main-container {
-                padding: 1rem;
-            }
+        .student-name-cell {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 700;
+            color: #0f1f2d;
+        }
 
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            border-radius: 999px;
+            padding: 0.3rem 0.65rem;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.12);
+            color: #047857;
+        }
+
+        .badge-primary {
+            background: rgba(59, 130, 246, 0.12);
+            color: #1d4ed8;
+        }
+
+        .badge-danger {
+            background: rgba(244, 63, 94, 0.12);
+            color: #be123c;
+        }
+
+        .table-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            padding: 0 1.25rem 1.25rem;
+        }
+
+        .table-footer {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0 1.25rem 1.25rem;
+        }
+
+        .table-summary {
+            font-size: 0.92rem;
+            color: #64748b;
+        }
+
+        .pagination {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .pagination-link,
+        .pagination-current,
+        .pagination-ellipsis {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 2.5rem;
+            height: 2.5rem;
+            padding: 0 0.8rem;
+            border-radius: 999px;
+            border: 1px solid rgba(15, 31, 45, 0.1);
+            background: #fff;
+            color: #334155;
+            font-size: 0.88rem;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .pagination-link:hover {
+            border-color: rgba(22, 133, 117, 0.35);
+            color: #0f6a5c;
+            background: rgba(22, 133, 117, 0.06);
+        }
+
+        .pagination-current {
+            border-color: #168575;
+            background: #168575;
+            color: #fff;
+            box-shadow: 0 12px 24px rgba(22, 133, 117, 0.18);
+        }
+
+        .pagination-ellipsis {
+            border-style: dashed;
+            color: #94a3b8;
+        }
+
+        .alert {
+            display: grid;
+            gap: 0.35rem;
+            padding: 1rem 1.25rem;
+            color: #334155;
+        }
+
+        .alert-success {
+            border-color: rgba(16, 185, 129, 0.2);
+            background: #ecfdf5;
+        }
+
+        .alert-error {
+            border-color: rgba(244, 63, 94, 0.2);
+            background: #fff1f2;
+        }
+
+        .activity-list {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .activity-item {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            border: 1px solid rgba(15, 31, 45, 0.06);
+            border-radius: 1.25rem;
+            padding: 1rem 1.15rem;
+            background: #fff;
+        }
+
+        .activity-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 3rem;
+            height: 3rem;
+            border-radius: 1rem;
+            background: rgba(22, 133, 117, 0.12);
+            color: #168575;
+        }
+
+        .activity-content {
+            flex: 1 1 220px;
+            min-width: 200px;
+        }
+
+        .activity-text {
+            display: block;
+            color: #0f1f2d;
+        }
+
+        .activity-date {
+            display: block;
+            margin-top: 0.2rem;
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+
+        .view-all-link {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #168575;
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            z-index: 60;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: rgba(15, 23, 42, 0.55);
+        }
+
+        .modal-content {
+            width: min(100%, 760px);
+            max-height: min(90vh, 920px);
+            overflow: auto;
+            border-radius: 1.5rem;
+            background: #fff;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+        }
+
+        .modal-header,
+        .modal-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid rgba(15, 31, 45, 0.06);
+        }
+
+        .modal-footer {
+            border-top: 1px solid rgba(15, 31, 45, 0.06);
+            border-bottom: 0;
+            justify-content: flex-end;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-family: "Fraunces", Georgia, serif;
+            color: #0f1f2d;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .close-btn {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 0.8rem;
+            border: 1px solid rgba(15, 31, 45, 0.08);
+            background: #fff;
+            color: #475569;
+            font-size: 1.2rem;
+        }
+
+        #uploadArea {
+            border: 2px dashed rgba(15, 31, 45, 0.15) !important;
+            border-radius: 1.25rem !important;
+            background: #f8fafc;
+        }
+
+        @media (max-width: 900px) {
             .form-grid {
                 grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .content-header,
+            .panel-body,
+            .quick-actions-section,
+            .activity-section,
+            .table-responsive,
+            .modal-body,
+            .modal-header,
+            .modal-footer {
+                padding: 1rem;
             }
 
             .form-actions {
                 flex-direction: column-reverse;
             }
+
+            .btn,
+            .btn-small,
+            .btn-toggle-form {
+                width: 100%;
+            }
+
+            .panel-header,
+            .section-header,
+            .activity-item {
+                align-items: stretch;
+            }
+        }
+
+        @media (max-width: 860px) {
+            .students-table {
+                min-width: 0;
+                border-spacing: 0;
+            }
+
+            .students-table thead {
+                display: none;
+            }
+
+            .students-table,
+            .students-table tbody,
+            .students-table tr,
+            .students-table td {
+                display: block;
+                width: 100%;
+            }
+
+            .students-table tbody {
+                display: grid;
+                gap: 1rem;
+            }
+
+            .students-table tbody tr {
+                border: 1px solid rgba(15, 31, 45, 0.08);
+                border-radius: 1.2rem;
+                background: #fff;
+                padding: 0.95rem 1rem;
+                box-shadow: 0 12px 24px rgba(15, 31, 45, 0.06);
+            }
+
+            .students-table tbody td {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                gap: 0.85rem;
+                padding: 0.7rem 0;
+                border-bottom: 1px solid rgba(15, 31, 45, 0.06);
+                text-align: right;
+            }
+
+            .students-table tbody td:last-child {
+                border-bottom: 0;
+                padding-bottom: 0;
+            }
+
+            .students-table tbody td::before {
+                content: attr(data-label);
+                flex: 0 0 105px;
+                max-width: 105px;
+                text-align: left;
+                color: #64748b;
+                font-size: 0.78rem;
+                font-weight: 800;
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+            }
+
+            .students-table tbody td.actions-cell {
+                display: block;
+                text-align: left;
+            }
+
+            .students-table tbody td.actions-cell::before {
+                display: block;
+                max-width: none;
+                margin-bottom: 0.7rem;
+            }
+
+            .student-name-cell {
+                justify-content: flex-end;
+                text-align: right;
+            }
+
+            .table-actions {
+                width: 100%;
+            }
+
+            .table-actions .btn-table,
+            .table-actions .inline-form {
+                flex: 1 1 calc(50% - 0.3rem);
+            }
+
+            .table-actions .inline-form button {
+                width: 100%;
+            }
+
+            .table-footer {
+                padding-top: 0.25rem;
+            }
+
+            .table-summary,
+            .pagination {
+                width: 100%;
+                justify-content: flex-start;
+            }
         }
     </style>
 </head>
-<body>
-
-        <!-- Mobile Navigation Component -->
-    <?php include '../includes/mobile_navigation.php'; ?>
-
-<!-- Header -->
-    <header class="dashboard-header">
-        <div class="header-container">
-            <!-- Logo and School Name -->
-            <div class="header-left">
-                <div class="school-logo-container">
-                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
-                    <div class="school-info">
-                        <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
-                        <p class="school-tagline">Students Management</p>
+<body class="landing bg-slate-50">
+    <header class="site-header">
+        <div class="container nav-wrap">
+            <div class="flex items-center gap-4">
+                <button class="nav-toggle lg:hidden" type="button" data-sidebar-toggle aria-label="Open menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div class="flex items-center gap-3">
+                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="h-10 w-10 rounded-xl object-cover">
+                    <div class="hidden sm:block">
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Teacher Portal</p>
+                        <p class="text-lg font-semibold text-ink-900"><?php echo htmlspecialchars(get_school_display_name()); ?></p>
                     </div>
                 </div>
             </div>
-
-            <!-- Teacher Info and Logout -->
-            <div class="header-right">
-                <div class="teacher-info">
-                    <p class="teacher-label">Teacher</p>
-                    <span class="teacher-name"><?php echo htmlspecialchars($teacher_name); ?></span>
-                </div>
-                <a href="logout.php" class="btn-logout">
+            <div class="flex items-center gap-3">
+                <span class="hidden md:block text-sm text-slate-600">Welcome, <?php echo htmlspecialchars($teacher_name); ?></span>
+                <a class="btn btn-outline" href="../index.php">Home</a>
+                <a class="btn btn-primary" href="logout.php">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </a>
@@ -953,21 +1536,34 @@ if ($class_id > 0) {
         </div>
     </header>
 
-    <div class="dashboard-container">
-        <?php include '../includes/teacher_sidebar.php'; ?>
-        <main class="main-content">
+    <div class="fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity lg:hidden" data-sidebar-overlay></div>
+
+    <div class="container grid gap-6 py-8 lg:grid-cols-[280px_1fr]">
+        <aside class="fixed inset-y-0 left-0 z-40 w-72 -translate-x-full transform border-r border-ink-900/10 bg-white shadow-lift transition-transform duration-200 lg:static lg:inset-auto lg:translate-x-0" data-sidebar>
+            <?php include '../includes/teacher_sidebar.php'; ?>
+        </aside>
+
+        <main class="space-y-6">
         <div class="main-container">
             <!-- Main Content -->
             <!-- Content Header -->
             <div class="content-header">
                 <div class="welcome-section">
                     <h2>Student Management</h2>
-                    <p>Manage your students, add new enrollments, and track attendance</p>
+                    <p>Manage class rosters, student records, guardian contacts, and classroom follow-up from one professional workspace.</p>
                 </div>
                 <div class="header-stats">
                     <div class="quick-stat">
                         <span class="quick-stat-value"><?php echo $student_count; ?></span>
                         <span class="quick-stat-label">Total Students</span>
+                    </div>
+                    <div class="quick-stat">
+                        <span class="quick-stat-value"><?php echo count($assigned_classes); ?></span>
+                        <span class="quick-stat-label">Assigned Classes</span>
+                    </div>
+                    <div class="quick-stat">
+                        <span class="quick-stat-value"><?php echo ($class_id || ($show_all_classes && $search)) ? $total_visible_students : count($students); ?></span>
+                        <span class="quick-stat-label"><?php echo $class_id || ($show_all_classes && $search) ? 'Visible Records' : 'Ready Views'; ?></span>
                     </div>
                 </div>
             </div>
@@ -1076,21 +1672,25 @@ if ($class_id > 0) {
                     <h3>Quick Actions</h3>
                 </div>
                 <div class="quick-actions-grid">
-                    <button type="button" class="quick-action-card" onclick="toggleAddStudentForm()">
+                    <a href="add_student.php" class="quick-action-card">
                         <i class="fas fa-user-plus"></i>
-                        <span>Add Student</span>
+                        <span>Open add student page</span>
+                    </a>
+                    <button type="button" class="quick-action-card" onclick="toggleAddStudentForm()">
+                        <i class="fas fa-pen-to-square"></i>
+                        <span>Quick add form</span>
                     </button>
                     <button onclick="openModal('bulkUploadModal')" class="quick-action-card">
                         <i class="fas fa-file-upload"></i>
-                        <span>Bulk Upload</span>
+                        <span>Bulk upload roster</span>
                     </button>
                     <button onclick="openModal('examsRecordModal')" class="quick-action-card">
                         <i class="fas fa-clipboard-list"></i>
-                        <span>Exams Record List</span>
+                        <span>Exams record list</span>
                     </button>
                     <a href="?export=students_pdf&class_id=<?php echo $class_id; ?>" class="quick-action-card">
                         <i class="fas fa-download"></i>
-                        <span>Export PDF</span>
+                        <span>Export student PDF</span>
                     </a>
                 </div>
             </div>
@@ -1100,11 +1700,11 @@ if ($class_id > 0) {
                 <div class="panel-header">
                     <h2>Class Selection</h2>
                 </div>
-                <div style="padding: 1.5rem;">
-                    <form method="GET" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                        <div style="flex: 1; min-width: 200px;">
-                            <label for="class_id" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Select Class:</label>
-                            <select name="class_id" id="class_id" onchange="this.form.submit()" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px;">
+                <div class="panel-body">
+                    <form method="GET" class="form-grid" style="align-items: end;">
+                        <div class="form-group">
+                            <label for="class_id">Select Class</label>
+                            <select name="class_id" id="class_id" onchange="this.form.submit()" class="form-control">
                                 <option value="">-- All Classes --</option>
                                 <?php foreach($assigned_classes as $c): ?>
                                     <option value="<?php echo $c['id']; ?>" <?php echo $class_id == $c['id'] ? 'selected' : ''; ?>>
@@ -1113,17 +1713,17 @@ if ($class_id > 0) {
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div style="flex: 1; min-width: 200px;">
-                            <label for="search" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Search Students:</label>
+                        <div class="form-group">
+                            <label for="search">Search Students</label>
                             <input type="text" name="search" id="search" value="<?php echo htmlspecialchars($search); ?>" placeholder="Name, admission number, or guardian..."
-                                   style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px;">
+                                   class="form-control">
                         </div>
-                        <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
-                            <button type="submit" class="btn" style="padding: 0.75rem 1.5rem;">
+                        <div class="form-actions" style="margin-top: 0;">
+                            <button type="submit" class="btn">
                                 <i class="fas fa-search"></i> Search
                             </button>
-                            <a href="?view_all=1" class="btn" style="padding: 0.75rem 1.5rem;">
-                                <i class="fas fa-list"></i> All Students
+                            <a href="?view_all=1" class="btn btn-secondary">
+                                <i class="fas fa-list"></i> Search all students
                             </a>
                         </div>
                     </form>
@@ -1134,7 +1734,7 @@ if ($class_id > 0) {
             <?php if($class_id || ($show_all_classes && $search)): ?>
                 <div class="panel">
                     <div class="panel-header">
-                        <h2><?php echo $class_details ? htmlspecialchars($class_details['class_name']) : 'Search Results'; ?> Students (<?php echo count($students); ?>)</h2>
+                        <h2><?php echo $class_details ? htmlspecialchars($class_details['class_name']) : 'Search Results'; ?> Students (<?php echo $total_visible_students; ?>)</h2>
                     </div>
 
                     <?php if($students): ?>
@@ -1158,7 +1758,7 @@ if ($class_id > 0) {
                                 <tbody>
                                     <?php foreach($students as $index => $s): ?>
                                         <tr>
-                                            <td>
+                                            <td data-label="Name">
                                                 <div class="student-name-cell">
                                                     <?php echo htmlspecialchars($s['full_name']); ?>
                                                     <?php if($s['student_type'] === 'fresh'): ?>
@@ -1166,20 +1766,20 @@ if ($class_id > 0) {
                                                     <?php endif; ?>
                                                 </div>
                                             </td>
-                                            <td><?php echo htmlspecialchars($s['admission_no']); ?></td>
+                                            <td data-label="Admission No"><?php echo htmlspecialchars($s['admission_no']); ?></td>
                                             <?php if($show_all_classes): ?>
-                                                <td><?php echo htmlspecialchars($s['class_name']); ?></td>
+                                                <td data-label="Class"><?php echo htmlspecialchars($s['class_name']); ?></td>
                                             <?php endif; ?>
-                                            <td>
+                                            <td data-label="Gender">
                                                 <span class="badge <?php echo strtolower($s['gender']) === 'male' ? 'badge-primary' : 'badge-danger'; ?> badge-small">
                                                     <i class="fas fa-<?php echo strtolower($s['gender']) === 'male' ? 'mars' : 'venus'; ?>"></i>
                                                     <?php echo htmlspecialchars($s['gender']); ?>
                                                 </span>
                                             </td>
-                                            <td><?php echo htmlspecialchars($s['phone'] ?? 'N/A'); ?></td>
-                                            <td><?php echo htmlspecialchars($s['guardian_name'] ?? 'N/A'); ?></td>
-                                            <td><?php echo $s['enrollment_date'] ? date('M d, Y', strtotime($s['enrollment_date'])) : 'N/A'; ?></td>
-                                            <td>
+                                            <td data-label="Phone"><?php echo htmlspecialchars($s['phone'] ?? 'N/A'); ?></td>
+                                            <td data-label="Guardian"><?php echo htmlspecialchars($s['guardian_name'] ?? 'N/A'); ?></td>
+                                            <td data-label="Enrolled"><?php echo $s['enrollment_date'] ? date('M d, Y', strtotime($s['enrollment_date'])) : 'N/A'; ?></td>
+                                            <td data-label="Actions" class="actions-cell">
                                                 <div class="table-actions">
                                                     <a href="student_details.php?id=<?php echo $s['id']; ?>" class="btn btn-primary btn-table" title="View Details">
                                                         <i class="fas fa-eye"></i>
@@ -1206,10 +1806,63 @@ if ($class_id > 0) {
                                 </tbody>
                             </table>
                         </div>
+                        <?php if ($total_pages > 1): ?>
+                            <div class="table-footer">
+                                <p class="table-summary">
+                                    Showing <?php echo $pagination_start; ?>-<?php echo $pagination_end; ?> of <?php echo $total_visible_students; ?> students
+                                </p>
+                                <div class="pagination">
+                                    <?php
+                                        $pagination_params = $_GET;
+                                        $build_page_url = function ($page_number) use ($pagination_params) {
+                                            $pagination_params['page'] = $page_number;
+                                            return '?' . http_build_query($pagination_params);
+                                        };
+                                    ?>
+                                    <?php if ($current_page > 1): ?>
+                                        <a href="<?php echo htmlspecialchars($build_page_url($current_page - 1)); ?>" class="pagination-link" aria-label="Previous page">
+                                            <i class="fas fa-chevron-left"></i>
+                                        </a>
+                                    <?php endif; ?>
+
+                                    <?php
+                                        $window_start = max(1, $current_page - 2);
+                                        $window_end = min($total_pages, $current_page + 2);
+                                        if ($window_start > 1):
+                                    ?>
+                                        <a href="<?php echo htmlspecialchars($build_page_url(1)); ?>" class="pagination-link">1</a>
+                                        <?php if ($window_start > 2): ?>
+                                            <span class="pagination-ellipsis">...</span>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
+
+                                    <?php for ($page_number = $window_start; $page_number <= $window_end; $page_number++): ?>
+                                        <?php if ($page_number === $current_page): ?>
+                                            <span class="pagination-current"><?php echo $page_number; ?></span>
+                                        <?php else: ?>
+                                            <a href="<?php echo htmlspecialchars($build_page_url($page_number)); ?>" class="pagination-link"><?php echo $page_number; ?></a>
+                                        <?php endif; ?>
+                                    <?php endfor; ?>
+
+                                    <?php if ($window_end < $total_pages): ?>
+                                        <?php if ($window_end < $total_pages - 1): ?>
+                                            <span class="pagination-ellipsis">...</span>
+                                        <?php endif; ?>
+                                        <a href="<?php echo htmlspecialchars($build_page_url($total_pages)); ?>" class="pagination-link"><?php echo $total_pages; ?></a>
+                                    <?php endif; ?>
+
+                                    <?php if ($current_page < $total_pages): ?>
+                                        <a href="<?php echo htmlspecialchars($build_page_url($current_page + 1)); ?>" class="pagination-link" aria-label="Next page">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </a>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                     <?php else: ?>
-                        <div style="text-align: center; padding: 3rem; color: #666;">
-                            <i class="fas fa-users" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-                            <h3 style="margin-bottom: 0.5rem;">No students found</h3>
+                        <div style="text-align: center; padding: 3rem; color: #64748b;">
+                            <i class="fas fa-users" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.45;"></i>
+                            <h3 style="margin-bottom: 0.5rem; color: #0f1f2d; font-family: 'Fraunces', Georgia, serif;">No students found</h3>
                             <p>
                                 <?php if(!empty($search)): ?>
                                     No students match your search criteria.
@@ -1244,9 +1897,9 @@ if ($class_id > 0) {
                                 </div>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <div style="text-align: center; padding: 3rem; color: #666;">
-                                <i class="fas fa-graduation-cap" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-                                <h3 style="margin-bottom: 0.5rem;">No Classes Assigned</h3>
+                            <div style="text-align: center; padding: 3rem; color: #64748b;">
+                                <i class="fas fa-graduation-cap" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.45;"></i>
+                                <h3 style="margin-bottom: 0.5rem; color: #0f1f2d; font-family: 'Fraunces', Georgia, serif;">No Classes Assigned</h3>
                                 <p>You haven't been assigned to any classes yet.</p>
                             </div>
                         <?php endif; ?>
@@ -1389,7 +2042,40 @@ if ($class_id > 0) {
     </div>
 
     <script>
-        // Mobile navigation is handled by includes/mobile_navigation.php
+        const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
+        const sidebar = document.querySelector('[data-sidebar]');
+        const overlay = document.querySelector('[data-sidebar-overlay]');
+        const body = document.body;
+
+        const openSidebar = () => {
+            if (!sidebar || !overlay) return;
+            sidebar.classList.remove('-translate-x-full');
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+            overlay.classList.add('opacity-100');
+            body.classList.add('nav-open');
+        };
+
+        const closeSidebar = () => {
+            if (!sidebar || !overlay) return;
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+            overlay.classList.remove('opacity-100');
+            body.classList.remove('nav-open');
+        };
+
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', () => {
+                if (sidebar.classList.contains('-translate-x-full')) {
+                    openSidebar();
+                } else {
+                    closeSidebar();
+                }
+            });
+        }
+
+        if (overlay) {
+            overlay.addEventListener('click', closeSidebar);
+        }
 
         // Modal functions
         function openModal(modalId) {
@@ -1424,6 +2110,10 @@ if ($class_id > 0) {
                     toggleAddStudentForm();
                 });
             }
+
+            document.querySelectorAll('.close-btn').forEach((button) => {
+                button.textContent = '×';
+            });
         });
 
         // Bulk upload functionality
@@ -1545,6 +2235,51 @@ if ($class_id > 0) {
                             <option value="present">✅ Present</option>
                             <option value="absent">❌ Absent</option>
                             <option value="late">⏰ Late</option>
+                        </select>
+                        <button type="submit" class="btn btn-success">Record</button>
+                    </form>
+                </div>
+
+                <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+                    <a href="edit_student.php?id=${studentId}" class="btn btn-primary">
+                        <i class="fas fa-edit"></i> Edit Student
+                    </a>
+                    <form method="POST" style="display: inline;" onsubmit="return confirm('Delete ${studentName}?')">
+                        <input type="hidden" name="action" value="delete_student">
+                        <input type="hidden" name="student_id" value="${studentId}">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> Delete Student
+                        </button>
+                    </form>
+                </div>
+            `;
+
+            document.getElementById('quickActionsContent').innerHTML = content;
+            openModal('quickActionsModal');
+        }
+
+        function showQuickActions(studentId, studentName) {
+            const content = `
+                <h3 style="margin-top: 0; font-family: Fraunces, Georgia, serif; color: #0f1f2d;">Quick Actions for ${studentName}</h3>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin: 1.5rem 0;">
+                    <form method="POST" style="background: #f8fafc; padding: 1rem; border-radius: 16px; border: 1px solid rgba(15,31,45,0.06);">
+                        <input type="hidden" name="action" value="add_note">
+                        <input type="hidden" name="student_id" value="${studentId}">
+                        <h4 style="margin: 0 0 0.5rem 0; color: #0f1f2d;">Add Note</h4>
+                        <textarea name="note" placeholder="Enter note..." style="width: 100%; padding: 0.75rem; border: 1px solid rgba(15,31,45,0.12); border-radius: 12px; margin-bottom: 0.5rem;"></textarea>
+                        <button type="submit" class="btn btn-primary">Add Note</button>
+                    </form>
+
+                    <form method="POST" style="background: #f8fafc; padding: 1rem; border-radius: 16px; border: 1px solid rgba(15,31,45,0.06);">
+                        <input type="hidden" name="action" value="attendance">
+                        <input type="hidden" name="student_id" value="${studentId}">
+                        <h4 style="margin: 0 0 0.5rem 0; color: #0f1f2d;">Mark Attendance</h4>
+                        <input type="date" name="date" value="${new Date().toISOString().split('T')[0]}" style="width: 100%; padding: 0.75rem; margin-bottom: 0.5rem; border: 1px solid rgba(15,31,45,0.12); border-radius: 12px;">
+                        <select name="status" style="width: 100%; padding: 0.75rem; margin-bottom: 0.5rem; border: 1px solid rgba(15,31,45,0.12); border-radius: 12px;">
+                            <option value="present">Present</option>
+                            <option value="absent">Absent</option>
+                            <option value="late">Late</option>
                         </select>
                         <button type="submit" class="btn btn-success">Record</button>
                     </form>

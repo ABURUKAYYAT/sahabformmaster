@@ -129,45 +129,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student'])) {
     <meta name="pwa-sw" content="../sw.js">
     <title>Add Student | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
     <link rel="manifest" href="../manifest.json">
-    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/tailwind.css">
     <link rel="stylesheet" href="../assets/css/offline-status.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* Additional styles specific to this page */
+        body {
+            background: #f8fafc;
+        }
+
         .form-page-container {
-            max-width: 800px;
+            max-width: 920px;
             margin: 0 auto;
-            background: var(--white);
-            border-radius: var(--border-radius-xl);
-            box-shadow: var(--shadow-lg);
+            background: #ffffff;
+            border: 1px solid rgba(15, 31, 45, 0.06);
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 24px rgba(15, 31, 51, 0.08);
             padding: 2rem;
         }
 
         .form-header {
-            text-align: center;
             margin-bottom: 2rem;
         }
 
         .form-header h1 {
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Fraunces', Georgia, serif;
             font-size: 2rem;
-            font-weight: 700;
-            color: var(--primary-color);
+            font-weight: 600;
+            color: #0f1f2d;
             margin-bottom: 0.5rem;
         }
 
         .form-header p {
-            color: var(--gray-600);
-            font-size: 1.1rem;
+            color: #64748b;
+            font-size: 1rem;
         }
 
         .form-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #0f1f2d;
+        }
+
+        .form-control {
+            width: 100%;
+            border-radius: 0.95rem;
+            border: 1px solid rgba(15, 31, 45, 0.12);
+            background: #fff;
+            padding: 0.85rem 1rem;
+            color: #0f1f2d;
+            box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.05);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #168575;
+            box-shadow: 0 0 0 4px rgba(22, 133, 117, 0.12);
         }
 
         .form-actions {
@@ -177,13 +204,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student'])) {
             margin-top: 2rem;
         }
 
-        .back-button {
-            background: var(--gray-200);
-            color: var(--gray-800);
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            padding: 0.75rem 1.1rem;
+            font-size: 0.9rem;
+            font-weight: 700;
+            transition: all 0.2s ease;
         }
 
-        .back-button:hover {
-            background: var(--gray-300);
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: #168575;
+            border-color: #168575;
+            color: #fff;
+        }
+
+        .back-button {
+            background: #fff;
+            border-color: rgba(15, 31, 45, 0.12);
+            color: #475569;
+        }
+
+        .alert {
+            border-radius: 1.25rem;
+            border: 1px solid rgba(15, 31, 45, 0.06);
+            padding: 1rem 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .alert-error {
+            background: #fff1f2;
+            border-color: rgba(244, 63, 94, 0.2);
+        }
+
+        .alert-success {
+            background: #ecfdf5;
+            border-color: rgba(16, 185, 129, 0.2);
         }
 
         @media (max-width: 768px) {
@@ -205,86 +269,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student'])) {
         }
     </style>
 </head>
-<body>
-    <?php include '../includes/header.php'; ?>
-
-    <!-- Mobile Menu Toggle -->
-    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
-        <i class="fas fa-bars"></i>
-    </button>
-
-    <!-- Mobile Navigation Dropdown -->
-    <div class="mobile-nav-dropdown" id="mobileNavDropdown">
-        <div class="mobile-nav-header">
-            <h3>Navigation</h3>
-            <button class="mobile-nav-close" id="mobileNavClose">&times;</button>
+<body class="landing bg-slate-50">
+    <header class="site-header">
+        <div class="container nav-wrap">
+            <div class="flex items-center gap-4">
+                <button class="nav-toggle lg:hidden" type="button" data-sidebar-toggle aria-label="Open menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div class="flex items-center gap-3">
+                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="h-10 w-10 rounded-xl object-cover">
+                    <div class="hidden sm:block">
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Teacher Portal</p>
+                        <p class="text-lg font-semibold text-ink-900"><?php echo htmlspecialchars(get_school_display_name()); ?></p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="hidden md:block text-sm text-slate-600">Welcome, <?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Teacher'); ?></span>
+                <a class="btn back-button" href="students.php">Students</a>
+                <a class="btn btn-primary" href="logout.php">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
         </div>
-        <nav class="mobile-nav-menu">
-            <a href="index.php" class="mobile-nav-link">
-                <i class="fas fa-tachometer-alt"></i>
-                <span>Dashboard</span>
-            </a>
-            <a href="schoolfeed.php" class="mobile-nav-link">
-                <i class="fas fa-newspaper"></i>
-                <span>School Feeds</span>
-            </a>
-            <a href="school_diary.php" class="mobile-nav-link">
-                <i class="fas fa-book"></i>
-                <span>School Diary</span>
-            </a>
-            <a href="students.php" class="mobile-nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'students.php' ? 'active' : ''; ?>">
-                <i class="fas fa-users"></i>
-                <span>Students</span>
-            </a>
-            <a href="results.php" class="mobile-nav-link">
-                <i class="fas fa-chart-line"></i>
-                <span>Results</span>
-            </a>
-            <a href="subjects.php" class="mobile-nav-link">
-                <i class="fas fa-book-open"></i>
-                <span>Subjects</span>
-            </a>
-            <a href="questions.php" class="mobile-nav-link">
-                <i class="fas fa-question-circle"></i>
-                <span>Questions</span>
-            </a>
-            <a href="lesson-plan.php" class="mobile-nav-link">
-                <i class="fas fa-clipboard-list"></i>
-                <span>Lesson Plans</span>
-            </a>
-            <a href="curricullum.php" class="mobile-nav-link">
-                <i class="fas fa-graduation-cap"></i>
-                <span>Curriculum</span>
-            </a>
-            <a href="teacher_class_activities.php" class="mobile-nav-link">
-                <i class="fas fa-tasks"></i>
-                <span>Class Activities</span>
-            </a>
-            <a href="student-evaluation.php" class="mobile-nav-link">
-                <i class="fas fa-star"></i>
-                <span>Evaluations</span>
-            </a>
-            <a href="class_attendance.php" class="mobile-nav-link">
-                <i class="fas fa-calendar-check"></i>
-                <span>Attendance</span>
-            </a>
-            <a href="timebook.php" class="mobile-nav-link">
-                <i class="fas fa-clock"></i>
-                <span>Time Book</span>
-            </a>
-            <a href="permissions.php" class="mobile-nav-link">
-                <i class="fas fa-key"></i>
-                <span>Permissions</span>
-            </a>
-            <a href="payments.php" class="mobile-nav-link">
-                <i class="fas fa-money-bill-wave"></i>
-                <span>Payments</span>
-            </a>
-        </nav>
-    </div>
+    </header>
 
-    <!-- Main Content -->
-    <main class="main-content" style="margin-left: 0; max-width: 100%; padding: 2rem;">
+    <div class="fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity lg:hidden" data-sidebar-overlay></div>
+
+    <div class="container grid gap-6 py-8 lg:grid-cols-[280px_1fr]">
+        <aside class="fixed inset-y-0 left-0 z-40 w-72 -translate-x-full transform border-r border-ink-900/10 bg-white shadow-lift transition-transform duration-200 lg:static lg:inset-auto lg:translate-x-0" data-sidebar>
+            <?php include '../includes/teacher_sidebar.php'; ?>
+        </aside>
+
+        <main class="space-y-6">
         <!-- Messages -->
         <?php if (!empty($errors)): ?>
             <div class="alert alert-error">
@@ -301,7 +321,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student'])) {
                     <a href="students.php" class="btn btn-primary">
                         <i class="fas fa-users"></i> View All Students
                     </a>
-                    <a href="add_student.php" class="btn btn-secondary">
+                    <a href="add_student.php" class="btn back-button">
                         <i class="fas fa-user-plus"></i> Add Another Student
                     </a>
                 </div>
@@ -394,43 +414,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student'])) {
                 </form>
             </div>
         <?php endif; ?>
-    </main>
+        </main>
+    </div>
 
-    <!-- Mobile Menu Toggle Script -->
     <script>
-        // Mobile Menu Toggle - Dropdown Navigation
-        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-        const mobileNavDropdown = document.getElementById('mobileNavDropdown');
-        const mobileNavClose = document.getElementById('mobileNavClose');
+        const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
+        const sidebar = document.querySelector('[data-sidebar]');
+        const overlay = document.querySelector('[data-sidebar-overlay]');
+        const body = document.body;
 
-        // Toggle dropdown menu
-        mobileMenuToggle.addEventListener('click', (e) => {
-            e.stopPropagation();
-            mobileNavDropdown.classList.toggle('active');
-            mobileMenuToggle.classList.toggle('active');
-        });
+        const openSidebar = () => {
+            if (!sidebar || !overlay) return;
+            sidebar.classList.remove('-translate-x-full');
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+            overlay.classList.add('opacity-100');
+            body.classList.add('nav-open');
+        };
 
-        // Close dropdown when clicking close button
-        mobileNavClose.addEventListener('click', () => {
-            mobileNavDropdown.classList.remove('active');
-            mobileMenuToggle.classList.remove('active');
-        });
+        const closeSidebar = () => {
+            if (!sidebar || !overlay) return;
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+            overlay.classList.remove('opacity-100');
+            body.classList.remove('nav-open');
+        };
 
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!mobileNavDropdown.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
-                mobileNavDropdown.classList.remove('active');
-                mobileMenuToggle.classList.remove('active');
-            }
-        });
-
-        // Close dropdown when clicking on a navigation link
-        document.querySelectorAll('.mobile-nav-link').forEach(link => {
-            link.addEventListener('click', () => {
-                mobileNavDropdown.classList.remove('active');
-                mobileMenuToggle.classList.remove('active');
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', () => {
+                if (sidebar.classList.contains('-translate-x-full')) {
+                    openSidebar();
+                } else {
+                    closeSidebar();
+                }
             });
-        });
+        }
+
+        if (overlay) {
+            overlay.addEventListener('click', closeSidebar);
+        }
     </script>
 
     <script src="../assets/js/offline-core.js" defer></script>

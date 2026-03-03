@@ -1,107 +1,43 @@
-<!-- Sidebar Navigation -->
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <h3>Navigation</h3>
-                <button class="sidebar-close" id="sidebarClose">✕</button>
-            </div>
-            <nav class="sidebar-nav">
-                <ul class="nav-list">
-                    <li class="nav-item">
-                        <a href="index.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'index.php' ? 'active' : ''; ?>">
-                            <i class="fas fa-tachometer-alt nav-icon"></i>
-                            <span class="nav-text">Dashboard</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="schoolfeed.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'schoolfeed.php' ? 'active' : ''; ?>">
-                            <i class="fas fa-newspaper nav-icon"></i>
-                            <span class="nav-text">School Feeds</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="school_diary.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'school_diary.php' ? 'active' : ''; ?>">
-                            <i class="fas fa-book nav-icon"></i>
-                            <span class="nav-text">School Diary</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="students.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'students.php' ? 'active' : ''; ?>">
-                            <i class="fas fa-users nav-icon"></i>
-                            <span class="nav-text">Students</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="results.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'results.php' ? 'active' : ''; ?>">
-                            <i class="fas fa-chart-line nav-icon"></i>
-                            <span class="nav-text">Results</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="subjects.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'subjects.php' ? 'active' : ''; ?>">
-                            <i class="fas fa-book-open nav-icon"></i>
-                            <span class="nav-text">Subjects</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="questions.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'questions.php' ? 'active' : ''; ?>">
-                            <i class="fas fa-question-circle nav-icon"></i>
-                            <span class="nav-text">Questions</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="lesson-plan.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'lesson-plan.php' ? 'active' : ''; ?>">
-                            <i class="fas fa-clipboard-list nav-icon"></i>
-                            <span class="nav-text">Lesson Plans</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="curricullum.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'curricullum.php' ? 'active' : ''; ?>">
-                            <i class="fas fa-graduation-cap nav-icon"></i>
-                            <span class="nav-text">Curriculum</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="content_coverage.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'content_coverage.php' ? 'active' : ''; ?>">
-                            <i class="fas fa-clipboard-check nav-icon"></i>
-                            <span class="nav-text">Content Coverage</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="teacher_class_activities.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'teacher_class_activities.php' ? 'active' : ''; ?>">
-                            <i class="fas fa-tasks nav-icon"></i>
-                            <span class="nav-text">Class Activities</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="cbt_tests.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'cbt_tests.php' ? 'active' : ''; ?>">
-                            <i class="fas fa-laptop-code nav-icon"></i>
-                            <span class="nav-text">CBT Tests</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="student-evaluation.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'student-evaluation.php' ? 'active' : ''; ?>">
-                            <i class="fas fa-star nav-icon"></i>
-                            <span class="nav-text">Evaluations</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="class_attendance.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'class_attendance.php' ? 'active' : ''; ?>">
-                            <i class="fas fa-calendar-check nav-icon"></i>
-                            <span class="nav-text">Attendance</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="timebook.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'timebook.php' ? 'active' : ''; ?>">
-                            <i class="fas fa-clock nav-icon"></i>
-                            <span class="nav-text">Time Book</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="permissions.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'permissions.php' ? 'active' : ''; ?>">
-                            <i class="fas fa-key nav-icon"></i>
-                            <span class="nav-text">Permissions</span>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-        </aside>
+<?php
+$current = basename($_SERVER['PHP_SELF']);
+
+function nav_item($href, $label, $icon)
+{
+    global $current;
+    $active = $current === $href;
+    $base   = 'flex items-center gap-3 rounded-xl px-3 py-2 font-semibold ';
+    $activeClasses = 'bg-teal-600/10 text-teal-700';
+    $idleClasses   = 'text-slate-600 hover:bg-teal-600/10 hover:text-teal-700';
+    $classes = $base . ($active ? $activeClasses : $idleClasses);
+
+    echo '<a href="' . htmlspecialchars($href) . '" class="' . $classes . '">';
+    echo '<i class="fas ' . htmlspecialchars($icon) . '"></i>';
+    echo '<span>' . htmlspecialchars($label) . '</span>';
+    echo '</a>';
+}
+?>
+<div class="p-6 border-b border-ink-900/10">
+    <h2 class="text-lg font-semibold text-ink-900">Navigation</h2>
+    <p class="text-sm text-slate-500">Teacher workspace</p>
+</div>
+<nav class="p-4 space-y-1 text-sm">
+    <?php
+        nav_item('index.php', 'Dashboard', 'fa-tachometer-alt');
+        nav_item('schoolfeed.php', 'School Feeds', 'fa-newspaper');
+        nav_item('school_diary.php', 'School Diary', 'fa-book');
+        nav_item('students.php', 'Students', 'fa-users');
+        nav_item('results.php', 'Results', 'fa-chart-line');
+        nav_item('subjects.php', 'Subjects', 'fa-book-open');
+        nav_item('questions.php', 'Question Bank', 'fa-question-circle');
+        nav_item('lesson-plan.php', 'Lesson Plans', 'fa-clipboard-list');
+        nav_item('curricullum.php', 'Curriculum', 'fa-graduation-cap');
+        nav_item('content_coverage.php', 'Content Coverage', 'fa-clipboard-check');
+        nav_item('teacher_class_activities.php', 'Class Activities', 'fa-tasks');
+        nav_item('cbt_tests.php', 'CBT Tests', 'fa-laptop-code');
+        nav_item('student-evaluation.php', 'Evaluations', 'fa-star');
+        nav_item('class_attendance.php', 'Attendance', 'fa-calendar-check');
+        nav_item('timebook.php', 'Time Book', 'fa-clock');
+        nav_item('permissions.php', 'Permissions', 'fa-key');
+        nav_item('payments.php', 'Payments', 'fa-money-bill-wave');
+    ?>
+</nav>

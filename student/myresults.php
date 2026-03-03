@@ -99,27 +99,22 @@ $class_name = $stmt->fetchColumn() ?: 'N/A';
 
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Results | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
+<?php
+// Use shared student header and allow page-specific head includes
+$pageTitle = 'My Results | ' . (function_exists('get_school_display_name') ? get_school_display_name() : 'iSchool');
+$extraHead = <<<'HTML'
     <link rel="stylesheet" href="../assets/css/student-dashboard.css">
     <link rel="stylesheet" href="../assets/css/mobile-navigation.css">
     <link rel="stylesheet" href="../assets/css/myresults-modern.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-</head>
-<body>
+HTML;
+require_once __DIR__ . '/../includes/student_header.php';
+?>
 
     <!-- Mobile Navigation Component -->
-    <?php include '../includes/mobile_navigation.php'; ?>
-
-    <!-- Header -->
-    <header class="dashboard-header">
+    <?php include __DIR__ . '/../includes/mobile_navigation.php'; ?>
         <div class="header-container">
             <!-- Logo and School Name -->
             <div class="header-left">
@@ -148,7 +143,6 @@ $class_name = $stmt->fetchColumn() ?: 'N/A';
 
     <!-- Main Container -->
     <div class="dashboard-container">
-        <?php include '../includes/student_sidebar.php'; ?>
 
         <!-- Main Content -->
         <main class="main-content">

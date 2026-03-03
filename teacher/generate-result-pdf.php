@@ -67,20 +67,24 @@ if (!empty($results)) {
             SELECT r.student_id, AVG(r.total_ca + r.exam) as avg_score
             FROM results r
             JOIN students s ON r.student_id = s.id
-        WHERE s.class_id = :class_id AND r.term = :term
-        GROUP BY r.student_id
-    ) student_averages
-    WHERE student_averages.avg_score > (
-        SELECT AVG(r2.total_ca + r2.exam)
-        FROM results r2
-        WHERE r2.student_id = :student_id AND r2.term = :term_student
-    )
-");
+            WHERE s.class_id = :class_id AND r.term = :term
+              AND s.school_id = :school_id AND r.school_id = :school_id_result
+            GROUP BY r.student_id
+        ) student_averages
+        WHERE student_averages.avg_score > (
+            SELECT AVG(r2.total_ca + r2.exam)
+            FROM results r2
+            WHERE r2.student_id = :student_id AND r2.term = :term_student AND r2.school_id = :school_id_student_result
+        )
+    ");
     $stmt->execute([
         'class_id' => $class_id,
         'student_id' => $student_id,
         'term' => $term,
-        'term_student' => $term
+        'term_student' => $term,
+        'school_id' => $current_school_id,
+        'school_id_result' => $current_school_id,
+        'school_id_student_result' => $current_school_id
     ]);
     $position = $stmt->fetchColumn();
 } else {
@@ -302,7 +306,7 @@ if (!empty($results)) {
     $pdf->SetFont('helvetica', 'B', 9);
     $pdf->Cell(0, 6, 'IMPORTANT NOTES:', 0, 1, 'L');
     $pdf->SetFont('helvetica', '', 8);
-    $pdf->MultiCell(0, 4, "• This transcript is issued by " . $school['school_name'] . " and is valid for official purposes.\n• Any alteration or falsification of this document is punishable by law.\n• For verification purposes, contact the school administration.", 0, 'L');
+    $pdf->MultiCell(0, 4, "- This transcript is issued by " . $school['school_name'] . " and is valid for official purposes.\n- Any alteration or falsification of this document is punishable by law.\n- For verification purposes, contact the school administration.", 0, 'L');
 
 } else {
     $pdf->SetFont('helvetica', '', 12);

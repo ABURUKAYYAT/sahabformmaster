@@ -54,66 +54,15 @@ $query = "
     JOIN class_activities ca ON ss.activity_id = ca.id
     WHERE ss.student_id = ? AND ss.status = 'pending' AND ca.school_id = ?
 ";
+
 $activities_stmt = $pdo->prepare($query);
 $activities_stmt->execute([$student_id, $current_school_id]);
 $pending_activities = $activities_stmt->fetch()['pending_activities'];
 
+require_once __DIR__ . '/../includes/student_header.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Dashboard | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
-    <link rel="stylesheet" href="../assets/css/tailwind.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-</head>
-<body class="landing">
-    <header class="site-header">
-        <div class="container nav-wrap">
-            <a class="brand" href="../index.php" aria-label="iSchool home">
-                <span class="brand-mark">iS</span>
-                <span class="brand-text">iSchool</span>
-            </a>
-
-            <button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="studentNav">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-
-            <nav class="site-nav" id="studentNav">
-                <a href="dashboard.php" class="is-active">Dashboard</a>
-                <a href="myresults.php">Results</a>
-                <a href="student_class_activities.php">Activities</a>
-                <a href="attendance.php">Attendance</a>
-                <a href="payment.php">Fees</a>
-                <a href="schoolfeed.php">School Feed</a>
-                <div class="nav-actions-mobile">
-                    <a class="btn btn-ghost" href="mysubjects.php"><i class="fas fa-book-open"></i><span>My Subjects</span></a>
-                    <a class="btn btn-outline" href="my-evaluations.php"><i class="fas fa-star"></i><span>Evaluations</span></a>
-                    <a class="btn btn-primary" href="logout.php"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
-                </div>
-            </nav>
-
-            <div class="nav-actions">
-                <div class="text-right">
-                    <span class="text-xs uppercase tracking-wide text-slate-500">Student</span>
-                    <div class="font-semibold text-ink-900"><?php echo htmlspecialchars((string) ($student_name ?? '')); ?></div>
-                    <div class="text-xs text-slate-500">Admission <?php echo htmlspecialchars((string) ($admission_number ?? '')); ?></div>
-                </div>
-                <a class="btn btn-ghost" href="mysubjects.php"><i class="fas fa-book-open"></i><span>My Subjects</span></a>
-                <a class="btn btn-outline" href="my-evaluations.php"><i class="fas fa-star"></i><span>Evaluations</span></a>
-                <a class="btn btn-primary" href="logout.php"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
-            </div>
-        </div>
-    </header>
-
-    <main>
+<main>
         <section class="hero hero--split container">
             <div data-reveal>
                 <p class="text-sm uppercase tracking-wide text-teal-700 font-semibold mb-2">Student Dashboard</p>
@@ -318,7 +267,5 @@ $pending_activities = $activities_stmt->fetch()['pending_activities'];
         </section>
     </main>
 
-    <script src="../assets/js/landing.js"></script>
-</body>
-</html>
+<?php require_once __DIR__ . '/../includes/student_footer.php'; ?>
 
