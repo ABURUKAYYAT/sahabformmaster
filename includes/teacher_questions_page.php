@@ -19,6 +19,33 @@ $difficulty_labels = [
     'very_hard' => 'Very Hard',
 ];
 $filtered_question_count = count($questions);
+$build_pagination_window = static function (int $current_page, int $total_pages): array {
+    if ($total_pages <= 1) {
+        return [1];
+    }
+
+    $pages = [1];
+    $start = max(2, $current_page - 1);
+    $end = min($total_pages - 1, $current_page + 1);
+
+    if ($start > 2) {
+        $pages[] = '...';
+    }
+
+    for ($page = $start; $page <= $end; $page += 1) {
+        $pages[] = $page;
+    }
+
+    if ($end < $total_pages - 1) {
+        $pages[] = '...';
+    }
+
+    if ($total_pages > 1) {
+        $pages[] = $total_pages;
+    }
+
+    return $pages;
+};
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -38,10 +65,172 @@ $filtered_question_count = count($questions);
         .preview-modal.is-open { display: flex; }
         .preview-pane { width: min(860px, 100%); max-height: 90vh; overflow: auto; }
 
+        .question-page {
+            overflow-x: hidden;
+        }
+
+        .question-page .container,
+        .question-page main,
+        .question-page section,
+        .question-page article,
+        .question-page form,
+        .question-page label,
+        .question-page div {
+            min-width: 0;
+        }
+
+        .question-page .container {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        .question-page .nav-wrap {
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: 0.85rem;
+            padding-top: 0.85rem;
+            padding-bottom: 0.85rem;
+        }
+
+        .question-page .nav-wrap > :first-child {
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+
+        .subject-header-actions {
+            width: auto;
+            display: flex;
+            align-items: center;
+            flex: 0 0 auto;
+            flex-wrap: nowrap;
+            gap: 0.75rem;
+        }
+
+        .subject-header-actions .btn {
+            width: auto;
+            justify-content: center;
+            padding: 0.5rem 0.85rem;
+            font-size: 0.8125rem;
+        }
+
+        .subject-hero {
+            padding: 1.25rem;
+            background:
+                radial-gradient(circle at top right, rgba(248, 198, 102, 0.26), transparent 28%),
+                linear-gradient(135deg, #0f766e 0%, #0f766e 18%, #0f172a 100%);
+        }
+
+        .subject-hero,
+        .subject-hero h1,
+        .subject-hero h2,
+        .subject-hero h3,
+        .subject-hero p {
+            color: #fff;
+        }
+
+        .subject-hero h1 {
+            font-size: 1.95rem;
+            line-height: 1.15;
+        }
+
+        .subject-hero-actions {
+            grid-template-columns: 1fr;
+        }
+
+        .question-page .subject-hero-actions > a,
+        .question-page .subject-header-actions > a {
+            min-width: 0;
+        }
+
+        .subject-metrics-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .subject-metric-card {
+            display: grid;
+            gap: 0.45rem;
+            border: 1px solid rgba(15, 31, 45, 0.06);
+            border-radius: 1.35rem;
+            background: #f8fbfb;
+            padding: 1rem;
+            box-shadow: 0 10px 24px rgba(15, 31, 45, 0.06);
+        }
+
+        .subject-metric-icon {
+            display: inline-flex;
+            width: 3rem;
+            height: 3rem;
+            align-items: center;
+            justify-content: center;
+            border-radius: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
         .question-library-table-wrapper {
             overflow-x: auto;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
+        }
+
+        .summary-table-wrapper {
+            overflow-x: auto;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .question-library-table thead th,
+        .summary-table-modern thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: #f8fafc;
+        }
+
+        .table-scroll-hint {
+            display: none;
+        }
+
+        .pagination-nav {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .pagination-link,
+        .pagination-ellipsis {
+            display: inline-flex;
+            min-width: 2.5rem;
+            height: 2.5rem;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 700;
+        }
+
+        .pagination-link {
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            background: #fff;
+            color: #334155;
+            transition: all 0.2s ease;
+        }
+
+        .pagination-link:hover {
+            border-color: rgba(13, 148, 136, 0.35);
+            color: #0f766e;
+            background: rgba(240, 253, 250, 0.9);
+        }
+
+        .pagination-link.is-active {
+            border-color: #0f766e;
+            background: #0f766e;
+            color: #fff;
+            box-shadow: 0 10px 24px rgba(15, 118, 110, 0.18);
+        }
+
+        .pagination-ellipsis {
+            color: #94a3b8;
         }
 
         @media (max-width: 767px) {
@@ -71,6 +260,19 @@ $filtered_question_count = count($questions);
                 justify-content: center;
             }
 
+            .filter-form-actions,
+            .question-toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-form-actions > *,
+            .question-toolbar > *,
+            .workflow-shortcuts > * {
+                width: 100%;
+                justify-content: center;
+            }
+
             #question-editor form > .flex.flex-wrap.gap-3,
             #question-library .flex.flex-wrap.items-center.gap-3,
             #question-library .flex.flex-wrap.gap-3,
@@ -88,8 +290,18 @@ $filtered_question_count = count($questions);
 
             .question-library-table-wrapper {
                 overflow: auto;
-                max-height: 72vh;
+                max-height: min(65vh, 30rem);
                 border-radius: 1rem;
+                border: 1px solid rgba(15, 23, 42, 0.08);
+                background: #fff;
+            }
+
+            .summary-table-wrapper {
+                overflow: auto;
+                max-height: min(58vh, 24rem);
+                border-radius: 1rem;
+                border: 1px solid rgba(15, 23, 42, 0.08);
+                background: #fff;
             }
 
             .preview-pane {
@@ -97,11 +309,52 @@ $filtered_question_count = count($questions);
             }
 
             .question-library-table {
-                min-width: 980px !important;
+                min-width: 1180px !important;
+                border-collapse: separate;
+                border-spacing: 0;
             }
 
-            .question-library-table td[data-label="Actions"] > div {
-                min-width: 170px;
+            .summary-table-modern {
+                min-width: 680px !important;
+                border-collapse: separate;
+                border-spacing: 0;
+            }
+
+            .table-scroll-hint {
+                display: flex;
+                align-items: center;
+                gap: 0.45rem;
+                margin-top: 0.75rem;
+                font-size: 0.75rem;
+                font-weight: 700;
+                color: #64748b;
+            }
+
+            .pagination-nav {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .option-item {
+                grid-template-columns: 1fr;
+            }
+
+            .option-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .option-actions button {
+                width: 100%;
+            }
+
+            .mt-5.flex.flex-wrap.items-center.justify-between.gap-4 > div:first-child,
+            .mt-5.flex.flex-wrap.items-center.justify-between.gap-4 > div:last-child {
+                width: 100%;
+            }
+
+            .mt-5.flex.flex-wrap.items-center.justify-between.gap-4 > div:last-child {
+                gap: 0.75rem;
             }
         }
 
@@ -119,10 +372,73 @@ $filtered_question_count = count($questions);
             h2.text-2xl {
                 line-height: 1.2;
             }
+
+            .question-toolbar > * {
+                font-size: 0.85rem;
+            }
+        }
+
+        @media (min-width: 640px) {
+            .question-page .container {
+                padding-left: 1.25rem;
+                padding-right: 1.25rem;
+            }
+
+            .subject-hero {
+                padding: 1.5rem 2rem;
+            }
+
+            .subject-hero-actions {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .subject-metrics-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (min-width: 768px) {
+            .subject-hero h1 {
+                font-size: 2.4rem;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .question-page .nav-wrap {
+                gap: 1rem;
+                padding-top: 1rem;
+                padding-bottom: 1rem;
+            }
+
+            .subject-header-actions {
+                gap: 0.75rem;
+            }
+
+            .subject-header-actions .btn {
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+            }
+
+            .subject-hero {
+                padding: 1.75rem 2rem;
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .question-page .container {
+                padding-left: 2.75rem;
+                padding-right: 2.75rem;
+            }
+        }
+
+        @media (min-width: 1280px) {
+            .subject-metrics-grid {
+                grid-template-columns: repeat(5, minmax(0, 1fr));
+            }
         }
     </style>
 </head>
-<body class="landing">
+<body class="landing bg-slate-50 question-page">
     <header class="site-header">
         <div class="container nav-wrap">
             <div class="flex items-center gap-4">
@@ -160,40 +476,72 @@ $filtered_question_count = count($questions);
         </aside>
 
         <main class="space-y-6">
-            <section class="rounded-3xl bg-white p-6 shadow-lift border border-ink-900/5">
-                <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-center">
-                    <div class="space-y-4">
-                        <span class="inline-flex items-center gap-2 rounded-full bg-teal-600/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-teal-700"><i class="fas fa-layer-group"></i>Assessment Workspace</span>
-                        <div>
-                            <h1 class="text-3xl font-display text-ink-900 sm:text-4xl">Question Bank Studio</h1>
-                            <p class="mt-3 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">Create, review, and organize assessment items in the same polished teacher portal experience used on the dashboard. The workflow stays intact, but the screen now reads clearly on mobile and desktop.</p>
+            <section class="overflow-hidden rounded-3xl border border-ink-900/5 shadow-lift">
+                <div class="subject-hero p-6 text-white sm:p-8">
+                    <div class="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+                        <div class="max-w-3xl">
+                            <p class="text-xs uppercase tracking-[0.32em] text-white/75">Assessment Workspace</p>
+                            <h1 class="mt-3 text-3xl font-display font-semibold leading-tight sm:text-4xl">Question management with clearer structure, stronger presentation, and cleaner workflows.</h1>
+                            <p class="mt-3 max-w-2xl text-sm text-white/80 sm:text-base">Create, refine, and organize assessment items using the same header treatment as subject management, with quick access to authoring, review, and paper-building workflows.</p>
                         </div>
-                        <div class="flex flex-wrap gap-3">
-                            <a class="btn btn-primary" href="#question-editor"><i class="fas fa-plus-circle"></i><span><?php echo $edit_mode ? 'Continue Editing' : 'Create Question'; ?></span></a>
-                            <a class="btn btn-outline" href="generate_paper.php"><i class="fas fa-file-lines"></i><span>Build Exam Paper</span></a>
-                            <a class="btn btn-outline" href="#question-library"><i class="fas fa-table-list"></i><span>Review Library</span></a>
-                        </div>
-                    </div>
-                    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                        <div class="rounded-2xl bg-mist-50 px-4 py-4 border border-ink-900/5">
-                            <p class="text-xs uppercase tracking-wide text-slate-500">Filtered View</p>
-                            <p class="mt-2 text-3xl font-semibold text-ink-900"><?php echo $filtered_question_count; ?></p>
-                            <p class="mt-2 text-sm text-slate-600">Questions in the current view.</p>
-                        </div>
-                        <div class="rounded-2xl bg-ink-900 px-4 py-4 text-white">
-                            <p class="text-xs uppercase tracking-wide text-white/60">Teaching Focus</p>
-                            <p class="mt-2 text-lg font-semibold">Balanced assessment design</p>
-                            <p class="mt-2 text-sm text-white/70">Mix difficulty, question type, and class fit before paper generation.</p>
+                        <div class="subject-hero-actions grid gap-3 sm:grid-cols-2">
+                            <a href="#question-editor" class="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-teal-900 shadow-soft transition hover:-translate-y-0.5 hover:bg-white/95">
+                                <i class="fas fa-plus-circle"></i>
+                                <span><?php echo $edit_mode ? 'Continue Editing' : 'Create Question'; ?></span>
+                            </a>
+                            <a href="generate_paper.php" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/25 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/15">
+                                <i class="fas fa-file-lines"></i>
+                                <span>Build Exam Paper</span>
+                            </a>
+                            <a href="#question-library" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/25 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/15">
+                                <i class="fas fa-table-list"></i>
+                                <span>Review Library</span>
+                            </a>
                         </div>
                     </div>
                 </div>
-            </section>
-
-            <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <div class="rounded-2xl bg-white p-5 shadow-soft border border-ink-900/5"><p class="text-sm text-slate-500">Total Questions</p><p class="mt-2 text-3xl font-semibold text-ink-900"><?php echo $total_questions; ?></p></div>
-                <div class="rounded-2xl bg-white p-5 shadow-soft border border-ink-900/5"><p class="text-sm text-slate-500">MCQ Library</p><p class="mt-2 text-3xl font-semibold text-ink-900"><?php echo $mcq_count; ?></p></div>
-                <div class="rounded-2xl bg-white p-5 shadow-soft border border-ink-900/5"><p class="text-sm text-slate-500">Approved</p><p class="mt-2 text-3xl font-semibold text-ink-900"><?php echo $approved_count; ?></p></div>
-                <div class="rounded-2xl bg-white p-5 shadow-soft border border-ink-900/5"><p class="text-sm text-slate-500">My Questions</p><p class="mt-2 text-3xl font-semibold text-ink-900"><?php echo $my_questions; ?></p></div>
+                <div class="subject-metrics-grid grid gap-3 bg-white p-4 sm:grid-cols-2 sm:p-6 xl:grid-cols-5">
+                    <article class="subject-metric-card">
+                        <div class="subject-metric-icon bg-teal-600/10 text-teal-700">
+                            <i class="fas fa-layer-group"></i>
+                        </div>
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Filtered View</p>
+                        <h2 class="mt-1 text-2xl font-semibold text-ink-900"><?php echo $filtered_question_count; ?></h2>
+                        <p class="text-sm text-slate-500">Questions in the current result set</p>
+                    </article>
+                    <article class="subject-metric-card">
+                        <div class="subject-metric-icon bg-sky-600/10 text-sky-700">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Total Questions</p>
+                        <h2 class="mt-1 text-2xl font-semibold text-ink-900"><?php echo $total_questions; ?></h2>
+                        <p class="text-sm text-slate-500">School-wide question bank</p>
+                    </article>
+                    <article class="subject-metric-card">
+                        <div class="subject-metric-icon bg-amber-500/10 text-amber-700">
+                            <i class="fas fa-list-check"></i>
+                        </div>
+                        <p class="text-xs uppercase tracking-wide text-slate-500">MCQ Library</p>
+                        <h2 class="mt-1 text-2xl font-semibold text-ink-900"><?php echo $mcq_count; ?></h2>
+                        <p class="text-sm text-slate-500">Objective questions available</p>
+                    </article>
+                    <article class="subject-metric-card">
+                        <div class="subject-metric-icon bg-emerald-600/10 text-emerald-700">
+                            <i class="fas fa-shield-check"></i>
+                        </div>
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Approved</p>
+                        <h2 class="mt-1 text-2xl font-semibold text-ink-900"><?php echo $approved_count; ?></h2>
+                        <p class="text-sm text-slate-500">Ready for assessment use</p>
+                    </article>
+                    <article class="subject-metric-card">
+                        <div class="subject-metric-icon bg-violet-600/10 text-violet-700">
+                            <i class="fas fa-user-pen"></i>
+                        </div>
+                        <p class="text-xs uppercase tracking-wide text-slate-500">My Questions</p>
+                        <h2 class="mt-1 text-2xl font-semibold text-ink-900"><?php echo $my_questions; ?></h2>
+                        <p class="text-sm text-slate-500">Items you created in this school</p>
+                    </article>
+                </div>
             </section>
 
             <?php if ($errors): ?>
@@ -241,7 +589,7 @@ $filtered_question_count = count($questions);
                             </div>
 
                             <div class="rounded-2xl border border-ink-900/10 bg-slate-50/70 p-4 space-y-4">
-                                <div class="flex flex-wrap gap-2 text-sm font-semibold text-slate-600">
+                                <div class="question-toolbar flex flex-wrap gap-2 text-sm font-semibold text-slate-600">
                                     <button type="button" class="rounded-full border border-slate-200 bg-white px-4 py-2 hover:border-teal-300 hover:text-teal-700" onclick="formatText('bold')"><i class="fas fa-bold mr-2"></i>Bold</button>
                                     <button type="button" class="rounded-full border border-slate-200 bg-white px-4 py-2 hover:border-teal-300 hover:text-teal-700" onclick="formatText('italic')"><i class="fas fa-italic mr-2"></i>Italic</button>
                                     <button type="button" class="rounded-full border border-slate-200 bg-white px-4 py-2 hover:border-teal-300 hover:text-teal-700" onclick="formatText('underline')"><i class="fas fa-underline mr-2"></i>Underline</button>
@@ -284,7 +632,7 @@ $filtered_question_count = count($questions);
                 <div class="space-y-6">
                     <section class="rounded-3xl bg-white p-6 shadow-soft border border-ink-900/5">
                         <h2 class="text-xl font-semibold text-ink-900">Workflow Shortcuts</h2>
-                        <div class="mt-4 grid gap-3 text-sm font-semibold">
+                        <div class="workflow-shortcuts mt-4 grid gap-3 text-sm font-semibold">
                             <a href="generate_paper.php" class="flex items-center justify-between rounded-2xl border border-ink-900/10 px-4 py-4 text-ink-900 hover:border-teal-600/30 hover:bg-teal-600/10 hover:text-teal-700"><span><i class="fas fa-file-export mr-3 text-teal-700"></i>Generate exam paper</span><i class="fas fa-arrow-right"></i></a>
                             <button type="button" class="flex items-center justify-between rounded-2xl border border-ink-900/10 px-4 py-4 text-left text-ink-900 hover:border-teal-600/30 hover:bg-teal-600/10 hover:text-teal-700" onclick="exportQuestions()"><span><i class="fas fa-file-csv mr-3 text-teal-700"></i>Export filtered library</span><i class="fas fa-download"></i></button>
                             <button type="button" class="flex items-center justify-between rounded-2xl border border-ink-900/10 px-4 py-4 text-left text-ink-900 hover:border-teal-600/30 hover:bg-teal-600/10 hover:text-teal-700" onclick="printTable()"><span><i class="fas fa-print mr-3 text-teal-700"></i>Print summary table</span><i class="fas fa-arrow-right"></i></button>
@@ -317,7 +665,7 @@ $filtered_question_count = count($questions);
                     <div><label class="mb-2 block text-sm font-semibold text-slate-700">Question Type</label><select name="type_filter" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700"><option value="">All types</option><option value="mcq" <?php echo $type_filter === 'mcq' ? 'selected' : ''; ?>>MCQ</option><option value="true_false" <?php echo $type_filter === 'true_false' ? 'selected' : ''; ?>>True/False</option><option value="short_answer" <?php echo $type_filter === 'short_answer' ? 'selected' : ''; ?>>Short Answer</option><option value="essay" <?php echo $type_filter === 'essay' ? 'selected' : ''; ?>>Essay</option><option value="fill_blank" <?php echo $type_filter === 'fill_blank' ? 'selected' : ''; ?>>Fill in the Blank</option></select></div>
                     <div><label class="mb-2 block text-sm font-semibold text-slate-700">Status</label><select name="status_filter" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700"><option value="">All statuses</option><?php foreach ($status_labels as $status_key => $status_text): ?><option value="<?php echo $status_key; ?>" <?php echo $status_filter === $status_key ? 'selected' : ''; ?>><?php echo $status_text; ?></option><?php endforeach; ?></select></div>
                     <div><label class="mb-2 block text-sm font-semibold text-slate-700">Search Text</label><input type="text" name="search_text" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700" value="<?php echo htmlspecialchars($_GET['search_text'] ?? ''); ?>" placeholder="Search keywords"></div>
-                    <div class="md:col-span-2 xl:col-span-6 flex flex-wrap gap-3"><button type="submit" class="btn btn-primary"><i class="fas fa-search"></i><span>Apply Filters</span></button><a href="questions.php" class="btn btn-outline"><i class="fas fa-rotate-right"></i><span>Reset View</span></a></div>
+                    <div class="filter-form-actions md:col-span-2 xl:col-span-6 flex flex-wrap gap-3"><button type="submit" class="btn btn-primary"><i class="fas fa-search"></i><span>Apply Filters</span></button><a href="questions.php" class="btn btn-outline"><i class="fas fa-rotate-right"></i><span>Reset View</span></a></div>
                 </form>
             </section>
 
@@ -404,14 +752,31 @@ $filtered_question_count = count($questions);
                             </tbody>
                         </table>
                     </div>
+                    <p class="table-scroll-hint"><i class="fas fa-arrows-left-right"></i><span>Swipe sideways and scroll down to review the full table on small screens.</span></p>
                     <div class="mt-5 flex flex-wrap items-center justify-between gap-4 text-sm text-slate-500">
                         <div class="flex flex-wrap gap-4">
                             <span><i class="fas fa-database mr-2 text-teal-700"></i>Total filtered: <?php echo $total_filtered_questions; ?></span>
                             <span><i class="fas fa-list mr-2 text-teal-700"></i>Showing <?php echo count($questions); ?> on this page</span>
                         </div>
-                        <div class="flex flex-wrap items-center gap-3">
-                            <?php $question_params_page = $_GET; $question_params_page['question_page'] = max(1, $question_page - 1); $question_prev_url = 'questions.php?' . http_build_query($question_params_page); $question_params_page['question_page'] = min($question_total_pages, $question_page + 1); $question_next_url = 'questions.php?' . http_build_query($question_params_page); ?>
+                        <div class="pagination-nav">
+                            <?php
+                            $question_pagination_items = $build_pagination_window($question_page, $question_total_pages);
+                            $question_prev_params = $_GET;
+                            $question_prev_params['question_page'] = max(1, $question_page - 1);
+                            $question_prev_url = 'questions.php?' . http_build_query($question_prev_params);
+                            $question_next_params = $_GET;
+                            $question_next_params['question_page'] = min($question_total_pages, $question_page + 1);
+                            $question_next_url = 'questions.php?' . http_build_query($question_next_params);
+                            ?>
                             <?php if ($question_page > 1): ?><a href="<?php echo htmlspecialchars($question_prev_url); ?>" class="btn btn-outline"><i class="fas fa-chevron-left"></i><span>Previous</span></a><?php endif; ?>
+                            <?php foreach ($question_pagination_items as $question_pagination_item): ?>
+                                <?php if ($question_pagination_item === '...'): ?>
+                                    <span class="pagination-ellipsis" aria-hidden="true">...</span>
+                                <?php else: ?>
+                                    <?php $question_page_params = $_GET; $question_page_params['question_page'] = $question_pagination_item; $question_page_url = 'questions.php?' . http_build_query($question_page_params); ?>
+                                    <a href="<?php echo htmlspecialchars($question_page_url); ?>" class="pagination-link <?php echo $question_page === $question_pagination_item ? 'is-active' : ''; ?>"<?php echo $question_page === $question_pagination_item ? ' aria-current="page"' : ''; ?>><?php echo $question_pagination_item; ?></a>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
                             <span class="font-semibold text-slate-600">Page <?php echo $question_page; ?> of <?php echo $question_total_pages; ?></span>
                             <?php if ($question_page < $question_total_pages): ?><a href="<?php echo htmlspecialchars($question_next_url); ?>" class="btn btn-outline"><span>Next</span><i class="fas fa-chevron-right"></i></a><?php endif; ?>
                         </div>
@@ -431,10 +796,11 @@ $filtered_question_count = count($questions);
                 <?php if (empty($question_summary)): ?>
                     <div class="mt-6 rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-500"><p class="text-lg font-semibold text-ink-900">Summary will appear here</p><p class="mt-2 text-sm">Once questions are added, the distribution insights will show here.</p></div>
                 <?php else: ?>
-                    <div class="mt-6 overflow-x-auto rounded-3xl border border-ink-900/10"><table class="summary-table-modern min-w-[680px] w-full bg-white"><thead><tr class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500"><th class="px-4 py-4">Subject</th><th class="px-4 py-4">Question Type</th><th class="px-4 py-4">Total Questions</th><th class="px-4 py-4">Class</th></tr></thead><tbody><?php foreach ($question_summary as $summary): ?><?php $summary_type = strtolower($summary['question_type'] ?? 'mcq'); ?><tr class="border-t border-slate-100"><td class="px-4 py-4 font-semibold text-ink-900"><?php echo htmlspecialchars($summary['subject_name']); ?></td><td class="px-4 py-4"><span class="rounded-full bg-teal-600/10 px-3 py-1 text-xs font-semibold text-teal-700"><?php echo htmlspecialchars($type_labels[$summary_type] ?? ucfirst(str_replace('_', ' ', $summary_type))); ?></span></td><td class="px-4 py-4"><span class="rounded-full bg-sky-50 px-3 py-1 text-sm font-semibold text-sky-700"><?php echo (int)$summary['question_count']; ?></span></td><td class="px-4 py-4 text-slate-700"><?php echo htmlspecialchars($summary['class_name']); ?></td></tr><?php endforeach; ?></tbody></table></div>
+                    <div class="summary-table-wrapper mt-6 overflow-x-auto rounded-3xl border border-ink-900/10"><table class="summary-table-modern min-w-[680px] w-full bg-white"><thead><tr class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500"><th class="px-4 py-4">Subject</th><th class="px-4 py-4">Question Type</th><th class="px-4 py-4">Total Questions</th><th class="px-4 py-4">Class</th></tr></thead><tbody><?php foreach ($question_summary as $summary): ?><?php $summary_type = strtolower($summary['question_type'] ?? 'mcq'); ?><tr class="border-t border-slate-100"><td class="px-4 py-4 font-semibold text-ink-900" data-label="Subject"><?php echo htmlspecialchars($summary['subject_name']); ?></td><td class="px-4 py-4" data-label="Question Type"><span class="rounded-full bg-teal-600/10 px-3 py-1 text-xs font-semibold text-teal-700"><?php echo htmlspecialchars($type_labels[$summary_type] ?? ucfirst(str_replace('_', ' ', $summary_type))); ?></span></td><td class="px-4 py-4" data-label="Total Questions"><span class="rounded-full bg-sky-50 px-3 py-1 text-sm font-semibold text-sky-700"><?php echo (int)$summary['question_count']; ?></span></td><td class="px-4 py-4 text-slate-700" data-label="Class"><?php echo htmlspecialchars($summary['class_name']); ?></td></tr><?php endforeach; ?></tbody></table></div>
+                    <p class="table-scroll-hint"><i class="fas fa-arrows-left-right"></i><span>Swipe sideways and scroll down to inspect the full reporting table on mobile.</span></p>
                     <div class="mt-5 flex flex-wrap items-center justify-between gap-4 text-sm text-slate-500">
                         <div class="flex flex-wrap gap-4"><span><i class="fas fa-database mr-2 text-teal-700"></i>Total entries: <?php echo $total_summary_count; ?></span><span><i class="fas fa-clock mr-2 text-teal-700"></i>Updated: <?php echo date('d M Y, h:i A'); ?></span></div>
-                        <div class="flex flex-wrap items-center gap-3"><?php $summary_params = $_GET; $summary_params['summary_page'] = max(1, $summary_page - 1); $summary_prev_url = 'questions.php?' . http_build_query($summary_params); $summary_params['summary_page'] = min($summary_total_pages, $summary_page + 1); $summary_next_url = 'questions.php?' . http_build_query($summary_params); ?><?php if ($summary_page > 1): ?><a href="<?php echo htmlspecialchars($summary_prev_url); ?>" class="btn btn-outline"><i class="fas fa-chevron-left"></i><span>Previous</span></a><?php endif; ?><span class="font-semibold text-slate-600">Page <?php echo $summary_page; ?> of <?php echo $summary_total_pages; ?></span><?php if ($summary_page < $summary_total_pages): ?><a href="<?php echo htmlspecialchars($summary_next_url); ?>" class="btn btn-outline"><span>Next</span><i class="fas fa-chevron-right"></i></a><?php endif; ?></div>
+                        <div class="pagination-nav"><?php $summary_pagination_items = $build_pagination_window($summary_page, $summary_total_pages); $summary_prev_params = $_GET; $summary_prev_params['summary_page'] = max(1, $summary_page - 1); $summary_prev_url = 'questions.php?' . http_build_query($summary_prev_params); $summary_next_params = $_GET; $summary_next_params['summary_page'] = min($summary_total_pages, $summary_page + 1); $summary_next_url = 'questions.php?' . http_build_query($summary_next_params); ?><?php if ($summary_page > 1): ?><a href="<?php echo htmlspecialchars($summary_prev_url); ?>" class="btn btn-outline"><i class="fas fa-chevron-left"></i><span>Previous</span></a><?php endif; ?><?php foreach ($summary_pagination_items as $summary_pagination_item): ?><?php if ($summary_pagination_item === '...'): ?><span class="pagination-ellipsis" aria-hidden="true">...</span><?php else: ?><?php $summary_page_params = $_GET; $summary_page_params['summary_page'] = $summary_pagination_item; $summary_page_url = 'questions.php?' . http_build_query($summary_page_params); ?><a href="<?php echo htmlspecialchars($summary_page_url); ?>" class="pagination-link <?php echo $summary_page === $summary_pagination_item ? 'is-active' : ''; ?>"<?php echo $summary_page === $summary_pagination_item ? ' aria-current="page"' : ''; ?>><?php echo $summary_pagination_item; ?></a><?php endif; ?><?php endforeach; ?><span class="font-semibold text-slate-600">Page <?php echo $summary_page; ?> of <?php echo $summary_total_pages; ?></span><?php if ($summary_page < $summary_total_pages): ?><a href="<?php echo htmlspecialchars($summary_next_url); ?>" class="btn btn-outline"><span>Next</span><i class="fas fa-chevron-right"></i></a><?php endif; ?></div>
                     </div>
                 <?php endif; ?>
             </section>

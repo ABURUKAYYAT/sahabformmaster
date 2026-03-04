@@ -4,7 +4,10 @@ $current = basename($_SERVER['PHP_SELF']);
 function nav_item($href, $label, $icon)
 {
     global $current;
-    $active = $current === $href;
+    $aliases = [
+        'lesson-plan.php' => ['lesson-plans-detail.php'],
+    ];
+    $active = $current === $href || in_array($current, $aliases[$href] ?? [], true);
     $base   = 'flex items-center gap-3 rounded-xl px-3 py-2 font-semibold ';
     $activeClasses = 'bg-teal-600/10 text-teal-700';
     $idleClasses   = 'text-slate-600 hover:bg-teal-600/10 hover:text-teal-700';

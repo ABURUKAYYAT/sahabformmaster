@@ -1,40 +1,34 @@
 <?php
-// teacher/curriculum.php
 session_start();
 require_once '../config/db.php';
 require_once '../includes/functions.php';
 
-// Only allow teachers to access this page
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'teacher') {
-    header("Location: ../index.php");
+    header('Location: ../index.php');
     exit;
 }
 
-// Get current school context
 $current_school_id = require_school_auth();
-
 $teacher_id = $_SESSION['user_id'];
 $teacher_name = $_SESSION['full_name'] ?? 'Teacher';
 
-// Fetch teacher's assigned classes
-$stmt = $pdo->prepare("SELECT DISTINCT c.* FROM classes c
-                       JOIN curriculum cu ON c.id = cu.class_id
-                       WHERE cu.teacher_id = :teacher_id
-                       ORDER BY c.class_name ASC");
+$stmt = $pdo->prepare(
+    "SELECT DISTINCT c.* FROM classes c
+     JOIN curriculum cu ON c.id = cu.class_id
+     WHERE cu.teacher_id = :teacher_id
+     ORDER BY c.class_name ASC"
+);
 $stmt->execute(['teacher_id' => $teacher_id]);
 $assigned_classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch all classes for filter (school-filtered)
 $stmt = $pdo->prepare("SELECT id, class_name FROM classes WHERE school_id = ? ORDER BY class_name ASC");
 $stmt->execute([$current_school_id]);
 $all_classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch all subjects (school-filtered)
 $stmt = $pdo->prepare("SELECT id, subject_name FROM subjects WHERE school_id = ? ORDER BY subject_name ASC");
 $stmt->execute([$current_school_id]);
 $all_subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Search and filter
 $search = trim($_GET['search'] ?? '');
 $filter_class = $_GET['filter_class'] ?? '';
 $filter_term = $_GET['filter_term'] ?? '';
@@ -43,26 +37,22 @@ $filter_subject = $_GET['filter_subject'] ?? '';
 $filter_status = $_GET['filter_status'] ?? 'active';
 $filter_assigned = $_GET['filter_assigned'] ?? 'mine';
 
-// Pagination
 $per_page = 10;
-$page = max(1, intval($_GET['page'] ?? 1));
+$page = max(1, (int) ($_GET['page'] ?? 1));
 
-// Build query for teacher's curriculum (school-filtered)
 $base_query = "FROM curriculum c
-          LEFT JOIN classes cl ON c.class_id = cl.id AND cl.school_id = :school_id_classes
-          WHERE c.school_id = :school_id_filter";
+    LEFT JOIN classes cl ON c.class_id = cl.id AND cl.school_id = :school_id_classes
+    WHERE c.school_id = :school_id_filter";
 $params = [
     'school_id_classes' => $current_school_id,
     'school_id_filter' => $current_school_id,
 ];
 
-// Status filter (skip when 'all')
 if ($filter_status !== 'all') {
     $base_query .= " AND c.status = :status";
     $params['status'] = $filter_status;
 }
 
-// Optional filter: only items assigned to this teacher
 if ($filter_assigned === 'mine') {
     $base_query .= " AND c.teacher_id = :teacher_id";
     $params['teacher_id'] = $teacher_id;
@@ -93,23 +83,22 @@ if ($filter_subject !== '' && $filter_subject !== 'all') {
     $params['subject_id'] = $filter_subject;
 }
 
-// Get unique terms from curriculum (school-filtered)
-$stmt = $pdo->prepare("SELECT DISTINCT term FROM curriculum WHERE term IS NOT NULL AND term != '' AND school_id = ? ORDER BY
-    CASE term
+$stmt = $pdo->prepare(
+    "SELECT DISTINCT term FROM curriculum
+     WHERE term IS NOT NULL AND term != '' AND school_id = ?
+     ORDER BY CASE term
         WHEN '1st Term' THEN 1
         WHEN '2nd Term' THEN 2
         WHEN '3rd Term' THEN 3
         ELSE 4
-    END");
+     END"
+);
 $stmt->execute([$current_school_id]);
 $terms = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
-// If no terms found, use default terms
 if (empty($terms)) {
     $terms = ['1st Term', '2nd Term', '3rd Term'];
 }
 
-// Count for pagination
 $count_query = "SELECT COUNT(*) " . $base_query;
 $stmt = $pdo->prepare($count_query);
 $stmt->execute($params);
@@ -121,9 +110,8 @@ if ($page > $total_pages) {
 }
 $offset = ($page - 1) * $per_page;
 
-// Execute main query
 $query = "SELECT DISTINCT c.*, cl.class_name " . $base_query .
-         " ORDER BY c.term, c.week, c.status, c.grade_level, c.subject_name LIMIT :limit OFFSET :offset";
+    " ORDER BY c.term, c.week, c.status, c.grade_level, c.subject_name LIMIT :limit OFFSET :offset";
 $stmt = $pdo->prepare($query);
 foreach ($params as $key => $value) {
     $stmt->bindValue(':' . $key, $value);
@@ -140,370 +128,107 @@ $end_item = $total_rows > 0 ? min($offset + count($curriculums), $total_rows) : 
 $prev_page = max(1, $page - 1);
 $next_page = min($total_pages, $page + 1);
 
-// Function to count topics
-function countTopics($topics_string) {
-    if (empty($topics_string)) return 0;
+function countTopics($topics_string)
+{
+    if (empty($topics_string)) {
+        return 0;
+    }
+
     $topics = array_filter(array_map('trim', explode("\n", $topics_string)));
     return count($topics);
 }
 
-// Function to get status badge class
-function getStatusBadgeClass($status) {
-    switch ($status) {
-        case 'active': return 'status-active';
-        case 'inactive': return 'status-inactive';
-        default: return 'status-inactive';
+$build_pagination_window = static function (int $current_page, int $total_pages): array {
+    if ($total_pages <= 1) {
+        return [1];
     }
-}
-?>
 
+    $pages = [1];
+    $start = max(2, $current_page - 1);
+    $end = min($total_pages - 1, $current_page + 1);
+
+    if ($start > 2) {
+        $pages[] = '...';
+    }
+
+    for ($window_page = $start; $window_page <= $end; $window_page += 1) {
+        $pages[] = $window_page;
+    }
+
+    if ($end < $total_pages - 1) {
+        $pages[] = '...';
+    }
+
+    if ($total_pages > 1) {
+        $pages[] = $total_pages;
+    }
+
+    return $pages;
+};
+
+$status_labels = [
+    'active' => 'Active',
+    'inactive' => 'Inactive',
+];
+
+$status_badges = [
+    'active' => 'bg-emerald-50 text-emerald-700 border border-emerald-100',
+    'inactive' => 'bg-slate-100 text-slate-700 border border-slate-200',
+];
+
+$totals_stmt = $pdo->prepare(
+    "SELECT
+        COUNT(*) AS total_count,
+        SUM(CASE WHEN teacher_id = :teacher_id THEN 1 ELSE 0 END) AS my_count,
+        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active_count
+     FROM curriculum
+     WHERE school_id = :school_id"
+);
+$totals_stmt->execute([
+    'teacher_id' => $teacher_id,
+    'school_id' => $current_school_id,
+]);
+$overall_totals = $totals_stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+$filtered_subject_count = count(array_unique(array_filter(array_column($curriculums, 'subject_name'))));
+$page_topic_total = array_sum(array_map('countTopics', array_column($curriculums, 'topics')));
+$assigned_on_page = count(array_filter($curriculums, static fn($curriculum) => (int) $curriculum['teacher_id'] === (int) $teacher_id));
+$pagination_items = $build_pagination_window($page, $total_pages);
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Curriculum Management | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
-    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
-    <link rel="stylesheet" href="../assets/css/admin-students.css?v=1.1">
+    <link rel="stylesheet" href="../assets/css/tailwind.css">
+    <link rel="stylesheet" href="../assets/css/teacher-workspace.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body {
-            background: #f5f7fb;
-        }
-
-        .dashboard-container .main-content {
-            width: 100%;
-        }
-
-        .main-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 1.5rem;
-        }
-
-        .content-header,
-        .controls-modern,
-        .actions-modern,
-        .curriculum-table-container,
-        .empty-state-modern,
-        .modal-content-modern {
-            background: #ffffff;
-            border: 1px solid #cfe1ff;
-            border-radius: 12px;
-            box-shadow: none;
-        }
-
-        .card-header-modern {
-            background: #1d4ed8;
-            color: #ffffff;
-            border-radius: 12px;
-            padding: 1.25rem 1.5rem;
-        }
-
-        .card-title-modern {
-            font-size: 1.5rem;
-            font-weight: 700;
-        }
-
-        .stats-modern {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1.25rem;
-        }
-
-        .stat-card-modern {
-            background: #ffffff;
-            border: 1px solid #cfe1ff;
-            border-radius: 12px;
-            padding: 1.25rem;
-        }
-
-        .stat-icon-modern {
-            width: 44px;
-            height: 44px;
-            border-radius: 10px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: #1d4ed8;
-            color: #fff;
-            margin-bottom: 0.75rem;
-        }
-
-        .stat-value-modern {
-            font-size: 1.75rem;
-            font-weight: 700;
-            color: #0f172a;
-        }
-
-        .stat-label-modern {
-            color: #64748b;
-            font-weight: 600;
-            font-size: 0.85rem;
-        }
-
-        .controls-modern,
-        .actions-modern {
-            padding: 1.25rem;
-            margin-bottom: 1.25rem;
-        }
-
-        .form-row-modern {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .form-label-modern {
-            font-weight: 600;
-            color: #475569;
-            margin-bottom: 0.4rem;
-            display: block;
-        }
-
-        .form-input-modern {
-            width: 100%;
-            border: 1px solid #cfe1ff;
-            border-radius: 10px;
-            padding: 0.65rem 0.85rem;
-        }
-
-        .btn-modern-primary,
-        .btn-modern-secondary {
-            padding: 0.6rem 1rem;
-            border-radius: 999px;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .btn-modern-primary {
-            background: #1d4ed8;
-            color: #fff;
-            border: 1px solid #1d4ed8;
-        }
-
-        .btn-modern-secondary {
-            background: #fff;
-            color: #1d4ed8;
-            border: 1px solid #1d4ed8;
-        }
-
-        .actions-grid-modern {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 0.75rem;
-        }
-
-        .action-btn-modern {
-            border: 1px solid #cfe1ff;
-            border-radius: 12px;
-            padding: 0.9rem;
-            text-decoration: none;
-            color: #1e293b;
-            background: #fff;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            align-items: center;
-        }
-
-        .action-icon-modern {
-            color: #1d4ed8;
-        }
-
-        .table-header-modern {
-            padding: 1rem 1.25rem;
-            background: #1d4ed8;
-            color: #fff;
-            border-radius: 12px 12px 0 0;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
-        }
-
-        .curriculum-table-modern th {
-            background: #f1f5ff;
-            color: #1e3a8a;
-        }
-
-        .meta-tag-modern {
-            background: #e0ecff;
-            color: #1e40af;
-        }
-
-        .status-badge-modern {
-            border-radius: 999px;
-            padding: 0.25rem 0.6rem;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .status-active-modern { background: #dcfce7; color: #166534; }
-        .status-inactive-modern { background: #fee2e2; color: #991b1b; }
-
-        .btn-small-modern {
-            border-radius: 8px;
-            padding: 0.4rem 0.7rem;
-        }
-
-        .btn-view-modern { background: #2563eb; color: #fff; }
-        .btn-edit-modern { background: #0ea5e9; color: #fff; }
-
-        .modal-modern {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.45);
-            z-index: 1050;
-        }
-
-        .modal-content-modern {
-            position: absolute;
-            inset: 50% auto auto 50%;
-            transform: translate(-50%, -50%);
-            max-width: 820px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            padding: 1.5rem;
-            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
-            border-radius: 16px;
-        }
-
-        .modal-header-modern {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 0.75rem;
-            margin-bottom: 1rem;
-        }
-
-        .modal-title-modern {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #0f172a;
-        }
-
-        .modal-close-modern {
-            background: #f1f5ff;
-            border: 1px solid #cfe1ff;
-            color: #1d4ed8;
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.1rem;
-            cursor: pointer;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-        }
-
-        .modal-close-modern:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 8px 16px rgba(29, 78, 216, 0.12);
-        }
-
-        .modal-actions-modern {
-            border-top: 1px solid #e2e8f0;
-            padding-top: 0.75rem;
-            margin-top: 1rem;
-            display: flex;
-            justify-content: flex-end;
-        }
-
-        .detail-grid-modern {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 0.75rem;
-        }
-
-        .detail-item-modern {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 0.75rem 0.9rem;
-        }
-
-        .detail-label-modern {
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: #475569;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-        }
-
-        .detail-value-modern {
-            color: #0f172a;
-            font-weight: 600;
-            margin-top: 0.25rem;
-        }
-
-        .topics-preview-modern {
-            background: #ffffff;
-            border: 1px dashed #cfe1ff;
-            border-radius: 12px;
-            padding: 0.75rem;
-            max-height: 240px;
-            overflow-y: auto;
-        }
-
-        .topic-item-modern {
-            display: flex;
-            gap: 0.5rem;
-            padding: 0.4rem 0;
-            border-bottom: 1px solid #eef2ff;
-        }
-
-        .topic-item-modern:last-child {
-            border-bottom: none;
-        }
-
-        .topic-icon-modern {
-            color: #1d4ed8;
-            margin-top: 0.2rem;
-        }
-
-        @media (max-width: 768px) {
-            .main-container {
-                padding: 1rem;
-            }
-
-            .form-row-modern {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
 </head>
-<body>
-    <?php include '../includes/mobile_navigation.php'; ?>
-
-    <header class="dashboard-header">
-        <div class="header-container">
-            <div class="header-left">
-                <div class="school-logo-container">
-                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
-                    <div class="school-info">
-                        <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
-                        <p class="school-tagline">Curriculum Management</p>
+<body class="landing bg-slate-50 workspace-page">
+    <header class="site-header">
+        <div class="container nav-wrap">
+            <div class="flex items-center gap-4">
+                <button class="nav-toggle lg:hidden" type="button" data-sidebar-toggle aria-label="Open menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div class="flex items-center gap-3">
+                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="h-10 w-10 rounded-xl object-cover">
+                    <div class="hidden sm:block">
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Teacher Portal</p>
+                        <p class="text-lg font-semibold text-ink-900"><?php echo htmlspecialchars(get_school_display_name()); ?></p>
                     </div>
                 </div>
             </div>
-            <div class="header-right">
-                <div class="teacher-info">
-                    <p class="teacher-label">Teacher</p>
-                    <span class="teacher-name"><?php echo htmlspecialchars($teacher_name); ?></span>
-                </div>
-                <a href="logout.php" class="btn-logout">
+            <div class="workspace-header-actions flex items-center gap-3">
+                <span class="hidden text-sm text-slate-600 md:block">Welcome, <?php echo htmlspecialchars($teacher_name); ?></span>
+                <a class="btn btn-outline" href="questions.php">Question Bank</a>
+                <a class="btn btn-primary" href="logout.php">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </a>
@@ -511,508 +236,458 @@ function getStatusBadgeClass($status) {
         </div>
     </header>
 
-    <div class="dashboard-container">
-        <?php include '../includes/teacher_sidebar.php'; ?>
-        <main class="main-content">
-            <div class="main-container">
-        <?php
-        $total_curriculum = count($curriculums);
-        $assigned_curriculum = array_filter($curriculums, fn($c) => $c['teacher_id'] == $teacher_id);
-        $unique_subjects = count(array_unique(array_column($curriculums, 'subject_name')));
-        $total_topics = array_sum(array_map('countTopics', array_column($curriculums, 'topics')));
-        ?>
+    <div class="fixed inset-0 bg-black/40 opacity-0 pointer-events-none transition-opacity lg:hidden" data-sidebar-overlay></div>
 
-        <div class="content-header">
-            <div class="welcome-section">
-                <h2>Curriculum Management</h2>
-                <p>Efficiently manage and track curriculum content for your assigned classes</p>
+    <div class="container grid gap-6 py-8 lg:grid-cols-[280px_1fr]">
+        <aside class="fixed inset-y-0 left-0 z-40 h-[100dvh] w-72 bg-white shadow-lift border-r border-ink-900/10 transform -translate-x-full transition-transform duration-200 lg:static lg:inset-auto lg:h-auto lg:translate-x-0" data-sidebar>
+            <div class="sidebar-scroll-shell h-full overflow-y-auto">
+                <?php include '../includes/teacher_sidebar.php'; ?>
             </div>
-            <div class="header-stats">
-                <div class="quick-stat">
-                    <span class="quick-stat-value"><?php echo $total_curriculum; ?></span>
-                    <span class="quick-stat-label">Total Curriculum</span>
-                </div>
-                <div class="quick-stat">
-                    <span class="quick-stat-value"><?php echo count($assigned_curriculum); ?></span>
-                    <span class="quick-stat-label">Assigned to Me</span>
-                </div>
-            </div>
-        </div>
+        </aside>
 
-        <!-- Statistics Cards -->
-        <div class="stats-modern">
-            <div class="stat-card-modern stat-curriculum animate-slide-in-left">
-                <div class="stat-icon-modern">
-                    <i class="fas fa-book"></i>
-                </div>
-                <div class="stat-value-modern"><?php echo $total_curriculum; ?></div>
-                <div class="stat-label-modern">Total Curriculum</div>
-            </div>
-
-            <div class="stat-card-modern stat-assigned animate-slide-in-left">
-                <div class="stat-icon-modern">
-                    <i class="fas fa-user-check"></i>
-                </div>
-                <div class="stat-value-modern"><?php echo count($assigned_curriculum); ?></div>
-                <div class="stat-label-modern">Assigned to Me</div>
-            </div>
-
-            <div class="stat-card-modern stat-subjects animate-slide-in-right">
-                <div class="stat-icon-modern">
-                    <i class="fas fa-flask"></i>
-                </div>
-                <div class="stat-value-modern"><?php echo $unique_subjects; ?></div>
-                <div class="stat-label-modern">Subjects</div>
-            </div>
-
-            <div class="stat-card-modern stat-topics animate-slide-in-right">
-                <div class="stat-icon-modern">
-                    <i class="fas fa-list-ol"></i>
-                </div>
-                <div class="stat-value-modern"><?php echo $total_topics; ?></div>
-                <div class="stat-label-modern">Total Topics</div>
-            </div>
-        </div>
-
-        <!-- Controls Section -->
-        <div class="controls-modern animate-fade-in-up">
-            <form method="GET" class="filter-form">
-                <div class="form-row-modern">
-                    <div class="form-group-modern">
-                        <label class="form-label-modern">Search</label>
-                        <input type="text" class="form-input-modern" name="search"
-                               value="<?php echo htmlspecialchars($search); ?>"
-                               placeholder="Search by subject, description, or topics">
-                    </div>
-                    <div class="form-group-modern">
-                        <label class="form-label-modern">Class</label>
-                        <select class="form-input-modern" name="filter_class">
-                            <option value="all">All Classes</option>
-                            <?php foreach ($all_classes as $class): ?>
-                                <option value="<?php echo intval($class['id']); ?>"
-                                    <?php echo $filter_class == $class['id'] ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($class['class_name']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="form-group-modern">
-                        <label class="form-label-modern">Term</label>
-                        <select class="form-input-modern" name="filter_term">
-                            <option value="all">All Terms</option>
-                            <?php foreach ($terms as $term): ?>
-                                <option value="<?php echo htmlspecialchars($term); ?>"
-                                    <?php echo $filter_term === $term ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($term); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="form-group-modern">
-                        <label class="form-label-modern">Week</label>
-                        <input type="number" class="form-input-modern" name="filter_week"
-                               value="<?php echo htmlspecialchars($filter_week !== 'all' ? $filter_week : ''); ?>"
-                               placeholder="Enter week number" min="0" max="52">
-                    </div>
-                    <div class="form-group-modern">
-                        <label class="form-label-modern">Subject</label>
-                        <select class="form-input-modern" name="filter_subject">
-                            <option value="all">All Subjects</option>
-                            <?php foreach ($all_subjects as $subject): ?>
-                                <option value="<?php echo intval($subject['id']); ?>"
-                                    <?php echo $filter_subject == $subject['id'] ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($subject['subject_name']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="form-group-modern">
-                        <label class="form-label-modern">Status</label>
-                        <select class="form-input-modern" name="filter_status">
-                            <option value="active" <?php echo $filter_status === 'active' ? 'selected' : ''; ?>>Active</option>
-                            <option value="inactive" <?php echo $filter_status === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
-                            <option value="all" <?php echo $filter_status === 'all' ? 'selected' : ''; ?>>All Status</option>
-                        </select>
-                    </div>
-                    <div class="form-group-modern">
-                        <label class="form-label-modern">Assignment</label>
-                        <select class="form-input-modern" name="filter_assigned">
-                            <option value="all" <?php echo $filter_assigned === 'all' ? 'selected' : ''; ?>>All Curriculum</option>
-                            <option value="mine" <?php echo $filter_assigned === 'mine' ? 'selected' : ''; ?>>Assigned to Me</option>
-                        </select>
+        <main class="space-y-6">
+            <section class="overflow-hidden rounded-3xl border border-ink-900/5 shadow-lift">
+                <div class="workspace-hero p-6 text-white sm:p-8">
+                    <div class="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+                        <div class="max-w-3xl">
+                            <p class="text-xs uppercase tracking-[0.32em] text-white/75">Curriculum Workspace</p>
+                            <h1 class="mt-3 text-3xl font-display font-semibold leading-tight sm:text-4xl">Curriculum planning with the same structured workspace language used across question management.</h1>
+                            <p class="mt-3 max-w-2xl text-sm text-white/80 sm:text-base">Review subject outlines, track assigned curriculum, and move between teaching workflows without leaving the shared teacher shell.</p>
+                        </div>
+                        <div class="workspace-hero-actions grid gap-3 sm:grid-cols-2">
+                            <a href="#curriculum-library" class="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-teal-900 shadow-soft transition hover:-translate-y-0.5 hover:bg-white/95">
+                                <i class="fas fa-table-list"></i>
+                                <span>Review Curriculum</span>
+                            </a>
+                            <a href="content_coverage.php" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/25 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/15">
+                                <i class="fas fa-clipboard-check"></i>
+                                <span>Open Coverage</span>
+                            </a>
+                            <button type="button" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/25 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/15" onclick="exportCurriculum()">
+                                <i class="fas fa-download"></i>
+                                <span>Export Current View</span>
+                            </button>
+                            <button type="button" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/25 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/15" onclick="printCurriculum()">
+                                <i class="fas fa-print"></i>
+                                <span>Print Current View</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
-
-                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                    <button type="submit" class="btn-modern-primary">
-                        <i class="fas fa-filter"></i>
-                        <span>Apply Filters</span>
-                    </button>
-                    <a href="curricullum.php" class="btn-modern-secondary">
-                        <i class="fas fa-redo"></i>
-                        <span>Reset</span>
-                    </a>
+                <div class="workspace-metrics-grid grid gap-3 bg-white p-4 sm:grid-cols-2 sm:p-6 xl:grid-cols-5">
+                    <article class="workspace-metric-card">
+                        <div class="workspace-metric-icon bg-teal-600/10 text-teal-700">
+                            <i class="fas fa-layer-group"></i>
+                        </div>
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Filtered View</p>
+                        <h2 class="mt-1 text-2xl font-semibold text-ink-900"><?php echo $total_rows; ?></h2>
+                        <p class="text-sm text-slate-500">Items matching the current filters</p>
+                    </article>
+                    <article class="workspace-metric-card">
+                        <div class="workspace-metric-icon bg-sky-600/10 text-sky-700">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <p class="text-xs uppercase tracking-wide text-slate-500">School Total</p>
+                        <h2 class="mt-1 text-2xl font-semibold text-ink-900"><?php echo (int) ($overall_totals['total_count'] ?? 0); ?></h2>
+                        <p class="text-sm text-slate-500">Curriculum records for this school</p>
+                    </article>
+                    <article class="workspace-metric-card">
+                        <div class="workspace-metric-icon bg-emerald-600/10 text-emerald-700">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Assigned to Me</p>
+                        <h2 class="mt-1 text-2xl font-semibold text-ink-900"><?php echo (int) ($overall_totals['my_count'] ?? 0); ?></h2>
+                        <p class="text-sm text-slate-500">Curriculum items under your name</p>
+                    </article>
+                    <article class="workspace-metric-card">
+                        <div class="workspace-metric-icon bg-amber-500/10 text-amber-700">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Assigned Classes</p>
+                        <h2 class="mt-1 text-2xl font-semibold text-ink-900"><?php echo count($assigned_classes); ?></h2>
+                        <p class="text-sm text-slate-500">Classes linked to your curriculum</p>
+                    </article>
+                    <article class="workspace-metric-card">
+                        <div class="workspace-metric-icon bg-violet-600/10 text-violet-700">
+                            <i class="fas fa-list-ol"></i>
+                        </div>
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Topics on Page</p>
+                        <h2 class="mt-1 text-2xl font-semibold text-ink-900"><?php echo $page_topic_total; ?></h2>
+                        <p class="text-sm text-slate-500">Topic lines in the visible page results</p>
+                    </article>
                 </div>
-            </form>
-        </div>
+            </section>
 
-        <!-- Quick Actions -->
-        <div class="actions-modern animate-fade-in-up">
-            <div class="actions-grid-modern">
-                <a href="content_coverage.php" class="action-btn-modern">
-                    <i class="fas fa-clipboard-check action-icon-modern"></i>
-                    <span class="action-text-modern">Content Coverage</span>
-                </a>
-                <button class="action-btn-modern" onclick="exportCurriculum()">
-                    <i class="fas fa-download action-icon-modern"></i>
-                    <span class="action-text-modern">Export Report</span>
-                </button>
-                <button class="action-btn-modern" onclick="viewAnalytics()">
-                    <i class="fas fa-chart-bar action-icon-modern"></i>
-                    <span class="action-text-modern">View Analytics</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- Curriculum Table -->
-        <?php if (empty($curriculums)): ?>
-            <div class="empty-state-modern animate-fade-in-up">
-                <i class="fas fa-book-open empty-icon-modern"></i>
-                <h3 class="empty-title-modern">No Curriculum Found</h3>
-                <p class="empty-text-modern">No curriculum matches your current filters. Try adjusting your search criteria.</p>
-                <a href="curricullum.php" class="btn-modern-primary">Clear Filters</a>
-            </div>
-        <?php else: ?>
-            <div class="curriculum-table-container animate-fade-in-up">
-                <div class="table-header-modern">
-                    <div class="table-title-modern">
-                        <i class="fas fa-clipboard-list"></i>
-                        Curriculum Overview
+            <section class="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_340px]">
+                <div class="rounded-3xl bg-white shadow-lift border border-ink-900/5 overflow-hidden">
+                    <div class="flex flex-col gap-3 border-b border-ink-900/5 p-6 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-teal-700">Discovery</p>
+                            <h2 class="mt-2 text-2xl font-display text-ink-900">Search and Filter</h2>
+                            <p class="mt-2 text-sm text-slate-600">Narrow the library by class, term, week, subject, assignment ownership, and status.</p>
+                        </div>
+                        <a class="btn btn-outline" href="curricullum.php">
+                            <i class="fas fa-filter-circle-xmark"></i>
+                            <span>Clear Filters</span>
+                        </a>
                     </div>
-                    <div class="curriculum-count-modern">
-                        <?php echo count($curriculums); ?> Items
+                    <form method="GET" action="curricullum.php" class="grid gap-4 p-6 md:grid-cols-2 xl:grid-cols-3">
+                        <div class="md:col-span-2 xl:col-span-3">
+                            <label class="mb-2 block text-sm font-semibold text-slate-700">Search</label>
+                            <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" placeholder="Search by subject, description, or topics" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+                        </div>
+                        <div>
+                            <label class="mb-2 block text-sm font-semibold text-slate-700">Class</label>
+                            <select name="filter_class" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+                                <option value="all">All Classes</option>
+                                <?php foreach ($all_classes as $class): ?>
+                                    <option value="<?php echo (int) $class['id']; ?>" <?php echo $filter_class == $class['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($class['class_name']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="mb-2 block text-sm font-semibold text-slate-700">Term</label>
+                            <select name="filter_term" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+                                <option value="all">All Terms</option>
+                                <?php foreach ($terms as $term): ?>
+                                    <option value="<?php echo htmlspecialchars($term); ?>" <?php echo $filter_term === $term ? 'selected' : ''; ?>><?php echo htmlspecialchars($term); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="mb-2 block text-sm font-semibold text-slate-700">Week</label>
+                            <input type="number" name="filter_week" min="0" max="52" value="<?php echo htmlspecialchars($filter_week !== 'all' ? $filter_week : ''); ?>" placeholder="Enter week number" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+                        </div>
+                        <div>
+                            <label class="mb-2 block text-sm font-semibold text-slate-700">Subject</label>
+                            <select name="filter_subject" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+                                <option value="all">All Subjects</option>
+                                <?php foreach ($all_subjects as $subject): ?>
+                                    <option value="<?php echo (int) $subject['id']; ?>" <?php echo $filter_subject == $subject['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($subject['subject_name']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="mb-2 block text-sm font-semibold text-slate-700">Status</label>
+                            <select name="filter_status" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+                                <option value="active" <?php echo $filter_status === 'active' ? 'selected' : ''; ?>>Active</option>
+                                <option value="inactive" <?php echo $filter_status === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
+                                <option value="all" <?php echo $filter_status === 'all' ? 'selected' : ''; ?>>All Status</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="mb-2 block text-sm font-semibold text-slate-700">Assignment</label>
+                            <select name="filter_assigned" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+                                <option value="all" <?php echo $filter_assigned === 'all' ? 'selected' : ''; ?>>All Curriculum</option>
+                                <option value="mine" <?php echo $filter_assigned === 'mine' ? 'selected' : ''; ?>>Assigned to Me</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-2 xl:col-span-3 flex flex-wrap gap-3">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-filter"></i>
+                                <span>Apply Filters</span>
+                            </button>
+                            <button type="button" class="btn btn-outline" onclick="exportCurriculum()">
+                                <i class="fas fa-file-export"></i>
+                                <span>Export Result</span>
+                            </button>
+                            <button type="button" class="btn btn-outline" onclick="printCurriculum()">
+                                <i class="fas fa-print"></i>
+                                <span>Print Result</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="space-y-6">
+                    <section class="rounded-3xl bg-white p-6 shadow-soft border border-ink-900/5">
+                        <h2 class="text-xl font-semibold text-ink-900">Workflow Shortcuts</h2>
+                        <div class="mt-4 grid gap-3 text-sm font-semibold">
+                            <a href="content_coverage.php" class="flex items-center justify-between rounded-2xl border border-ink-900/10 px-4 py-4 text-ink-900 hover:border-teal-600/30 hover:bg-teal-600/10 hover:text-teal-700">
+                                <span><i class="fas fa-clipboard-check mr-3 text-teal-700"></i>Update content coverage</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </a>
+                            <button type="button" class="flex items-center justify-between rounded-2xl border border-ink-900/10 px-4 py-4 text-left text-ink-900 hover:border-teal-600/30 hover:bg-teal-600/10 hover:text-teal-700" onclick="viewAnalytics()">
+                                <span><i class="fas fa-chart-line mr-3 text-teal-700"></i>Open curriculum analytics</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </button>
+                            <a href="questions.php" class="flex items-center justify-between rounded-2xl border border-ink-900/10 px-4 py-4 text-ink-900 hover:border-teal-600/30 hover:bg-teal-600/10 hover:text-teal-700">
+                                <span><i class="fas fa-question-circle mr-3 text-teal-700"></i>Move to question bank</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </a>
+                        </div>
+                    </section>
+
+                    <section class="rounded-3xl bg-white p-6 shadow-soft border border-ink-900/5">
+                        <h2 class="text-xl font-semibold text-ink-900">Review Notes</h2>
+                        <div class="mt-4 space-y-4 text-sm text-slate-600">
+                            <p><span class="font-semibold text-ink-900">Keep the filters purposeful:</span> use class and term first, then narrow by topic text or ownership when auditing coverage.</p>
+                            <p><span class="font-semibold text-ink-900">Check assignment ownership:</span> the “Assigned to Me” signal helps separate your direct workload from shared school curriculum records.</p>
+                            <p><span class="font-semibold text-ink-900">Cross-reference coverage:</span> pair curriculum review with the coverage page to verify the planned topics are actually being taught.</p>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <section class="rounded-3xl bg-white p-6 shadow-lift border border-ink-900/5" id="curriculum-library">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-teal-700">Library</p>
+                        <h2 class="mt-2 text-2xl font-display text-ink-900">Curriculum Overview</h2>
+                        <p class="mt-2 text-sm text-slate-600">Inspect the visible set, review structure by class and term, and open full details without leaving the page.</p>
+                    </div>
+                    <div class="rounded-2xl bg-mist-50 px-4 py-3 border border-ink-900/5">
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Visible Items</p>
+                        <p class="text-2xl font-semibold text-ink-900"><?php echo count($curriculums); ?></p>
                     </div>
                 </div>
 
-                <div class="table-wrapper-modern">
-                    <table class="curriculum-table-modern">
-                        <thead>
-                            <tr>
-                                <th>Subject</th>
-                                <th>Class & Term</th>
-                                <th>Description</th>
-                                <th>Topics</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($curriculums as $curriculum): ?>
+                <?php if (empty($curriculums)): ?>
+                    <div class="mt-6 rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-500">
+                        <i class="fas fa-folder-open text-3xl text-teal-700"></i>
+                        <p class="mt-4 text-lg font-semibold text-ink-900">No curriculum matches this view</p>
+                        <p class="mt-2 text-sm">Adjust the filters above or reset the current query to restore the full list.</p>
+                    </div>
+                <?php else: ?>
+                    <div class="workspace-table-wrapper mt-6 overflow-x-auto rounded-3xl border border-ink-900/10">
+                        <table class="workspace-table min-w-[980px] w-full bg-white text-sm">
+                            <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                                 <tr>
-                                    <td>
-                                        <div class="curriculum-subject-modern">
-                                            <?php echo htmlspecialchars($curriculum['subject_name']); ?>
-                                        </div>
-                                        <div class="curriculum-grade-modern">
-                                            <?php echo htmlspecialchars($curriculum['grade_level']); ?>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="curriculum-meta-modern">
-                                            <?php if ($curriculum['class_name']): ?>
-                                                <span class="meta-tag-modern">
-                                                    <i class="fas fa-users"></i> <?php echo htmlspecialchars($curriculum['class_name']); ?>
-                                                </span>
-                                            <?php endif; ?>
-                                            <?php if ($curriculum['term']): ?>
-                                                <span class="meta-tag-modern">
-                                                    <i class="fas fa-calendar-alt"></i> <?php echo htmlspecialchars($curriculum['term']); ?>
-                                                </span>
-                                            <?php endif; ?>
-                                            <?php if ($curriculum['week'] > 0): ?>
-                                                <span class="meta-tag-modern">
-                                                    <i class="fas fa-calendar-week"></i> Week <?php echo intval($curriculum['week']); ?>
-                                                </span>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="curriculum-description-modern">
-                                            <?php echo htmlspecialchars(substr($curriculum['description'] ?? '', 0, 100)); ?>
-                                            <?php if (strlen($curriculum['description'] ?? '') > 100): ?>...<?php endif; ?>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <?php
-                                        $topics_count = countTopics($curriculum['topics']);
-                                        echo $topics_count > 0 ? $topics_count . ' topics' : 'No topics';
-                                        ?>
-                                    </td>
-                                    <td>
-                                        <span class="status-badge-modern <?php echo getStatusBadgeClass($curriculum['status']); ?>-modern">
-                                            <?php echo ucfirst($curriculum['status']); ?>
-                                        </span>
-                                        <?php if ($curriculum['teacher_id'] == $teacher_id): ?>
-                                            <br><small style="color: var(--success-600); font-weight: 600;">Assigned to Me</small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <div class="action-buttons-modern">
-                                            <button class="btn-small-modern btn-view-modern"
-                                                    onclick="viewCurriculumDetails(<?php echo htmlspecialchars(json_encode($curriculum)); ?>)">
-                                                <i class="fas fa-eye"></i>
-                                                <span>View</span>
-                                            </button>
-                                            <button class="btn-small-modern btn-edit-modern"
-                                                    onclick="printCurriculumItem(<?php echo intval($curriculum['id']); ?>)">
-                                                <i class="fas fa-print"></i>
-                                                <span>Print</span>
-                                            </button>
-                                        </div>
-                                    </td>
+                                    <th class="px-4 py-4">Subject</th>
+                                    <th class="px-4 py-4">Class / Term</th>
+                                    <th class="px-4 py-4">Description</th>
+                                    <th class="px-4 py-4">Topics</th>
+                                    <th class="px-4 py-4">Status</th>
+                                    <th class="px-4 py-4">Actions</th>
                                 </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-                <?php if ($total_pages > 1): ?>
-                    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1.5rem;">
-                        <div style="color: var(--gray-600); font-weight: 600;">
-                            Showing <?php echo $start_item; ?>-<?php echo $end_item; ?> of <?php echo $total_rows; ?>
-                        </div>
-                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                            <a class="btn-modern-secondary"
-                               style="<?php echo $page <= 1 ? 'pointer-events: none; opacity: 0.6;' : ''; ?>"
-                               href="<?php echo 'curricullum.php?' . http_build_query(array_merge($pagination_params, ['page' => 1])); ?>">
-                                First
-                            </a>
-                            <a class="btn-modern-secondary"
-                               style="<?php echo $page <= 1 ? 'pointer-events: none; opacity: 0.6;' : ''; ?>"
-                               href="<?php echo 'curricullum.php?' . http_build_query(array_merge($pagination_params, ['page' => $prev_page])); ?>">
-                                Prev
-                            </a>
-                            <span class="btn-modern-primary" style="pointer-events: none;">
-                                Page <?php echo $page; ?> of <?php echo $total_pages; ?>
-                            </span>
-                            <a class="btn-modern-secondary"
-                               style="<?php echo $page >= $total_pages ? 'pointer-events: none; opacity: 0.6;' : ''; ?>"
-                               href="<?php echo 'curricullum.php?' . http_build_query(array_merge($pagination_params, ['page' => $next_page])); ?>">
-                                Next
-                            </a>
-                            <a class="btn-modern-secondary"
-                               style="<?php echo $page >= $total_pages ? 'pointer-events: none; opacity: 0.6;' : ''; ?>"
-                               href="<?php echo 'curricullum.php?' . http_build_query(array_merge($pagination_params, ['page' => $total_pages])); ?>">
-                                Last
-                            </a>
-                        </div>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($curriculums as $curriculum): ?>
+                                    <?php
+                                    $status_key = strtolower($curriculum['status'] ?? 'inactive');
+                                    $status_label = $status_labels[$status_key] ?? ucfirst($status_key);
+                                    $status_badge = $status_badges[$status_key] ?? 'bg-slate-100 text-slate-700 border border-slate-200';
+                                    $topics_count = countTopics($curriculum['topics']);
+                                    ?>
+                                    <tr class="border-t border-slate-100 align-top">
+                                        <td class="px-4 py-4" data-label="Subject">
+                                            <div class="max-w-xs">
+                                                <p class="font-semibold text-ink-900"><?php echo htmlspecialchars($curriculum['subject_name']); ?></p>
+                                                <p class="mt-1 text-slate-500"><?php echo htmlspecialchars($curriculum['grade_level'] ?: 'No grade level'); ?></p>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-4" data-label="Class / Term">
+                                            <div class="space-y-2">
+                                                <?php if (!empty($curriculum['class_name'])): ?><span class="inline-flex rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 border border-sky-100"><?php echo htmlspecialchars($curriculum['class_name']); ?></span><?php endif; ?>
+                                                <?php if (!empty($curriculum['term'])): ?><div class="text-slate-600">Term: <?php echo htmlspecialchars($curriculum['term']); ?></div><?php endif; ?>
+                                                <div class="text-slate-500">Week: <?php echo $curriculum['week'] > 0 ? (int) $curriculum['week'] : 'Not set'; ?></div>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-4" data-label="Description"><div class="max-w-md"><p class="leading-6 text-slate-700"><?php echo htmlspecialchars(mb_strimwidth((string) ($curriculum['description'] ?? ''), 0, 140, '...')); ?></p></div></td>
+                                        <td class="px-4 py-4" data-label="Topics">
+                                            <div class="space-y-2">
+                                                <span class="inline-flex rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-700"><?php echo $topics_count; ?> topic<?php echo $topics_count === 1 ? '' : 's'; ?></span>
+                                                <p class="text-xs text-slate-500">Visible subjects: <?php echo $filtered_subject_count; ?></p>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-4" data-label="Status">
+                                            <div class="space-y-2">
+                                                <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold <?php echo $status_badge; ?>"><?php echo htmlspecialchars($status_label); ?></span>
+                                                <?php if ((int) $curriculum['teacher_id'] === (int) $teacher_id): ?><p class="text-xs font-semibold text-emerald-700">Assigned to Me</p><?php endif; ?>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-4" data-label="Actions">
+                                            <div class="flex min-w-[190px] flex-col gap-2">
+                                                <button type="button" class="btn btn-outline !px-3 !py-2" onclick='viewCurriculumDetails(<?php echo htmlspecialchars(json_encode($curriculum), ENT_QUOTES, 'UTF-8'); ?>)'><i class="fas fa-eye"></i><span>View Details</span></button>
+                                                <button type="button" class="btn btn-primary !px-3 !py-2" onclick="printCurriculumItem(<?php echo (int) $curriculum['id']; ?>)"><i class="fas fa-print"></i><span>Print Item</span></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     </div>
+                    <p class="table-scroll-hint"><i class="fas fa-arrows-left-right"></i><span>Swipe sideways and scroll down to review the full curriculum table on small screens.</span></p>
                 <?php endif; ?>
-            </div>
-        <?php endif; ?>
-            </div>
+            </section>
+            <?php if (!empty($curriculums)): ?>
+                <div class="flex flex-wrap items-center justify-between gap-4 text-sm text-slate-500">
+                    <div class="flex flex-wrap gap-4">
+                        <span><i class="fas fa-database mr-2 text-teal-700"></i>Total filtered: <?php echo $total_rows; ?></span>
+                        <span><i class="fas fa-user-check mr-2 text-teal-700"></i>Assigned on page: <?php echo $assigned_on_page; ?></span>
+                        <span><i class="fas fa-layer-group mr-2 text-teal-700"></i>Showing <?php echo count($curriculums); ?> on this page</span>
+                    </div>
+                    <?php if ($total_pages > 1): ?>
+                        <div class="pagination-nav">
+                            <?php
+                            $prev_params = $pagination_params;
+                            $prev_params['page'] = $prev_page;
+                            $prev_url = 'curricullum.php?' . http_build_query($prev_params);
+                            $next_params = $pagination_params;
+                            $next_params['page'] = $next_page;
+                            $next_url = 'curricullum.php?' . http_build_query($next_params);
+                            ?>
+                            <?php if ($page > 1): ?>
+                                <a href="<?php echo htmlspecialchars($prev_url); ?>" class="btn btn-outline"><i class="fas fa-chevron-left"></i><span>Previous</span></a>
+                            <?php endif; ?>
+                            <?php foreach ($pagination_items as $pagination_item): ?>
+                                <?php if ($pagination_item === '...'): ?>
+                                    <span class="pagination-ellipsis" aria-hidden="true">...</span>
+                                <?php else: ?>
+                                    <?php $page_params = $pagination_params; $page_params['page'] = $pagination_item; $page_url = 'curricullum.php?' . http_build_query($page_params); ?>
+                                    <a href="<?php echo htmlspecialchars($page_url); ?>" class="pagination-link <?php echo $page === $pagination_item ? 'is-active' : ''; ?>"<?php echo $page === $pagination_item ? ' aria-current="page"' : ''; ?>><?php echo $pagination_item; ?></a>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                            <span class="font-semibold text-slate-600">Page <?php echo $page; ?> of <?php echo $total_pages; ?></span>
+                            <?php if ($page < $total_pages): ?>
+                                <a href="<?php echo htmlspecialchars($next_url); ?>" class="btn btn-outline"><span>Next</span><i class="fas fa-chevron-right"></i></a>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <p class="text-sm text-slate-500">Showing <?php echo $start_item; ?>-<?php echo $end_item; ?> of <?php echo $total_rows; ?> curriculum records.</p>
+            <?php endif; ?>
         </main>
     </div>
 
-    <!-- Curriculum Details Modal -->
-    <div class="modal-modern" id="curriculumModal">
-        <div class="modal-content-modern">
-            <div class="modal-header-modern">
-                <h3 class="modal-title-modern" id="modalTitle">Curriculum Details</h3>
-                <button class="modal-close-modern" onclick="closeModal()">&times;</button>
-            </div>
-            <div class="modal-body-modern" id="modalContent">
-                <!-- Content will be loaded here -->
-            </div>
-            <div class="modal-actions-modern">
-                <button class="btn-modern-secondary" onclick="closeModal()">
-                    <i class="fas fa-times"></i>
-                    <span>Close</span>
-                </button>
-            </div>
+    <div id="curriculumModal" class="workspace-modal" role="dialog" aria-modal="true" aria-labelledby="curriculumModalTitle">
+        <div class="workspace-modal-card rounded-3xl bg-white p-6 shadow-lift border border-ink-900/5">
+            <button type="button" class="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700" onclick="closeModal()">
+                <i class="fas fa-xmark"></i>
+            </button>
+            <div id="modalContent"></div>
         </div>
     </div>
 
+    <?php include '../includes/floating-button.php'; ?>
     <script>
-        // View curriculum details
+        const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
+        const sidebar = document.querySelector('[data-sidebar]');
+        const overlay = document.querySelector('[data-sidebar-overlay]');
+        const body = document.body;
+
+        const openSidebar = () => {
+            if (!sidebar || !overlay) return;
+            sidebar.classList.remove('-translate-x-full');
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+            overlay.classList.add('opacity-100');
+            body.classList.add('nav-open');
+        };
+
+        const closeSidebarShell = () => {
+            if (!sidebar || !overlay) return;
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+            overlay.classList.remove('opacity-100');
+            body.classList.remove('nav-open');
+        };
+
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', () => {
+                if (sidebar.classList.contains('-translate-x-full')) {
+                    openSidebar();
+                } else {
+                    closeSidebarShell();
+                }
+            });
+        }
+
+        if (overlay) {
+            overlay.addEventListener('click', closeSidebarShell);
+        }
+
+        if (sidebar) {
+            sidebar.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeSidebarShell));
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function formatMultilineText(value) {
+            return escapeHtml(value).replace(/\n/g, '<br>');
+        }
+
         function viewCurriculumDetails(curriculum) {
             const modal = document.getElementById('curriculumModal');
             const modalContent = document.getElementById('modalContent');
-            const modalTitle = document.getElementById('modalTitle');
+            let topicsSection = '';
 
-            let topicsHtml = '';
             if (curriculum.topics) {
-                const topics = curriculum.topics.split('\n').filter(t => t.trim());
-                topicsHtml = topics.map(topic =>
-                    `<div class="topic-item-modern">
-                        <i class="fas fa-chevron-right topic-icon-modern"></i>
-                        <span>${topic.trim()}</span>
-                    </div>`
-                ).join('');
+                const topics = curriculum.topics.split('\n').filter((topic) => topic.trim());
+                topicsSection = `
+                    <section class="mt-6 rounded-2xl border border-ink-900/10 bg-slate-50/70 p-5">
+                        <h3 class="text-lg font-semibold text-ink-900">Topics or Modules</h3>
+                        <ul class="mt-4 space-y-2 text-sm text-slate-600">
+                            ${topics.map((topic) => `<li class="flex gap-3"><i class="fas fa-chevron-right mt-1 text-teal-700"></i><span>${escapeHtml(topic.trim())}</span></li>`).join('')}
+                        </ul>
+                    </section>
+                `;
             }
 
             modalContent.innerHTML = `
-                <div class="detail-grid-modern">
-                    <div class="detail-item-modern">
-                        <div class="detail-label-modern">Subject</div>
-                        <div class="detail-value-modern">${curriculum.subject_name}</div>
-                    </div>
-                    <div class="detail-item-modern">
-                        <div class="detail-label-modern">Grade Level</div>
-                        <div class="detail-value-modern">${curriculum.grade_level}</div>
-                    </div>
-                    <div class="detail-item-modern">
-                        <div class="detail-label-modern">Class</div>
-                        <div class="detail-value-modern">${curriculum.class_name || 'Not assigned'}</div>
-                    </div>
-                    <div class="detail-item-modern">
-                        <div class="detail-label-modern">Term</div>
-                        <div class="detail-value-modern">${curriculum.term || 'Not specified'}</div>
-                    </div>
-                    <div class="detail-item-modern">
-                        <div class="detail-label-modern">Week</div>
-                        <div class="detail-value-modern">${curriculum.week || 'Not specified'}</div>
-                    </div>
-                    <div class="detail-item-modern">
-                        <div class="detail-label-modern">Duration</div>
-                        <div class="detail-value-modern">${curriculum.duration || 'Not specified'}</div>
-                    </div>
-                    <div class="detail-item-modern">
-                        <div class="detail-label-modern">Status</div>
-                        <div class="detail-value-modern">
-                            <span class="status-badge-modern ${curriculum.status === 'active' ? 'status-active' : 'status-inactive'}-modern">
-                                ${curriculum.status ? curriculum.status.charAt(0).toUpperCase() + curriculum.status.slice(1) : 'N/A'}
-                            </span>
-                        </div>
-                    </div>
+                <div class="flex flex-col gap-4 border-b border-ink-900/5 pb-5">
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-teal-700">Curriculum Details</p>
+                    <h2 id="curriculumModalTitle" class="text-2xl font-display text-ink-900">${escapeHtml(curriculum.subject_name || 'Curriculum Details')}</h2>
+                    <p class="text-sm text-slate-500">Review the full context of this curriculum item before printing or tracking delivery.</p>
                 </div>
-
-                ${curriculum.description ? `
-                    <div class="detail-item-modern">
-                        <div class="detail-label-modern">Description</div>
-                        <div class="detail-value-modern">${curriculum.description}</div>
-                    </div>
-                ` : ''}
-
-                ${curriculum.learning_objectives ? `
-                    <div class="detail-item-modern">
-                        <div class="detail-label-modern">Learning Objectives</div>
-                        <div class="detail-value-modern">${curriculum.learning_objectives}</div>
-                    </div>
-                ` : ''}
-
-                ${curriculum.resources ? `
-                    <div class="detail-item-modern">
-                        <div class="detail-label-modern">Resources</div>
-                        <div class="detail-value-modern">${curriculum.resources}</div>
-                    </div>
-                ` : ''}
-
-                ${curriculum.assessment_methods ? `
-                    <div class="detail-item-modern">
-                        <div class="detail-label-modern">Assessment Methods</div>
-                        <div class="detail-value-modern">${curriculum.assessment_methods}</div>
-                    </div>
-                ` : ''}
-
-                ${curriculum.prerequisites ? `
-                    <div class="detail-item-modern">
-                        <div class="detail-label-modern">Prerequisites</div>
-                        <div class="detail-value-modern">${curriculum.prerequisites}</div>
-                    </div>
-                ` : ''}
-
-                ${topicsHtml ? `
-                    <div class="detail-item-modern">
-                        <div class="detail-label-modern">Topics/Modules</div>
-                        <div class="topics-preview-modern">
-                            ${topicsHtml}
-                        </div>
-                    </div>
-                ` : ''}
+                <section class="mt-6 grid gap-4 md:grid-cols-2">
+                    <article class="rounded-2xl border border-ink-900/10 bg-slate-50/70 p-4"><p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Grade Level</p><p class="mt-2 text-sm font-semibold text-ink-900">${escapeHtml(curriculum.grade_level || 'Not specified')}</p></article>
+                    <article class="rounded-2xl border border-ink-900/10 bg-slate-50/70 p-4"><p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Class</p><p class="mt-2 text-sm font-semibold text-ink-900">${escapeHtml(curriculum.class_name || 'Not assigned')}</p></article>
+                    <article class="rounded-2xl border border-ink-900/10 bg-slate-50/70 p-4"><p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Term</p><p class="mt-2 text-sm font-semibold text-ink-900">${escapeHtml(curriculum.term || 'Not specified')}</p></article>
+                    <article class="rounded-2xl border border-ink-900/10 bg-slate-50/70 p-4"><p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Week</p><p class="mt-2 text-sm font-semibold text-ink-900">${escapeHtml(curriculum.week || 'Not specified')}</p></article>
+                    <article class="rounded-2xl border border-ink-900/10 bg-slate-50/70 p-4"><p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Duration</p><p class="mt-2 text-sm font-semibold text-ink-900">${escapeHtml(curriculum.duration || 'Not specified')}</p></article>
+                    <article class="rounded-2xl border border-ink-900/10 bg-slate-50/70 p-4"><p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Status</p><p class="mt-2 text-sm font-semibold text-ink-900">${escapeHtml(curriculum.status ? curriculum.status.charAt(0).toUpperCase() + curriculum.status.slice(1) : 'N/A')}</p></article>
+                </section>
+                ${curriculum.description ? `<section class="mt-6 rounded-2xl border border-ink-900/10 bg-slate-50/70 p-5"><h3 class="text-lg font-semibold text-ink-900">Description</h3><p class="mt-3 text-sm leading-6 text-slate-600">${formatMultilineText(curriculum.description)}</p></section>` : ''}
+                ${curriculum.learning_objectives ? `<section class="mt-6 rounded-2xl border border-ink-900/10 bg-slate-50/70 p-5"><h3 class="text-lg font-semibold text-ink-900">Learning Objectives</h3><p class="mt-3 text-sm leading-6 text-slate-600">${formatMultilineText(curriculum.learning_objectives)}</p></section>` : ''}
+                ${curriculum.resources ? `<section class="mt-6 rounded-2xl border border-ink-900/10 bg-slate-50/70 p-5"><h3 class="text-lg font-semibold text-ink-900">Resources</h3><p class="mt-3 text-sm leading-6 text-slate-600">${formatMultilineText(curriculum.resources)}</p></section>` : ''}
+                ${curriculum.assessment_methods ? `<section class="mt-6 rounded-2xl border border-ink-900/10 bg-slate-50/70 p-5"><h3 class="text-lg font-semibold text-ink-900">Assessment Methods</h3><p class="mt-3 text-sm leading-6 text-slate-600">${formatMultilineText(curriculum.assessment_methods)}</p></section>` : ''}
+                ${curriculum.prerequisites ? `<section class="mt-6 rounded-2xl border border-ink-900/10 bg-slate-50/70 p-5"><h3 class="text-lg font-semibold text-ink-900">Prerequisites</h3><p class="mt-3 text-sm leading-6 text-slate-600">${formatMultilineText(curriculum.prerequisites)}</p></section>` : ''}
+                ${topicsSection}
             `;
 
-            modalTitle.textContent = curriculum.subject_name;
-            modal.style.display = 'block';
+            modal.classList.add('is-open');
         }
 
-        // Close modal
         function closeModal() {
-            document.getElementById('curriculumModal').style.display = 'none';
+            document.getElementById('curriculumModal').classList.remove('is-open');
         }
 
-        // Print curriculum item
         function printCurriculumItem(id) {
             window.open(`../admin/print_curriculum.php?id=${id}`, '_blank');
         }
 
-        // Print all curriculum
         function printCurriculum() {
             const params = new URLSearchParams(window.location.search);
             window.open(`../admin/print_curriculum.php?${params.toString()}`, '_blank');
         }
 
-        // Export curriculum
         function exportCurriculum() {
             const params = new URLSearchParams(window.location.search);
             window.open(`../admin/export_curriculum.php?${params.toString()}`, '_blank');
         }
 
-        // View analytics
         function viewAnalytics() {
             window.location.href = 'curriculum-analytics.php';
         }
 
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('curriculumModal');
-            if (event.target === modal) {
+        document.getElementById('curriculumModal').addEventListener('click', function(event) {
+            if (event.target === this) {
                 closeModal();
             }
-        }
+        });
 
-        // Keyboard shortcuts
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 closeModal();
             }
         });
-
-        // Header scroll effect
-        window.addEventListener('scroll', () => {
-            const header = document.querySelector('.dashboard-header');
-            if (!header) return;
-            if (window.scrollY > 50) {
-                header.classList.add('scrolled');
-            } else {
-                header.classList.remove('scrolled');
-            }
-        });
-
-        // Add entrance animations on scroll
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
-        };
-
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                }
-            });
-        }, observerOptions);
-
-        // Observe all animated elements
-        document.querySelectorAll('.animate-fade-in-up, .animate-slide-in-left, .animate-slide-in-right').forEach(el => {
-            el.style.opacity = '0';
-            el.style.transform = 'translateY(30px)';
-            el.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
-            observer.observe(el);
-        });
     </script>
-
-    <?php include '../includes/floating-button.php'; ?>
-
 </body>
 </html>

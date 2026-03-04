@@ -1,0 +1,317 @@
+/* Shared teacher workspace styles aligned with the questions page shell. */
+[data-sidebar] {
+    overflow: hidden;
+}
+
+.sidebar-scroll-shell {
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.workspace-page {
+    overflow-x: hidden;
+}
+
+.workspace-page .container,
+.workspace-page main,
+.workspace-page section,
+.workspace-page article,
+.workspace-page form,
+.workspace-page label,
+.workspace-page div,
+.workspace-page p {
+    min-width: 0;
+}
+
+.workspace-page .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+.workspace-page .nav-wrap {
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 0.85rem;
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+}
+
+.workspace-page .nav-wrap > :first-child {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.workspace-header-actions {
+    width: auto;
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+}
+
+.workspace-header-actions .btn {
+    width: auto;
+    justify-content: center;
+    padding: 0.5rem 0.85rem;
+    font-size: 0.8125rem;
+}
+
+.workspace-hero {
+    padding: 1.25rem;
+    background:
+        radial-gradient(circle at top right, rgba(248, 198, 102, 0.26), transparent 28%),
+        linear-gradient(135deg, #0f766e 0%, #0f766e 18%, #0f172a 100%);
+}
+
+.workspace-hero,
+.workspace-hero h1,
+.workspace-hero h2,
+.workspace-hero h3,
+.workspace-hero p {
+    color: #fff;
+}
+
+.workspace-hero h1 {
+    font-size: 1.95rem;
+    line-height: 1.15;
+}
+
+.workspace-hero-actions {
+    grid-template-columns: 1fr;
+}
+
+.workspace-page .workspace-hero-actions > a,
+.workspace-page .workspace-hero-actions > button,
+.workspace-page .workspace-header-actions > a {
+    min-width: 0;
+}
+
+.workspace-metrics-grid {
+    grid-template-columns: 1fr;
+}
+
+.workspace-metric-card {
+    display: grid;
+    gap: 0.45rem;
+    border: 1px solid rgba(15, 31, 45, 0.06);
+    border-radius: 1.35rem;
+    background: #f8fbfb;
+    padding: 1rem;
+    box-shadow: 0 10px 24px rgba(15, 31, 45, 0.06);
+}
+
+.workspace-metric-icon {
+    display: inline-flex;
+    width: 3rem;
+    height: 3rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.workspace-table-wrapper {
+    overflow-x: auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.workspace-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f8fafc;
+}
+
+.table-scroll-hint {
+    display: none;
+}
+
+.pagination-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pagination-link,
+.pagination-ellipsis {
+    display: inline-flex;
+    min-width: 2.5rem;
+    height: 2.5rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.pagination-link {
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: #fff;
+    color: #334155;
+    transition: all 0.2s ease;
+}
+
+.pagination-link:hover {
+    border-color: rgba(13, 148, 136, 0.35);
+    color: #0f766e;
+    background: rgba(240, 253, 250, 0.9);
+}
+
+.pagination-link.is-active {
+    border-color: #0f766e;
+    background: #0f766e;
+    color: #fff;
+    box-shadow: 0 10px 24px rgba(15, 118, 110, 0.18);
+}
+
+.pagination-ellipsis {
+    color: #94a3b8;
+}
+
+.workspace-modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(15, 23, 42, 0.6);
+    z-index: 60;
+}
+
+.workspace-modal.is-open {
+    display: flex;
+}
+
+.workspace-modal-card {
+    width: min(860px, 100%);
+    max-height: 90vh;
+    overflow: auto;
+}
+
+@media (max-width: 767px) {
+    .workspace-page .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    main > section,
+    .workspace-modal-card {
+        border-radius: 1.25rem !important;
+    }
+
+    main > section {
+        padding: 1rem !important;
+    }
+
+    .workspace-table-wrapper {
+        overflow: auto;
+        max-height: min(65vh, 30rem);
+        border-radius: 1rem;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        background: #fff;
+    }
+
+    .workspace-table {
+        min-width: 980px !important;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .table-scroll-hint {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        margin-top: 0.75rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #64748b;
+    }
+
+    .pagination-nav {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 640px) {
+    .workspace-modal {
+        padding: 0.75rem;
+    }
+
+    .rounded-3xl,
+    .rounded-2xl {
+        border-radius: 1rem !important;
+    }
+
+    h1.text-3xl,
+    h2.text-2xl {
+        line-height: 1.2;
+    }
+}
+
+@media (min-width: 640px) {
+    .workspace-page .container {
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+    }
+
+    .workspace-hero {
+        padding: 1.5rem 2rem;
+    }
+
+    .workspace-hero-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .workspace-metrics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 768px) {
+    .workspace-hero h1 {
+        font-size: 2.4rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .workspace-page .nav-wrap {
+        gap: 1rem;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+
+    .workspace-header-actions {
+        gap: 0.75rem;
+    }
+
+    .workspace-header-actions .btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+    }
+
+    .workspace-hero {
+        padding: 1.75rem 2rem;
+    }
+}
+
+@media (min-width: 1200px) {
+    .workspace-page .container {
+        padding-left: 2.75rem;
+        padding-right: 2.75rem;
+    }
+}
+
+@media (min-width: 1280px) {
+    .workspace-metrics-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+}
