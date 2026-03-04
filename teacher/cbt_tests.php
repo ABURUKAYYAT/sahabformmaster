@@ -318,388 +318,73 @@ $tests_stmt = $pdo->prepare("
 ");
 $tests_stmt->execute([$teacher_id, $current_school_id]);
 $tests = $tests_stmt->fetchAll();
+$teacher_name = $_SESSION['full_name'] ?? 'Teacher';
+$status_labels = [
+    'draft' => 'Draft',
+    'published' => 'Published',
+    'closed' => 'Closed',
+];
+$status_badge_classes = [
+    'draft' => 'is-draft',
+    'published' => 'is-published',
+    'closed' => 'is-closed',
+];
+$format_datetime = static function (?string $value, string $format = 'd M Y, h:i A'): string {
+    if (empty($value)) {
+        return 'Not scheduled';
+    }
+
+    $timestamp = strtotime($value);
+    if ($timestamp === false) {
+        return 'Not scheduled';
+    }
+
+    return date($format, $timestamp);
+};
+$get_status_badge_class = static function (?string $status) use ($status_badge_classes): string {
+    $status_key = strtolower((string)$status);
+    return $status_badge_classes[$status_key] ?? 'is-draft';
+};
+
+$is_editor = in_array($action, ['create', 'edit'], true);
+$total_tests = count($tests);
+$published_tests = 0;
+$draft_tests = 0;
+$closed_tests = 0;
+$scheduled_tests = 0;
+$total_test_questions = 0;
+$total_submissions = 0;
+$current_test_submission_count = 0;
+
+foreach ($tests as $listed_test) {
+    $status_key = strtolower((string)($listed_test['status'] ?? 'draft'));
+    if ($status_key === 'published') {
+        $published_tests += 1;
+    } elseif ($status_key === 'closed') {
+        $closed_tests += 1;
+    } else {
+        $draft_tests += 1;
+    }
+
+    if (!empty($listed_test['starts_at']) || !empty($listed_test['ends_at'])) {
+        $scheduled_tests += 1;
+    }
+
+    $total_test_questions += (int)($listed_test['question_count'] ?? 0);
+    $total_submissions += (int)($listed_test['submitted_count'] ?? 0);
+
+    if ((int)($listed_test['id'] ?? 0) === $test_id) {
+        $current_test_submission_count = (int)($listed_test['submitted_count'] ?? 0);
+    }
+}
+
+$current_question_count = count($questions);
+$bank_question_count = count($bank_questions);
+$page_title = $is_editor
+    ? ($action === 'create' ? 'Create CBT Test' : 'Build CBT Test')
+    : 'CBT Test Workspace';
+$page_summary = $is_editor
+    ? 'Configure timing, question flow, and publication status using the same structured workspace as the question bank.'
+    : 'Create, schedule, publish, and monitor computer-based tests from a single teacher assessment workspace.';
 ?>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CBT Tests - Teacher</title>
-    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
-    <link rel="stylesheet" href="../assets/css/cbt-schoolfeed-theme.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body>
-<?php include '../includes/mobile_navigation.php'; ?>
-
-<header class="dashboard-header">
-    <div class="header-container">
-        <div class="header-left">
-            <div class="school-logo-container">
-                <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
-                <div class="school-info">
-                    <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
-                    <p class="school-tagline">CBT Tests</p>
-                </div>
-            </div>
-        </div>
-        <div class="header-right">
-            <div class="teacher-info">
-                <p class="teacher-label">Teacher</p>
-                <span class="teacher-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Teacher'); ?></span>
-            </div>
-            <a href="logout.php" class="btn-logout">
-                <i class="fas fa-sign-out-alt"></i>
-                <span>Logout</span>
-            </a>
-        </div>
-    </div>
-</header>
-
-<div class="dashboard-container">
-    <?php include '../includes/teacher_sidebar.php'; ?>
-    <main class="main-content">
-        <div class="main-container">
-        <div class="content-header">
-            <div class="welcome-section">
-                <h2>CBT Tests</h2>
-                <p>Create tests, add questions, and review results.</p>
-            </div>
-            <div class="header-actions">
-                <a href="cbt_tests.php?action=create" class="btn-modern-primary">
-                    <i class="fas fa-plus-circle"></i>
-                    <span>New Test</span>
-                </a>
-                <a href="cbt_results.php" class="btn-modern-outline">
-                    <i class="fas fa-chart-bar"></i>
-                    <span>Results</span>
-                </a>
-            </div>
-        </div>
-
-        <?php if ($message): ?>
-            <div class="alert alert-success" style="margin-bottom: 1rem;">
-                <?php echo htmlspecialchars($message); ?>
-            </div>
-        <?php endif; ?>
-        <?php if ($error): ?>
-            <div class="alert alert-danger" style="margin-bottom: 1rem;">
-                <?php echo htmlspecialchars($error); ?>
-            </div>
-        <?php endif; ?>
-        <div id="cbt-offline-status" style="display:none;"></div>
-
-        <?php if ($action === 'create' || $action === 'edit'): ?>
-            <div class="form-page-modern">
-                <div class="form-card-modern">
-                    <div class="form-header-modern">
-                        <div class="form-title-modern">
-                            <i class="fas fa-file-alt"></i>
-                            <?php echo $action === 'create' ? 'Create Test' : 'Edit Test'; ?>
-                        </div>
-                    </div>
-                    <div class="form-body-modern">
-                        <form method="POST">
-                            <input type="hidden" name="save_test" value="1">
-                            <div class="form-row-modern">
-                                <div class="form-group-modern">
-                                    <label class="form-label-modern">Title</label>
-                                    <input type="text" class="form-input-modern" name="title" value="<?php echo htmlspecialchars($test['title'] ?? ''); ?>" required>
-                                </div>
-                                <div class="form-group-modern">
-                                    <label class="form-label-modern">Class</label>
-                                    <select class="form-input-modern" name="class_id" required>
-                                        <option value="">Select</option>
-                                        <?php foreach ($classes as $c): ?>
-                                            <option value="<?php echo $c['id']; ?>" <?php echo ($test['class_id'] ?? '') == $c['id'] ? 'selected' : ''; ?>>
-                                                <?php echo htmlspecialchars($c['class_name']); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="form-row-modern">
-                                <div class="form-group-modern">
-                                    <label class="form-label-modern">Subject</label>
-                                    <select class="form-input-modern" name="subject_id" required>
-                                        <option value="">Select</option>
-                                        <?php foreach ($subjects as $s): ?>
-                                            <option value="<?php echo $s['id']; ?>" <?php echo ($test['subject_id'] ?? '') == $s['id'] ? 'selected' : ''; ?>>
-                                                <?php echo htmlspecialchars($s['subject_name']); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <div class="form-group-modern">
-                                    <label class="form-label-modern">Duration (minutes)</label>
-                                    <input type="number" class="form-input-modern" name="duration_minutes" min="5" value="<?php echo htmlspecialchars($test['duration_minutes'] ?? 30); ?>">
-                                </div>
-                            </div>
-
-                            <div class="form-row-modern">
-                                <div class="form-group-modern">
-                                    <label class="form-label-modern">Starts At</label>
-                                    <input type="datetime-local" class="form-input-modern" name="starts_at" value="<?php echo !empty($test['starts_at']) ? date('Y-m-d\TH:i', strtotime($test['starts_at'])) : ''; ?>">
-                                </div>
-                                <div class="form-group-modern">
-                                    <label class="form-label-modern">Ends At</label>
-                                    <input type="datetime-local" class="form-input-modern" name="ends_at" value="<?php echo !empty($test['ends_at']) ? date('Y-m-d\TH:i', strtotime($test['ends_at'])) : ''; ?>">
-                                </div>
-                            </div>
-
-                            <div class="form-row-modern">
-                                <div class="form-group-modern">
-                                    <label class="form-label-modern">Status</label>
-                                    <select class="form-input-modern" name="status">
-                                        <option value="draft" <?php echo ($test['status'] ?? '') === 'draft' ? 'selected' : ''; ?>>Draft</option>
-                                        <option value="published" <?php echo ($test['status'] ?? '') === 'published' ? 'selected' : ''; ?>>Published</option>
-                                        <option value="closed" <?php echo ($test['status'] ?? '') === 'closed' ? 'selected' : ''; ?>>Closed</option>
-                                    </select>
-                                    <small class="text-muted">Only tests with status <strong>Published</strong> are shown to students.</small>
-                                </div>
-                            </div>
-
-                            <div class="d-flex justify-content-between align-items-center mt-4">
-                                <a href="cbt_tests.php" class="btn-modern-outline">
-                                    <i class="fas fa-arrow-left"></i>
-                                    <span>Back</span>
-                                </a>
-                                <button type="submit" class="btn-modern-primary">
-                                    <i class="fas fa-save"></i>
-                                    <span>Save Test</span>
-                                </button>
-                            </div>
-                        </form>
-
-                        <?php if ($action === 'edit' && !empty($test['id'])): ?>
-                            <div class="d-flex justify-content-end align-items-center mt-3" style="gap: 0.75rem;">
-                                <?php if (($test['status'] ?? '') !== 'published'): ?>
-                                    <form method="POST" style="display: inline;">
-                                        <input type="hidden" name="set_test_status" value="1">
-                                        <input type="hidden" name="target_test_id" value="<?php echo (int)$test['id']; ?>">
-                                        <input type="hidden" name="target_status" value="published">
-                                        <input type="hidden" name="redirect_mode" value="edit">
-                                        <button type="submit" class="btn-modern-primary">
-                                            <i class="fas fa-bullhorn"></i>
-                                            <span>Publish Now</span>
-                                        </button>
-                                    </form>
-                                <?php else: ?>
-                                    <form method="POST" style="display: inline;">
-                                        <input type="hidden" name="set_test_status" value="1">
-                                        <input type="hidden" name="target_test_id" value="<?php echo (int)$test['id']; ?>">
-                                        <input type="hidden" name="target_status" value="draft">
-                                        <input type="hidden" name="redirect_mode" value="edit">
-                                        <button type="submit" class="btn-modern-outline">
-                                            <i class="fas fa-eye-slash"></i>
-                                            <span>Move to Draft</span>
-                                        </button>
-                                    </form>
-                                <?php endif; ?>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-
-                <?php if ($action === 'edit' && $test_id > 0): ?>
-                    <div class="form-card-modern">
-                        <div class="form-header-modern">
-                            <div class="form-title-modern">
-                                <i class="fas fa-question-circle"></i>
-                                Add Question
-                            </div>
-                        </div>
-                        <div class="form-body-modern">
-                            <form method="POST">
-                                <input type="hidden" name="add_question" value="1">
-                                <div class="form-group-modern">
-                                    <label class="form-label-modern">Question</label>
-                                    <textarea class="form-input-modern" name="question_text" rows="3" required></textarea>
-                                </div>
-                                <div class="form-row-modern">
-                                    <div class="form-group-modern">
-                                        <label class="form-label-modern">Option A</label>
-                                        <input type="text" class="form-input-modern" name="option_a" required>
-                                    </div>
-                                    <div class="form-group-modern">
-                                        <label class="form-label-modern">Option B</label>
-                                        <input type="text" class="form-input-modern" name="option_b" required>
-                                    </div>
-                                </div>
-                                <div class="form-row-modern">
-                                    <div class="form-group-modern">
-                                        <label class="form-label-modern">Option C</label>
-                                        <input type="text" class="form-input-modern" name="option_c" required>
-                                    </div>
-                                    <div class="form-group-modern">
-                                        <label class="form-label-modern">Option D</label>
-                                        <input type="text" class="form-input-modern" name="option_d" required>
-                                    </div>
-                                </div>
-                                <div class="form-group-modern">
-                                    <label class="form-label-modern">Correct Option</label>
-                                    <select class="form-input-modern" name="correct_option">
-                                        <option value="A">A</option>
-                                        <option value="B">B</option>
-                                        <option value="C">C</option>
-                                        <option value="D">D</option>
-                                    </select>
-                                </div>
-
-                                <div class="d-flex justify-content-between align-items-center mt-4">
-                                    <div></div>
-                                    <button type="submit" class="btn-modern-primary">
-                                        <i class="fas fa-plus"></i>
-                                        <span>Add Question</span>
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
-                    <div class="form-card-modern">
-                        <div class="form-header-modern">
-                            <div class="form-title-modern">
-                                <i class="fas fa-database"></i>
-                                Import From Question Bank
-                            </div>
-                        </div>
-                        <div class="form-body-modern">
-                            <?php if (count($bank_questions) === 0): ?>
-                                <p>No matching questions in bank for this class/subject.</p>
-                            <?php else: ?>
-                                <form method="POST">
-                                    <input type="hidden" name="import_questions" value="1">
-                                    <div style="max-height: 260px; overflow: auto; border: 1px solid #e5e7eb; padding: 1rem; border-radius: 8px;">
-                                        <?php foreach ($bank_questions as $bq): ?>
-                                            <label style="display:block; margin-bottom: 0.75rem;">
-                                                <input type="checkbox" name="question_ids[]" value="<?php echo $bq['id']; ?>">
-                                                <strong><?php echo htmlspecialchars($bq['question_text']); ?></strong>
-                                                <small style="color:#6b7280;">(<?php echo htmlspecialchars($bq['difficulty_level']); ?>)</small>
-                                            </label>
-                                        <?php endforeach; ?>
-                                    </div>
-                                    <div class="d-flex justify-content-between align-items-center mt-4">
-                                        <div></div>
-                                        <button type="submit" class="btn-modern-primary">
-                                            <i class="fas fa-download"></i>
-                                            <span>Import Selected</span>
-                                        </button>
-                                    </div>
-                                </form>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-
-                    <div class="modern-card">
-                        <div class="card-header-modern">
-                            <h4>Questions</h4>
-                        </div>
-                        <div class="card-body-modern">
-                            <?php if (count($questions) === 0): ?>
-                                <p>No questions yet.</p>
-                            <?php else: ?>
-                                <ol>
-                                    <?php foreach ($questions as $q): ?>
-                                        <li style="margin-bottom: 1rem;">
-                                            <strong><?php echo htmlspecialchars($q['question_text']); ?></strong>
-                                            <div>A. <?php echo htmlspecialchars($q['option_a']); ?></div>
-                                            <div>B. <?php echo htmlspecialchars($q['option_b']); ?></div>
-                                            <div>C. <?php echo htmlspecialchars($q['option_c']); ?></div>
-                                            <div>D. <?php echo htmlspecialchars($q['option_d']); ?></div>
-                                            <div>Correct: <?php echo htmlspecialchars($q['correct_option']); ?></div>
-                                            <a href="cbt_tests.php?action=edit&id=<?php echo $test_id; ?>&delete_q=<?php echo $q['id']; ?>" class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete question?')">Delete</a>
-                                        </li>
-                                    <?php endforeach; ?>
-                                </ol>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                <?php endif; ?>
-            </div>
-
-        <?php else: ?>
-            <div class="modern-card">
-                <div class="card-body-modern">
-                    <table class="table-modern">
-                        <thead>
-                        <tr>
-                            <th>Title</th>
-                            <th>Class</th>
-                            <th>Subject</th>
-                            <th>Schedule</th>
-                            <th>Duration</th>
-                            <th>Questions</th>
-                            <th>Submissions</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <?php foreach ($tests as $t): ?>
-                            <tr>
-                                <td><?php echo htmlspecialchars($t['title']); ?></td>
-                                <td><?php echo htmlspecialchars($t['class_name']); ?></td>
-                                <td><?php echo htmlspecialchars($t['subject_name']); ?></td>
-                                <td>
-                                    <?php if (!empty($t['starts_at'])): ?>
-                                        <?php echo date('M d, Y H:i', strtotime($t['starts_at'])); ?>
-                                        <?php if (!empty($t['ends_at'])): ?>
-                                            <br><small>to <?php echo date('M d, Y H:i', strtotime($t['ends_at'])); ?></small>
-                                        <?php endif; ?>
-                                    <?php else: ?>
-                                        <span class="text-muted">No schedule</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?php echo intval($t['duration_minutes']); ?> mins</td>
-                                <td><?php echo (int)$t['question_count']; ?></td>
-                                <td><?php echo (int)$t['submitted_count']; ?></td>
-                                <td><?php echo htmlspecialchars($t['status']); ?></td>
-                                <td>
-                                    <a href="cbt_tests.php?action=edit&id=<?php echo $t['id']; ?>" class="btn btn-sm btn-outline-primary">Edit</a>
-                                    <?php if (($t['status'] ?? '') !== 'published'): ?>
-                                        <form method="POST" style="display:inline-block; margin-left: 0.35rem;">
-                                            <input type="hidden" name="set_test_status" value="1">
-                                            <input type="hidden" name="target_test_id" value="<?php echo (int)$t['id']; ?>">
-                                            <input type="hidden" name="target_status" value="published">
-                                            <input type="hidden" name="redirect_mode" value="list">
-                                            <button type="submit" class="btn btn-sm btn-success" <?php echo ((int)$t['question_count'] <= 0) ? 'disabled title="Add questions before publishing"' : ''; ?>>
-                                                Publish
-                                            </button>
-                                        </form>
-                                    <?php else: ?>
-                                        <form method="POST" style="display:inline-block; margin-left: 0.35rem;">
-                                            <input type="hidden" name="set_test_status" value="1">
-                                            <input type="hidden" name="target_test_id" value="<?php echo (int)$t['id']; ?>">
-                                            <input type="hidden" name="target_status" value="draft">
-                                            <input type="hidden" name="redirect_mode" value="list">
-                                            <button type="submit" class="btn btn-sm btn-warning">Move to Draft</button>
-                                        </form>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        <?php endif; ?>
-        </div>
-    </main>
-</div>
-
-<?php include '../includes/floating-button.php'; ?>
-<script src="../assets/js/cbt-offline-sync.js"></script>
-<script>
-    CBTOfflineSync.init({
-        queueKey: 'cbt_teacher_offline_queue_v1',
-        formSelector: 'form[method="POST"], form[method="post"]',
-        statusElementId: 'cbt-offline-status',
-        statusPrefix: 'Teacher CBT Sync:',
-        swPath: '../cbt-sw.js'
-    });
-</script>
-</body>
-</html>
+<?php include '../includes/teacher_cbt_tests_page.php'; ?>

@@ -26,114 +26,58 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$teacher_id, $current_school_id]);
 $attempts = $stmt->fetchAll();
+$teacher_name = $_SESSION['full_name'] ?? 'Teacher';
+$format_datetime = static function (?string $value, string $format = 'd M Y, h:i A'): string {
+    if (empty($value)) {
+        return '-';
+    }
+
+    $timestamp = strtotime($value);
+    if ($timestamp === false) {
+        return '-';
+    }
+
+    return date($format, $timestamp);
+};
+$get_score_badge_class = static function (float $percent): string {
+    if ($percent >= 70) {
+        return 'is-high';
+    }
+
+    if ($percent >= 50) {
+        return 'is-mid';
+    }
+
+    return 'is-low';
+};
+
+$attempt_count = count($attempts);
+$student_ids = [];
+$test_ids = [];
+$total_percent = 0.0;
+$highest_percent = 0.0;
+$highest_score_label = 'No submissions yet';
+
+foreach ($attempts as &$attempt) {
+    $total_questions = (int)($attempt['total_questions'] ?? 0);
+    $score = (int)($attempt['score'] ?? 0);
+    $attempt['percent'] = $total_questions > 0 ? round(($score / $total_questions) * 100, 1) : 0.0;
+    $student_ids[] = (int)($attempt['student_id'] ?? 0);
+    $test_ids[] = (int)($attempt['test_id'] ?? 0);
+    $total_percent += $attempt['percent'];
+
+    if ($attempt['percent'] >= $highest_percent) {
+        $highest_percent = $attempt['percent'];
+        $highest_score_label = trim((string)($attempt['full_name'] ?? '')) !== ''
+            ? $attempt['full_name'] . ' - ' . $attempt['percent'] . '%'
+            : $attempt['percent'] . '%';
+    }
+}
+unset($attempt);
+
+$average_percent = $attempt_count > 0 ? round($total_percent / $attempt_count, 1) : 0.0;
+$student_count = count(array_unique(array_filter($student_ids)));
+$test_count = count(array_unique(array_filter($test_ids)));
+$latest_submission = $attempts[0]['submitted_at'] ?? null;
 ?>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CBT Results - Teacher</title>
-    <link rel="stylesheet" href="../assets/css/teacher-dashboard.css">
-    <link rel="stylesheet" href="../assets/css/cbt-schoolfeed-theme.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body>
-<?php include '../includes/mobile_navigation.php'; ?>
-
-<header class="dashboard-header">
-    <div class="header-container">
-        <div class="header-left">
-            <div class="school-logo-container">
-                <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
-                <div class="school-info">
-                    <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
-                    <p class="school-tagline">CBT Results</p>
-                </div>
-            </div>
-        </div>
-        <div class="header-right">
-            <div class="teacher-info">
-                <p class="teacher-label">Teacher</p>
-                <span class="teacher-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Teacher'); ?></span>
-            </div>
-            <a href="logout.php" class="btn-logout">
-                <i class="fas fa-sign-out-alt"></i>
-                <span>Logout</span>
-            </a>
-        </div>
-    </div>
-</header>
-
-<div class="dashboard-container">
-    <?php include '../includes/teacher_sidebar.php'; ?>
-    <main class="main-content">
-        <div class="main-container">
-        <div class="content-header">
-            <div class="welcome-section">
-                <h2>CBT Results</h2>
-                <p>Review student scores and submissions.</p>
-            </div>
-            <div class="header-actions">
-                <a href="cbt_tests.php" class="btn-modern-outline">
-                    <i class="fas fa-arrow-left"></i>
-                    <span>Back to Tests</span>
-                </a>
-            </div>
-        </div>
-        <div id="cbt-offline-status" style="display:none;"></div>
-
-        <div class="modern-card">
-            <div class="card-body-modern">
-                <table class="table-modern">
-                    <thead>
-                    <tr>
-                        <th>Student</th>
-                        <th>Test</th>
-                        <th>Class</th>
-                        <th>Subject</th>
-                        <th>Score</th>
-                        <th>Percent</th>
-                        <th>Submitted</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <?php if (empty($attempts)): ?>
-                        <tr>
-                            <td colspan="7">No submitted CBT attempts yet.</td>
-                        </tr>
-                    <?php else: ?>
-                        <?php foreach ($attempts as $a): ?>
-                            <?php $percent = ((int)$a['total_questions'] > 0) ? round(((int)$a['score'] / (int)$a['total_questions']) * 100, 1) : 0; ?>
-                            <tr>
-                                <td><?php echo htmlspecialchars($a['full_name']); ?></td>
-                                <td><?php echo htmlspecialchars($a['title']); ?></td>
-                                <td><?php echo htmlspecialchars($a['class_name']); ?></td>
-                                <td><?php echo htmlspecialchars($a['subject_name']); ?></td>
-                                <td><?php echo intval($a['score']); ?> / <?php echo intval($a['total_questions']); ?></td>
-                                <td><?php echo $percent; ?>%</td>
-                                <td><?php echo $a['submitted_at'] ? date('M d, Y H:i', strtotime($a['submitted_at'])) : '-'; ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        </div>
-    </main>
-</div>
-
-<?php include '../includes/floating-button.php'; ?>
-<script src="../assets/js/cbt-offline-sync.js"></script>
-<script>
-    CBTOfflineSync.init({
-        queueKey: 'cbt_teacher_offline_queue_v1',
-        formSelector: 'form[data-offline-sync="true"]',
-        statusElementId: 'cbt-offline-status',
-        statusPrefix: 'Teacher CBT Sync:',
-        swPath: '../cbt-sw.js'
-    });
-</script>
-</body>
-</html>
+<?php include '../includes/teacher_cbt_results_page.php'; ?>
