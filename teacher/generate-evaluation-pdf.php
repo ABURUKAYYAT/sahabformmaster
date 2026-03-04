@@ -13,24 +13,80 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'teacher') {
 // School authentication and context
 $current_school_id = require_school_auth();
 
-$teacher_id = $_SESSION['user_id'];
+$teacher_id = (int)$_SESSION['user_id'];
 $teacher_name = $_SESSION['full_name'];
+$rating_options = ['excellent', 'very-good', 'good', 'needs-improvement'];
+$term_options = ['1', '2', '3'];
+
+$search = trim((string)($_GET['search'] ?? ''));
+$class_filter = trim((string)($_GET['class_filter'] ?? ''));
+$term_filter = trim((string)($_GET['term_filter'] ?? ''));
+$year_filter = trim((string)($_GET['year_filter'] ?? ''));
+$rating_filter = trim((string)($_GET['rating_filter'] ?? ''));
 
 // Fetch school profile - filtered by school_id
 $stmt = $pdo->prepare("SELECT * FROM school_profile WHERE school_id = ?");
 $stmt->execute([$current_school_id]);
 $school = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// Fetch evaluations created by this teacher - filtered by school
+// Fetch evaluations created by this teacher - filtered by school and current workspace filters
+$base_sql = "
+    FROM evaluations e
+    JOIN students s
+        ON e.student_id = s.id
+    JOIN classes c
+        ON e.class_id = c.id
+    WHERE e.teacher_id = ?
+      AND s.school_id = ?
+      AND c.school_id = ?
+      AND (e.school_id = ? OR e.school_id IS NULL)
+";
+
+$params = [$teacher_id, $current_school_id, $current_school_id, $current_school_id];
+$filter_sql = '';
+
+if ($search !== '') {
+    $filter_sql .= " AND (s.full_name LIKE ? OR s.admission_no LIKE ? OR e.comments LIKE ?)";
+    $search_like = '%' . $search . '%';
+    $params[] = $search_like;
+    $params[] = $search_like;
+    $params[] = $search_like;
+}
+
+if ($class_filter !== '' && ctype_digit($class_filter)) {
+    $filter_sql .= " AND e.class_id = ?";
+    $params[] = (int)$class_filter;
+}
+
+if (in_array($term_filter, $term_options, true)) {
+    $filter_sql .= " AND e.term = ?";
+    $params[] = $term_filter;
+}
+
+if ($year_filter !== '' && preg_match('/^\d{4}$/', $year_filter)) {
+    $filter_sql .= " AND e.academic_year = ?";
+    $params[] = $year_filter;
+}
+
+if (in_array($rating_filter, $rating_options, true)) {
+    $filter_sql .= "
+        AND (
+            e.academic = ?
+            OR e.non_academic = ?
+            OR e.cognitive = ?
+            OR e.psychomotor = ?
+            OR e.affective = ?
+        )
+    ";
+    $params = array_merge($params, array_fill(0, 5, $rating_filter));
+}
+
 $stmt = $pdo->prepare("
     SELECT e.*, s.full_name, s.class_id, s.admission_no, c.class_name
-    FROM evaluations e
-    JOIN students s ON e.student_id = s.id
-    JOIN classes c ON e.class_id = c.id
-    WHERE e.teacher_id = ? AND s.school_id = ? AND c.school_id = ?
+    " . $base_sql . $filter_sql . "
     ORDER BY c.class_name, s.full_name, e.term DESC, e.academic_year DESC
 ");
-$stmt->execute([$teacher_id, $current_school_id, $current_school_id]);
+$stmt->execute($params);
 $evaluations = $stmt->fetchAll();
 
 // Calculate statistics
