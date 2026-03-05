@@ -15,6 +15,7 @@ $current_school_id = require_school_auth();
 $student_id = $_POST['student_id'] ?? null;
 $class_id = $_POST['class_id'] ?? null;
 $term = $_POST['term'] ?? null;
+$academic_session = trim((string) ($_POST['academic_session'] ?? ''));
 
 if (!$student_id || !$class_id || !$term) {
     die("Invalid request parameters.");
@@ -40,10 +41,22 @@ $stmt = $pdo->prepare("
     SELECT r.*, sub.subject_name
     FROM results r
     JOIN subjects sub ON r.subject_id = sub.id
-    WHERE r.student_id = :student_id AND r.term = :term AND sub.school_id = :school_id
+    WHERE r.student_id = :student_id
+      AND r.term = :term
+      AND sub.school_id = :school_id
+      AND (
+        :academic_session_filter = ''
+        OR LOWER(TRIM(COALESCE(r.academic_session, ''))) = LOWER(TRIM(:academic_session_match))
+      )
     ORDER BY sub.subject_name
 ");
-$stmt->execute(['student_id' => $student_id, 'term' => $term, 'school_id' => $current_school_id]);
+$stmt->execute([
+    'student_id' => $student_id,
+    'term' => $term,
+    'school_id' => $current_school_id,
+    'academic_session_filter' => $academic_session,
+    'academic_session_match' => $academic_session
+]);
 $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Calculate class statistics - filtered by school_id
@@ -54,9 +67,21 @@ $stmt = $pdo->prepare("
            MIN(r.total_ca + r.exam) as lowest_score
     FROM results r
     JOIN students s ON r.student_id = s.id
-    WHERE s.class_id = :class_id AND r.term = :term AND s.school_id = :school_id
+    WHERE s.class_id = :class_id
+      AND r.term = :term
+      AND s.school_id = :school_id
+      AND (
+        :academic_session_filter = ''
+        OR LOWER(TRIM(COALESCE(r.academic_session, ''))) = LOWER(TRIM(:academic_session_match))
+      )
 ");
-$stmt->execute(['class_id' => $class_id, 'term' => $term, 'school_id' => $current_school_id]);
+$stmt->execute([
+    'class_id' => $class_id,
+    'term' => $term,
+    'school_id' => $current_school_id,
+    'academic_session_filter' => $academic_session,
+    'academic_session_match' => $academic_session
+]);
 $class_stats = $stmt->fetch(PDO::FETCH_ASSOC);
 
 // Calculate student's position in class
@@ -69,12 +94,20 @@ if (!empty($results)) {
             JOIN students s ON r.student_id = s.id
             WHERE s.class_id = :class_id AND r.term = :term
               AND s.school_id = :school_id AND r.school_id = :school_id_result
+              AND (
+                :academic_session_rank_filter = ''
+                OR LOWER(TRIM(COALESCE(r.academic_session, ''))) = LOWER(TRIM(:academic_session_rank_match))
+              )
             GROUP BY r.student_id
         ) student_averages
         WHERE student_averages.avg_score > (
             SELECT AVG(r2.total_ca + r2.exam)
             FROM results r2
             WHERE r2.student_id = :student_id AND r2.term = :term_student AND r2.school_id = :school_id_student_result
+              AND (
+                :academic_session_student_filter = ''
+                OR LOWER(TRIM(COALESCE(r2.academic_session, ''))) = LOWER(TRIM(:academic_session_student_match))
+              )
         )
     ");
     $stmt->execute([
@@ -84,7 +117,11 @@ if (!empty($results)) {
         'term_student' => $term,
         'school_id' => $current_school_id,
         'school_id_result' => $current_school_id,
-        'school_id_student_result' => $current_school_id
+        'school_id_student_result' => $current_school_id,
+        'academic_session_rank_filter' => $academic_session,
+        'academic_session_rank_match' => $academic_session,
+        'academic_session_student_filter' => $academic_session,
+        'academic_session_student_match' => $academic_session
     ]);
     $position = $stmt->fetchColumn();
 } else {
@@ -98,13 +135,15 @@ class StudentTranscriptPDF extends TCPDF {
     private $student;
     private $class;
     private $term;
+    private $academicSession;
 
-    public function __construct($school, $student, $class, $term) {
+    public function __construct($school, $student, $class, $term, $academicSession = '') {
         parent::__construct();
         $this->school = $school;
         $this->student = $student;
         $this->class = $class;
         $this->term = $term;
+        $this->academicSession = trim((string) $academicSession);
     }
 
     // Page header
@@ -156,7 +195,8 @@ class StudentTranscriptPDF extends TCPDF {
         $this->Cell(40, 5, 'Term:', 0, 0, 'L');
         $this->Cell(50, 5, $this->term, 0, 0, 'L');
         $this->Cell(30, 5, 'Session:', 0, 0, 'L');
-        $this->Cell(0, 5, date('Y') . '/' . (date('Y') + 1), 0, 1, 'L');
+        $displaySession = $this->academicSession !== '' ? $this->academicSession : (date('Y') . '/' . (date('Y') + 1));
+        $this->Cell(0, 5, $displaySession, 0, 1, 'L');
 
         $this->SetY(80);
     }
@@ -184,13 +224,13 @@ class StudentTranscriptPDF extends TCPDF {
 }
 
 // Create PDF instance
-$pdf = new StudentTranscriptPDF($school, $student, $class, $term);
+$pdf = new StudentTranscriptPDF($school, $student, $class, $term, $academic_session);
 
 // Set document information
 $pdf->SetCreator($school['school_name'] ?? 'School');
 $pdf->SetAuthor($school['school_name']);
 $pdf->SetTitle('Academic Transcript - ' . $student['full_name']);
-$pdf->SetSubject('Student Academic Results for ' . $term);
+$pdf->SetSubject('Student Academic Results for ' . $term . ($academic_session !== '' ? (' - ' . $academic_session) : ''));
 
 // Set margins
 $pdf->SetMargins(15, 85, 15); // Left, Top, Right
@@ -310,13 +350,20 @@ if (!empty($results)) {
 
 } else {
     $pdf->SetFont('helvetica', '', 12);
-    $pdf->Cell(0, 20, 'No results available for the selected term.', 0, 1, 'C');
+    $emptyMessage = 'No results available for the selected term.';
+    if ($academic_session !== '') {
+        $emptyMessage = 'No results available for the selected term/session.';
+    }
+    $pdf->Cell(0, 20, $emptyMessage, 0, 1, 'C');
 }
 
 // Generate filename and output
 $safe_name = preg_replace('/[^A-Za-z0-9\-_]/', '_', $student['full_name']);
 $safe_term = preg_replace('/[^A-Za-z0-9\-_]/', '_', $term);
-$filename = 'Transcript_' . $safe_name . '_' . $safe_term . '_' . date('Ymd') . '.pdf';
+$safe_session = $academic_session !== '' ? preg_replace('/[^A-Za-z0-9\-_]/', '_', $academic_session) : '';
+$filename = 'Transcript_' . $safe_name . '_' . $safe_term
+    . ($safe_session !== '' ? ('_' . $safe_session) : '')
+    . '_' . date('Ymd') . '.pdf';
 
 // Create directory if it doesn't exist
 $export_dir = dirname(__DIR__) . '/exports/transcripts/';

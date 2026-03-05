@@ -1,0 +1,195 @@
+.permissions-page .permissions-table td {
+    vertical-align: top;
+}
+
+.permissions-page .permission-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.permissions-page .permission-filter-btn.is-active {
+    border-color: #0f6a5c;
+    background: #0f6a5c;
+    color: #fff;
+    box-shadow: 0 10px 24px rgba(15, 106, 92, 0.2);
+}
+
+.permissions-page .permission-badge,
+.permissions-page .permission-inline-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.permissions-page .status-pending {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.permissions-page .status-approved {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.permissions-page .status-rejected {
+    background: #ffe4e6;
+    color: #be123c;
+}
+
+.permissions-page .status-cancelled {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.permissions-page .priority-high {
+    background: #ffe4e6;
+    color: #be123c;
+}
+
+.permissions-page .priority-medium {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.permissions-page .priority-low {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.permissions-page .permission-cancel-btn {
+    border-color: rgba(190, 24, 93, 0.28);
+    color: #be123c;
+}
+
+.permissions-page .permission-cancel-btn:hover {
+    background: #fff1f2;
+}
+
+.permissions-page .permission-form-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.permissions-page .permission-label {
+    margin-bottom: 0.5rem;
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #334155;
+}
+
+.permissions-page .permission-input {
+    width: 100%;
+    border-radius: 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.45);
+    background: #fff;
+    padding: 0.72rem 0.95rem;
+    font-size: 0.9rem;
+    color: #334155;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.permissions-page .permission-input:focus {
+    border-color: #0f6a5c;
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(15, 106, 92, 0.1);
+}
+
+.permissions-page .permission-textarea {
+    min-height: 7.5rem;
+    resize: vertical;
+}
+
+.permissions-page .permission-file-note {
+    margin-top: 0.45rem;
+    min-height: 1.1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #0f6a5c;
+}
+
+.permissions-page .permission-details-stack {
+    display: grid;
+    gap: 1rem;
+}
+
+.permissions-page .permission-details-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.permissions-page .permission-details-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #0f1f2d;
+}
+
+.permissions-page .permission-details-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.permissions-page .permission-info-card {
+    border-radius: 0.9rem;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: #f8fafc;
+    padding: 0.75rem;
+}
+
+.permissions-page .permission-info-card p {
+    margin: 0 0 0.3rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+}
+
+.permissions-page .permission-info-card strong {
+    color: #0f1f2d;
+    font-size: 0.9rem;
+}
+
+.permissions-page .permission-info-block {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.permissions-page .permission-info-heading {
+    margin: 0;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+}
+
+.permissions-page .permission-info-body {
+    border-radius: 0.9rem;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: #f8fafc;
+    padding: 0.75rem;
+    color: #334155;
+    white-space: pre-wrap;
+}
+
+.permissions-page .permission-info-body.rejection {
+    border-color: #fecdd3;
+    background: #fff1f2;
+    color: #9f1239;
+}
+
+@media (min-width: 768px) {
+    .permissions-page .permission-form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

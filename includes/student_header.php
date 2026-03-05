@@ -4,6 +4,11 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $pageTitle = $pageTitle ?? ('Student | ' . (function_exists('get_school_display_name') ? get_school_display_name() : 'iSchool'));
+$headerStudentName = trim((string) ($_SESSION['student_name'] ?? $_SESSION['full_name'] ?? ($student_name ?? 'Student')));
+if ($headerStudentName === '') {
+    $headerStudentName = 'Student';
+}
+$headerAdmissionNo = trim((string) ($_SESSION['admission_no'] ?? ($admission_no ?? '')));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -36,13 +41,23 @@ $pageTitle = $pageTitle ?? ('Student | ' . (function_exists('get_school_display_
                 <button id="mobileMenuToggle" class="md:hidden p-2 rounded-md text-slate-600 hover:bg-slate-100" aria-label="Toggle menu">
                     <i class="fas fa-bars"></i>
                 </button>
-                <div class="hidden md:flex items-center gap-3 text-sm text-slate-700">
+                <a class="btn btn-outline md:hidden" href="logout.php" aria-label="Logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+                <div class="hidden md:flex items-center gap-3 text-sm">
+                    <span class="hidden lg:block text-sm text-slate-600">Welcome, <?php echo htmlspecialchars($headerStudentName); ?></span>
                     <div class="text-right">
-                        <div class="font-medium"><?php echo htmlspecialchars($_SESSION['student_name'] ?? ''); ?></div>
-                        <div class="text-xs text-slate-500">Admission <?php echo htmlspecialchars($_SESSION['admission_no'] ?? ''); ?></div>
+                        <div class="text-xs uppercase tracking-wide text-slate-500">Student Portal</div>
+                        <div class="font-semibold text-ink-900"><?php echo htmlspecialchars($headerStudentName); ?></div>
+                        <?php if ($headerAdmissionNo !== ''): ?>
+                            <div class="text-xs text-slate-500">Admission <?php echo htmlspecialchars($headerAdmissionNo); ?></div>
+                        <?php endif; ?>
                     </div>
-                    <a class="btn btn-ghost ml-3" href="mysubjects.php"><i class="fas fa-book-open"></i></a>
-                    <a class="btn btn-outline" href="logout.php"><i class="fas fa-sign-out-alt"></i></a>
+                    <a class="btn btn-outline" href="dashboard.php">Dashboard</a>
+                    <a class="btn btn-primary" href="logout.php">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </a>
                 </div>
             </div>
         </div>

@@ -670,8 +670,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'download_pdf') {
                         </div>
 
                         <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
-                            <a href="class_attendance.php?student_id=<?php echo $student['id']; ?>" class="btn btn-primary btn-small" style="width: 100%;">
-                                <i class="fas fa-calendar-alt"></i> View Full Attendance
+                            <a href="class_attendance.php?class_id=<?php echo (int) $student['class_id']; ?>&date=<?php echo urlencode(date('Y-m-d')); ?>" class="btn btn-primary btn-small" style="width: 100%;">
+                                <i class="fas fa-calendar-alt"></i> Open Class Attendance
                             </a>
                         </div>
                     </div>

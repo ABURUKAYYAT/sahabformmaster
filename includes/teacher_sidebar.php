@@ -41,6 +41,5 @@ function nav_item($href, $label, $icon)
         nav_item('class_attendance.php', 'Attendance', 'fa-calendar-check');
         nav_item('timebook.php', 'Time Book', 'fa-clock');
         nav_item('permissions.php', 'Permissions', 'fa-key');
-        nav_item('payments.php', 'Payments', 'fa-money-bill-wave');
     ?>
 </nav>
