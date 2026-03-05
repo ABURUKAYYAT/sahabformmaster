@@ -1,126 +1,73 @@
 <?php
-?>
+session_start();
+require_once '../config/db.php';
+require_once '../includes/functions.php';
+require_once '../helpers/payment_helper.php';
 
-<?php
-$pageTitle = 'Student Payment Portal - ' . (function_exists('get_school_display_name') ? get_school_display_name() : '');
-$extraHead = <<<'EXTRA'
-    <link rel="manifest" href="../manifest.json">
-    <link rel="stylesheet" href="../assets/css/mobile-navigation.css">
-    <link rel="stylesheet" href="../assets/css/offline-status.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+if (!isset($_SESSION['student_id'])) {
+    header('Location: index.php');
+    exit;
+}
 
-    <style>
-        :root { --primary-color: #6366f1; --primary-dark: #4f46e5; --secondary-color: #06b6d4; --accent-color: #8b5cf6; --success-color: #10b981; --warning-color: #f59e0b; --error-color: #ef4444; --info-color: #3b82f6; --gradient-1: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); --gradient-2: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); --gradient-3: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); --gradient-4: linear-gradient(135deg, #10b981 0%, #059669 100%); --gradient-5: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); --gradient-6: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); --white: #ffffff; --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb; --gray-300: #d1d5db; --gray-400: #9ca3af; --gray-500: #6b7280; --gray-600: #4b5563; --gray-700: #374151; --gray-800: #1f2937; --gray-900: #111827; --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05); --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); --border-radius-sm: 0.375rem; --border-radius-md: 0.5rem; --border-radius-lg: 0.75rem; --border-radius-xl: 1rem; --transition-fast: 0.15s ease-in-out; --transition-normal: 0.3s ease-in-out; --transition-slow: 0.5s ease-in-out; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); min-height: 100vh; color: var(--gray-800); line-height: 1.6; }
-        .mobile-menu-toggle { position: fixed; top: 20px; left: 20px; z-index: 999; background: var(--primary-color); color: white; border: none; width: 50px; height: 50px; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; box-shadow: var(--shadow-lg); transition: var(--transition-normal); }
-        .mobile-menu-toggle:hover { background: var(--primary-dark); transform: scale(1.1); }
-        .mobile-menu-toggle.active { background: var(--error-color); }
-        .dashboard-header { background: var(--white); box-shadow: var(--shadow-sm); position: sticky; top: 0; z-index: 1000; transition: var(--transition-normal); }
-        .dashboard-header.scrolled { box-shadow: var(--shadow-md); backdrop-filter: blur(10px); background: rgba(255, 255, 255, 0.95); }
-        .header-container { max-width: 1400px; margin: 0 auto; padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 80px; }
-        .school-logo-container { display: flex; align-items: center; gap: 1rem; }
-        .school-logo { width: 50px; height: 50px; border-radius: var(--border-radius-md); object-fit: cover; box-shadow: var(--shadow-sm); }
-        .school-info h1 { font-family: 'Poppins', sans-serif; font-size: 1.5rem; font-weight: 700; color: var(--gray-900); margin-bottom: 0.125rem; }
-        .school-tagline { font-size: 0.875rem; color: var(--gray-500); font-weight: 500; }
-        .header-right { display: flex; align-items: center; gap: 2rem; }
-        .student-info { text-align: right; }
-        .student-label { font-size: 0.75rem; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; margin-bottom: 0.25rem; }
-        .student-name { font-size: 1rem; font-weight: 600; color: var(--gray-900); display: block; }
-        .admission-number { font-size: 0.875rem; color: var(--primary-color); font-weight: 500; }
-        .btn-logout { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; background: var(--error-color); color: white; text-decoration: none; border-radius: var(--border-radius-md); font-weight: 500; transition: var(--transition-fast); box-shadow: var(--shadow-sm); }
-        .btn-logout:hover { background: #dc2626; transform: translateY(-2px); box-shadow: var(--shadow-md); }
-        .dashboard-container { display: flex; min-height: calc(100vh - 80px); }
-        .sidebar { width: 280px; background: var(--white); box-shadow: var(--shadow-md); position: fixed; left: 0; top: 80px; height: calc(100vh - 80px); overflow-y: auto; z-index: 999; transition: var(--transition-normal); }
-        .sidebar.active { transform: translateX(0); }
-        .sidebar-header { padding: 1.5rem; border-bottom: 1px solid var(--gray-200); display: flex; align-items: center; justify-content: space-between; }
-        .sidebar-header h3 { font-family: 'Poppins', sans-serif; font-size: 1.25rem; font-weight: 600; color: var(--gray-900); }
-        .sidebar-close { background: none; border: none; font-size: 1.25rem; color: var(--gray-400); cursor: pointer; padding: 0.5rem; border-radius: var(--border-radius-sm); transition: var(--transition-fast); }
-        .sidebar-close:hover { background: var(--gray-100); color: var(--gray-600); }
-        .sidebar-nav { padding: 1rem 0; }
-        .nav-list { list-style: none; }
-        .nav-item { margin-bottom: 0.25rem; }
-        .nav-link { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.5rem; color: var(--gray-600); text-decoration: none; transition: var(--transition-fast); border-left: 3px solid transparent; }
-        .nav-link:hover { background: var(--gray-50); color: var(--primary-color); border-left-color: var(--primary-color); }
-        .nav-link.active { background: var(--primary-color); color: white; border-left-color: var(--primary-color); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1); }
-        .nav-icon { width: 20px; text-align: center; font-size: 1.1rem; }
-        .nav-text { font-weight: 500; font-size: 0.95rem; }
-        .main-content { flex: 1; margin-left: 280px; padding: 2rem; max-width: calc(100vw - 280px); }
-        .card { background: var(--white); border-radius: var(--border-radius-xl); box-shadow: var(--shadow-md); overflow: hidden; transition: var(--transition-normal); border: 1px solid var(--gray-200); }
-        .card:hover { box-shadow: var(--shadow-xl); transform: translateY(-5px); }
-        .card-header { padding: 1.5rem; border-bottom: 1px solid var(--gray-200); background: var(--gray-50); }
-        .card-header h4 { margin: 0; font-family: 'Poppins', sans-serif; font-size: 1.25rem; font-weight: 600; color: var(--gray-900); }
-        .card-body { padding: 1.5rem; }
-        .row { display: flex; flex-wrap: wrap; margin: 0 -0.75rem; }
-        .col-md-4, .col-md-6 { padding: 0 0.75rem; margin-bottom: 1.5rem; }
-        .col-md-4 { flex: 0 0 33.333333%; max-width: 33.333333%; }
-        .col-md-6 { flex: 0 0 50%; max-width: 50%; }
-        .form-group { margin-bottom: 1.5rem; }
-        .form-group label { display: block; font-weight: 600; color: var(--gray-700); margin-bottom: 0.5rem; font-size: 0.9rem; }
-        .form-control { width: 100%; padding: 0.75rem 1rem; border: 2px solid var(--gray-200); border-radius: var(--border-radius-lg); background: var(--white); color: var(--gray-700); font-size: 0.95rem; font-family: 'Inter', sans-serif; transition: var(--transition-fast); }
-        .form-control:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
-        .form-control[readonly] { background: var(--gray-50); cursor: not-allowed; }
-        .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border: none; border-radius: var(--border-radius-md); font-size: 0.95rem; font-weight: 500; text-decoration: none; cursor: pointer; transition: var(--transition-fast); font-family: 'Inter', sans-serif; }
-        .btn-primary { background: var(--primary-color); color: white; }
-        .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
-        .btn-sm { padding: 0.5rem 1rem; font-size: 0.85rem; }
-        .btn-outline-primary { background: transparent; color: var(--primary-color); border: 1px solid var(--primary-color); }
-        .btn-outline-primary:hover { background: var(--primary-color); color: white; }
-        .table-responsive { overflow-x: auto; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-sm); }
-        .table { width: 100%; border-collapse: collapse; background: var(--white); }
-        .table th, .table td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--gray-200); }
-        .table th { background: var(--gray-50); font-weight: 600; color: var(--gray-900); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; }
-        .table td { color: var(--gray-700); font-size: 0.9rem; }
-        .table-striped tbody tr:nth-child(odd) { background: var(--gray-50); }
-        .table-striped tbody tr:hover { background: var(--gray-100); }
-        .badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600; text-transform: capitalize; }
-        .badge-success { background: var(--success-color); color: white; }
-        .badge-warning { background: var(--warning-color); color: white; }
-        .badge-secondary { background: var(--gray-400); color: white; }
-        .dashboard-footer { background: var(--gray-900); color: var(--gray-300); margin-top: 4rem; }
-        .footer-container { max-width: 1400px; margin: 0 auto; padding: 3rem 2rem 1rem; }
-        .footer-content { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin-bottom: 2rem; }
-        .footer-section h4 { font-family: 'Poppins', sans-serif; font-size: 1.1rem; font-weight: 600; color: var(--white); margin-bottom: 1rem; }
-        .footer-section p { line-height: 1.6; margin-bottom: 1rem; }
-        .footer-links { list-style: none; }
-        .footer-links li { margin-bottom: 0.5rem; }
-        .footer-links a { color: var(--gray-300); text-decoration: none; transition: var(--transition-fast); }
-        .footer-links a:hover { color: var(--primary-color); }
-        .footer-bottom { padding-top: 2rem; border-top: 1px solid var(--gray-700); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
-        .footer-copyright { color: var(--gray-400); font-size: 0.9rem; }
-        .footer-version { color: var(--gray-400); font-size: 0.9rem; }
-        .footer-bottom-links { display: flex; align-items: center; gap: 0.5rem; }
-        .footer-bottom-links a { color: var(--gray-400); text-decoration: none; font-size: 0.9rem; transition: var(--transition-fast); }
-        .footer-bottom-links a:hover { color: var(--primary-color); }
-        @media (max-width: 1024px) { .sidebar { transform: translateX(-100%); z-index: 999; } .sidebar.active { transform: translateX(0); } .main-content { margin-left: 0; padding: 1.5rem; width: 100%; max-width: 100%; } .mobile-menu-toggle { display: flex; } .col-md-4, .col-md-6 { flex: 0 0 100%; max-width: 100%; } }
-        @media (max-width: 768px) { .header-container { padding: 0 1rem; height: 70px; flex-wrap: wrap; gap: 0.5rem; } .school-logo-container { order: 1; flex: 1; min-width: 0; } .school-info h1 { font-size: 1.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .school-tagline { font-size: 0.8rem; } .header-right { order: 2; gap: 0.75rem; } .student-info { text-align: left; } .student-label { font-size: 0.7rem; } .student-name { font-size: 0.85rem; } .admission-number { font-size: 0.75rem; } .btn-logout { padding: 0.5rem 0.75rem; font-size: 0.85rem; } .btn-logout span:last-child { display: none; } .card-body { padding: 1rem; } .table th, .table td { padding: 0.75rem 0.5rem; font-size: 0.8rem; } .footer-content { grid-template-columns: 1fr; text-align: center; gap: 1.5rem; margin-bottom: 1.5rem; } .footer-section h4 { font-size: 1rem; } .footer-bottom { flex-direction: column; text-align: center; gap: 1rem; } .footer-bottom-links { justify-content: center; } }
-        .text-center { text-align: center; }
-        .text-muted { color: var(--gray-500); font-size: 0.875rem; }
-        .payment-summary-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; }
-        .fee-summary-cards .card { transition: var(--transition-normal); }
-        .fee-summary-cards .card:hover { transform: translateY(-3px); }
-        .fee-summary-cards .card-body { text-align: center; padding: 2rem 1.5rem; }
-        .fee-summary-cards .card-body .fa-2x { margin-bottom: 1rem; opacity: 0.9; }
-        .fee-summary-cards h3 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; }
-        .fee-summary-cards p { margin: 0; opacity: 0.9; font-weight: 500; }
-        .card-blue { border-left: 4px solid #007bff; } .card-green { border-left: 4px solid #28a745; } .card-yellow { border-left: 4px solid #ffc107; }
-        .empty-state { text-align: center; padding: 3rem 2rem; color: var(--gray-600); }
-        .empty-state .fa-3x { margin-bottom: 1rem; opacity: 0.5; }
-        .empty-state h5 { font-size: 1.25rem; margin-bottom: 0.5rem; color: var(--gray-700); }
-        .empty-state p { margin: 0; font-size: 0.95rem; }
-        .fade-in { animation: fadeIn 0.6s ease-in-out; } @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-    </style>
-EXTRA;
+$studentId = (int) $_SESSION['student_id'];
+$current_school_id = get_current_school_id();
+$student_name = (string) ($_SESSION['student_name'] ?? '');
+$admission_number = (string) ($_SESSION['admission_no'] ?? '');
+$paymentHelper = new PaymentHelper();
+PaymentHelper::ensureSchema();
+$paymentConfig = include '../config/payment_config.php';
+$feeTypeLabels = $paymentConfig['fee_types'] ?? [];
+$bankAccounts = PaymentHelper::getSchoolBankAccounts($current_school_id);
 
-require __DIR__ . '/../includes/student_header.php';
-?>
-<?php
-$paymentHistory = $paymentHelper->getStudentPaymentHistory($student['id'], $current_school_id);
+$stmt = $pdo->prepare("SELECT s.*, c.class_name FROM students s JOIN classes c ON s.class_id = c.id AND c.school_id = ? WHERE s.id = ? AND s.school_id = ? LIMIT 1");
+$stmt->execute([$current_school_id, $studentId, $current_school_id]);
+$student = $stmt->fetch(PDO::FETCH_ASSOC);
+if (!$student) {
+    session_destroy();
+    header('Location: index.php?error=access_denied');
+    exit;
+}
+if ($student_name === '') {
+    $student_name = (string) ($student['full_name'] ?? 'Student');
+}
+if ($admission_number === '') {
+    $admission_number = (string) ($student['admission_no'] ?? '');
+}
 
-// Aggregate payments by year, term and fee type
+$currentTerm = '1st Term';
+$currentYear = date('Y') . '/' . (date('Y') + 1);
+$terms = ['1st Term', '2nd Term', '3rd Term'];
+
+$yearsStmt = $pdo->prepare("SELECT DISTINCT academic_year FROM fee_structure WHERE class_id = ? AND school_id = ? ORDER BY academic_year DESC");
+$yearsStmt->execute([(int) $student['class_id'], $current_school_id]);
+$academicYears = array_map('trim', $yearsStmt->fetchAll(PDO::FETCH_COLUMN));
+if (empty($academicYears)) {
+    $academicYears = [$currentYear];
+}
+
+$selectedYear = $_POST['academic_year'] ?? $_GET['academic_year'] ?? $academicYears[0] ?? $currentYear;
+if (!in_array($selectedYear, $academicYears, true)) {
+    $selectedYear = $academicYears[0] ?? $currentYear;
+}
+
+$feeDataByYearTerm = [];
+foreach ($academicYears as $year) {
+    foreach ($terms as $term) {
+        $feeDataByYearTerm[$year][$term] = $paymentHelper->getFeeBreakdown((int) $student['class_id'], $term, $year, null, $current_school_id);
+    }
+}
+
+$firstAvailableYearByTerm = [];
+foreach ($terms as $term) {
+    foreach ($academicYears as $year) {
+        if (!empty($feeDataByYearTerm[$year][$term]['total'])) {
+            $firstAvailableYearByTerm[$term] = $year;
+            break;
+        }
+    }
+}
+
+$paymentHistory = $paymentHelper->getStudentPaymentHistory((int) $student['id'], $current_school_id);
 $paymentTotalsByYearTerm = [];
 foreach ($academicYears as $year) {
     foreach ($terms as $term) {
@@ -147,15 +94,12 @@ if (!in_array($selectedTerm, $terms, true)) {
     $selectedTerm = $currentTerm;
 }
 $selectedFeeId = $_POST['fee_id'] ?? 'all';
-
-// If selected year/term has no fees, fallback to first available year for the term
 if (empty($feeDataByYearTerm[$selectedYear][$selectedTerm]['total']) && !empty($firstAvailableYearByTerm[$selectedTerm])) {
     $selectedYear = $firstAvailableYearByTerm[$selectedTerm];
 }
 
 $successMessage = '';
 $errorMessage = '';
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $paymentMethod = $_POST['payment_method'] ?? '';
     $paymentType = $_POST['payment_type'] ?? 'full';
@@ -202,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($errorMessage) {
-        // keep existing error
+        // keep error
     } elseif ($totalFee <= 0) {
         $errorMessage = 'No fee structure is set for your class/term. Please contact the clerk.';
     } elseif ($balance <= 0) {
@@ -214,73 +158,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         try {
             $pdo->beginTransaction();
-
             $transactionId = PaymentHelper::generateTransactionId($studentId);
-
-            $stmt = $pdo->prepare("INSERT INTO student_payments
-                                  (student_id, school_id, class_id, amount_paid, total_amount, payment_date,
-                                   academic_year, payment_method, payment_type, fee_type, status, term, transaction_id, notes)
-                                  VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, 'pending', ?, ?, ?)");
-            $stmt->execute([
-                $studentId,
-                $current_school_id,
-                $student['class_id'],
-                $amount,
-                $totalFee,
-                $academicYear,
-                $paymentMethod,
-                $paymentType,
-                $feeType,
-                $term,
-                $transactionId,
-                $notes
-            ]);
-
-            $paymentId = (int)$pdo->lastInsertId();
+            $stmt = $pdo->prepare("INSERT INTO student_payments (student_id, school_id, class_id, amount_paid, total_amount, payment_date, academic_year, payment_method, payment_type, fee_type, status, term, transaction_id, notes) VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, 'pending', ?, ?, ?)");
+            $stmt->execute([$studentId, $current_school_id, (int) $student['class_id'], $amount, $totalFee, $academicYear, $paymentMethod, $paymentType, $feeType, $term, $transactionId, $notes]);
+            $paymentId = (int) $pdo->lastInsertId();
 
             if (!empty($_FILES['payment_proof']['name'])) {
                 $allowed = ['image/jpeg', 'image/png', 'application/pdf'];
                 $fileType = $_FILES['payment_proof']['type'] ?? '';
                 $fileSize = $_FILES['payment_proof']['size'] ?? 0;
-
                 if (!in_array($fileType, $allowed, true)) {
                     throw new Exception('Invalid file type. Only JPG, PNG, or PDF allowed.');
                 }
                 if ($fileSize > 5 * 1024 * 1024) {
                     throw new Exception('File size exceeds 5MB.');
                 }
-
                 $uploadDir = '../uploads/payment_proofs/';
                 if (!file_exists($uploadDir)) {
                     mkdir($uploadDir, 0777, true);
                 }
-
                 $safeName = preg_replace('/[^A-Za-z0-9._-]/', '_', basename($_FILES['payment_proof']['name']));
                 $fileName = time() . '_student_' . $safeName;
                 $filePath = $uploadDir . $fileName;
-
                 if (!move_uploaded_file($_FILES['payment_proof']['tmp_name'], $filePath)) {
                     throw new Exception('Failed to upload proof of payment.');
                 }
-
-                $attachStmt = $pdo->prepare("INSERT INTO payment_attachments
-                                            (payment_id, school_id, file_name, file_path, uploaded_by, file_type, role)
-                                            VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $attachStmt = $pdo->prepare("INSERT INTO payment_attachments (payment_id, school_id, file_name, file_path, uploaded_by, file_type, role) VALUES (?, ?, ?, ?, ?, ?, ?)");
                 $attachStmt->execute([$paymentId, $current_school_id, $fileName, $filePath, $studentId, $fileType, 'student']);
             }
 
             $pdo->commit();
             $successMessage = 'Payment submitted successfully. Awaiting verification.';
-
-            $paymentHistory = $paymentHelper->getStudentPaymentHistory($student['id'], $current_school_id);
+            $paymentHistory = $paymentHelper->getStudentPaymentHistory((int) $student['id'], $current_school_id);
         } catch (Exception $e) {
-            $pdo->rollBack();
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             $errorMessage = $e->getMessage();
         }
     }
 }
 
-// Rebuild payment totals after any updates
 $paymentTotalsByYearTerm = [];
 foreach ($academicYears as $year) {
     foreach ($terms as $term) {
@@ -302,7 +220,6 @@ foreach ($paymentHistory as $payment) {
     $paymentTotalsByYearTerm[$yearKey][$termKey][$feeTypeKey] += $amountPaid;
 }
 
-// Resolve selected fee for display
 $selectedFeeRecord = null;
 $termFeeData = $feeDataByYearTerm[$selectedYear][$selectedTerm] ?? ['breakdown' => [], 'total' => 0];
 if ($selectedFeeId !== 'all') {
@@ -318,538 +235,433 @@ if ($selectedFeeId !== 'all') {
 }
 $selectedFeeType = ($selectedFeeId === 'all') ? 'all' : ($selectedFeeRecord['fee_type'] ?? 'all');
 $displayTotalFee = ($selectedFeeId === 'all') ? (float) $termFeeData['total'] : (float) ($selectedFeeRecord['amount'] ?? 0);
-$displayPaid = $paymentTotalsByYearTerm[$selectedYear][$selectedTerm][$selectedFeeType] ?? 0;
+$displayPaid = (float) ($paymentTotalsByYearTerm[$selectedYear][$selectedTerm][$selectedFeeType] ?? 0);
 $displayBalance = max(0, $displayTotalFee - $displayPaid);
+
+$pageTitle = 'Student Payment Portal | ' . (function_exists('get_school_display_name') ? get_school_display_name() : 'iSchool');
+$extraHead = <<<'EXTRA'
+<link rel="manifest" href="../manifest.json">
+<link rel="stylesheet" href="../assets/css/mobile-navigation.css">
+<link rel="stylesheet" href="../assets/css/offline-status.css">
+<style>
+    .student-layout{overflow-x:hidden}
+    .student-payment-page section{padding-top:.4rem;padding-bottom:.4rem}
+    .dashboard-card{border-radius:1.5rem;border:1px solid rgba(15,31,45,.06);background:#fff;box-shadow:0 10px 24px rgba(15,31,51,.08);padding:1.85rem !important}
+    .student-sidebar-overlay{position:fixed;inset:0;background:rgba(2,6,23,.45);opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:30}
+    .sidebar{position:fixed;top:73px;left:0;width:16rem;height:calc(100vh - 73px);background:#fff;border-right:1px solid rgba(15,31,45,.1);box-shadow:0 18px 40px rgba(15,31,51,.12);transform:translateX(-106%);transition:transform .22s ease;z-index:40;overflow-y:auto}
+    body.sidebar-open .sidebar{transform:translateX(0)} body.sidebar-open .student-sidebar-overlay{opacity:1;pointer-events:auto}
+    .sidebar-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid rgba(15,31,45,.08)}
+    .sidebar-header h3{margin:0;font-size:1rem;font-weight:700;color:#0f1f2d}
+    .sidebar-close{border:0;border-radius:.55rem;padding:.35rem .55rem;background:rgba(15,31,45,.08);color:#334155;font-size:.8rem;line-height:1;cursor:pointer}
+    .sidebar-nav{padding:.8rem}.nav-list{list-style:none;margin:0;padding:0;display:grid;gap:.2rem}
+    .nav-link{display:flex;align-items:center;gap:.65rem;border-radius:.75rem;padding:.62rem .72rem;color:#475569;font-size:.88rem;font-weight:600;text-decoration:none;transition:background-color .15s ease,color .15s ease}
+    .nav-link:hover{background:rgba(22,133,117,.1);color:#0f6a5c}.nav-link.active{background:rgba(22,133,117,.14);color:#0f6a5c}.nav-icon{width:1rem;text-align:center}
+    #studentMain{min-width:0}
+    .payment-metric{border-radius:1rem;border:1px solid rgba(15,31,45,.08);background:#f8fafc;padding:1.2rem}
+    .payment-metric-icon{display:inline-flex;height:2.2rem;width:2.2rem;align-items:center;justify-content:center;border-radius:.75rem;background:rgba(15,118,110,.12);color:#0f766e}
+    .payment-label{display:block;font-size:.84rem;font-weight:600;color:#334155;margin-bottom:.45rem}
+    .payment-input{width:100%;border:1px solid rgba(15,31,45,.14);border-radius:.75rem;padding:.7rem .85rem;background:#fff;color:#0f172a;font-size:.93rem;transition:border-color .15s ease, box-shadow .15s ease}
+    .payment-input:focus{outline:none;border-color:#0f766e;box-shadow:0 0 0 3px rgba(15,118,110,.14)}
+    .payment-input[readonly]{background:#f8fafc;color:#334155}
+    .payment-input[type="file"]{padding:.55rem .7rem}
+    .payment-hint{margin-top:.35rem;font-size:.75rem;color:#64748b}
+    .payment-table th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:#475569;background:#f8fafc;padding:.92rem .86rem;border-bottom:1px solid rgba(15,31,45,.1)}
+    .payment-table td{padding:.9rem .86rem;border-bottom:1px solid rgba(15,31,45,.07);vertical-align:top}
+    .payment-table tbody tr:hover{background:rgba(15,118,110,.03)}
+    .status-pill{display:inline-flex;align-items:center;border-radius:999px;padding:.25rem .62rem;font-size:.7rem;font-weight:700}
+    #submitPaymentButton[disabled]{opacity:.55;cursor:not-allowed}
+    @media (min-width:768px){#studentMain{padding-left:16rem !important}.sidebar{transform:translateX(0);top:73px;height:calc(100vh - 73px);padding-top:0}.sidebar-close{display:none}.student-sidebar-overlay{display:none}}
+    @media (max-width:767.98px){#studentMain{padding-left:0 !important}}
+    @media (max-width:640px){.student-payment-page .dashboard-card{padding:1.25rem !important}.student-payment-page section{padding-top:.3rem;padding-bottom:.3rem}}
+</style>
+EXTRA;
+
+require __DIR__ . '/../includes/student_header.php';
 ?>
-            <!-- Welcome Section -->
-            <div class="card" style="margin-bottom: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
-                <div class="card-body" style="padding: 2rem;">
-                    <h2 style="margin-bottom: 0.5rem;"><i class="fas fa-credit-card"></i> Student Payment Portal</h2>
-                    <p style="margin: 0; opacity: 0.9;">Welcome, <?php echo htmlspecialchars($student['full_name']); ?> (<?php echo htmlspecialchars($student['class_name']); ?>)</p>
+<div class="student-sidebar-overlay" id="studentSidebarOverlay"></div>
+
+<main class="student-payment-page space-y-6">
+    <section class="dashboard-card p-6 sm:p-8" data-reveal>
+        <div class="flex flex-col gap-5 xl:grid xl:grid-cols-[1.7fr_1fr_1fr_auto] xl:items-end">
+            <div>
+                <p class="text-xs uppercase tracking-wide text-slate-500">Student Finance Workspace</p>
+                <h1 class="mt-2 text-3xl font-display text-ink-900">Payment Center</h1>
+                <p class="mt-2 text-sm text-slate-600">Track your fees, submit proof of payment, and monitor verification status for <?php echo htmlspecialchars((string) $student['class_name']); ?>.</p>
+            </div>
+            <div class="rounded-xl bg-mist-50 px-4 py-3 border border-ink-900/5">
+                <p class="text-xs uppercase tracking-wide text-slate-500">Academic Year</p>
+                <p class="text-2xl font-semibold text-ink-900"><?php echo htmlspecialchars((string) $selectedYear); ?></p>
+                <p class="text-xs text-slate-500 mt-1"><?php echo htmlspecialchars((string) $selectedTerm); ?></p>
+            </div>
+            <div class="rounded-xl bg-mist-50 px-4 py-3 border border-ink-900/5">
+                <p class="text-xs uppercase tracking-wide text-slate-500">Outstanding Balance</p>
+                <p class="text-2xl font-semibold text-ink-900" id="heroBalanceValue"><?php echo $paymentHelper->formatCurrency($displayBalance); ?></p>
+                <p class="text-xs text-slate-500 mt-1">Across selected fee scope</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+                <a class="btn btn-outline" href="#paymentHistory"><i class="fas fa-history"></i><span>View History</span></a>
+                <button type="button" class="btn btn-primary" id="refreshSummaryBtn"><i class="fas fa-sync-alt"></i><span>Refresh Totals</span></button>
+            </div>
+        </div>
+    </section>
+
+    <?php if ($successMessage !== ''): ?>
+        <section class="dashboard-card p-4 border border-emerald-200 bg-emerald-50/70" data-reveal data-reveal-delay="40">
+            <div class="flex items-start gap-3 text-emerald-800">
+                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100"><i class="fas fa-check-circle"></i></span>
+                <div><p class="text-sm font-semibold">Payment Submitted</p><p class="text-sm"><?php echo htmlspecialchars($successMessage); ?></p></div>
+            </div>
+        </section>
+    <?php endif; ?>
+    <?php if ($errorMessage !== ''): ?>
+        <section class="dashboard-card p-4 border border-rose-200 bg-rose-50/70" data-reveal data-reveal-delay="40">
+            <div class="flex items-start gap-3 text-rose-800">
+                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100"><i class="fas fa-exclamation-triangle"></i></span>
+                <div><p class="text-sm font-semibold">Unable to Submit Payment</p><p class="text-sm"><?php echo htmlspecialchars($errorMessage); ?></p></div>
+            </div>
+        </section>
+    <?php endif; ?>
+
+    <?php if (!empty($bankAccounts)): ?>
+        <section class="dashboard-card p-6" data-reveal data-reveal-delay="70">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold text-ink-900">Manual Transfer Accounts</h2>
+                <p class="text-xs text-slate-500">Use any account below and upload your payment proof.</p>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-2">
+                <?php foreach (array_slice($bankAccounts, 0, 2) as $account): ?>
+                    <article class="rounded-2xl border border-ink-900/10 bg-white px-4 py-4">
+                        <div class="flex items-center gap-3 mb-3">
+                            <span class="payment-metric-icon"><i class="fas fa-university"></i></span>
+                            <div>
+                                <p class="text-sm font-semibold text-ink-900"><?php echo htmlspecialchars((string) $account['bank_name']); ?></p>
+                                <p class="text-xs text-slate-500">School collection account</p>
+                            </div>
+                        </div>
+                        <p class="text-base font-semibold text-slate-900"><?php echo htmlspecialchars((string) $account['account_number']); ?></p>
+                        <p class="text-sm text-slate-600"><?php echo htmlspecialchars((string) $account['account_name']); ?></p>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        </section>
+    <?php endif; ?>
+
+    <section class="grid gap-3 sm:grid-cols-3" data-reveal data-reveal-delay="90">
+        <article class="dashboard-card p-5">
+            <div class="payment-metric">
+                <span class="payment-metric-icon mb-3"><i class="fas fa-money-bill-wave"></i></span>
+                <p class="text-xs uppercase tracking-wide text-slate-500">Total Fee</p>
+                <p class="text-2xl font-semibold text-ink-900 mt-1" id="totalFeeValue"><?php echo $paymentHelper->formatCurrency($displayTotalFee); ?></p>
+            </div>
+        </article>
+        <article class="dashboard-card p-5">
+            <div class="payment-metric">
+                <span class="payment-metric-icon mb-3"><i class="fas fa-check-circle"></i></span>
+                <p class="text-xs uppercase tracking-wide text-slate-500">Amount Paid</p>
+                <p class="text-2xl font-semibold text-ink-900 mt-1" id="paidAmountValue"><?php echo $paymentHelper->formatCurrency($displayPaid); ?></p>
+            </div>
+        </article>
+        <article class="dashboard-card p-5">
+            <div class="payment-metric">
+                <span class="payment-metric-icon mb-3"><i class="fas fa-balance-scale"></i></span>
+                <p class="text-xs uppercase tracking-wide text-slate-500">Balance Due</p>
+                <p class="text-2xl font-semibold text-ink-900 mt-1" id="balanceValue"><?php echo $paymentHelper->formatCurrency($displayBalance); ?></p>
+            </div>
+        </article>
+    </section>
+
+    <section class="dashboard-card p-6" data-reveal data-reveal-delay="120">
+        <div class="flex items-center justify-between mb-5">
+            <div>
+                <h2 class="text-xl font-semibold text-ink-900">Submit Payment</h2>
+                <p class="text-sm text-slate-600">Select your fee scope, payment type, and upload any supporting proof.</p>
+            </div>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data" data-offline-sync="1" class="space-y-5" id="paymentForm">
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label class="payment-label" for="academicYearSelect">Academic Year</label>
+                    <select class="payment-input" name="academic_year" id="academicYearSelect">
+                        <?php foreach ($academicYears as $year): ?>
+                            <option value="<?php echo htmlspecialchars((string) $year); ?>" <?php echo $selectedYear === $year ? 'selected' : ''; ?>><?php echo htmlspecialchars((string) $year); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div>
+                    <label class="payment-label" for="termSelect">Term</label>
+                    <select class="payment-input" name="term" id="termSelect">
+                        <?php foreach ($terms as $term): ?>
+                            <option value="<?php echo htmlspecialchars((string) $term); ?>" <?php echo $selectedTerm === $term ? 'selected' : ''; ?>><?php echo htmlspecialchars((string) $term); ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
             </div>
 
-            <?php if (!empty($successMessage)): ?>
-                <div class="alert alert-success" style="margin-bottom: 1.5rem;">
-                    <?php echo htmlspecialchars($successMessage); ?>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label class="payment-label" for="feeSelect">Fee Type</label>
+                    <select class="payment-input" name="fee_id" id="feeSelect">
+                        <option value="all">All Fees (Total: <?php echo $paymentHelper->formatCurrency($displayTotalFee); ?>)</option>
+                        <?php foreach (($feeDataByYearTerm[$selectedYear][$selectedTerm]['breakdown'] ?? []) as $fee): ?>
+                            <option value="<?php echo htmlspecialchars((string) $fee['id']); ?>" <?php echo (string) $selectedFeeId === (string) $fee['id'] ? 'selected' : ''; ?>>
+                                <?php
+                                $labelParts = [(string) ($fee['type_label'] ?? 'Fee')];
+                                if (!empty($fee['description'])) {
+                                    $labelParts[] = (string) $fee['description'];
+                                }
+                                echo htmlspecialchars(implode(' - ', $labelParts));
+                                ?>
+                                (<?php echo $paymentHelper->formatCurrency((float) ($fee['amount'] ?? 0)); ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <p class="payment-hint" id="feeMetaText">Select a fee item to load the amount.</p>
                 </div>
-            <?php endif; ?>
-            <?php if (!empty($errorMessage)): ?>
-                <div class="alert alert-danger" style="margin-bottom: 1.5rem;">
-                    <?php echo htmlspecialchars($errorMessage); ?>
-                </div>
-            <?php endif; ?>
-
-            <?php if (!empty($bankAccounts)): ?>
-                <div class="row" style="margin-bottom: 2rem;">
-                    <?php foreach (array_slice($bankAccounts, 0, 2) as $account): ?>
-                        <div class="col-md-6">
-                            <div class="card" style="border-left: 4px solid #0ea5e9;">
-                                <div class="card-body">
-                                    <div style="display:flex; align-items:center; gap:12px; margin-bottom: 0.75rem;">
-                                        <div style="font-size: 1.5rem; color: #0ea5e9;"><i class="fas fa-university"></i></div>
-                                        <div>
-                                            <div style="font-weight: 600;"><?php echo htmlspecialchars($account['bank_name']); ?></div>
-                                            <div style="color: #64748b; font-size: 0.9rem;">Manual Transfer Account</div>
-                                        </div>
-                                    </div>
-                                    <div style="font-size: 1.1rem; font-weight: 600; color: #0f172a;">
-                                        <?php echo htmlspecialchars($account['account_number']); ?>
-                                    </div>
-                                    <div style="color: #475569; font-size: 0.95rem;">
-                                        <?php echo htmlspecialchars($account['account_name']); ?>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
-
-            <!-- Fee Summary -->
-            <div class="row" style="margin-bottom: 2rem;">
-                <div class="col-md-4">
-                    <div class="card text-center" style="border-left: 4px solid #007bff;">
-                        <div class="card-body">
-                            <div style="font-size: 2rem; color: #007bff; margin-bottom: 0.5rem;"><i class="fas fa-money-bill-wave"></i></div>
-                            <h3 style="color: #004085;" id="totalFeeValue"><?php echo $paymentHelper->formatCurrency($displayTotalFee); ?></h3>
-                            <p style="margin: 0; color: #004085;">Total Fee</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card text-center" style="border-left: 4px solid #28a745;">
-                        <div class="card-body">
-                            <div style="font-size: 2rem; color: #28a745; margin-bottom: 0.5rem;"><i class="fas fa-check-circle"></i></div>
-                            <h3 style="color: #155724;" id="paidAmountValue"><?php echo $paymentHelper->formatCurrency($displayPaid); ?></h3>
-                            <p style="margin: 0; color: #155724;">Amount Paid</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card text-center" style="border-left: 4px solid #ffc107;">
-                        <div class="card-body">
-                            <div style="font-size: 2rem; color: #ffc107; margin-bottom: 0.5rem;"><i class="fas fa-balance-scale"></i></div>
-                            <h3 style="color: #856404;" id="balanceValue"><?php echo $paymentHelper->formatCurrency($displayBalance); ?></h3>
-                            <p style="margin: 0; color: #856404;">Balance Due</p>
-                        </div>
-                    </div>
+                <div>
+                    <label class="payment-label" for="paymentMethodSelect">Payment Method</label>
+                    <select class="payment-input" name="payment_method" id="paymentMethodSelect" required>
+                        <option value="bank_transfer" selected>Bank Transfer</option>
+                        <option value="cash">Cash</option>
+                    </select>
                 </div>
             </div>
 
-            <!-- Payment Form -->
-            <div class="card" style="margin-bottom: 2rem;">
-                <div class="card-header">
-                    <h4 style="margin: 0;"><i class="fas fa-plus-circle"></i> Make a Payment</h4>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label class="payment-label" for="paymentTypeSelect">Payment Type</label>
+                    <select class="payment-input" name="payment_type" id="paymentTypeSelect" required>
+                        <option value="full" selected>Full Payment</option>
+                        <option value="installment">Installment Payment</option>
+                    </select>
+                    <p class="payment-hint hidden" id="installmentHint">Installment amount is auto-calculated for this fee.</p>
                 </div>
-                <div class="card-body">
-                    <form method="POST" enctype="multipart/form-data" data-offline-sync="1">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group" style="margin-bottom: 1.5rem;">
-                                    <label>Academic Year</label>
-                                    <select class="form-control" name="academic_year" id="academicYearSelect">
-                                        <?php foreach ($academicYears as $year): ?>
-                                            <option value="<?php echo htmlspecialchars($year); ?>" <?php echo $selectedYear === $year ? 'selected' : ''; ?>>
-                                                <?php echo htmlspecialchars($year); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group" style="margin-bottom: 1.5rem;">
-                                    <label>Term</label>
-                                    <select class="form-control" name="term" id="termSelect">
-                                        <?php foreach ($terms as $term): ?>
-                                            <option value="<?php echo $term; ?>" <?php echo $selectedTerm === $term ? 'selected' : ''; ?>>
-                                                <?php echo $term; ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group" style="margin-bottom: 1.5rem;">
-                                    <label>Fee Type</label>
-                                    <select class="form-control" name="fee_id" id="feeSelect">
-                                        <option value="all">All Fees (Total: <?php echo $paymentHelper->formatCurrency($displayTotalFee); ?>)</option>
-                                        <?php foreach (($feeDataByYearTerm[$selectedYear][$selectedTerm]['breakdown'] ?? []) as $fee): ?>
-                                            <option value="<?php echo htmlspecialchars($fee['id']); ?>" <?php echo (string)$selectedFeeId === (string)$fee['id'] ? 'selected' : ''; ?>>
-                                                <?php
-                                                    $labelParts = [$fee['type_label']];
-                                                    if (!empty($fee['description'])) {
-                                                        $labelParts[] = $fee['description'];
-                                                    }
-                                                    echo htmlspecialchars(implode(' - ', $labelParts));
-                                                ?>
-                                                (<?php echo $paymentHelper->formatCurrency($fee['amount']); ?>)
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                    <small class="text-muted" id="feeMetaText">Select a fee item to load the amount.</small>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group" style="margin-bottom: 1.5rem;">
-                                    <label>Payment Method</label>
-                                    <select class="form-control" name="payment_method" required>
-                                        <option value="bank_transfer" selected>Bank Transfer</option>
-                                        <option value="cash">Cash</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group" style="margin-bottom: 1.5rem;">
-                                    <label>Payment Type</label>
-                                    <select class="form-control" name="payment_type" id="paymentTypeSelect" required>
-                                        <option value="full" selected>Full Payment</option>
-                                        <option value="installment">Installment Payment</option>
-                                    </select>
-                                    <small class="text-muted" id="installmentHint" style="display:none;">Installment amount is auto-calculated for this fee.</small>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group" style="margin-bottom: 1.5rem;">
-                                    <label>Amount (NGN)</label>
-                                    <input type="number" class="form-control" name="amount" id="amountInput" min="0" step="0.01"
-                                           value="<?php echo $displayBalance; ?>" readonly>
-                                    <small class="text-muted" id="balanceHelp">Available balance: <?php echo $paymentHelper->formatCurrency($displayBalance); ?></small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 1.5rem;">
-                            <label>Payment Proof</label>
-                            <input type="file" class="form-control" name="payment_proof" accept=".jpg,.jpeg,.png,.pdf">
-                            <small class="text-muted">Upload bank slip or payment receipt (Max: 5MB)</small>
-                        </div>
-
-                        <div class="form-group" style="margin-bottom: 1.5rem;">
-                            <label>Notes</label>
-                            <textarea class="form-control" name="notes" rows="3" placeholder="Optional notes..."></textarea>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary" style="width: 100%;" <?php echo ($displayTotalFee <= 0 || $displayBalance <= 0) ? 'disabled' : ''; ?> >
-                            <i class="fas fa-paper-plane"></i> Submit Payment
-                        </button>
-                    </form>
+                <div>
+                    <label class="payment-label" for="amountInput">Amount (NGN)</label>
+                    <input type="number" class="payment-input" name="amount" id="amountInput" min="0" step="0.01" value="<?php echo htmlspecialchars(number_format($displayBalance, 2, '.', '')); ?>" readonly>
+                    <p class="payment-hint" id="balanceHelp">Available balance: <?php echo $paymentHelper->formatCurrency($displayBalance); ?></p>
                 </div>
             </div>
 
-            <!-- Payment History -->
-            <div class="card">
-                <div class="card-header">
-                    <h4 style="margin: 0;"><i class="fas fa-history"></i> Payment History</h4>
-                </div>
-                <div class="card-body">
-                    <?php if (!empty($paymentHistory)): ?>
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Reference</th>
-                                        <th>Fee Type</th>
-                                        <th>Term</th>
-                                        <th>Year</th>
-                                        <th>Amount Paid</th>
-                                        <th>Total Amount</th>
-                                        <th>Method</th>
-                                        <th>Status</th>
-                                        <th>Date</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($paymentHistory as $payment): ?>
-                                        <tr>
-                                            <?php
-                                                $reference = $payment['receipt_number'] ?: ($payment['transaction_id'] ?: '—');
-                                                $feeTypeKey = $payment['fee_type'] ?: 'all';
-                                                $feeTypeLabel = $feeTypeLabels[$feeTypeKey] ?? ucwords(str_replace('_', ' ', $feeTypeKey));
-                                                $paymentDate = $payment['payment_date'] ? date('d/m/Y', strtotime($payment['payment_date'])) : '—';
-                                            ?>
-                                            <td><?php echo htmlspecialchars($reference); ?></td>
-                                            <td><?php echo htmlspecialchars($feeTypeLabel); ?></td>
-                                            <td><?php echo htmlspecialchars($payment['term'] ?? '—'); ?></td>
-                                            <td><?php echo htmlspecialchars($payment['academic_year'] ?? '—'); ?></td>
-                                            <td><?php echo $paymentHelper->formatCurrency($payment['amount_paid']); ?></td>
-                                            <td><?php echo $paymentHelper->formatCurrency($payment['total_amount'] ?? 0); ?></td>
-                                            <td><?php echo ucwords(str_replace('_', ' ', $payment['payment_method'])); ?></td>
-                                            <td>
-                                                <?php
-                                                    $statusClassMap = [
-                                                        'pending' => 'warning',
-                                                        'verified' => 'info',
-                                                        'partial' => 'primary',
-                                                        'completed' => 'success',
-                                                        'rejected' => 'danger'
-                                                    ];
-                                                    $statusClass = $statusClassMap[$payment['status']] ?? 'secondary';
-                                                ?>
-                                                <span class="badge badge-<?php echo $statusClass; ?>">
-                                                    <?php echo ucfirst(str_replace('_', ' ', $payment['status'])); ?>
-                                                </span>
-                                            </td>
-                                            <td><?php echo $paymentDate; ?></td>
-                                            <td>
-                                                <button class="btn btn-sm btn-outline-primary" onclick="viewPayment(<?php echo $payment['id']; ?>)">
-                                                    <i class="fas fa-eye"></i> View
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php else: ?>
-                        <div style="text-align: center; padding: 3rem; color: #6c757d;">
-                            <i class="fas fa-receipt" style="font-size: 3rem; margin-bottom: 1rem;"></i>
-                            <h5>No Payment History</h5>
-                            <p>You haven't made any payments yet.</p>
-                        </div>
-                    <?php endif; ?>
-                </div>
+            <div>
+                <label class="payment-label" for="paymentProofInput">Payment Proof</label>
+                <input type="file" class="payment-input" id="paymentProofInput" name="payment_proof" accept=".jpg,.jpeg,.png,.pdf">
+                <p class="payment-hint">Upload bank slip or receipt. Maximum file size: 5MB.</p>
             </div>
-        </main>
-    </div>
 
-    
+            <div>
+                <label class="payment-label" for="notesInput">Notes</label>
+                <textarea class="payment-input" name="notes" id="notesInput" rows="3" placeholder="Optional notes..."></textarea>
+            </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+            <button type="submit" class="btn btn-primary w-full sm:w-auto" id="submitPaymentButton" <?php echo ($displayTotalFee <= 0 || $displayBalance <= 0) ? 'disabled' : ''; ?>>
+                <i class="fas fa-paper-plane"></i><span>Submit Payment</span>
+            </button>
+        </form>
+    </section>
 
-    <script>
-        // Mobile Menu Toggle
-        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-        const sidebar = document.getElementById('sidebar');
-        const sidebarClose = document.getElementById('sidebarClose');
+    <section id="paymentHistory" class="dashboard-card p-6" data-reveal data-reveal-delay="160">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold text-ink-900">Payment History</h2>
+            <p class="text-xs text-slate-500">Track pending, verified, and completed submissions.</p>
+        </div>
 
-        mobileMenuToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('active');
-            mobileMenuToggle.classList.toggle('active');
-        });
+        <?php if (!empty($paymentHistory)): ?>
+            <div class="overflow-x-auto rounded-2xl border border-ink-900/10">
+                <table class="min-w-full payment-table text-sm">
+                    <thead>
+                        <tr>
+                            <th>Reference</th><th>Fee Type</th><th>Term</th><th>Year</th><th>Amount Paid</th><th>Total Amount</th><th>Method</th><th>Status</th><th>Date</th><th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($paymentHistory as $payment): ?>
+                            <?php
+                            $reference = $payment['receipt_number'] ?: ($payment['transaction_id'] ?: 'N/A');
+                            $feeTypeKey = $payment['fee_type'] ?: 'all';
+                            $feeTypeLabel = $feeTypeLabels[$feeTypeKey] ?? ucwords(str_replace('_', ' ', $feeTypeKey));
+                            $paymentDate = $payment['payment_date'] ? date('d/m/Y', strtotime((string) $payment['payment_date'])) : 'N/A';
+                            $statusClassMap = ['pending' => 'bg-amber-100 text-amber-700', 'verified' => 'bg-sky-100 text-sky-700', 'partial' => 'bg-indigo-100 text-indigo-700', 'completed' => 'bg-emerald-100 text-emerald-700', 'rejected' => 'bg-rose-100 text-rose-700'];
+                            $statusClass = $statusClassMap[$payment['status']] ?? 'bg-slate-100 text-slate-700';
+                            ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars((string) $reference); ?></td>
+                                <td><?php echo htmlspecialchars((string) $feeTypeLabel); ?></td>
+                                <td><?php echo htmlspecialchars((string) ($payment['term'] ?? 'N/A')); ?></td>
+                                <td><?php echo htmlspecialchars((string) ($payment['academic_year'] ?? 'N/A')); ?></td>
+                                <td><?php echo $paymentHelper->formatCurrency((float) ($payment['amount_paid'] ?? 0)); ?></td>
+                                <td><?php echo $paymentHelper->formatCurrency((float) ($payment['total_amount'] ?? 0)); ?></td>
+                                <td><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', (string) ($payment['payment_method'] ?? '')))); ?></td>
+                                <td><span class="status-pill <?php echo $statusClass; ?>"><?php echo htmlspecialchars(ucfirst(str_replace('_', ' ', (string) ($payment['status'] ?? 'pending')))); ?></span></td>
+                                <td><?php echo htmlspecialchars((string) $paymentDate); ?></td>
+                                <td><a class="inline-flex items-center rounded-lg border border-ink-900/15 px-2.5 py-1.5 text-xs font-semibold text-ink-900 hover:border-teal-600/40 hover:bg-teal-600/10" href="payment_details.php?id=<?php echo (int) $payment['id']; ?>"><i class="fas fa-eye mr-1"></i>View</a></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php else: ?>
+            <div class="rounded-xl border border-dashed border-ink-900/15 bg-mist-50 px-4 py-10 text-center">
+                <p class="text-sm font-semibold text-ink-900">No Payment History</p>
+                <p class="text-sm text-slate-500 mt-1">Your submitted payments will appear here.</p>
+            </div>
+        <?php endif; ?>
+    </section>
+</main>
+<script>
+const feeDataByYearTerm = <?php echo json_encode($feeDataByYearTerm, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
+const paymentTotalsByYearTerm = <?php echo json_encode($paymentTotalsByYearTerm, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
+const currencySymbol = <?php echo json_encode($paymentConfig['currency'] ?? 'N', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
+const initialTerm = <?php echo json_encode($selectedTerm, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
+const initialFeeId = <?php echo json_encode((string) $selectedFeeId, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
+const initialYear = <?php echo json_encode($selectedYear, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
+const firstAvailableYearByTerm = <?php echo json_encode($firstAvailableYearByTerm, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
 
-        sidebarClose.addEventListener('click', () => {
-            sidebar.classList.remove('active');
-            mobileMenuToggle.classList.remove('active');
-        });
+const termSelect = document.getElementById('termSelect');
+const academicYearSelect = document.getElementById('academicYearSelect');
+const feeSelect = document.getElementById('feeSelect');
+const paymentTypeSelect = document.getElementById('paymentTypeSelect');
+const amountInput = document.getElementById('amountInput');
+const balanceHelp = document.getElementById('balanceHelp');
+const feeMetaText = document.getElementById('feeMetaText');
+const installmentHint = document.getElementById('installmentHint');
+const totalFeeValue = document.getElementById('totalFeeValue');
+const paidAmountValue = document.getElementById('paidAmountValue');
+const balanceValue = document.getElementById('balanceValue');
+const heroBalanceValue = document.getElementById('heroBalanceValue');
+const submitButton = document.getElementById('submitPaymentButton');
+const refreshSummaryBtn = document.getElementById('refreshSummaryBtn');
+const paymentForm = document.getElementById('paymentForm');
+const paymentProofInput = document.getElementById('paymentProofInput');
+const sidebarOverlay = document.getElementById('studentSidebarOverlay');
 
-        const feeDataByYearTerm = <?php echo json_encode($feeDataByYearTerm); ?>;
-        const paymentTotalsByYearTerm = <?php echo json_encode($paymentTotalsByYearTerm); ?>;
-        const currencySymbol = <?php echo json_encode($paymentConfig['currency'] ?? 'N'); ?>;
-        const initialTerm = <?php echo json_encode($selectedTerm); ?>;
-        const initialFeeId = <?php echo json_encode($selectedFeeId); ?>;
-        const initialYear = <?php echo json_encode($selectedYear); ?>;
-        const firstAvailableYearByTerm = <?php echo json_encode($firstAvailableYearByTerm); ?>;
+const formatCurrency = (amount) => {
+    const value = Number(amount || 0);
+    return `${currencySymbol}${value.toFixed(2).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',')}`;
+};
 
-        const termSelect = document.getElementById('termSelect');
-        const academicYearSelect = document.getElementById('academicYearSelect');
-        const feeSelect = document.getElementById('feeSelect');
-        const paymentTypeSelect = document.getElementById('paymentTypeSelect');
-        const amountInput = document.getElementById('amountInput');
-        const balanceHelp = document.getElementById('balanceHelp');
-        const feeMetaText = document.getElementById('feeMetaText');
-        const installmentHint = document.getElementById('installmentHint');
-        const totalFeeValue = document.getElementById('totalFeeValue');
-        const paidAmountValue = document.getElementById('paidAmountValue');
-        const balanceValue = document.getElementById('balanceValue');
-        const submitButton = document.querySelector('button[type=\"submit\"]');
+const getTermData = (year, term) => {
+    if (feeDataByYearTerm && feeDataByYearTerm[year] && feeDataByYearTerm[year][term]) {
+        return feeDataByYearTerm[year][term];
+    }
+    return { breakdown: [], total: 0 };
+};
 
-        function formatCurrency(amount) {
-            const num = Number(amount || 0);
-            return `${currencySymbol}${num.toFixed(2).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',')}`;
+const renderFeeOptions = (year, term, selectedFee) => {
+    if (!feeSelect) return;
+    const termData = getTermData(year, term);
+    const breakdown = Array.isArray(termData.breakdown) ? termData.breakdown : [];
+    feeSelect.innerHTML = '';
+    feeSelect.add(new Option(`All Fees (Total: ${formatCurrency(termData.total || 0)})`, 'all'));
+    breakdown.forEach((fee) => {
+        const labelParts = [fee.type_label || 'Fee'];
+        if (fee.description) labelParts.push(fee.description);
+        const opt = new Option(`${labelParts.join(' - ')} (${formatCurrency(fee.amount || 0)})`, String(fee.id));
+        opt.dataset.amount = String(fee.amount || 0);
+        opt.dataset.feeType = String(fee.fee_type || 'all');
+        opt.dataset.allowInstallments = fee.allow_installments ? '1' : '0';
+        opt.dataset.maxInstallments = String(fee.max_installments || 1);
+        feeSelect.add(opt);
+    });
+    const exists = Array.from(feeSelect.options).some((option) => option.value === String(selectedFee));
+    feeSelect.value = exists ? String(selectedFee) : 'all';
+};
+
+const getSelectedFeeMeta = () => {
+    const term = termSelect ? termSelect.value : initialTerm;
+    const year = academicYearSelect ? academicYearSelect.value : initialYear;
+    const termData = getTermData(year, term);
+    const selectedId = feeSelect ? feeSelect.value : 'all';
+    if (selectedId === 'all') {
+        return { term, year, feeType: 'all', total: Number(termData.total || 0), allowInstallments: false, maxInstallments: 1, description: 'All fees for selected term' };
+    }
+    const selectedOption = feeSelect ? feeSelect.options[feeSelect.selectedIndex] : null;
+    return {
+        term,
+        year,
+        feeType: selectedOption ? (selectedOption.dataset.feeType || 'all') : 'all',
+        total: selectedOption ? Number(selectedOption.dataset.amount || 0) : 0,
+        allowInstallments: selectedOption ? selectedOption.dataset.allowInstallments === '1' : false,
+        maxInstallments: selectedOption ? Number(selectedOption.dataset.maxInstallments || 1) : 1,
+        description: selectedOption ? selectedOption.text : '',
+    };
+};
+
+const updateSummaryCards = () => {
+    const meta = getSelectedFeeMeta();
+    const paid = paymentTotalsByYearTerm?.[meta.year]?.[meta.term]?.[meta.feeType] ? Number(paymentTotalsByYearTerm[meta.year][meta.term][meta.feeType]) : 0;
+    const balance = Math.max(0, meta.total - paid);
+    if (totalFeeValue) totalFeeValue.textContent = formatCurrency(meta.total);
+    if (paidAmountValue) paidAmountValue.textContent = formatCurrency(paid);
+    if (balanceValue) balanceValue.textContent = formatCurrency(balance);
+    if (heroBalanceValue) heroBalanceValue.textContent = formatCurrency(balance);
+
+    if (paymentTypeSelect) {
+        const installmentOption = paymentTypeSelect.querySelector('option[value=\"installment\"]');
+        const installmentEnabled = meta.allowInstallments && meta.maxInstallments > 1;
+        if (installmentOption) installmentOption.disabled = !installmentEnabled;
+        if (!installmentEnabled && paymentTypeSelect.value === 'installment') paymentTypeSelect.value = 'full';
+    }
+
+    const paymentType = paymentTypeSelect ? paymentTypeSelect.value : 'full';
+    const showInstallmentHint = paymentType === 'installment' && meta.allowInstallments && meta.maxInstallments > 1;
+    let payableAmount = balance;
+    if (showInstallmentHint) payableAmount = Math.min(balance, Number((meta.total / meta.maxInstallments).toFixed(2)));
+
+    if (installmentHint) installmentHint.classList.toggle('hidden', !showInstallmentHint);
+    if (amountInput) amountInput.value = payableAmount.toFixed(2);
+    if (balanceHelp) balanceHelp.textContent = `Available balance: ${formatCurrency(balance)}`;
+    if (feeMetaText) feeMetaText.textContent = meta.total > 0 ? (meta.description || 'Select a fee item to load the amount.') : 'No fee structure found for the selected year and term.';
+    if (submitButton) submitButton.disabled = meta.total <= 0 || balance <= 0;
+};
+
+if (termSelect && feeSelect) {
+    renderFeeOptions(initialYear, initialTerm, initialFeeId);
+    updateSummaryCards();
+    termSelect.addEventListener('change', () => {
+        let year = academicYearSelect ? academicYearSelect.value : initialYear;
+        const term = termSelect.value;
+        const hasTotal = Number(getTermData(year, term).total || 0) > 0;
+        if (!hasTotal && firstAvailableYearByTerm && firstAvailableYearByTerm[term]) {
+            year = firstAvailableYearByTerm[term];
+            if (academicYearSelect) academicYearSelect.value = year;
         }
+        renderFeeOptions(year, term, 'all');
+        updateSummaryCards();
+    });
+    feeSelect.addEventListener('change', updateSummaryCards);
+}
+if (academicYearSelect) {
+    academicYearSelect.addEventListener('change', () => {
+        const year = academicYearSelect.value;
+        const term = termSelect ? termSelect.value : initialTerm;
+        renderFeeOptions(year, term, 'all');
+        updateSummaryCards();
+    });
+}
+if (paymentTypeSelect) paymentTypeSelect.addEventListener('change', updateSummaryCards);
+if (refreshSummaryBtn) refreshSummaryBtn.addEventListener('click', updateSummaryCards);
+if (sidebarOverlay) sidebarOverlay.addEventListener('click', () => document.body.classList.remove('sidebar-open'));
+if (window.matchMedia('(min-width: 768px)').matches) document.body.classList.remove('sidebar-open');
 
-        function renderFeeOptions(year, term, selectedFeeId) {
-            if (!feeSelect) return;
-            const termData = (feeDataByYearTerm[year] && feeDataByYearTerm[year][term]) ? feeDataByYearTerm[year][term] : { breakdown: [], total: 0 };
-            feeSelect.innerHTML = '';
-
-            const allOption = new Option(`All Fees (Total: ${formatCurrency(termData.total)})`, 'all');
-            feeSelect.add(allOption);
-
-            termData.breakdown.forEach((fee) => {
-                const labelParts = [fee.type_label];
-                if (fee.description) {
-                    labelParts.push(fee.description);
-                }
-                const label = `${labelParts.join(' - ')} (${formatCurrency(fee.amount)})`;
-                const opt = new Option(label, String(fee.id));
-                opt.dataset.amount = fee.amount;
-                opt.dataset.feeType = fee.fee_type;
-                opt.dataset.allowInstallments = fee.allow_installments ? '1' : '0';
-                opt.dataset.maxInstallments = fee.max_installments;
-                feeSelect.add(opt);
-            });
-
-            const targetValue = selectedFeeId && Array.from(feeSelect.options).some(o => o.value === String(selectedFeeId))
-                ? String(selectedFeeId)
-                : 'all';
-            feeSelect.value = targetValue;
+if (paymentForm && submitButton) {
+    paymentForm.addEventListener('submit', () => {
+        if (submitButton.disabled) return;
+        submitButton.innerHTML = '<i class=\"fas fa-spinner fa-spin\"></i><span>Submitting...</span>';
+        submitButton.disabled = true;
+    });
+}
+if (paymentProofInput) {
+    paymentProofInput.addEventListener('change', (event) => {
+        const file = event.target.files && event.target.files[0] ? event.target.files[0] : null;
+        if (!file) return;
+        if ((file.size / 1024 / 1024) > 5) {
+            alert('File size must be less than 5MB.');
+            event.target.value = '';
         }
-
-        function getSelectedFeeMeta() {
-            const term = termSelect ? termSelect.value : initialTerm;
-            const year = academicYearSelect ? academicYearSelect.value : initialYear;
-            const termData = (feeDataByYearTerm[year] && feeDataByYearTerm[year][term]) ? feeDataByYearTerm[year][term] : { breakdown: [], total: 0 };
-            const selectedId = feeSelect ? feeSelect.value : 'all';
-
-            if (selectedId === 'all') {
-                return {
-                term,
-                year,
-                feeType: 'all',
-                total: Number(termData.total || 0),
-                allowInstallments: false,
-                maxInstallments: 1,
-                description: 'All fees for selected term'
-            };
-            }
-
-            const selectedOption = feeSelect ? feeSelect.options[feeSelect.selectedIndex] : null;
-            const amount = selectedOption ? Number(selectedOption.dataset.amount || 0) : 0;
-            const feeType = selectedOption ? (selectedOption.dataset.feeType || 'all') : 'all';
-            const allowInstallments = selectedOption ? selectedOption.dataset.allowInstallments === '1' : false;
-            const maxInstallments = selectedOption ? Number(selectedOption.dataset.maxInstallments || 1) : 1;
-
-            return {
-                term,
-                year,
-                feeType,
-                total: amount,
-                allowInstallments,
-                maxInstallments,
-                description: selectedOption ? selectedOption.text : ''
-            };
-        }
-
-        function updateSummaryCards() {
-            const meta = getSelectedFeeMeta();
-            const paid = (paymentTotalsByYearTerm[meta.year] && paymentTotalsByYearTerm[meta.year][meta.term] && paymentTotalsByYearTerm[meta.year][meta.term][meta.feeType])
-                ? Number(paymentTotalsByYearTerm[meta.year][meta.term][meta.feeType])
-                : 0;
-            const balance = Math.max(0, meta.total - paid);
-
-            if (totalFeeValue) totalFeeValue.textContent = formatCurrency(meta.total);
-            if (paidAmountValue) paidAmountValue.textContent = formatCurrency(paid);
-            if (balanceValue) balanceValue.textContent = formatCurrency(balance);
-
-            if (paymentTypeSelect) {
-                const installmentOption = paymentTypeSelect.querySelector('option[value=\"installment\"]');
-                if (installmentOption) {
-                    installmentOption.disabled = !meta.allowInstallments || meta.maxInstallments < 2;
-                }
-                if (( !meta.allowInstallments || meta.maxInstallments < 2) && paymentTypeSelect.value === 'installment') {
-                    paymentTypeSelect.value = 'full';
-                }
-            }
-
-            const paymentType = paymentTypeSelect ? paymentTypeSelect.value : 'full';
-            let payableAmount = balance;
-            if (paymentType === 'installment' && meta.allowInstallments && meta.maxInstallments > 1) {
-                payableAmount = Math.min(balance, Number((meta.total / meta.maxInstallments).toFixed(2)));
-                if (installmentHint) installmentHint.style.display = 'block';
-            } else if (installmentHint) {
-                installmentHint.style.display = 'none';
-            }
-
-            if (amountInput) amountInput.value = payableAmount.toFixed(2);
-            if (balanceHelp) balanceHelp.textContent = `Available balance: ${formatCurrency(balance)}`;
-            if (feeMetaText) {
-                feeMetaText.textContent = meta.total > 0
-                    ? (meta.description || 'Select a fee item to load the amount.')
-                    : 'No fee structure found for the selected year and term.';
-            }
-            if (submitButton) {
-                submitButton.disabled = meta.total <= 0 || balance <= 0;
-            }
-        }
-
-        if (termSelect && feeSelect) {
-            renderFeeOptions(initialYear, initialTerm, initialFeeId);
-            updateSummaryCards();
-
-            termSelect.addEventListener('change', () => {
-                let year = academicYearSelect ? academicYearSelect.value : initialYear;
-                const term = termSelect.value;
-                if ((!feeDataByYearTerm[year] || !feeDataByYearTerm[year][term] || !feeDataByYearTerm[year][term].total) && firstAvailableYearByTerm[term]) {
-                    year = firstAvailableYearByTerm[term];
-                    if (academicYearSelect) academicYearSelect.value = year;
-                }
-                renderFeeOptions(year, term, 'all');
-                updateSummaryCards();
-            });
-
-            feeSelect.addEventListener('change', updateSummaryCards);
-        }
-
-        if (academicYearSelect) {
-            academicYearSelect.addEventListener('change', () => {
-                const year = academicYearSelect.value;
-                const term = termSelect ? termSelect.value : initialTerm;
-                renderFeeOptions(year, term, 'all');
-                updateSummaryCards();
-            });
-        }
-
-        if (paymentTypeSelect) {
-            paymentTypeSelect.addEventListener('change', updateSummaryCards);
-        }
-
-        // Close sidebar when clicking outside on mobile
-        document.addEventListener('click', (e) => {
-            if (window.innerWidth <= 1024) {
-                if (!sidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
-                    sidebar.classList.remove('active');
-                    mobileMenuToggle.classList.remove('active');
-                }
-            }
-        });
-
-        // Add active class to current page in sidebar
-        document.addEventListener('DOMContentLoaded', () => {
-            const currentPage = window.location.pathname.split('/').pop();
-            const navLinks = document.querySelectorAll('.nav-link');
-
-            navLinks.forEach(link => {
-                if (link.getAttribute('href') === currentPage) {
-                    link.classList.add('active');
-                }
-            });
-        });
-
-        // Add scroll effect to header
-        window.addEventListener('scroll', () => {
-            const header = document.querySelector('.dashboard-header');
-            if (window.scrollY > 50) {
-                header.classList.add('scrolled');
-            } else {
-                header.classList.remove('scrolled');
-            }
-        });
-
-        // Animate cards on scroll
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
-        };
-
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('fade-in');
-                }
-            });
-        }, observerOptions);
-
-        // Observe cards
-        document.querySelectorAll('.card').forEach(card => {
-            observer.observe(card);
-        });
-
-        function viewPayment(paymentId) {
-            // Redirect to payment details page
-            window.location.href = 'payment_details.php?id=' + paymentId;
-        }
-
-        // Form validation enhancement
-        document.addEventListener('DOMContentLoaded', () => {
-            const form = document.querySelector('form');
-            if (form) {
-                form.addEventListener('submit', (e) => {
-                    const submitBtn = form.querySelector('button[type="submit"]');
-                    if (submitBtn) {
-                        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-                        submitBtn.disabled = true;
-                    }
-                });
-            }
-        });
-
-        // File input enhancement
-        document.addEventListener('DOMContentLoaded', () => {
-            const fileInput = document.querySelector('input[name="payment_proof"]');
-            if (fileInput) {
-                fileInput.addEventListener('change', (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                        const fileSize = file.size / 1024 / 1024; // MB
-                        if (fileSize > 5) {
-                            alert('File size must be less than 5MB');
-                            e.target.value = '';
-                        }
-                    }
-                });
-            }
-        });
-    </script>
-
-    <script src="../assets/js/offline-core.js" defer></script>
-    <?php include __DIR__ . '/../includes/floating-button.php'; ?>
-
-    <?php require __DIR__ . '/../includes/student_footer.php'; ?>
+    });
+}
+</script>
+<script src="../assets/js/offline-core.js" defer></script>
+<?php include __DIR__ . '/../includes/floating-button.php'; ?>
+<?php require __DIR__ . '/../includes/student_footer.php'; ?>

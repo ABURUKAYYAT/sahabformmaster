@@ -1,587 +1,345 @@
 <?php
-// student/photo_details.php
 session_start();
 require_once '../config/db.php';
 require_once '../includes/functions.php';
 
-// Check if student is logged in
 if (!isset($_SESSION['student_id'])) {
-    header("Location: index.php");
+    header('Location: index.php');
     exit;
 }
 
-$student_id = $_SESSION['student_id'];
-$student_name = $_SESSION['student_name'];
-$admission_number = $_SESSION['admission_no'];
+$student_id = (int) $_SESSION['student_id'];
+$current_school_id = get_current_school_id();
 
-// Get parameters from URL
-$type = isset($_GET['type']) ? $_GET['type'] : '';
-$id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-
-if (empty($type) || $id <= 0 || !in_array($type, ['student', 'teacher'])) {
-    header("Location: photo_album.php");
+$viewer_stmt = $pdo->prepare('
+    SELECT s.class_id, c.class_name
+    FROM students s
+    LEFT JOIN classes c ON c.id = s.class_id AND c.school_id = s.school_id
+    WHERE s.id = ? AND s.school_id = ?
+    LIMIT 1
+');
+$viewer_stmt->execute([$student_id, $current_school_id]);
+$current_student = $viewer_stmt->fetch(PDO::FETCH_ASSOC);
+if (!$current_student) {
+    session_destroy();
+    header('Location: index.php?error=access_denied');
     exit;
 }
 
-// Initialize variables
+$current_class_id = (int) ($current_student['class_id'] ?? 0);
+$current_class_name = trim((string) ($current_student['class_name'] ?? 'My Class'));
+
+$type = strtolower(trim((string) ($_GET['type'] ?? '')));
+$id = (int) ($_GET['id'] ?? 0);
+if (!in_array($type, ['student', 'teacher'], true) || $id <= 0) {
+    header('Location: photo_album.php');
+    exit;
+}
+
 $person_data = null;
-$page_title = '';
-$back_link = 'photo_album.php';
-
 if ($type === 'student') {
-    // Fetch student data
-    $query = "SELECT id, full_name, admission_no, passport_photo, gender, phone, address,
-                     guardian_name, guardian_phone, guardian_email, guardian_relation,
-                     dob, enrollment_date, student_type, blood_group, medical_conditions, allergies,
-                     class_id
-              FROM students
-              WHERE id = ? AND is_active = 1";
-
-    $stmt = $pdo->prepare($query);
-    $stmt->execute([$id]);
-    $person_data = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($person_data) {
-        $page_title = htmlspecialchars($person_data['full_name']) . ' | Student Profile';
-    }
-} elseif ($type === 'teacher') {
-    // Fetch teacher data
-    $query = "SELECT id, full_name, designation, department, qualification, profile_image,
-                     date_of_birth, date_employed, phone, address, emergency_contact, emergency_phone
-              FROM users
-              WHERE id = ? AND role = 'teacher' AND is_active = 1";
-
-    $stmt = $pdo->prepare($query);
-    $stmt->execute([$id]);
-    $person_data = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($person_data) {
-        $page_title = htmlspecialchars($person_data['full_name']) . ' | Teacher Profile';
-    }
+    $person_stmt = $pdo->prepare('
+        SELECT id, full_name, admission_no, passport_photo, gender, phone, address,
+               guardian_name, guardian_phone, guardian_email, guardian_relation,
+               dob, enrollment_date, student_type, blood_group, medical_conditions, allergies
+        FROM students
+        WHERE id = ? AND school_id = ? AND class_id = ? AND is_active = 1
+        LIMIT 1
+    ');
+    $person_stmt->execute([$id, $current_school_id, $current_class_id]);
+    $person_data = $person_stmt->fetch(PDO::FETCH_ASSOC);
+} else {
+    $person_stmt = $pdo->prepare("
+        SELECT id, full_name, designation, department, qualification, profile_image,
+               date_of_birth, date_employed, phone, address, emergency_contact, emergency_phone
+        FROM users
+        WHERE id = ? AND school_id = ? AND role = 'teacher' AND is_active = 1
+        LIMIT 1
+    ");
+    $person_stmt->execute([$id, $current_school_id]);
+    $person_data = $person_stmt->fetch(PDO::FETCH_ASSOC);
 }
 
 if (!$person_data) {
-    header("Location: photo_album.php");
+    header('Location: photo_album.php');
     exit;
 }
+
+$normalize_photo = static function (?string $path, string $fallback = '../assets/images/default-avatar.png'): string {
+    $value = trim((string) $path);
+    if ($value === '') {
+        return $fallback;
+    }
+
+    if (preg_match('/^(https?:\/\/|\/|\.\.\/|data:)/i', $value) === 1) {
+        return $value;
+    }
+
+    return '../' . ltrim($value, '/');
+};
+
+$display = static function ($value, string $fallback = 'Not specified'): string {
+    $text = trim((string) ($value ?? ''));
+    return $text !== '' ? $text : $fallback;
+};
+
+$format_date = static function ($value): string {
+    $text = trim((string) ($value ?? ''));
+    if ($text === '') {
+        return 'Not specified';
+    }
+
+    $ts = strtotime($text);
+    if ($ts === false) {
+        return 'Not specified';
+    }
+
+    return date('M j, Y', $ts);
+};
+
+$profile_image = $type === 'student'
+    ? $normalize_photo($person_data['passport_photo'] ?? null)
+    : $normalize_photo($person_data['profile_image'] ?? null);
+
+$profile_name = (string) ($person_data['full_name'] ?? 'Profile');
+$profile_title = $type === 'student'
+    ? $display($person_data['student_type'] ?? 'Student', 'Student')
+    : $display($person_data['designation'] ?? 'Teacher', 'Teacher');
+
+$header_badge = $type === 'student' ? 'Student Profile' : 'Teacher Profile';
+$pageTitle = $profile_name . ' | ' . $header_badge . ' | ' . get_school_display_name();
+
+$extraHead = <<<'HTML'
+<style>
+    .student-layout{overflow-x:hidden}
+    .student-photo-details-page section{padding-top:0;padding-bottom:0}
+    .dashboard-card{border-radius:1.5rem;border:1px solid rgba(15,31,45,.08);background:#fff;box-shadow:0 10px 24px rgba(15,31,51,.08)}
+
+    .student-sidebar-overlay{position:fixed;inset:0;background:rgba(2,6,23,.45);opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:30}
+    .sidebar{position:fixed;top:73px;left:0;width:16rem;height:calc(100vh - 73px);background:#fff;border-right:1px solid rgba(15,31,45,.1);box-shadow:0 18px 40px rgba(15,31,51,.12);transform:translateX(-106%);transition:transform .22s ease;z-index:40;overflow-y:auto}
+    body.sidebar-open .sidebar{transform:translateX(0)}
+    body.sidebar-open .student-sidebar-overlay{opacity:1;pointer-events:auto}
+    .sidebar-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid rgba(15,31,45,.08)}
+    .sidebar-header h3{margin:0;font-size:1rem;font-weight:700;color:#0f1f2d}
+    .sidebar-close{border:0;border-radius:.55rem;padding:.35rem .55rem;background:rgba(15,31,45,.08);color:#334155;font-size:.8rem;line-height:1;cursor:pointer}
+    .sidebar-nav{padding:.8rem}
+    .nav-list{list-style:none;margin:0;padding:0;display:grid;gap:.2rem}
+    .nav-link{display:flex;align-items:center;gap:.65rem;border-radius:.75rem;padding:.62rem .72rem;color:#475569;font-size:.88rem;font-weight:600;text-decoration:none;transition:background-color .15s ease,color .15s ease}
+    .nav-link:hover{background:rgba(22,133,117,.1);color:#0f6a5c}
+    .nav-link.active{background:rgba(22,133,117,.14);color:#0f6a5c}
+    .nav-icon{width:1rem;text-align:center}
+    #studentMain{min-width:0}
+
+    .profile-hero{position:relative;overflow:hidden;background:linear-gradient(130deg,#0f1f2d 0%,#0f6a5c 55%,#0ea5e9 100%);color:#fff}
+    .profile-hero::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 12% 22%,rgba(255,255,255,.2),transparent 40%);pointer-events:none}
+    .profile-hero > *{position:relative;z-index:2}
+    .profile-chip{display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .78rem;border-radius:999px;border:1px solid rgba(255,255,255,.32);background:rgba(255,255,255,.14);font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+
+    .profile-hero-wrap{display:grid;gap:1.2rem;align-items:center}
+    @media (min-width:768px){
+        .profile-hero-wrap{grid-template-columns:160px 1fr auto}
+    }
+
+    .profile-avatar{position:relative;width:148px;height:148px;border-radius:1.35rem;overflow:hidden;border:4px solid rgba(255,255,255,.42);box-shadow:0 18px 40px rgba(2,6,23,.32)}
+    .profile-avatar img{width:100%;height:100%;object-fit:cover}
+
+    .profile-gender-badge{position:absolute;bottom:-7px;right:-7px;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:999px;border:2px solid #fff;font-size:.88rem}
+    .badge-male{background:#dbeafe;color:#1d4ed8}
+    .badge-female{background:#fce7f3;color:#be185d}
+    .badge-neutral{background:#e2e8f0;color:#334155}
+
+    .profile-name{margin-top:.6rem;font-size:2.05rem;line-height:1.15;color:#fff}
+    .profile-role{margin-top:.3rem;font-size:1rem;color:rgba(255,255,255,.86)}
+    .profile-meta{margin-top:.55rem;font-size:.82rem;color:rgba(255,255,255,.82)}
+
+    .profile-actions{display:flex;flex-wrap:wrap;gap:.65rem}
+    .profile-back-btn{display:inline-flex;align-items:center;gap:.5rem;padding:.55rem .95rem;border-radius:999px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:#fff;text-decoration:none;font-size:.82rem;font-weight:700;transition:background-color .2s ease,transform .2s ease}
+    .profile-back-btn:hover{background:rgba(255,255,255,.22);transform:translateY(-1px)}
+
+    .profile-section-header{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;margin-bottom:1rem}
+    .profile-section-header h2{font-size:1.18rem;color:#0f1f2d}
+    .profile-section-header p{font-size:.85rem;color:#64748b}
+
+    .profile-info-grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+    .profile-info-item{border-radius:1rem;border:1px solid rgba(15,31,45,.1);background:#fff;padding:.85rem .92rem}
+    .profile-info-label{display:block;font-size:.69rem;font-weight:700;letter-spacing:.045em;text-transform:uppercase;color:#64748b}
+    .profile-info-value{margin-top:.28rem;font-size:.92rem;color:#0f1f2d;line-height:1.5}
+
+    .profile-callout{display:flex;align-items:center;gap:.7rem;border-radius:1rem;background:#f8fafc;border:1px solid rgba(15,31,45,.1);padding:.85rem 1rem;color:#334155;font-size:.85rem}
+    .profile-callout i{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:999px;background:#e2e8f0;color:#0f6a5c}
+
+    @media (min-width:768px){
+        #studentMain{padding-left:16rem !important}
+        .sidebar{transform:translateX(0);top:73px;height:calc(100vh - 73px)}
+        .sidebar-close{display:none}
+        .student-sidebar-overlay{display:none}
+    }
+    @media (max-width:767.98px){
+        #studentMain{padding-left:0 !important}
+    }
+    @media (max-width:640px){
+        .student-photo-details-page .dashboard-card{padding:1.05rem !important}
+        .profile-avatar{width:118px;height:118px;border-radius:1rem}
+        .profile-name{font-size:1.6rem}
+        .profile-hero-wrap{justify-items:start}
+    }
+</style>
+HTML;
+
+require_once __DIR__ . '/../includes/student_header.php';
 ?>
+<div class="student-sidebar-overlay" id="studentSidebarOverlay"></div>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?> | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
-    <link rel="stylesheet" href="../assets/css/student-dashboard.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<main class="student-photo-details-page space-y-6">
+    <section class="dashboard-card profile-hero p-6 sm:p-8" data-reveal>
+        <span class="profile-chip"><i class="fas fa-id-badge"></i> <?php echo htmlspecialchars($header_badge); ?></span>
 
-    <style>
-        /* Photo Details Page Styles */
-
-        .profile-header {
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            color: white;
-            border-radius: 1rem;
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-            margin-bottom: 2rem;
-            overflow: hidden;
-        }
-
-        .profile-header-content {
-            padding: 3rem 2rem;
-            text-align: center;
-        }
-
-        .back-to-album-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1.5rem;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            text-decoration: none;
-            border-radius: 0.75rem;
-            font-size: 0.95rem;
-            font-weight: 500;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            transition: all 0.3s ease;
-            margin-bottom: 2rem;
-        }
-
-        .back-to-album-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-            text-decoration: none;
-            color: white;
-        }
-
-        .profile-avatar-large {
-            width: 150px;
-            height: 150px;
-            margin: 0 auto 2rem;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
-        }
-
-        .profile-avatar-large img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            border-radius: 50%;
-        }
-
-        .gender-badge-large {
-            position: absolute;
-            bottom: -8px;
-            right: -8px;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.2rem;
-            font-weight: bold;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .profile-name-large {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            font-family: 'Poppins', sans-serif;
-        }
-
-        .profile-role {
-            font-size: 1.2rem;
-            opacity: 0.9;
-            margin-bottom: 1rem;
-        }
-
-        .profile-id {
-            font-size: 1rem;
-            opacity: 0.8;
-            font-weight: 500;
-        }
-
-        /* Information Sections */
-        .info-sections-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        .info-section {
-            background: white;
-            border-radius: 1rem;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.8);
-        }
-
-        .info-section-header {
-            background: linear-gradient(135deg, #06b6d4, #0891b2);
-            color: white;
-            padding: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .info-section-header i {
-            font-size: 1.2rem;
-        }
-
-        .info-section-header h3 {
-            margin: 0;
-            font-size: 1.3rem;
-            font-weight: 600;
-            font-family: 'Poppins', sans-serif;
-        }
-
-        .info-section-body {
-            padding: 2rem;
-        }
-
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .info-item {
-            background: #f8f9fa;
-            padding: 1.25rem;
-            border-radius: 0.75rem;
-            border-left: 4px solid #6366f1;
-            transition: all 0.3s ease;
-        }
-
-        .info-item:hover {
-            background: #e9ecef;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .info-label {
-            display: block;
-            font-weight: 600;
-            color: #495057;
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .info-value {
-            color: #6c757d;
-            font-size: 1rem;
-            line-height: 1.5;
-        }
-
-        /* Special sections for students */
-        .medical-section .info-section-header {
-            background: linear-gradient(135deg, #10b981, #059669);
-        }
-
-        .guardian-section .info-section-header {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-        }
-
-        /* Emergency contact section for teachers */
-        .emergency-section .info-section-header {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-        }
-
-        /* Responsive Design */
-        @media (max-width: 1024px) {
-            .info-sections-grid {
-                grid-template-columns: 1fr;
+        <div class="profile-hero-wrap mt-4">
+            <?php
+            $gender = strtolower(trim((string) ($person_data['gender'] ?? '')));
+            $gender_icon = 'fa-user';
+            $gender_badge = 'badge-neutral';
+            if ($gender === 'male') {
+                $gender_icon = 'fa-mars';
+                $gender_badge = 'badge-male';
+            } elseif ($gender === 'female') {
+                $gender_icon = 'fa-venus';
+                $gender_badge = 'badge-female';
             }
-        }
-
-        @media (max-width: 768px) {
-            .profile-header-content {
-                padding: 2rem 1.5rem;
-            }
-
-            .profile-avatar-large {
-                width: 120px;
-                height: 120px;
-            }
-
-            .profile-name-large {
-                font-size: 2rem;
-            }
-
-            .profile-role {
-                font-size: 1.1rem;
-            }
-
-            .info-section-body {
-                padding: 1.5rem;
-            }
-
-            .info-grid {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .profile-header-content {
-                padding: 1.5rem 1rem;
-            }
-
-            .profile-name-large {
-                font-size: 1.75rem;
-            }
-
-            .profile-avatar-large {
-                width: 100px;
-                height: 100px;
-                margin-bottom: 1.5rem;
-            }
-
-            .gender-badge-large {
-                width: 40px;
-                height: 40px;
-                font-size: 1rem;
-            }
-
-            .back-to-album-btn {
-                padding: 0.5rem 1rem;
-                font-size: 0.9rem;
-            }
-        }
-
-        /* Loading animation */
-        .fade-in {
-            animation: fadeIn 0.6s ease-out;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-    </style>
-</head>
-<body>
-
-    <!-- Mobile Navigation Component -->
-    <?php include '../includes/mobile_navigation.php'; ?>
-
-    <!-- Header -->
-    <header class="dashboard-header">
-        <div class="header-container">
-            <!-- Logo and School Name -->
-            <div class="header-left">
-                <div class="school-logo-container">
-                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
-                    <div class="school-info">
-                        <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
-                        <p class="school-tagline">Student Portal</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Student Info and Logout -->
-            <div class="header-right">
-                <div class="student-info">
-                    <p class="student-label">Student</p>
-                    <span class="student-name"><?php echo htmlspecialchars($student_name); ?></span>
-                    <span class="admission-number"><?php echo htmlspecialchars($admission_number); ?></span>
-                </div>
-                <a href="logout.php" class="btn-logout">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                </a>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Container -->
-    <div class="dashboard-container">
-        <?php include '../includes/student_sidebar.php'; ?>
-
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Profile Header -->
-            <div class="profile-header fade-in">
-                <div class="profile-header-content">
-                    <a href="photo_album.php" class="back-to-album-btn">
-                        <i class="fas fa-arrow-left"></i>
-                        Back to Photo Album
-                    </a>
-
-                    <div class="profile-avatar-large">
-                        <img src="<?php
-                            if ($type === 'student') {
-                                echo htmlspecialchars($person_data['passport_photo'] ?: '../assets/images/default-avatar.png');
-                            } else {
-                                echo htmlspecialchars($person_data['profile_image'] ?: '../assets/images/default-avatar.png');
-                            }
-                        ?>" alt="<?php echo htmlspecialchars($person_data['full_name']); ?>">
-                        <?php if ($type === 'student' && isset($person_data['gender'])): ?>
-                            <div class="gender-badge-large <?php echo $person_data['gender'] === 'Male' ? 'gender-male' : 'gender-female'; ?>">
-                                <?php echo $person_data['gender'] === 'Male' ? '♂' : '♀'; ?>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-
-                    <h1 class="profile-name-large"><?php echo htmlspecialchars($person_data['full_name']); ?></h1>
-                    <div class="profile-role">
-                        <?php
-                        if ($type === 'student') {
-                            echo htmlspecialchars($person_data['student_type'] ?: 'Student');
-                        } else {
-                            echo htmlspecialchars($person_data['designation'] ?: 'Teacher');
-                        }
-                        ?>
-                    </div>
-                    <div class="profile-id">
-                        <?php
-                        if ($type === 'student') {
-                            echo 'Admission No: ' . htmlspecialchars($person_data['admission_no']);
-                        } else {
-                            echo htmlspecialchars($person_data['designation'] ?: 'Teacher');
-                        }
-                        ?>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Information Sections -->
-            <div class="info-sections-grid">
-                <!-- Personal Information -->
-                <div class="info-section fade-in">
-                    <div class="info-section-header">
-                        <i class="fas fa-user"></i>
-                        <h3>Personal Information</h3>
-                    </div>
-                    <div class="info-section-body">
-                        <div class="info-grid">
-                            <?php if ($type === 'student'): ?>
-                                <div class="info-item">
-                                    <span class="info-label">Gender</span>
-                                    <span class="info-value"><?php echo htmlspecialchars($person_data['gender'] ?: 'Not specified'); ?></span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">Date of Birth</span>
-                                    <span class="info-value"><?php echo $person_data['dob'] ? date('M j, Y', strtotime($person_data['dob'])) : 'Not specified'; ?></span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">Student Type</span>
-                                    <span class="info-value"><?php echo htmlspecialchars($person_data['student_type'] ?: 'Not specified'); ?></span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">Blood Group</span>
-                                    <span class="info-value"><?php echo htmlspecialchars($person_data['blood_group'] ?: 'Not specified'); ?></span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">Enrollment Date</span>
-                                    <span class="info-value"><?php echo $person_data['enrollment_date'] ? date('M j, Y', strtotime($person_data['enrollment_date'])) : 'Not specified'; ?></span>
-                                </div>
-                            <?php else: ?>
-                                <div class="info-item">
-                                    <span class="info-label">Department</span>
-                                    <span class="info-value"><?php echo htmlspecialchars($person_data['department'] ?: 'Not specified'); ?></span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">Qualification</span>
-                                    <span class="info-value"><?php echo htmlspecialchars($person_data['qualification'] ?: 'Not specified'); ?></span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">Date of Birth</span>
-                                    <span class="info-value"><?php echo $person_data['date_of_birth'] ? date('M j, Y', strtotime($person_data['date_of_birth'])) : 'Not specified'; ?></span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">Date Employed</span>
-                                    <span class="info-value"><?php echo $person_data['date_employed'] ? date('M j, Y', strtotime($person_data['date_employed'])) : 'Not specified'; ?></span>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Contact Information -->
-                <div class="info-section fade-in">
-                    <div class="info-section-header">
-                        <i class="fas fa-phone"></i>
-                        <h3>Contact Information</h3>
-                    </div>
-                    <div class="info-section-body">
-                        <div class="info-grid">
-                            <div class="info-item">
-                                <span class="info-label">Phone</span>
-                                <span class="info-value"><?php echo htmlspecialchars($person_data['phone'] ?: 'Not specified'); ?></span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Address</span>
-                                <span class="info-value"><?php echo htmlspecialchars($person_data['address'] ?: 'Not specified'); ?></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+            ?>
+            <div class="profile-avatar">
+                <img src="<?php echo htmlspecialchars($profile_image); ?>" alt="<?php echo htmlspecialchars($profile_name); ?>">
                 <?php if ($type === 'student'): ?>
-                    <!-- Guardian Information -->
-                    <div class="info-section guardian-section fade-in">
-                        <div class="info-section-header">
-                            <i class="fas fa-user-friends"></i>
-                            <h3>Guardian Information</h3>
-                        </div>
-                        <div class="info-section-body">
-                            <div class="info-grid">
-                                <div class="info-item">
-                                    <span class="info-label">Name</span>
-                                    <span class="info-value"><?php echo htmlspecialchars($person_data['guardian_name'] ?: 'Not specified'); ?></span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">Phone</span>
-                                    <span class="info-value"><?php echo htmlspecialchars($person_data['guardian_phone'] ?: 'Not specified'); ?></span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">Email</span>
-                                    <span class="info-value"><?php echo htmlspecialchars($person_data['guardian_email'] ?: 'Not specified'); ?></span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">Relation</span>
-                                    <span class="info-value"><?php echo htmlspecialchars($person_data['guardian_relation'] ?: 'Not specified'); ?></span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Medical Information -->
-                    <div class="info-section medical-section fade-in">
-                        <div class="info-section-header">
-                            <i class="fas fa-heartbeat"></i>
-                            <h3>Medical Information</h3>
-                        </div>
-                        <div class="info-section-body">
-                            <div class="info-grid">
-                                <div class="info-item">
-                                    <span class="info-label">Conditions</span>
-                                    <span class="info-value"><?php echo htmlspecialchars($person_data['medical_conditions'] ?: 'None specified'); ?></span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">Allergies</span>
-                                    <span class="info-value"><?php echo htmlspecialchars($person_data['allergies'] ?: 'None specified'); ?></span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                <?php else: ?>
-                    <!-- Emergency Contact -->
-                    <div class="info-section emergency-section fade-in">
-                        <div class="info-section-header">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <h3>Emergency Contact</h3>
-                        </div>
-                        <div class="info-section-body">
-                            <div class="info-grid">
-                                <div class="info-item">
-                                    <span class="info-label">Name</span>
-                                    <span class="info-value"><?php echo htmlspecialchars($person_data['emergency_contact'] ?: 'Not specified'); ?></span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">Phone</span>
-                                    <span class="info-value"><?php echo htmlspecialchars($person_data['emergency_phone'] ?: 'Not specified'); ?></span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <span class="profile-gender-badge <?php echo $gender_badge; ?>" aria-hidden="true"><i class="fas <?php echo $gender_icon; ?>"></i></span>
                 <?php endif; ?>
             </div>
-        </main>
-    </div>
 
-    
+            <div>
+                <h1 class="profile-name font-display"><?php echo htmlspecialchars($profile_name); ?></h1>
+                <p class="profile-role"><?php echo htmlspecialchars($profile_title); ?></p>
+                <p class="profile-meta">
+                    <?php if ($type === 'student'): ?>
+                        Admission: <?php echo htmlspecialchars($display($person_data['admission_no'] ?? null, 'Not assigned')); ?>
+                    <?php else: ?>
+                        Department: <?php echo htmlspecialchars($display($person_data['department'] ?? null, 'Not assigned')); ?>
+                    <?php endif; ?>
+                </p>
+            </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+            <div class="profile-actions">
+                <a href="photo_album.php" class="profile-back-btn"><i class="fas fa-arrow-left"></i> Back to album</a>
+                <a href="dashboard.php" class="profile-back-btn"><i class="fas fa-home"></i> Dashboard</a>
+            </div>
+        </div>
+    </section>
 
+    <section class="dashboard-card p-6" data-reveal data-reveal-delay="70">
+        <div class="profile-section-header">
+            <div>
+                <h2 class="font-display">Personal Information</h2>
+                <p>
+                    <?php if ($type === 'student'): ?>
+                        Verified profile records visible within <?php echo htmlspecialchars($current_class_name); ?>.
+                    <?php else: ?>
+                        Verified profile records available to students in your school.
+                    <?php endif; ?>
+                </p>
+            </div>
+        </div>
 
+        <div class="profile-info-grid">
+            <?php if ($type === 'student'): ?>
+                <article class="profile-info-item"><span class="profile-info-label">Gender</span><p class="profile-info-value"><?php echo htmlspecialchars($display($person_data['gender'] ?? null)); ?></p></article>
+                <article class="profile-info-item"><span class="profile-info-label">Date of Birth</span><p class="profile-info-value"><?php echo htmlspecialchars($format_date($person_data['dob'] ?? null)); ?></p></article>
+                <article class="profile-info-item"><span class="profile-info-label">Student Type</span><p class="profile-info-value"><?php echo htmlspecialchars($display($person_data['student_type'] ?? null)); ?></p></article>
+                <article class="profile-info-item"><span class="profile-info-label">Blood Group</span><p class="profile-info-value"><?php echo htmlspecialchars($display($person_data['blood_group'] ?? null)); ?></p></article>
+                <article class="profile-info-item"><span class="profile-info-label">Enrollment Date</span><p class="profile-info-value"><?php echo htmlspecialchars($format_date($person_data['enrollment_date'] ?? null)); ?></p></article>
+            <?php else: ?>
+                <article class="profile-info-item"><span class="profile-info-label">Designation</span><p class="profile-info-value"><?php echo htmlspecialchars($display($person_data['designation'] ?? null)); ?></p></article>
+                <article class="profile-info-item"><span class="profile-info-label">Department</span><p class="profile-info-value"><?php echo htmlspecialchars($display($person_data['department'] ?? null)); ?></p></article>
+                <article class="profile-info-item"><span class="profile-info-label">Qualification</span><p class="profile-info-value"><?php echo htmlspecialchars($display($person_data['qualification'] ?? null)); ?></p></article>
+                <article class="profile-info-item"><span class="profile-info-label">Date of Birth</span><p class="profile-info-value"><?php echo htmlspecialchars($format_date($person_data['date_of_birth'] ?? null)); ?></p></article>
+                <article class="profile-info-item"><span class="profile-info-label">Date Employed</span><p class="profile-info-value"><?php echo htmlspecialchars($format_date($person_data['date_employed'] ?? null)); ?></p></article>
+            <?php endif; ?>
+        </div>
+    </section>
 
-    <?php include '../includes/floating-button.php'; ?>
+    <section class="dashboard-card p-6" data-reveal data-reveal-delay="110">
+        <div class="profile-section-header">
+            <div>
+                <h2 class="font-display">Contact Information</h2>
+                <p>Basic communication details available to your student account.</p>
+            </div>
+        </div>
 
-</body>
-</html>
+        <div class="profile-info-grid">
+            <article class="profile-info-item"><span class="profile-info-label">Phone</span><p class="profile-info-value"><?php echo htmlspecialchars($display($person_data['phone'] ?? null)); ?></p></article>
+            <article class="profile-info-item"><span class="profile-info-label">Address</span><p class="profile-info-value"><?php echo htmlspecialchars($display($person_data['address'] ?? null)); ?></p></article>
+        </div>
+    </section>
+
+    <?php if ($type === 'student'): ?>
+        <section class="dashboard-card p-6" data-reveal data-reveal-delay="140">
+            <div class="profile-section-header">
+                <div>
+                    <h2 class="font-display">Guardian Information</h2>
+                    <p>Emergency and guardian contacts attached to this student profile.</p>
+                </div>
+            </div>
+
+            <div class="profile-info-grid">
+                <article class="profile-info-item"><span class="profile-info-label">Guardian Name</span><p class="profile-info-value"><?php echo htmlspecialchars($display($person_data['guardian_name'] ?? null)); ?></p></article>
+                <article class="profile-info-item"><span class="profile-info-label">Guardian Phone</span><p class="profile-info-value"><?php echo htmlspecialchars($display($person_data['guardian_phone'] ?? null)); ?></p></article>
+                <article class="profile-info-item"><span class="profile-info-label">Guardian Email</span><p class="profile-info-value"><?php echo htmlspecialchars($display($person_data['guardian_email'] ?? null)); ?></p></article>
+                <article class="profile-info-item"><span class="profile-info-label">Relationship</span><p class="profile-info-value"><?php echo htmlspecialchars($display($person_data['guardian_relation'] ?? null)); ?></p></article>
+            </div>
+        </section>
+
+        <section class="dashboard-card p-6" data-reveal data-reveal-delay="170">
+            <div class="profile-section-header">
+                <div>
+                    <h2 class="font-display">Medical Information</h2>
+                    <p>Health notes provided for school support and care workflows.</p>
+                </div>
+            </div>
+
+            <div class="profile-info-grid">
+                <article class="profile-info-item"><span class="profile-info-label">Medical Conditions</span><p class="profile-info-value"><?php echo htmlspecialchars($display($person_data['medical_conditions'] ?? null, 'None specified')); ?></p></article>
+                <article class="profile-info-item"><span class="profile-info-label">Allergies</span><p class="profile-info-value"><?php echo htmlspecialchars($display($person_data['allergies'] ?? null, 'None specified')); ?></p></article>
+            </div>
+        </section>
+    <?php else: ?>
+        <section class="dashboard-card p-6" data-reveal data-reveal-delay="140">
+            <div class="profile-section-header">
+                <div>
+                    <h2 class="font-display">Emergency Contact</h2>
+                    <p>Backup contact details associated with this teacher profile.</p>
+                </div>
+            </div>
+
+            <div class="profile-info-grid">
+                <article class="profile-info-item"><span class="profile-info-label">Contact Name</span><p class="profile-info-value"><?php echo htmlspecialchars($display($person_data['emergency_contact'] ?? null)); ?></p></article>
+                <article class="profile-info-item"><span class="profile-info-label">Contact Phone</span><p class="profile-info-value"><?php echo htmlspecialchars($display($person_data['emergency_phone'] ?? null)); ?></p></article>
+            </div>
+        </section>
+    <?php endif; ?>
+
+    <section class="dashboard-card p-5" data-reveal data-reveal-delay="200">
+        <div class="profile-callout">
+            <i class="fas fa-shield-alt" aria-hidden="true"></i>
+            <span>This profile is scoped to your school account and filtered to authorized records only.</span>
+        </div>
+    </section>
+</main>
+
+<script>
+const sidebarOverlay = document.getElementById('studentSidebarOverlay');
+if (sidebarOverlay) {
+    sidebarOverlay.addEventListener('click', () => document.body.classList.remove('sidebar-open'));
+}
+if (window.matchMedia('(min-width: 768px)').matches) {
+    document.body.classList.remove('sidebar-open');
+}
+</script>
+
+<?php require_once __DIR__ . '/../includes/student_footer.php'; ?>

@@ -1,786 +1,277 @@
 <?php
-// student/photo_album.php
 session_start();
 require_once '../config/db.php';
 require_once '../includes/functions.php';
 
-// Check if student is logged in
 if (!isset($_SESSION['student_id'])) {
-    header("Location: index.php");
+    header('Location: index.php');
     exit;
 }
 
-$student_id = $_SESSION['student_id'];
-$student_name = $_SESSION['student_name'];
-$admission_number = $_SESSION['admission_no'];
+$student_id = (int) $_SESSION['student_id'];
 $current_school_id = get_current_school_id();
 
-// Get current student's class information
-$stmt = $pdo->prepare("SELECT s.class_id, c.class_name FROM students s JOIN classes c ON s.class_id = c.id AND c.school_id = ? WHERE s.id = ? AND s.school_id = ?");
-$stmt->execute([$current_school_id, $student_id, $current_school_id]);
-$current_student = $stmt->fetch();
+$viewer_stmt = $pdo->prepare('
+    SELECT s.class_id, c.class_name
+    FROM students s
+    LEFT JOIN classes c ON c.id = s.class_id AND c.school_id = s.school_id
+    WHERE s.id = ? AND s.school_id = ?
+    LIMIT 1
+');
+$viewer_stmt->execute([$student_id, $current_school_id]);
+$current_student = $viewer_stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$current_student) {
-    header("Location: dashboard.php");
+    session_destroy();
+    header('Location: index.php?error=access_denied');
     exit;
 }
 
-$class_id = $current_student['class_id'];
-$class_name = $current_student['class_name'];
+$class_id = (int) ($current_student['class_id'] ?? 0);
+$class_name = trim((string) ($current_student['class_name'] ?? 'My Class'));
 
-// Get all active teachers in the school
-$teachers_query = "SELECT id, full_name, designation, department, qualification, profile_image,
-                          date_of_birth, date_employed, phone, address, emergency_contact, emergency_phone
-                   FROM users
-                   WHERE role = 'teacher' AND is_active = 1 AND school_id = ?
-                   ORDER BY full_name ASC";
-$teachers_stmt = $pdo->prepare($teachers_query);
+$teachers_stmt = $pdo->prepare("
+    SELECT id, full_name, designation, department, profile_image
+    FROM users
+    WHERE role = 'teacher' AND is_active = 1 AND school_id = ?
+    ORDER BY full_name ASC
+");
 $teachers_stmt->execute([$current_school_id]);
 $teachers = $teachers_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get all active students in the same class with full details
-$query = "SELECT id, full_name, admission_no, passport_photo, gender, phone, address,
-                 guardian_name, guardian_phone, guardian_email, guardian_relation,
-                 dob, enrollment_date, student_type, blood_group, medical_conditions, allergies
-          FROM students
-          WHERE class_id = ? AND is_active = 1 AND school_id = ?
-          ORDER BY full_name ASC";
+$classmates = [];
+if ($class_id > 0) {
+    $classmates_stmt = $pdo->prepare('
+        SELECT id, full_name, admission_no, passport_photo, gender
+        FROM students
+        WHERE class_id = ? AND is_active = 1 AND school_id = ?
+        ORDER BY full_name ASC
+    ');
+    $classmates_stmt->execute([$class_id, $current_school_id]);
+    $classmates = $classmates_stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 
-$stmt = $pdo->prepare($query);
-$stmt->execute([$class_id, $current_school_id]);
-$classmates = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$normalize_photo = static function (?string $path, string $fallback = '../assets/images/default-avatar.png'): string {
+    $value = trim((string) $path);
+    if ($value === '') {
+        return $fallback;
+    }
+
+    if (preg_match('/^(https?:\/\/|\/|\.\.\/|data:)/i', $value) === 1) {
+        return $value;
+    }
+
+    return '../' . ltrim($value, '/');
+};
+
+$total_teachers = count($teachers);
+$total_classmates = count($classmates);
+$total_uploaded_photos = count(array_filter(
+    $classmates,
+    static fn(array $mate): bool => trim((string) ($mate['passport_photo'] ?? '')) !== ''
+));
+
+$pageTitle = 'Class Photo Album | ' . $class_name . ' | ' . get_school_display_name();
+$extraHead = <<<'HTML'
+<style>
+    .student-layout{overflow-x:hidden}
+    .student-album-page section{padding-top:0;padding-bottom:0}
+    .dashboard-card{border-radius:1.5rem;border:1px solid rgba(15,31,45,.08);background:#fff;box-shadow:0 10px 24px rgba(15,31,51,.08)}
+
+    .student-sidebar-overlay{position:fixed;inset:0;background:rgba(2,6,23,.45);opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:30}
+    .sidebar{position:fixed;top:73px;left:0;width:16rem;height:calc(100vh - 73px);background:#fff;border-right:1px solid rgba(15,31,45,.1);box-shadow:0 18px 40px rgba(15,31,51,.12);transform:translateX(-106%);transition:transform .22s ease;z-index:40;overflow-y:auto}
+    body.sidebar-open .sidebar{transform:translateX(0)}
+    body.sidebar-open .student-sidebar-overlay{opacity:1;pointer-events:auto}
+    .sidebar-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid rgba(15,31,45,.08)}
+    .sidebar-header h3{margin:0;font-size:1rem;font-weight:700;color:#0f1f2d}
+    .sidebar-close{border:0;border-radius:.55rem;padding:.35rem .55rem;background:rgba(15,31,45,.08);color:#334155;font-size:.8rem;line-height:1;cursor:pointer}
+    .sidebar-nav{padding:.8rem}
+    .nav-list{list-style:none;margin:0;padding:0;display:grid;gap:.2rem}
+    .nav-link{display:flex;align-items:center;gap:.65rem;border-radius:.75rem;padding:.62rem .72rem;color:#475569;font-size:.88rem;font-weight:600;text-decoration:none;transition:background-color .15s ease,color .15s ease}
+    .nav-link:hover{background:rgba(22,133,117,.1);color:#0f6a5c}
+    .nav-link.active{background:rgba(22,133,117,.14);color:#0f6a5c}
+    .nav-icon{width:1rem;text-align:center}
+    #studentMain{min-width:0}
+
+    .album-hero{position:relative;overflow:hidden;background:linear-gradient(125deg,#0f6a5c 0%,#168575 48%,#0ea5e9 100%);color:#fff}
+    .album-hero::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 90% 15%,rgba(255,255,255,.24),transparent 42%);pointer-events:none}
+    .album-hero > *{position:relative;z-index:2}
+    .album-chip{display:inline-flex;align-items:center;gap:.35rem;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.16);border-radius:999px;padding:.35rem .8rem;font-size:.74rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+    .album-hero h1{margin-top:.85rem;color:#fff}
+    .album-hero p{color:rgba(255,255,255,.88)}
+
+    .album-stat-card{border-radius:1rem;border:1px solid rgba(255,255,255,.34);background:linear-gradient(135deg,rgba(15,31,45,.28),rgba(15,106,92,.22));backdrop-filter:blur(4px);padding:1rem 1.05rem}
+    .album-stat-label{font-size:.69rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:rgba(236,253,250,.82)}
+    .album-stat-value{margin-top:.25rem;font-size:1.7rem;font-weight:700;line-height:1.15;color:#fff}
+    .album-stat-meta{margin-top:.2rem;font-size:.78rem;color:rgba(240,253,250,.9)}
+
+    .album-section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;margin-bottom:1.05rem}
+    .album-section-head h2{font-size:1.25rem;color:#0f1f2d}
+    .album-section-head p{font-size:.88rem;color:#64748b}
+
+    .album-grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+    .album-person-card{display:block;border-radius:1rem;border:1px solid rgba(15,31,45,.1);background:#fff;padding:1rem;text-decoration:none;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease}
+    .album-person-card:hover{transform:translateY(-4px);border-color:rgba(22,133,117,.4);box-shadow:0 14px 30px rgba(15,31,51,.14)}
+
+    .album-avatar{position:relative;width:84px;height:84px;border-radius:50%;margin:0 auto .85rem;overflow:hidden;border:3px solid rgba(22,133,117,.25);background:#e2e8f0}
+    .album-avatar img{width:100%;height:100%;object-fit:cover}
+    .album-avatar-badge{position:absolute;right:-2px;bottom:-2px;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:999px;border:2px solid #fff;font-size:.7rem}
+    .badge-male{background:#dbeafe;color:#1d4ed8}
+    .badge-female{background:#fce7f3;color:#be185d}
+    .badge-neutral{background:#e2e8f0;color:#334155}
+
+    .album-person-name{font-size:.95rem;font-weight:700;color:#0f1f2d;text-align:center}
+    .album-person-meta{margin-top:.15rem;font-size:.78rem;color:#64748b;text-align:center}
+    .album-you-tag{display:inline-flex;margin:.45rem auto 0;padding:.15rem .5rem;border-radius:999px;background:#ecfeff;color:#0e7490;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+
+    .album-empty{border:1px dashed rgba(15,31,45,.2);border-radius:1rem;background:#f8fafc;padding:2rem 1.25rem;text-align:center;color:#64748b}
+    .album-empty i{font-size:1.8rem;color:#94a3b8;margin-bottom:.65rem}
+    .album-empty h3{font-family:'Manrope',sans-serif;font-size:1.02rem;font-weight:700;color:#0f1f2d;margin-bottom:.3rem}
+
+    @media (min-width:768px){
+        #studentMain{padding-left:16rem !important}
+        .sidebar{transform:translateX(0);top:73px;height:calc(100vh - 73px)}
+        .sidebar-close{display:none}
+        .student-sidebar-overlay{display:none}
+    }
+    @media (max-width:767.98px){
+        #studentMain{padding-left:0 !important}
+    }
+    @media (max-width:640px){
+        .student-album-page .dashboard-card{padding:1.05rem !important}
+        .album-hero h1{font-size:1.68rem;line-height:1.2}
+        .album-grid{grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:.8rem}
+        .album-avatar{width:74px;height:74px}
+        .album-person-card{padding:.82rem}
+        .album-section-head{margin-bottom:.8rem}
+    }
+</style>
+HTML;
+
+require_once __DIR__ . '/../includes/student_header.php';
 ?>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Class Photo Album | <?php echo htmlspecialchars($class_name); ?> | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
-    <link rel="stylesheet" href="../assets/css/student-dashboard.css">
-    <link rel="stylesheet" href="../assets/css/mobile-navigation.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
-    <style>
-        /* Photo Album Page Styles - Modern Design with Sidebar Layout */
-
-        /* Welcome Section - Hero Banner */
-        .photo-album-welcome {
-            margin-bottom: 2rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 1rem;
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-        }
-
-        .photo-album-welcome .card-body {
-            padding: 2.5rem;
-            text-align: center;
-        }
-
-        .photo-album-welcome h2 {
-            margin-bottom: 0.75rem;
-            font-family: 'Poppins', sans-serif;
-            font-size: 2.2rem;
-            font-weight: 700;
-        }
-
-        .photo-album-welcome h2 i {
-            margin-right: 0.75rem;
-            opacity: 0.9;
-        }
-
-        .photo-album-welcome p {
-            margin: 0;
-            opacity: 0.9;
-            font-size: 1.1rem;
-            font-weight: 400;
-        }
-
-        /* Statistics Cards */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 3rem;
-        }
-
-        .stat-card {
-            background: white;
-            border-radius: 1rem;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            transition: all 0.3s ease;
-            border: 1px solid rgba(255, 255, 255, 0.8);
-        }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-        }
-
-        .stat-card-blue {
-            border-left: 4px solid #007bff;
-        }
-
-        .stat-card-green {
-            border-left: 4px solid #28a745;
-        }
-
-        .stat-card-yellow {
-            border-left: 4px solid #ffc107;
-        }
-
-        .stat-card .card-body {
-            padding: 2rem;
-            text-align: center;
-        }
-
-        .stat-icon {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 1.5rem;
-            background: linear-gradient(135deg, rgba(0, 123, 255, 0.1), rgba(0, 123, 255, 0.2));
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.5rem;
-            color: #007bff;
-        }
-
-        .stat-card-green .stat-icon {
-            background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(40, 167, 69, 0.2));
-            color: #28a745;
-        }
-
-        .stat-card-yellow .stat-icon {
-            background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 193, 7, 0.2));
-            color: #ffc107;
-        }
-
-        .stat-number {
-            font-size: 3rem;
-            font-weight: 700;
-            color: #004085;
-            margin-bottom: 0.5rem;
-            line-height: 1;
-        }
-
-        .stat-card-green .stat-number {
-            color: #155724;
-        }
-
-        .stat-card-yellow .stat-number {
-            color: #856404;
-        }
-
-        .stat-label {
-            margin: 0;
-            color: #004085;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-size: 0.9rem;
-        }
-
-        .stat-card-green .stat-label {
-            color: #155724;
-        }
-
-        .stat-card-yellow .stat-label {
-            color: #856404;
-        }
-
-        /* Section Cards */
-        .section-card {
-            background: white;
-            border-radius: 1rem;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            margin-bottom: 2rem;
-            border: 1px solid rgba(255, 255, 255, 0.8);
-        }
-
-        .section-header {
-            background: linear-gradient(135deg, #0ea5e9, #0284c7);
-            color: white;
-            padding: 1.5rem 2rem;
-            border: none;
-        }
-
-        .section-header h4 {
-            margin: 0 0 0.5rem 0;
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.4rem;
-            font-weight: 600;
-        }
-
-        .section-header h4 i {
-            margin-right: 0.75rem;
-        }
-
-        .section-header small {
-            opacity: 0.9;
-            font-size: 0.9rem;
-        }
-
-        .students-section .section-header {
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-        }
-
-        .section-body {
-            padding: 2.5rem;
-        }
-
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 4rem 2rem;
-            color: #6c757d;
-        }
-
-        .empty-state i {
-            font-size: 4rem;
-            margin-bottom: 1.5rem;
-            opacity: 0.5;
-        }
-
-        .empty-state h5 {
-            font-size: 1.3rem;
-            margin-bottom: 1rem;
-            font-weight: 600;
-        }
-
-        .empty-state p {
-            font-size: 1rem;
-            line-height: 1.6;
-            margin: 0;
-        }
-
-        /* Photo Grid */
-        .photo-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 2rem;
-        }
-
-        .photo-card {
-            background: white;
-            border-radius: 1rem;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            border: 2px solid #0ea5e9;
-        }
-
-        .photo-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(14, 165, 233, 0.3);
-            border-color: #0284c7;
-        }
-
-        .students-section .photo-card {
-            border-color: #6366f1;
-        }
-
-        .students-section .photo-card:hover {
-            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
-            border-color: #8b5cf6;
-        }
-
-        .photo-card-body {
-            padding: 1.5rem;
-            text-align: center;
-        }
-
-        /* Avatar Container */
-        .avatar-container {
-            position: relative;
-            width: 100px;
-            height: 100px;
-            margin: 0 auto 1.5rem;
-        }
-
-        .avatar-bg {
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #0ea5e9, #0284c7);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-
-        .students-section .avatar-bg {
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-        }
-
-        .avatar-image {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            border-radius: 50%;
-        }
-
-        /* Gender Badge */
-        .gender-badge {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 0.9rem;
-            font-weight: bold;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-        }
-
-        .gender-male {
-            background: #007bff;
-        }
-
-        .gender-female {
-            background: #e83e8c;
-        }
-
-        /* Student Info */
-        .student-name {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #495057;
-            margin-bottom: 0.5rem;
-        }
-
-        .student-admission {
-            color: #6c757d;
-            margin: 0;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        .teacher-designation {
-            color: #6c757d;
-            margin: 0 0 0.5rem 0;
-            font-size: 0.9rem;
-        }
-
-        .teacher-department {
-            color: #6c757d;
-            font-size: 0.8rem;
-        }
-
-        /* Modal Styles */
-        .photo-modal .modal-content {
-            border-radius: 1rem;
-            border: none;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-        }
-
-        .photo-modal .modal-header {
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-            color: white;
-            border: none;
-            border-radius: 1rem 1rem 0 0;
-            padding: 1.5rem;
-        }
-
-        .photo-modal .modal-title {
-            font-family: 'Poppins', sans-serif;
-            font-weight: 600;
-        }
-        
-        .photo-modal .close {
-            color: white;
-            opacity: 0.8;
-            font-size: 1.5rem;
-        }
-
-        .photo-modal .close:hover {
-            opacity: 1;
-        }
-
-        .modal-photo-container {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        .modal-photo {
-            width: 150px;
-            height: 150px;
-            object-fit: cover;
-            border-radius: 1rem;
-            border: 4px solid #6366f1;
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
-        }
-
-        .modal-info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-top: 2rem;
-        }
-
-        .info-section h6 {
-            color: #6366f1;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            font-size: 1rem;
-        }
-
-        .info-item {
-            margin-bottom: 0.75rem;
-        }
-
-        .info-label {
-            font-weight: 600;
-            color: #495057;
-            margin-bottom: 0.25rem;
-        }
-
-        .info-value {
-            color: #6c757d;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .photo-album-welcome .card-body {
-                padding: 2rem 1.5rem;
-            }
-
-            .photo-album-welcome h2 {
-                font-size: 1.8rem;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-                margin-bottom: 2rem;
-            }
-
-            .photo-grid {
-                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                gap: 1.5rem;
-            }
-
-            .section-body {
-                padding: 2rem 1.5rem;
-            }
-
-            .avatar-container {
-                width: 80px;
-                height: 80px;
-            }
-
-            .stat-card .card-body {
-                padding: 1.5rem;
-            }
-
-            .stat-icon {
-                width: 60px;
-                height: 60px;
-                font-size: 2rem;
-            }
-
-            .stat-number {
-                font-size: 2.5rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .photo-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .photo-album-welcome .card-body {
-                padding: 1.5rem 1rem;
-            }
-
-            .photo-album-welcome h2 {
-                font-size: 1.5rem;
-            }
-
-            .section-body {
-                padding: 1.5rem 1rem;
-            }
-
-            .section-header {
-                padding: 1.25rem 1.5rem;
-            }
-
-            .section-header h4 {
-                font-size: 1.2rem;
-            }
-
-            .empty-state {
-                padding: 3rem 1rem;
-            }
-
-            .empty-state i {
-                font-size: 3rem;
-            }
-
-            .modal-info-grid {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-        }
-
-        /* Mobile Menu Toggle Animation */
-        .mobile-menu-toggle {
-            transition: all 0.3s ease;
-        }
-
-        .mobile-menu-toggle.active {
-            background: #ef4444;
-        }
-
-        /* Sidebar Animation */
-        .sidebar {
-            transition: transform 0.3s ease;
-        }
-
-        /* Smooth Animations */
-        .photo-card,
-        .stat-card,
-        .section-card {
-            animation: fadeInUp 0.6s ease-out;
-            animation-fill-mode: both;
-        }
-
-        .photo-card:nth-child(1) { animation-delay: 0.1s; }
-        .photo-card:nth-child(2) { animation-delay: 0.2s; }
-        .photo-card:nth-child(3) { animation-delay: 0.3s; }
-        .photo-card:nth-child(4) { animation-delay: 0.4s; }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-    </style>
-</head>
-<body>
-    <!-- Mobile Menu Toggle -->
-    <button class="mobile-menu-toggle" id="mobileMenuToggle">
-        <i class="fas fa-bars"></i>
-    </button>
-
-    <!-- Header -->
-    <header class="dashboard-header">
-        <div class="header-container">
-            <!-- Logo and School Name -->
-            <div class="header-left">
-                <div class="school-logo-container">
-                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
-                    <div class="school-info">
-                        <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
-                        <p class="school-tagline">Student Portal</p>
-                    </div>
-                </div>
+<div class="student-sidebar-overlay" id="studentSidebarOverlay"></div>
+
+<main class="student-album-page space-y-6">
+    <section class="dashboard-card album-hero p-6 sm:p-8" data-reveal>
+        <span class="album-chip"><i class="fas fa-images"></i> Photo Album</span>
+        <h1 class="mt-3 text-3xl font-display">Class <?php echo htmlspecialchars($class_name); ?> Portrait Board</h1>
+        <p class="mt-2 text-sm">A clean directory of your teachers and classmates with profile highlights and quick access to details.</p>
+
+        <div class="mt-5 grid gap-3 sm:grid-cols-3">
+            <div class="album-stat-card">
+                <p class="album-stat-label">Teaching Staff</p>
+                <p class="album-stat-value"><?php echo number_format($total_teachers); ?></p>
+                <p class="album-stat-meta">Active teachers in your school</p>
             </div>
-
-            <!-- Student Info and Logout -->
-            <div class="header-right">
-                <div class="student-info">
-                    <p class="student-label">Student</p>
-                    <span class="student-name"><?php echo htmlspecialchars($student_name); ?></span>
-                    <span class="admission-number"><?php echo htmlspecialchars($admission_number); ?></span>
-                </div>
-                <a href="logout.php" class="btn-logout">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                </a>
+            <div class="album-stat-card">
+                <p class="album-stat-label">Class Students</p>
+                <p class="album-stat-value"><?php echo number_format($total_classmates); ?></p>
+                <p class="album-stat-meta">Students in <?php echo htmlspecialchars($class_name); ?></p>
+            </div>
+            <div class="album-stat-card">
+                <p class="album-stat-label">Photos Uploaded</p>
+                <p class="album-stat-value"><?php echo number_format($total_uploaded_photos); ?></p>
+                <p class="album-stat-meta"><?php echo number_format(max(0, $total_classmates - $total_uploaded_photos)); ?> pending profile photos</p>
             </div>
         </div>
-    </header>
+    </section>
 
-    <!-- Main Container -->
-    <div class="dashboard-container">
-        <?php include '../includes/student_sidebar.php'; ?>
-
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Welcome Section -->
-            <div class="photo-album-welcome">
-                <div class="card-body">
-                    <h2><i class="fas fa-images"></i> Class Photo Album</h2>
-                    <p><?php echo htmlspecialchars($class_name); ?> - Meet Your Classmates</p>
-                </div>
+    <section class="dashboard-card p-6" data-reveal data-reveal-delay="80">
+        <div class="album-section-head">
+            <div>
+                <h2 class="font-display">Teaching Staff</h2>
+                <p>Mentors and instructors currently assigned within your school.</p>
             </div>
+            <a class="text-sm font-semibold text-teal-700 hover:text-teal-600" href="dashboard.php">Back to dashboard</a>
+        </div>
 
-            <!-- Statistics Cards -->
-            <div class="stats-grid">
-                <div class="stat-card stat-card-blue">
-                    <div class="card-body">
-                        <div class="stat-icon">
-                            <i class="fas fa-chalkboard-teacher"></i>
-                        </div>
-                        <div class="stat-number"><?php echo count($teachers); ?></div>
-                        <div class="stat-label">Teachers</div>
-                    </div>
-                </div>
-                <div class="stat-card stat-card-green">
-                    <div class="card-body">
-                        <div class="stat-icon">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <div class="stat-number"><?php echo count($classmates); ?></div>
-                        <div class="stat-label">Classmates</div>
-                    </div>
-                </div>
-                <div class="stat-card stat-card-yellow">
-                    <div class="card-body">
-                        <div class="stat-icon">
-                            <i class="fas fa-camera"></i>
-                        </div>
-                        <div class="stat-number"><?php echo count(array_filter($classmates, fn($s) => !empty($s['passport_photo']))); ?></div>
-                        <div class="stat-label">Photos Uploaded</div>
-                    </div>
-                </div>
+        <?php if (empty($teachers)): ?>
+            <div class="album-empty">
+                <i class="fas fa-chalkboard-teacher" aria-hidden="true"></i>
+                <h3>No teacher profile available</h3>
+                <p>Teacher information will appear here once profiles are published.</p>
             </div>
-
-            <!-- Teachers Section -->
-            <div class="section-card">
-                <div class="section-header">
-                    <h4><i class="fas fa-chalkboard-teacher"></i> Teaching Staff</h4>
-                    <small>Our dedicated educators who inspire and guide us</small>
-                </div>
-                <div class="section-body">
-                    <?php if (empty($teachers)): ?>
-                        <div class="empty-state">
-                            <i class="fas fa-users"></i>
-                            <h5>No Teachers Found</h5>
-                            <p>Teacher information will be displayed here once available.</p>
+        <?php else: ?>
+            <div class="album-grid">
+                <?php foreach ($teachers as $teacher): ?>
+                    <?php
+                    $teacher_photo = $normalize_photo($teacher['profile_image'] ?? null);
+                    $designation = trim((string) ($teacher['designation'] ?? ''));
+                    $department = trim((string) ($teacher['department'] ?? ''));
+                    ?>
+                    <a class="album-person-card" href="photo_details.php?type=teacher&id=<?php echo (int) ($teacher['id'] ?? 0); ?>">
+                        <div class="album-avatar">
+                            <img src="<?php echo htmlspecialchars($teacher_photo); ?>" alt="<?php echo htmlspecialchars((string) ($teacher['full_name'] ?? 'Teacher')); ?>">
                         </div>
-                    <?php else: ?>
-                        <div class="photo-grid">
-                            <?php foreach ($teachers as $teacher): ?>
-                                <?php
-                                $hasPhoto = !empty($teacher['profile_image']) && $teacher['profile_image'] !== '';
-                                $photoSrc = $hasPhoto ? $teacher['profile_image'] : '../assets/images/default-avatar.png';
-                                ?>
-                                <div class="photo-card" onclick="window.location.href='photo_details.php?type=teacher&id=<?php echo $teacher['id']; ?>'">
-                                    <div class="photo-card-body">
-                                        <div class="avatar-container">
-                                            <div class="avatar-bg">
-                                                <img src="<?php echo htmlspecialchars($photoSrc); ?>"
-                                                     alt="<?php echo htmlspecialchars($teacher['full_name']); ?>"
-                                                     class="avatar-image">
-                                            </div>
-                                        </div>
-                                        <div class="student-name"><?php echo htmlspecialchars($teacher['full_name']); ?></div>
-                                        <div class="teacher-designation"><?php echo htmlspecialchars($teacher['designation'] ?: 'Teacher'); ?></div>
-                                        <?php if ($teacher['department']): ?>
-                                            <div class="teacher-department"><?php echo htmlspecialchars($teacher['department']); ?></div>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
-                </div>
+                        <p class="album-person-name"><?php echo htmlspecialchars((string) ($teacher['full_name'] ?? 'Teacher')); ?></p>
+                        <p class="album-person-meta"><?php echo htmlspecialchars($designation !== '' ? $designation : 'Teacher'); ?></p>
+                        <?php if ($department !== ''): ?>
+                            <p class="album-person-meta"><?php echo htmlspecialchars($department); ?></p>
+                        <?php endif; ?>
+                    </a>
+                <?php endforeach; ?>
             </div>
+        <?php endif; ?>
+    </section>
 
-            <!-- Students Section -->
-            <div class="section-card students-section">
-                <div class="section-header">
-                    <h4><i class="fas fa-users"></i> Class Students</h4>
-                    <small><?php echo htmlspecialchars($class_name); ?> - Meet Your Classmates</small>
-                </div>
-                <div class="section-body">
-                    <?php if (empty($classmates)): ?>
-                        <div class="empty-state">
-                            <i class="fas fa-camera"></i>
-                            <h5>No Photos Available</h5>
-                            <p>It looks like no students in <?php echo htmlspecialchars($class_name); ?> have uploaded their photos yet.</p>
-                            <p>Photos will appear here once students complete their profile setup.</p>
-                        </div>
-                    <?php else: ?>
-                        <div class="photo-grid">
-                            <?php foreach ($classmates as $student): ?>
-                                <?php
-                                $hasPhoto = !empty($student['passport_photo']) && $student['passport_photo'] !== '';
-                                $photoSrc = $hasPhoto ? $student['passport_photo'] : '../assets/images/default-avatar.png';
-                                ?>
-                                <div class="photo-card" onclick="window.location.href='photo_details.php?type=student&id=<?php echo $student['id']; ?>'">
-                                    <div class="photo-card-body">
-                                        <div class="avatar-container">
-                                            <div class="avatar-bg">
-                                                <img src="<?php echo htmlspecialchars($photoSrc); ?>"
-                                                     alt="<?php echo htmlspecialchars($student['full_name']); ?>"
-                                                     class="avatar-image">
-                                                <div class="gender-badge <?php echo $student['gender'] === 'Male' ? 'gender-male' : 'gender-female'; ?>">
-                                                    <?php echo $student['gender'] === 'Male' ? '♂' : '♀'; ?>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="student-name"><?php echo htmlspecialchars($student['full_name']); ?></div>
-                                        <div class="student-admission"><?php echo htmlspecialchars($student['admission_no']); ?></div>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
-                </div>
+    <section class="dashboard-card p-6" data-reveal data-reveal-delay="130">
+        <div class="album-section-head">
+            <div>
+                <h2 class="font-display">Class Students</h2>
+                <p>Browse classmates in <?php echo htmlspecialchars($class_name); ?> and open each profile card.</p>
             </div>
-        </main>
-    </div>
+            <a class="text-sm font-semibold text-teal-700 hover:text-teal-600" href="student_class_activities.php">Open class activities</a>
+        </div>
 
-
-
-    
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    <script>
-        // Mobile Menu Toggle Functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-            const sidebar = document.querySelector('.sidebar');
-
-            if (mobileMenuToggle && sidebar) {
-                mobileMenuToggle.addEventListener('click', function() {
-                    sidebar.classList.toggle('active');
-                    mobileMenuToggle.classList.toggle('active');
-                });
-
-                // Close sidebar when clicking outside on mobile
-                document.addEventListener('click', function(event) {
-                    if (!sidebar.contains(event.target) && !mobileMenuToggle.contains(event.target)) {
-                        sidebar.classList.remove('active');
-                        mobileMenuToggle.classList.remove('active');
+        <?php if (empty($classmates)): ?>
+            <div class="album-empty">
+                <i class="fas fa-user-friends" aria-hidden="true"></i>
+                <h3>No class profile available</h3>
+                <p>Classmate profiles will display here when class records are set up.</p>
+            </div>
+        <?php else: ?>
+            <div class="album-grid">
+                <?php foreach ($classmates as $classmate): ?>
+                    <?php
+                    $classmate_photo = $normalize_photo($classmate['passport_photo'] ?? null);
+                    $gender = strtolower(trim((string) ($classmate['gender'] ?? '')));
+                    $gender_icon = 'fa-user';
+                    $gender_badge = 'badge-neutral';
+                    if ($gender === 'male') {
+                        $gender_icon = 'fa-mars';
+                        $gender_badge = 'badge-male';
+                    } elseif ($gender === 'female') {
+                        $gender_icon = 'fa-venus';
+                        $gender_badge = 'badge-female';
                     }
-                });
+                    $is_current_student = (int) ($classmate['id'] ?? 0) === $student_id;
+                    ?>
+                    <a class="album-person-card" href="photo_details.php?type=student&id=<?php echo (int) ($classmate['id'] ?? 0); ?>">
+                        <div class="album-avatar">
+                            <img src="<?php echo htmlspecialchars($classmate_photo); ?>" alt="<?php echo htmlspecialchars((string) ($classmate['full_name'] ?? 'Student')); ?>">
+                            <span class="album-avatar-badge <?php echo $gender_badge; ?>" aria-hidden="true"><i class="fas <?php echo $gender_icon; ?>"></i></span>
+                        </div>
+                        <p class="album-person-name"><?php echo htmlspecialchars((string) ($classmate['full_name'] ?? 'Student')); ?></p>
+                        <p class="album-person-meta"><?php echo htmlspecialchars((string) ($classmate['admission_no'] ?? 'No admission number')); ?></p>
+                        <?php if ($is_current_student): ?>
+                            <span class="album-you-tag">You</span>
+                        <?php endif; ?>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </section>
+</main>
 
-                // Close sidebar on window resize if desktop size
-                window.addEventListener('resize', function() {
-                    if (window.innerWidth > 1024) {
-                        sidebar.classList.remove('active');
-                        mobileMenuToggle.classList.remove('active');
-                    }
-                });
-            }
-        });
-    </script>
+<script>
+const sidebarOverlay = document.getElementById('studentSidebarOverlay');
+if (sidebarOverlay) {
+    sidebarOverlay.addEventListener('click', () => document.body.classList.remove('sidebar-open'));
+}
+if (window.matchMedia('(min-width: 768px)').matches) {
+    document.body.classList.remove('sidebar-open');
+}
+</script>
 
-    <?php include '../includes/floating-button.php'; ?>
-
-</body>
-</html>
+<?php require_once __DIR__ . '/../includes/student_footer.php'; ?>

@@ -67,7 +67,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="photo_album.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'photo_album.php' ? 'active' : ''; ?>">
+                        <a href="photo_album.php" class="nav-link <?php echo in_array(basename($_SERVER['PHP_SELF']), ['photo_album.php', 'photo_details.php'], true) ? 'active' : ''; ?>">
                             <i class="fas fa-images nav-icon"></i>
                             <span class="nav-text">Photo Album</span>
                         </a>

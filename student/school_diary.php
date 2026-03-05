@@ -14,14 +14,12 @@ if (!$student_id && !$admission_number && !$user_id) {
     exit;
 }
 
-// Prefer explicit student_id; fall back to user_id
 if (!$student_id && $user_id) {
     $student_id = $user_id;
 }
 
 $current_school_id = get_current_school_id();
 
-// If school_id is missing, try to resolve it from the student record (by id or admission no)
 if ($current_school_id === false) {
     $school_stmt = $pdo->prepare("SELECT id, school_id FROM students WHERE id = ? OR admission_no = ? LIMIT 1");
     $school_stmt->execute([$student_id, $admission_number]);
@@ -41,13 +39,13 @@ if ($current_school_id === false) {
     exit;
 }
 
-// Get student details including class
 try {
     $student_stmt = $pdo->prepare("
         SELECT s.*, c.class_name
         FROM students s
         LEFT JOIN classes c ON s.class_id = c.id AND c.school_id = s.school_id
         WHERE (s.id = ? OR s.user_id = ? OR s.admission_no = ?) AND s.school_id = ?
+        LIMIT 1
     ");
     $student_stmt->execute([$student_id, $student_id, $admission_number, $current_school_id]);
     $student = $student_stmt->fetch(PDO::FETCH_ASSOC);
@@ -55,26 +53,128 @@ try {
     if (!$student) {
         throw new Exception("Student not found");
     }
-
 } catch (Exception $e) {
     $_SESSION['error'] = "Error loading student data: " . $e->getMessage();
     header("Location: index.php");
     exit;
 }
 
-// Get current date for filtering
-$current_date = date('Y-m-d');
+function diary_format_time_range(?string $start, ?string $end): string
+{
+    if (!empty($start) && !empty($end)) {
+        return date('g:i A', strtotime($start)) . ' - ' . date('g:i A', strtotime($end));
+    }
 
-// Build query - students see activities for their class or all-school activities
-$query = "SELECT sd.*, sd.activity_type AS category_name, '#6366f1' AS color, 'fas fa-calendar-alt' AS icon, u.full_name as coordinator_name
-          FROM school_diary sd
-          LEFT JOIN users u ON sd.coordinator_id = u.id
-          WHERE sd.school_id = ?
-          AND (sd.target_audience = 'All'
-               OR sd.target_audience = 'Secondary Only'
-               OR (sd.target_audience = 'Specific Classes' AND FIND_IN_SET(?, REPLACE(sd.target_classes, ', ', ','))))
-          AND sd.status != 'Cancelled'
-          ORDER BY
+    if (!empty($start)) {
+        return date('g:i A', strtotime($start));
+    }
+
+    return 'All day';
+}
+
+function diary_status_classes(string $status): string
+{
+    $map = [
+        'Upcoming' => 'bg-sky-100 text-sky-700',
+        'Today' => 'bg-amber-100 text-amber-700',
+        'Ongoing' => 'bg-amber-100 text-amber-700',
+        'Completed' => 'bg-emerald-100 text-emerald-700',
+        'Cancelled' => 'bg-rose-100 text-rose-700',
+    ];
+
+    return $map[$status] ?? 'bg-slate-100 text-slate-600';
+}
+
+function diary_type_classes(string $type): string
+{
+    $map = [
+        'Academics' => 'bg-teal-600/10 text-teal-700',
+        'Sports' => 'bg-sky-100 text-sky-700',
+        'Cultural' => 'bg-fuchsia-100 text-fuchsia-700',
+        'Competition' => 'bg-amber-100 text-amber-700',
+    ];
+
+    return $map[$type] ?? 'bg-slate-100 text-slate-600';
+}
+
+function diary_excerpt(?string $text, int $length = 150): string
+{
+    $plain = trim(strip_tags((string) $text));
+    if ($plain === '') {
+        return 'No description provided yet.';
+    }
+
+    if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+        return mb_strlen($plain) > $length ? mb_substr($plain, 0, $length - 3) . '...' : $plain;
+    }
+
+    return strlen($plain) > $length ? substr($plain, 0, $length - 3) . '...' : $plain;
+}
+
+function diary_count_winners(?string $winners): int
+{
+    if (empty($winners)) {
+        return 0;
+    }
+
+    $parts = preg_split('/[\r\n,]+/', $winners);
+    $parts = array_filter(array_map('trim', $parts));
+    return count($parts);
+}
+
+function diary_student_status_label(array $activity, string $today): string
+{
+    $status = (string) ($activity['status'] ?? '');
+    $date = (string) ($activity['activity_date'] ?? '');
+
+    if ($status === 'Upcoming' && $date === $today) {
+        return 'Today';
+    }
+
+    return $status !== '' ? $status : 'Upcoming';
+}
+
+$search = trim($_GET['search'] ?? '');
+$type_filter = trim($_GET['type'] ?? '');
+$date_from = trim($_GET['date_from'] ?? '');
+$date_to = trim($_GET['date_to'] ?? '');
+$selected_activity_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+$current_date = date('Y-m-d');
+$class_param = trim((string) ($student['class_name'] ?? ''));
+
+$baseQuery = "SELECT sd.*, u.full_name AS coordinator_name
+              FROM school_diary sd
+              LEFT JOIN users u ON sd.coordinator_id = u.id
+              WHERE sd.school_id = ?
+              AND (sd.target_audience = 'All'
+                   OR sd.target_audience = 'Secondary Only'
+                   OR (sd.target_audience = 'Specific Classes' AND FIND_IN_SET(?, REPLACE(sd.target_classes, ', ', ','))))
+              AND sd.status != 'Cancelled'";
+$params = [$current_school_id, $class_param];
+
+if ($search !== '') {
+    $baseQuery .= " AND (sd.activity_title LIKE ? OR sd.description LIKE ? OR sd.venue LIKE ?)";
+    $params[] = "%{$search}%";
+    $params[] = "%{$search}%";
+    $params[] = "%{$search}%";
+}
+
+if ($type_filter !== '') {
+    $baseQuery .= " AND sd.activity_type = ?";
+    $params[] = $type_filter;
+}
+
+if ($date_from !== '') {
+    $baseQuery .= " AND sd.activity_date >= ?";
+    $params[] = $date_from;
+}
+
+if ($date_to !== '') {
+    $baseQuery .= " AND sd.activity_date <= ?";
+    $params[] = $date_to;
+}
+
+$query = $baseQuery . " ORDER BY
             CASE
                 WHEN sd.status = 'Ongoing' THEN 1
                 WHEN sd.activity_date >= ? THEN 2
@@ -82,994 +182,963 @@ $query = "SELECT sd.*, sd.activity_type AS category_name, '#6366f1' AS color, 'f
             END,
             sd.activity_date ASC,
             sd.start_time ASC";
-
-// If student has class, search for it in target_classes
-$class_param = $student['class_name'] ?: '';
+$params[] = $current_date;
 $stmt = $pdo->prepare($query);
-$stmt->execute([$current_school_id, $class_param, $current_date]);
+$stmt->execute($params);
 $activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get today's activities
-$today_query = "SELECT COUNT(*) as count FROM school_diary
-                WHERE activity_date = ?
-                AND status != 'Cancelled'
-                AND school_id = ?";
-$today_stmt = $pdo->prepare($today_query);
-$today_stmt->execute([$current_date, $current_school_id]);
-$today_count = $today_stmt->fetch(PDO::FETCH_ASSOC)['count'];
+$filterState = array_filter([
+    'search' => $search !== '' ? $search : null,
+    'type' => $type_filter !== '' ? $type_filter : null,
+    'date_from' => $date_from !== '' ? $date_from : null,
+    'date_to' => $date_to !== '' ? $date_to : null,
+], static fn($value) => $value !== null && $value !== '');
 
-// Get upcoming activities (next 7 days)
-$next_week = date('Y-m-d', strtotime('+7 days'));
-$upcoming_query = "SELECT COUNT(*) as count FROM school_diary
-                   WHERE activity_date BETWEEN ? AND ?
-                   AND status != 'Cancelled'
-                   AND status = 'Upcoming'
-                   AND school_id = ?";
-$upcoming_stmt = $pdo->prepare($upcoming_query);
-$upcoming_stmt->execute([$current_date, $next_week, $current_school_id]);
-$upcoming_count = $upcoming_stmt->fetch(PDO::FETCH_ASSOC)['count'];
-?>
+$list_url = 'school_diary.php' . (!empty($filterState) ? '?' . http_build_query($filterState) : '');
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>School Events Calendar | <?php echo htmlspecialchars(get_school_display_name()); ?></title>
-    <link rel="stylesheet" href="../assets/css/student-dashboard.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+$selected_activity = null;
+$attachments = [];
 
-    <style>
-        /* ===================================================
-           School Diary - Modern Internal Styles
-           =================================================== */
+if ($selected_activity_id > 0) {
+    $detailStmt = $pdo->prepare("
+        SELECT sd.*, u.full_name AS coordinator_name
+        FROM school_diary sd
+        LEFT JOIN users u ON sd.coordinator_id = u.id
+        WHERE sd.id = ? AND sd.school_id = ?
+        AND (sd.target_audience = 'All'
+             OR sd.target_audience = 'Secondary Only'
+             OR (sd.target_audience = 'Specific Classes' AND FIND_IN_SET(?, REPLACE(sd.target_classes, ', ', ','))))
+        AND sd.status != 'Cancelled'
+    ");
+    $detailStmt->execute([$selected_activity_id, $current_school_id, $class_param]);
+    $selected_activity = $detailStmt->fetch(PDO::FETCH_ASSOC);
 
-        :root {
-            /* Inherit dashboard color palette */
-            --primary-color: #6366f1;
-            --primary-dark: #4f46e5;
-            --secondary-color: #06b6d4;
-            --accent-color: #8b5cf6;
-            --success-color: #10b981;
-            --warning-color: #f59e0b;
-            --error-color: #ef4444;
-            --info-color: #3b82f6;
+    if (!$selected_activity) {
+        header("Location: {$list_url}");
+        exit;
+    }
 
-            /* Modern gradients */
-            --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            --gradient-secondary: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
-            --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            --gradient-error: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    $attachmentsStmt = $pdo->prepare("SELECT * FROM school_diary_attachments WHERE diary_id = ? AND school_id = ? ORDER BY id DESC");
+    $attachmentsStmt->execute([$selected_activity_id, $current_school_id]);
+    $attachments = $attachmentsStmt->fetchAll(PDO::FETCH_ASSOC);
 
-            /* Enhanced shadows */
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    if (isset($_GET['pdf'])) {
+        require_once '../TCPDF-main/TCPDF-main/tcpdf.php';
 
-            /* Modern border radius */
-            --border-radius-sm: 0.375rem;
-            --border-radius-md: 0.5rem;
-            --border-radius-lg: 0.75rem;
-            --border-radius-xl: 1rem;
+        $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+        $schoolName = get_school_display_name();
 
-            /* Smooth transitions */
-            --transition-fast: 0.15s ease-in-out;
-            --transition-normal: 0.3s ease-in-out;
-            --transition-slow: 0.5s ease-in-out;
+        $pdf->SetCreator($schoolName);
+        $pdf->SetAuthor($schoolName);
+        $pdf->SetTitle('Activity Details - ' . $selected_activity['activity_title']);
+        $pdf->SetSubject('School Activity Report');
+        $pdf->SetHeaderData('', 0, 'SahabFormMaster - Activity Details', '', [22, 133, 117], [255, 255, 255]);
+        $pdf->setHeaderFont([PDF_FONT_NAME_MAIN, '', PDF_FONT_SIZE_MAIN]);
+        $pdf->setFooterFont([PDF_FONT_NAME_DATA, '', PDF_FONT_SIZE_DATA]);
+        $pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
+        $pdf->SetMargins(PDF_MARGIN_LEFT, PDF_MARGIN_TOP, PDF_MARGIN_RIGHT);
+        $pdf->SetHeaderMargin(PDF_MARGIN_HEADER);
+        $pdf->SetFooterMargin(PDF_MARGIN_FOOTER);
+        $pdf->SetAutoPageBreak(true, PDF_MARGIN_BOTTOM);
+        $pdf->setImageScale(PDF_IMAGE_SCALE_RATIO);
+        $pdf->AddPage();
+
+        $pdf->SetFont('helvetica', 'B', 16);
+        $pdf->Cell(0, 15, 'Activity Details', 0, 1, 'C', 0, '', 0, false, 'M', 'M');
+        $pdf->Ln(5);
+
+        $pdf->SetFont('helvetica', 'B', 14);
+        $pdf->SetFillColor(22, 133, 117);
+        $pdf->SetTextColor(255, 255, 255);
+        $pdf->Cell(0, 10, $selected_activity['activity_title'], 0, 1, 'L', 1);
+        $pdf->Ln(2);
+
+        $pdf->SetFont('helvetica', '', 11);
+        $pdf->SetTextColor(0, 0, 0);
+        $pdf->SetFillColor(247, 250, 252);
+
+        $basicInfo = [
+            'Type' => $selected_activity['activity_type'],
+            'Date' => date('F j, Y', strtotime($selected_activity['activity_date'])),
+            'Time' => diary_format_time_range($selected_activity['start_time'], $selected_activity['end_time']),
+            'Venue' => $selected_activity['venue'] ?: 'Not specified',
+            'Coordinator' => $selected_activity['coordinator_name'] ?: 'Not assigned',
+            'Target Audience' => $selected_activity['target_audience'] ?: 'General',
+            'Status' => $selected_activity['status'],
+        ];
+
+        foreach ($basicInfo as $label => $value) {
+            $pdf->Cell(44, 8, $label . ':', 1, 0, 'L', 1);
+            $pdf->Cell(0, 8, $value, 1, 1, 'L', 1);
         }
 
-        /* ===================================================
-           Layout Fixes for Sidebar Integration
-           =================================================== */
+        $sections = [
+            'Description' => $selected_activity['description'] ?? '',
+            'Objectives' => $selected_activity['objectives'] ?? '',
+            'Resources Required' => $selected_activity['resources'] ?? '',
+        ];
 
-        .dashboard-container {
-            display: flex;
-            min-height: calc(100vh - 80px);
-            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        foreach ($sections as $title => $content) {
+            if (trim($content) === '') {
+                continue;
+            }
+
+            $pdf->Ln(5);
+            $pdf->SetFont('helvetica', 'B', 12);
+            $pdf->SetFillColor(2, 132, 199);
+            $pdf->SetTextColor(255, 255, 255);
+            $pdf->Cell(0, 8, $title, 0, 1, 'L', 1);
+            $pdf->Ln(2);
+            $pdf->SetFont('helvetica', '', 11);
+            $pdf->SetTextColor(0, 0, 0);
+            $pdf->MultiCell(0, 6, $content, 0, 'L', false, 1, '', '', true, 0, false, false, 0, 'T', false);
         }
 
-        .main-content {
-            flex: 1;
-            margin-left: 0;
-            padding: 2rem;
-            max-width: 100%;
-            background: transparent;
-        }
+        if (($selected_activity['status'] ?? '') === 'Completed') {
+            $completionItems = [
+                'Participants' => $selected_activity['participant_count'] ?? '',
+                'Winners' => $selected_activity['winners_list'] ?? '',
+                'Achievements' => $selected_activity['achievements'] ?? '',
+                'Feedback Summary' => $selected_activity['feedback_summary'] ?? '',
+            ];
 
-        /* Desktop sidebar layout */
-        @media (min-width: 1024px) {
-            .main-content {
-                margin-left: 280px;
-                max-width: calc(100vw - 280px);
+            $hasCompletionContent = false;
+            foreach ($completionItems as $item) {
+                if (trim((string) $item) !== '') {
+                    $hasCompletionContent = true;
+                    break;
+                }
+            }
+
+            if ($hasCompletionContent) {
+                $pdf->Ln(5);
+                $pdf->SetFont('helvetica', 'B', 12);
+                $pdf->SetFillColor(4, 120, 87);
+                $pdf->SetTextColor(255, 255, 255);
+                $pdf->Cell(0, 8, 'Completion Details', 0, 1, 'L', 1);
+                $pdf->Ln(2);
+                $pdf->SetTextColor(0, 0, 0);
+
+                foreach ($completionItems as $label => $value) {
+                    if (trim((string) $value) === '') {
+                        continue;
+                    }
+                    $pdf->SetFont('helvetica', 'B', 11);
+                    $pdf->Cell(0, 7, $label, 0, 1, 'L', 0);
+                    $pdf->SetFont('helvetica', '', 11);
+                    $pdf->MultiCell(0, 6, (string) $value, 0, 'L', false, 1, '', '', true, 0, false, false, 0, 'T', false);
+                    $pdf->Ln(1);
+                }
             }
         }
 
-        /* ===================================================
-           Modern Welcome Section
-           =================================================== */
+        if (!empty($attachments)) {
+            $pdf->Ln(5);
+            $pdf->SetFont('helvetica', 'B', 12);
+            $pdf->SetFillColor(124, 58, 237);
+            $pdf->SetTextColor(255, 255, 255);
+            $pdf->Cell(0, 8, 'Attachments', 0, 1, 'L', 1);
+            $pdf->Ln(2);
+            $pdf->SetFont('helvetica', '', 10);
+            $pdf->SetTextColor(0, 0, 0);
 
-        .welcome-card {
-            background: var(--gradient-primary);
-            color: white;
-            border-radius: var(--border-radius-xl);
-            box-shadow: var(--shadow-xl);
-            overflow: hidden;
-            margin-bottom: 2rem;
-            border: none;
-            position: relative;
-        }
-
-        .welcome-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="50" r="1" fill="white" opacity="0.05"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-            opacity: 0.1;
-        }
-
-        .welcome-card-body {
-            padding: 2.5rem;
-            position: relative;
-            z-index: 1;
-        }
-
-        .welcome-card h2 {
-            font-family: 'Poppins', sans-serif;
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 0.75rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .welcome-card h2 i {
-            font-size: 2rem;
-            opacity: 0.9;
-        }
-
-        .welcome-card p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-            margin: 0;
-            max-width: 600px;
-        }
-
-        /* ===================================================
-           Statistics Cards Grid
-           =================================================== */
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: white;
-            border-radius: var(--border-radius-xl);
-            box-shadow: var(--shadow-lg);
-            overflow: hidden;
-            transition: var(--transition-normal);
-            border: 1px solid rgba(255, 255, 255, 0.8);
-            position: relative;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-8px);
-            box-shadow: var(--shadow-xl);
-        }
-
-        .stat-card-primary { border-left: 4px solid var(--primary-color); }
-        .stat-card-success { border-left: 4px solid var(--success-color); }
-        .stat-card-warning { border-left: 4px solid var(--warning-color); }
-
-        .stat-card-body {
-            padding: 2rem;
-            text-align: center;
-        }
-
-        .stat-icon {
-            width: 60px;
-            height: 60px;
-            margin: 0 auto 1rem;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            backdrop-filter: blur(10px);
-        }
-
-        .stat-card-primary .stat-icon {
-            background: rgba(99, 102, 241, 0.1);
-            color: var(--primary-color);
-        }
-
-        .stat-card-success .stat-icon {
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success-color);
-        }
-
-        .stat-card-warning .stat-icon {
-            background: rgba(245, 158, 11, 0.1);
-            color: var(--warning-color);
-        }
-
-        .stat-value {
-            font-size: 3rem;
-            font-weight: 700;
-            color: #1f2937;
-            margin-bottom: 0.5rem;
-            line-height: 1;
-        }
-
-        .stat-label {
-            font-size: 1rem;
-            color: #6b7280;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        /* ===================================================
-           Filter Section
-           =================================================== */
-
-        .filter-card {
-            background: white;
-            border-radius: var(--border-radius-xl);
-            box-shadow: var(--shadow-md);
-            margin-bottom: 2rem;
-            border: 1px solid #e5e7eb;
-        }
-
-        .filter-card-body {
-            padding: 2rem;
-        }
-
-        .filter-buttons {
-            display: flex;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .filter-btn {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1.25rem;
-            border-radius: var(--border-radius-lg);
-            font-weight: 500;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: var(--transition-fast);
-            border: 2px solid #e5e7eb;
-            background: white;
-            color: #6b7280;
-            text-decoration: none;
-        }
-
-        .filter-btn:hover {
-            border-color: var(--primary-color);
-            color: var(--primary-color);
-            transform: translateY(-1px);
-        }
-
-        .filter-btn.active {
-            background: var(--gradient-primary);
-            color: white;
-            border-color: transparent;
-            box-shadow: var(--shadow-md);
-        }
-
-        /* ===================================================
-           Activities Grid
-           =================================================== */
-
-        .activities-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .activity-card {
-            background: white;
-            border-radius: var(--border-radius-xl);
-            box-shadow: var(--shadow-lg);
-            overflow: hidden;
-            transition: var(--transition-normal);
-            border: 1px solid #e5e7eb;
-            opacity: 0;
-            animation: fadeInUp 0.6s ease-out forwards;
-        }
-
-        .activity-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--shadow-xl);
-        }
-
-        .activity-card:nth-child(1) { animation-delay: 0.1s; }
-        .activity-card:nth-child(2) { animation-delay: 0.2s; }
-        .activity-card:nth-child(3) { animation-delay: 0.3s; }
-        .activity-card:nth-child(4) { animation-delay: 0.4s; }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
+            foreach ($attachments as $attachment) {
+                $label = '- ' . $attachment['file_name'] . ' (' . strtoupper($attachment['file_type']) . ')';
+                $pdf->Cell(0, 6, $label, 0, 1, 'L', 0);
             }
         }
 
-        .activity-header {
-            padding: 1.5rem;
-            background: var(--gradient-primary);
-            color: white;
-            position: relative;
-        }
-
-        .activity-header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px);
-        }
-
-        .activity-header-content {
-            position: relative;
-            z-index: 1;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .activity-icon-wrapper {
-            width: 50px;
-            height: 50px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: var(--border-radius-lg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(10px);
-        }
-
-        .activity-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin: 0;
-        }
-
-        .activity-category {
-            font-size: 0.9rem;
-            opacity: 0.9;
-            margin: 0;
-        }
-
-        .activity-body {
-            padding: 1.5rem;
-        }
-
-        .activity-status {
-            display: inline-block;
-            padding: 0.375rem 0.75rem;
-            border-radius: 1rem;
-            font-size: 0.8rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 1rem;
-        }
-
-        .status-ongoing {
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success-color);
-        }
-
-        .status-upcoming {
-            background: rgba(245, 158, 11, 0.1);
-            color: var(--warning-color);
-        }
-
-        .status-completed {
-            background: rgba(107, 114, 128, 0.1);
-            color: #6b7280;
-        }
-
-        .activity-details {
-            margin-bottom: 1rem;
-        }
-
-        .activity-detail {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-            color: #4b5563;
-        }
-
-        .activity-detail i {
-            color: var(--primary-color);
-            width: 16px;
-        }
-
-        .activity-description {
-            color: #6b7280;
-            line-height: 1.6;
-            margin-bottom: 1.5rem;
-        }
-
-        .activity-actions {
-            display: flex;
-            gap: 0.75rem;
-        }
-
-        .activity-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.625rem 1rem;
-            border-radius: var(--border-radius-md);
-            font-size: 0.85rem;
-            font-weight: 500;
-            text-decoration: none;
-            border: 1px solid #d1d5db;
-            background: #f9fafb;
-            color: #6b7280;
-            transition: var(--transition-fast);
-            cursor: pointer;
-        }
-
-        .activity-btn:hover {
-            background: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-sm);
-        }
-
-        /* ===================================================
-           Empty State
-           =================================================== */
-
-        .empty-state {
-            text-align: center;
-            padding: 4rem 2rem;
-            background: white;
-            border-radius: var(--border-radius-xl);
-            box-shadow: var(--shadow-md);
-        }
-
-        .empty-icon {
-            font-size: 4rem;
-            color: #d1d5db;
-            margin-bottom: 1.5rem;
-        }
-
-        .empty-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.5rem;
-            color: #6b7280;
-            margin-bottom: 0.5rem;
-        }
-
-        .empty-text {
-            color: #9ca3af;
-            font-size: 1rem;
-        }
-
-        /* ===================================================
-           Responsive Design
-           =================================================== */
-
-        @media (max-width: 1024px) {
-            .main-content {
-                margin-left: 0;
-                padding: 1.5rem;
-                max-width: 100%;
-            }
-
-            .stats-grid {
-                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                gap: 1rem;
-            }
-
-            .activities-grid {
-                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-                gap: 1rem;
-            }
-
-            .welcome-card h2 {
-                font-size: 2rem;
-            }
-
-            .welcome-card-body {
-                padding: 2rem;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .main-content {
-                padding: 1rem;
-            }
-
-            .welcome-card h2 {
-                font-size: 1.75rem;
-                flex-direction: column;
-                gap: 0.5rem;
-                text-align: center;
-            }
-
-            .welcome-card p {
-                font-size: 1rem;
-                text-align: center;
-            }
-
-            .welcome-card-body {
-                padding: 1.5rem;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-
-            .stat-card-body {
-                padding: 1.5rem;
-            }
-
-            .stat-value {
-                font-size: 2.5rem;
-            }
-
-            .activities-grid {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-
-            .filter-buttons {
-                justify-content: center;
-            }
-
-            .filter-btn {
-                flex: 1;
-                justify-content: center;
-                min-width: 120px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .welcome-card h2 {
-                font-size: 1.5rem;
-            }
-
-            .stat-card-body {
-                padding: 1.25rem;
-            }
-
-            .stat-value {
-                font-size: 2rem;
-            }
-
-            .stat-icon {
-                width: 50px;
-                height: 50px;
-                font-size: 1.25rem;
-            }
-
-            .activity-header-content {
-                flex-direction: column;
-                text-align: center;
-                gap: 0.75rem;
-            }
-
-            .activity-icon-wrapper {
-                width: 40px;
-                height: 40px;
-            }
-
-            .activity-title {
-                font-size: 1.1rem;
-            }
-        }
-
-        /* ===================================================
-           Utility Classes
-           =================================================== */
-
-        .text-center { text-align: center; }
-        .text-left { text-align: left; }
-        .text-right { text-align: right; }
-
-        .mb-0 { margin-bottom: 0; }
-        .mb-1 { margin-bottom: 0.25rem; }
-        .mb-2 { margin-bottom: 0.5rem; }
-        .mb-3 { margin-bottom: 1rem; }
-        .mb-4 { margin-bottom: 1.5rem; }
-
-        /* ===================================================
-           Override Bootstrap Classes
-           =================================================== */
-
-        .row {
-            display: contents;
-        }
-
-        .col-md-4,
-        .col-md-6 {
-            display: contents;
-        }
-
-        .card {
-            background: white;
-            border-radius: var(--border-radius-xl);
-            box-shadow: var(--shadow-lg);
-            border: 1px solid #e5e7eb;
-            margin-bottom: 1.5rem;
-        }
-
-        .card-body {
-            padding: 1.5rem;
-        }
-
-        .card-header {
-            padding: 1.5rem;
-            background: var(--gradient-primary);
-            color: white;
-            border-bottom: none;
-            font-family: 'Poppins', sans-serif;
-            font-weight: 600;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 0.375rem 0.75rem;
-            border-radius: 1rem;
-            font-size: 0.8rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .badge-warning {
-            background: rgba(245, 158, 11, 0.1);
-            color: var(--warning-color);
-        }
-
-        .badge-info {
-            background: rgba(59, 130, 246, 0.1);
-            color: var(--info-color);
-        }
-
-        .badge-secondary {
-            background: rgba(107, 114, 128, 0.1);
-            color: #6b7280;
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.625rem 1rem;
-            border-radius: var(--border-radius-md);
-            font-weight: 500;
-            text-decoration: none;
-            border: 1px solid #d1d5db;
-            background: #f9fafb;
-            color: #6b7280;
-            transition: var(--transition-fast);
-            cursor: pointer;
-            font-size: 0.85rem;
-        }
-
-        .btn:hover {
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-sm);
-        }
-
-        .btn-primary {
-            background: var(--gradient-primary);
-            color: white;
-            border-color: transparent;
-        }
-
-        .btn-outline-primary {
-            border-color: var(--primary-color);
-            color: var(--primary-color);
-            background: white;
-        }
-
-        .btn-outline-primary:hover {
-            background: var(--primary-color);
-            color: white;
-        }
-
-        .btn-sm {
-            padding: 0.5rem 0.875rem;
-            font-size: 0.8rem;
-        }
-
-        /* ===================================================
-           Modal Z-Index Fixes
-           =================================================== */
-
-        .modal-backdrop {
-            z-index: 9998 !important;
-        }
-
-        .modal {
-            z-index: 9999 !important;
-        }
-
-        .modal-dialog {
-            z-index: 10000 !important;
-        }
-    </style>
-</head>
-<?php
-// Use shared student header and inject page styles
-$pageTitle = 'School Events | ' . (function_exists('get_school_display_name') ? get_school_display_name() : 'iSchool');
+        $pdf->Ln(10);
+        $pdf->SetFont('helvetica', 'I', 8);
+        $pdf->SetTextColor(128, 128, 128);
+        $pdf->Cell(0, 5, 'Generated by SahabFormMaster on ' . date('F j, Y \a\t g:i A'), 0, 1, 'C', 0);
+        $pdf->Output('activity_details_' . $selected_activity_id . '.pdf', 'D');
+        exit;
+    }
+
+    $updateStmt = $pdo->prepare("UPDATE school_diary SET view_count = view_count + 1 WHERE id = ? AND school_id = ?");
+    $updateStmt->execute([$selected_activity_id, $current_school_id]);
+    $selected_activity['view_count'] = ((int) ($selected_activity['view_count'] ?? 0)) + 1;
+}
+
+$selected_activity_status_label = $selected_activity ? diary_student_status_label($selected_activity, $current_date) : '';
+
+$today = date('Y-m-d');
+$upcoming_count = count(array_filter($activities, static function ($activity) use ($today) {
+    return ($activity['activity_date'] ?? '') >= $today && ($activity['status'] ?? '') !== 'Completed' && ($activity['status'] ?? '') !== 'Cancelled';
+}));
+$completed_count = count(array_filter($activities, static fn($activity) => ($activity['status'] ?? '') === 'Completed'));
+$this_month_count = count(array_filter($activities, static function ($activity) {
+    return date('Y-m', strtotime($activity['activity_date'])) === date('Y-m');
+}));
+
+$activity_types = ['Academics', 'Sports', 'Cultural', 'Competition'];
+foreach ($activities as $activity) {
+    if (!in_array($activity['activity_type'], $activity_types, true) && !empty($activity['activity_type'])) {
+        $activity_types[] = $activity['activity_type'];
+    }
+}
+
+$calendarActivities = [];
+foreach ($activities as $activity) {
+    $calendarActivities[] = [
+        'id' => (int) $activity['id'],
+        'title' => $activity['activity_title'],
+        'date' => $activity['activity_date'],
+        'time' => diary_format_time_range($activity['start_time'] ?? null, $activity['end_time'] ?? null),
+        'venue' => $activity['venue'] ?: 'Venue to be confirmed',
+        'type' => $activity['activity_type'],
+        'status' => diary_student_status_label($activity, $current_date),
+        'coordinator' => $activity['coordinator_name'] ?: 'Not assigned',
+        'description' => diary_excerpt($activity['description'] ?? '', 140),
+        'detailUrl' => 'school_diary.php?' . http_build_query(array_merge($filterState, ['id' => $activity['id'], 'view' => 'details'])),
+        'pdfUrl' => 'school_diary.php?' . http_build_query(array_merge($filterState, ['id' => $activity['id'], 'pdf' => 1])),
+    ];
+}
+$pageTitle = 'School Diary | ' . (function_exists('get_school_display_name') ? get_school_display_name() : 'iSchool');
 $extraHead = <<<'HTML'
-    <style>
-        /* (Keep original internal styles already defined above) */
-    </style>
+<style>
+    .student-layout { overflow-x: hidden; }
+    .school-diary-page section { padding-top: 0; padding-bottom: 0; }
+
+    .student-sidebar-overlay { position: fixed; inset: 0; background: rgba(2, 6, 23, 0.45); opacity: 0; pointer-events: none; transition: opacity .2s ease; z-index: 30; }
+    .sidebar { position: fixed; top: 73px; left: 0; width: 16rem; height: calc(100vh - 73px); background: #fff; border-right: 1px solid rgba(15,31,45,.1); box-shadow: 0 18px 40px rgba(15,31,51,.12); transform: translateX(-106%); transition: transform .22s ease; z-index: 40; overflow-y: auto; }
+    body.sidebar-open .sidebar { transform: translateX(0); }
+    body.sidebar-open .student-sidebar-overlay { opacity: 1; pointer-events: auto; }
+    .sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid rgba(15,31,45,.08); }
+    .sidebar-header h3 { margin: 0; font-size: 1rem; font-weight: 700; color: #0f1f2d; }
+    .sidebar-close { border: 0; border-radius: .55rem; padding: .35rem .55rem; background: rgba(15,31,45,.08); color: #334155; font-size: .8rem; line-height: 1; cursor: pointer; }
+    .sidebar-nav { padding: .8rem; }
+    .nav-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .2rem; }
+    .nav-link { display: flex; align-items: center; gap: .65rem; border-radius: .75rem; padding: .62rem .72rem; color: #475569; font-size: .88rem; font-weight: 600; text-decoration: none; transition: background-color .15s ease, color .15s ease; border-left: 0; }
+    .nav-link:hover { background: rgba(22,133,117,.1); color: #0f6a5c; }
+    .nav-link.active { background: rgba(22,133,117,.14); color: #0f6a5c; box-shadow: none; }
+    .nav-icon { width: 1rem; text-align: center; }
+    #studentMain { min-width: 0; }
+
+    .diary-hero,
+    .diary-hero h1,
+    .diary-hero h2,
+    .diary-hero h3,
+    .diary-hero p,
+    .diary-hero span,
+    .diary-hero i { color: #fff; }
+
+    @media (min-width: 768px) {
+        #studentMain { padding-left: 16rem !important; }
+        .sidebar { transform: translateX(0); top: 73px; height: calc(100vh - 73px); padding-top: 0; }
+        .sidebar-close { display: none; }
+        .student-sidebar-overlay { display: none; }
+    }
+    @media (max-width: 767.98px) {
+        #studentMain { padding-left: 0 !important; }
+    }
+</style>
 HTML;
+
 require_once __DIR__ . '/../includes/student_header.php';
 ?>
 
-    <!-- Header (mobile nav still used) -->
-        <div class="header-container">
-            <!-- Logo and School Name -->
-            <div class="header-left">
-                <div class="school-logo-container">
-                    <img src="<?php echo htmlspecialchars(get_school_logo_url()); ?>" alt="School Logo" class="school-logo">
-                    <div class="school-info">
-                        <h1 class="school-name"><?php echo htmlspecialchars(get_school_display_name()); ?></h1>
-                        <p class="school-tagline">Student Portal</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Student Info and Logout -->
-            <div class="header-right">
-                <div class="student-info">
-                    <p class="student-label">Student</p>
-                    <span class="student-name"><?php echo htmlspecialchars($student_name); ?></span>
-                    <span class="admission-number"><?php echo htmlspecialchars($admission_number); ?></span>
-                </div>
-                <a href="logout.php" class="btn-logout">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                </a>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Container -->
-    <div class="dashboard-container">
-
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Welcome Section -->
-            <div class="welcome-card">
-                <div class="welcome-card-body">
-                    <h2><i class="fas fa-calendar-alt"></i> School Events & Activities</h2>
-                    <p>Stay updated with all school events, competitions, and activities for <?php echo htmlspecialchars($student['class_name'] ?? 'your class'); ?> students</p>
-                </div>
-            </div>
-
-            <!-- Statistics Cards -->
-            <div class="stats-grid">
-                <div class="stat-card stat-card-primary">
-                    <div class="stat-card-body">
-                        <div class="stat-icon">
-                            <i class="fas fa-calendar-alt"></i>
+<div class="student-sidebar-overlay" id="studentSidebarOverlay"></div>
+<main class="school-diary-page space-y-6">
+            <section class="overflow-hidden rounded-3xl border border-ink-900/5 shadow-lift">
+                <div class="diary-hero bg-gradient-to-r from-teal-700 via-emerald-600 to-sky-600 p-6 text-white sm:p-8">
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <p class="mb-1 text-xs uppercase tracking-wide text-white/80">Student planner</p>
+                            <h1 class="text-3xl font-display font-semibold leading-tight sm:text-4xl">School Diary</h1>
+                            <p class="mt-2 max-w-2xl text-white/80">Track school events, competitions, and activities available to <?php echo htmlspecialchars($student['class_name'] ?: 'your class'); ?> in one responsive workspace.</p>
                         </div>
-                        <div class="stat-value"><?php echo count($activities); ?></div>
-                        <div class="stat-label">Total Events</div>
-                    </div>
-                </div>
-                <div class="stat-card stat-card-success">
-                    <div class="stat-card-body">
-                        <div class="stat-icon">
-                            <i class="fas fa-calendar-check"></i>
+                        <div class="flex flex-wrap gap-3">
+                            <a href="#diary-filters" class="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold transition hover:bg-white/20">
+                                <i class="fas fa-sliders-h"></i>
+                                Filter diary
+                            </a>
+                            <a href="#calendar-panel" class="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-teal-900 shadow-soft transition hover:bg-white/90">
+                                <i class="fas fa-calendar-alt"></i>
+                                Open calendar
+                            </a>
                         </div>
-                        <div class="stat-value"><?php echo $today_count; ?></div>
-                        <div class="stat-label">Today's Events</div>
                     </div>
                 </div>
-                <div class="stat-card stat-card-warning">
-                    <div class="stat-card-body">
-                        <div class="stat-icon">
-                            <i class="fas fa-calendar-plus"></i>
+                <div class="grid gap-3 bg-white p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
+                    <div class="rounded-2xl border border-ink-900/5 bg-mist-50 p-4 shadow-soft">
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Total Activities</p>
+                        <p class="text-2xl font-semibold text-ink-900"><?php echo count($activities); ?></p>
+                    </div>
+                    <div class="rounded-2xl border border-ink-900/5 bg-mist-50 p-4 shadow-soft">
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Upcoming</p>
+                        <p class="text-2xl font-semibold text-ink-900"><?php echo $upcoming_count; ?></p>
+                    </div>
+                    <div class="rounded-2xl border border-ink-900/5 bg-mist-50 p-4 shadow-soft">
+                        <p class="text-xs uppercase tracking-wide text-slate-500">Completed</p>
+                        <p class="text-2xl font-semibold text-ink-900"><?php echo $completed_count; ?></p>
+                    </div>
+                    <div class="rounded-2xl border border-ink-900/5 bg-mist-50 p-4 shadow-soft">
+                        <p class="text-xs uppercase tracking-wide text-slate-500">This Month</p>
+                        <p class="text-2xl font-semibold text-ink-900"><?php echo $this_month_count; ?></p>
+                    </div>
+                </div>
+            </section>
+
+            <?php if ($selected_activity): ?>
+                <section class="rounded-3xl border border-ink-900/5 bg-white p-6 shadow-soft">
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div class="space-y-3">
+                            <a href="<?php echo htmlspecialchars($list_url); ?>" class="inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:text-teal-600">
+                                <i class="fas fa-arrow-left"></i>
+                                Back to diary
+                            </a>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold <?php echo diary_type_classes($selected_activity['activity_type']); ?>">
+                                    <i class="fas fa-tag"></i>
+                                    <?php echo htmlspecialchars($selected_activity['activity_type']); ?>
+                                </span>
+                                <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold <?php echo diary_status_classes($selected_activity_status_label); ?>">
+                                    <i class="fas fa-signal"></i>
+                                    <?php echo htmlspecialchars($selected_activity_status_label); ?>
+                                </span>
+                            </div>
+                            <h2 class="text-3xl font-display text-ink-900"><?php echo htmlspecialchars($selected_activity['activity_title']); ?></h2>
+                            <p class="max-w-3xl text-slate-600"><?php echo diary_excerpt($selected_activity['description'] ?? '', 220); ?></p>
                         </div>
-                        <div class="stat-value"><?php echo $upcoming_count; ?></div>
-                        <div class="stat-label">Upcoming (7 days)</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Filter Section -->
-            <div class="filter-card">
-                <div class="filter-card-body">
-                    <div class="filter-buttons">
-                        <button class="filter-btn active" data-filter="all">
-                            <i class="fas fa-list"></i> All Events
-                        </button>
-                        <button class="filter-btn" data-filter="upcoming">
-                            <i class="fas fa-clock"></i> Upcoming
-                        </button>
-                        <button class="filter-btn" data-filter="ongoing">
-                            <i class="fas fa-play-circle"></i> Ongoing
-                        </button>
-                        <button class="filter-btn" data-filter="today">
-                            <i class="fas fa-calendar-day"></i> Today
-                        </button>
-                        <button class="filter-btn" data-filter="completed">
-                            <i class="fas fa-check-circle"></i> Past Events
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Activities Grid -->
-            <div id="activities-container">
-                <?php if (empty($activities)): ?>
-                    <div class="empty-state">
-                        <div class="empty-icon">
-                            <i class="fas fa-calendar-times"></i>
+                        <div class="flex flex-wrap gap-2">
+                            <a href="school_diary.php?<?php echo htmlspecialchars(http_build_query(array_merge($filterState, ['id' => $selected_activity['id'], 'pdf' => 1]))); ?>" target="_blank" class="inline-flex items-center gap-2 rounded-xl border border-ink-900/10 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-teal-600/40 hover:bg-teal-600/10 hover:text-teal-700">
+                                <i class="fas fa-download"></i>
+                                PDF report
+                            </a>
+                            <a href="#calendar-panel" class="inline-flex items-center gap-2 rounded-xl bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-600">
+                                <i class="fas fa-calendar-day"></i>
+                                Find in calendar
+                            </a>
                         </div>
-                        <h3 class="empty-title">No Events Scheduled</h3>
-                        <p class="empty-text">There are no upcoming events scheduled at the moment.</p>
                     </div>
-                <?php else: ?>
-                    <div class="activities-grid">
-                        <?php foreach ($activities as $activity): ?>
-                            <?php
-                            // Determine status and styling
-                            $activity_date = strtotime($activity['activity_date']);
-                            $today = strtotime(date('Y-m-d'));
-                            $status_class = '';
+                </section>
 
-                            if ($activity['status'] == 'Ongoing') {
-                                $status_class = 'status-ongoing';
-                                $status_text = 'Ongoing';
-                            } elseif ($activity_date == $today && $activity['status'] == 'Upcoming') {
-                                $status_class = 'status-ongoing';
-                                $status_text = 'Today';
-                            } elseif ($activity_date > $today) {
-                                $status_class = 'status-upcoming';
-                                $status_text = 'Upcoming';
-                            } else {
-                                $status_class = 'status-completed';
-                                $status_text = 'Completed';
-                            }
-
-                            // Get category color
-                            $category_color = $activity['color'] ?: '#6366f1';
-                            $category_icon = $activity['icon'] ?: 'fas fa-calendar-alt';
-
-                            // Format date
-                            $formatted_date = date('M d, Y', $activity_date);
-                            $formatted_time = $activity['start_time'] ? date('h:i A', strtotime($activity['start_time'])) : 'All Day';
-                            ?>
-                            <div class="activity-card" data-status="<?php echo strtolower($status_text); ?>" data-date="<?php echo $activity['activity_date']; ?>">
-                                <div class="activity-header">
-                                    <div class="activity-header-content">
-                                        <div class="activity-icon-wrapper">
-                                            <i class="<?php echo $category_icon; ?>"></i>
-                                        </div>
-                                        <div>
-                                            <h3 class="activity-title"><?php echo htmlspecialchars($activity['activity_title']); ?></h3>
-                                            <p class="activity-category"><?php echo htmlspecialchars($activity['category_name'] ?: $activity['activity_type']); ?></p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="activity-body">
-                                    <span class="activity-status <?php echo $status_class; ?>">
-                                        <?php echo $status_text; ?>
+                <section class="grid gap-6 lg:grid-cols-[1.55fr_1fr]">
+                    <div class="space-y-6">
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div class="rounded-2xl border border-ink-900/5 bg-white p-5 shadow-soft">
+                                <div class="flex items-center gap-3">
+                                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-teal-600/10 text-teal-700">
+                                        <i class="fas fa-calendar-alt"></i>
                                     </span>
-
-                                    <div class="activity-details">
-                                        <div class="activity-detail">
-                                            <i class="fas fa-calendar"></i>
-                                            <span><strong><?php echo $formatted_date; ?></strong></span>
-                                        </div>
-                                        <?php if ($activity['start_time']): ?>
-                                            <div class="activity-detail">
-                                                <i class="fas fa-clock"></i>
-                                                <span><?php echo $formatted_time; ?><?php if ($activity['end_time']): ?> - <?php echo date('h:i A', strtotime($activity['end_time'])); ?><?php endif; ?></span>
-                                            </div>
-                                        <?php endif; ?>
-                                        <?php if ($activity['venue']): ?>
-                                            <div class="activity-detail">
-                                                <i class="fas fa-map-marker-alt"></i>
-                                                <span><?php echo htmlspecialchars($activity['venue']); ?></span>
-                                            </div>
-                                        <?php endif; ?>
-                                    </div>
-
-                                    <p class="activity-description">
-                                        <?php
-                                        $description = strip_tags($activity['description'] ?: 'No description available');
-                                        echo strlen($description) > 150 ? substr($description, 0, 150) . '...' : $description;
-                                        ?>
-                                    </p>
-
-                                    <div class="activity-actions">
-                                        <button class="activity-btn" onclick="viewDetails(<?php echo $activity['id']; ?>)">
-                                            <i class="fas fa-eye"></i> View Details
-                                        </button>
+                                    <div>
+                                        <p class="text-sm text-slate-500">Activity Date</p>
+                                        <p class="text-lg font-semibold text-ink-900"><?php echo date('D, M j, Y', strtotime($selected_activity['activity_date'])); ?></p>
                                     </div>
                                 </div>
                             </div>
-                        <?php endforeach; ?>
+                            <div class="rounded-2xl border border-ink-900/5 bg-white p-5 shadow-soft">
+                                <div class="flex items-center gap-3">
+                                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100 text-sky-700">
+                                        <i class="fas fa-clock"></i>
+                                    </span>
+                                    <div>
+                                        <p class="text-sm text-slate-500">Time Window</p>
+                                        <p class="text-lg font-semibold text-ink-900"><?php echo htmlspecialchars(diary_format_time_range($selected_activity['start_time'], $selected_activity['end_time'])); ?></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="rounded-2xl border border-ink-900/5 bg-white p-5 shadow-soft">
+                                <div class="flex items-center gap-3">
+                                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                                        <i class="fas fa-users"></i>
+                                    </span>
+                                    <div>
+                                        <p class="text-sm text-slate-500">Audience</p>
+                                        <p class="text-lg font-semibold text-ink-900"><?php echo htmlspecialchars($selected_activity['target_audience'] ?: 'General audience'); ?></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="rounded-2xl border border-ink-900/5 bg-white p-5 shadow-soft">
+                                <div class="flex items-center gap-3">
+                                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                                        <i class="fas fa-paperclip"></i>
+                                    </span>
+                                    <div>
+                                        <p class="text-sm text-slate-500">Attachments</p>
+                                        <p class="text-lg font-semibold text-ink-900"><?php echo count($attachments); ?></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="rounded-3xl border border-ink-900/5 bg-white p-6 shadow-soft">
+                            <h3 class="mb-4 text-xl font-semibold text-ink-900">Activity Overview</h3>
+                            <div class="space-y-5">
+                                <?php if (!empty($selected_activity['description'])): ?>
+                                    <div>
+                                        <h4 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">Description</h4>
+                                        <div class="rounded-2xl bg-mist-50 p-4 text-sm leading-7 text-slate-700"><?php echo nl2br(htmlspecialchars($selected_activity['description'])); ?></div>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if (!empty($selected_activity['objectives'])): ?>
+                                    <div>
+                                        <h4 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">Objectives</h4>
+                                        <div class="rounded-2xl bg-mist-50 p-4 text-sm leading-7 text-slate-700"><?php echo nl2br(htmlspecialchars($selected_activity['objectives'])); ?></div>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if (!empty($selected_activity['resources'])): ?>
+                                    <div>
+                                        <h4 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">Resources Required</h4>
+                                        <div class="rounded-2xl bg-mist-50 p-4 text-sm leading-7 text-slate-700"><?php echo nl2br(htmlspecialchars($selected_activity['resources'])); ?></div>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <?php if (($selected_activity['status'] ?? '') === 'Completed' && (!empty($selected_activity['participant_count']) || !empty($selected_activity['winners_list']) || !empty($selected_activity['achievements']) || !empty($selected_activity['feedback_summary']))): ?>
+                            <div class="rounded-3xl border border-ink-900/5 bg-white p-6 shadow-soft">
+                                <h3 class="mb-4 text-xl font-semibold text-ink-900">Completion Notes</h3>
+                                <div class="grid gap-4 sm:grid-cols-2">
+                                    <?php if (!empty($selected_activity['participant_count'])): ?>
+                                        <div class="rounded-2xl border border-ink-900/5 bg-mist-50 p-4">
+                                            <p class="text-xs uppercase tracking-wide text-slate-500">Participants</p>
+                                            <p class="mt-2 text-2xl font-semibold text-ink-900"><?php echo (int) $selected_activity['participant_count']; ?></p>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($selected_activity['winners_list'])): ?>
+                                        <div class="rounded-2xl border border-ink-900/5 bg-mist-50 p-4">
+                                            <p class="text-xs uppercase tracking-wide text-slate-500">Recognized Winners</p>
+                                            <p class="mt-2 text-2xl font-semibold text-ink-900"><?php echo diary_count_winners($selected_activity['winners_list']); ?></p>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="mt-5 space-y-4">
+                                    <?php if (!empty($selected_activity['winners_list'])): ?>
+                                        <div>
+                                            <h4 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">Winners and Awards</h4>
+                                            <div class="rounded-2xl bg-mist-50 p-4 text-sm leading-7 text-slate-700"><?php echo nl2br(htmlspecialchars($selected_activity['winners_list'])); ?></div>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($selected_activity['achievements'])): ?>
+                                        <div>
+                                            <h4 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">Achievements</h4>
+                                            <div class="rounded-2xl bg-mist-50 p-4 text-sm leading-7 text-slate-700"><?php echo nl2br(htmlspecialchars($selected_activity['achievements'])); ?></div>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($selected_activity['feedback_summary'])): ?>
+                                        <div>
+                                            <h4 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">Feedback Summary</h4>
+                                            <div class="rounded-2xl bg-mist-50 p-4 text-sm leading-7 text-slate-700"><?php echo nl2br(htmlspecialchars($selected_activity['feedback_summary'])); ?></div>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($attachments)): ?>
+                            <div class="rounded-3xl border border-ink-900/5 bg-white p-6 shadow-soft">
+                                <div class="mb-4 flex items-center justify-between">
+                                    <h3 class="text-xl font-semibold text-ink-900">Attachments</h3>
+                                    <span class="text-xs uppercase tracking-wide text-slate-500"><?php echo count($attachments); ?> files</span>
+                                </div>
+                                <div class="grid gap-4 sm:grid-cols-2">
+                                    <?php foreach ($attachments as $attachment): ?>
+                                        <?php $isImage = strtolower((string) $attachment['file_type']) === 'image'; ?>
+                                        <a href="<?php echo htmlspecialchars($attachment['file_path']); ?>" target="_blank" class="overflow-hidden rounded-2xl border border-ink-900/5 bg-white shadow-soft transition hover:-translate-y-1 hover:shadow-lift">
+                                            <div class="h-40 bg-sky-50">
+                                                <?php if ($isImage): ?>
+                                                    <img src="<?php echo htmlspecialchars($attachment['file_path']); ?>" alt="<?php echo htmlspecialchars($attachment['file_name']); ?>" class="h-full w-full object-cover">
+                                                <?php else: ?>
+                                                    <div class="flex h-full items-center justify-center text-slate-400">
+                                                        <i class="fas fa-file-lines text-4xl"></i>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="p-4">
+                                                <p class="font-semibold text-ink-900"><?php echo htmlspecialchars($attachment['file_name']); ?></p>
+                                                <p class="mt-1 text-sm text-slate-500"><?php echo strtoupper(htmlspecialchars((string) $attachment['file_type'])); ?> attachment</p>
+                                            </div>
+                                        </a>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                     </div>
-                <?php endif; ?>
+
+                    <aside class="space-y-4">
+                        <div class="rounded-3xl border border-ink-900/5 bg-white p-5 shadow-soft">
+                            <h3 class="mb-4 text-lg font-semibold text-ink-900">Diary Snapshot</h3>
+                            <div class="space-y-3 text-sm text-slate-600">
+                                <div class="flex items-start justify-between gap-4">
+                                    <span class="font-semibold text-ink-900">Venue</span>
+                                    <span class="text-right"><?php echo htmlspecialchars($selected_activity['venue'] ?: 'Not specified'); ?></span>
+                                </div>
+                                <div class="flex items-start justify-between gap-4">
+                                    <span class="font-semibold text-ink-900">Coordinator</span>
+                                    <span class="text-right"><?php echo htmlspecialchars($selected_activity['coordinator_name'] ?: 'Not assigned'); ?></span>
+                                </div>
+                                <?php if (!empty($selected_activity['organizing_dept'])): ?>
+                                    <div class="flex items-start justify-between gap-4">
+                                        <span class="font-semibold text-ink-900">Department</span>
+                                        <span class="text-right"><?php echo htmlspecialchars($selected_activity['organizing_dept']); ?></span>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if (!empty($selected_activity['target_classes'])): ?>
+                                    <div class="flex items-start justify-between gap-4">
+                                        <span class="font-semibold text-ink-900">Target Classes</span>
+                                        <span class="text-right"><?php echo htmlspecialchars($selected_activity['target_classes']); ?></span>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <div class="rounded-3xl border border-ink-900/5 bg-white p-5 shadow-soft">
+                            <h3 class="mb-4 text-lg font-semibold text-ink-900">Record Metadata</h3>
+                            <div class="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                                <div class="rounded-2xl bg-mist-50 p-4">
+                                    <p class="text-xs uppercase tracking-wide text-slate-500">Views</p>
+                                    <p class="mt-2 text-xl font-semibold text-ink-900"><?php echo (int) $selected_activity['view_count']; ?></p>
+                                </div>
+                                <div class="rounded-2xl bg-mist-50 p-4">
+                                    <p class="text-xs uppercase tracking-wide text-slate-500">Created</p>
+                                    <p class="mt-2 text-sm font-semibold text-ink-900"><?php echo date('M j, Y', strtotime($selected_activity['created_at'])); ?></p>
+                                </div>
+                                <div class="rounded-2xl bg-mist-50 p-4">
+                                    <p class="text-xs uppercase tracking-wide text-slate-500">Updated</p>
+                                    <p class="mt-2 text-sm font-semibold text-ink-900"><?php echo date('M j, Y', strtotime($selected_activity['updated_at'] ?: $selected_activity['created_at'])); ?></p>
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
+                </section>
+            <?php endif; ?>
+
+            <section id="diary-filters" class="rounded-3xl border border-ink-900/5 bg-white p-6 shadow-soft">
+                <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                        <h2 class="text-xl font-semibold text-ink-900">Diary Explorer</h2>
+                        <p class="text-sm text-slate-500">Refine activities by type, date window, and keywords.</p>
+                    </div>
+                    <?php if (!empty($filterState)): ?>
+                        <a href="school_diary.php" class="inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:text-teal-600">
+                            <i class="fas fa-rotate-left"></i>
+                            Clear filters
+                        </a>
+                    <?php endif; ?>
+                </div>
+
+                <form method="GET" class="grid gap-4 md:grid-cols-2 xl:grid-cols-[1.6fr_1fr_1fr_1fr_auto]">
+                    <label class="grid gap-2">
+                        <span class="text-sm font-semibold text-ink-900">Search activities</span>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><i class="fas fa-search"></i></span>
+                            <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" placeholder="Title, description, or venue" class="w-full rounded-xl border border-ink-900/10 bg-white px-10 py-3 text-sm text-ink-900 shadow-inner focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-100">
+                        </div>
+                    </label>
+
+                    <label class="grid gap-2">
+                        <span class="text-sm font-semibold text-ink-900">Activity type</span>
+                        <select name="type" class="rounded-xl border border-ink-900/10 bg-white px-4 py-3 text-sm text-ink-900 shadow-inner focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-100">
+                            <option value="">All types</option>
+                            <?php foreach ($activity_types as $type): ?>
+                                <option value="<?php echo htmlspecialchars($type); ?>" <?php echo $type_filter === $type ? 'selected' : ''; ?>><?php echo htmlspecialchars($type); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+
+                    <label class="grid gap-2">
+                        <span class="text-sm font-semibold text-ink-900">From date</span>
+                        <input type="date" name="date_from" value="<?php echo htmlspecialchars($date_from); ?>" class="rounded-xl border border-ink-900/10 bg-white px-4 py-3 text-sm text-ink-900 shadow-inner focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-100">
+                    </label>
+
+                    <label class="grid gap-2">
+                        <span class="text-sm font-semibold text-ink-900">To date</span>
+                        <input type="date" name="date_to" value="<?php echo htmlspecialchars($date_to); ?>" class="rounded-xl border border-ink-900/10 bg-white px-4 py-3 text-sm text-ink-900 shadow-inner focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-100">
+                    </label>
+
+                    <div class="flex items-end gap-2">
+                        <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-teal-600">
+                            <i class="fas fa-filter"></i>
+                            Apply
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="space-y-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h2 class="text-xl font-semibold text-ink-900">Activity Schedule</h2>
+                        <p class="text-sm text-slate-500"><?php echo count($activities); ?> activities match the current diary view.</p>
+                    </div>
+                    <div class="inline-flex rounded-full border border-ink-900/10 bg-white p-1 shadow-soft">
+                        <button type="button" class="view-toggle-btn inline-flex items-center gap-2 rounded-full bg-teal-700 px-4 py-2 text-sm font-semibold text-white" data-view-target="list-panel">
+                            <i class="fas fa-list"></i>
+                            List
+                        </button>
+                        <button type="button" class="view-toggle-btn inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-slate-600 transition hover:text-teal-700" data-view-target="calendar-panel">
+                            <i class="fas fa-calendar-alt"></i>
+                            Calendar
+                        </button>
+                    </div>
+                </div>
+
+                <div id="list-panel" class="view-panel">
+                    <?php if (empty($activities)): ?>
+                        <div class="rounded-3xl border border-dashed border-ink-900/15 bg-white p-10 text-center shadow-soft">
+                            <div class="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full bg-teal-50 text-teal-700">
+                                <i class="fas fa-calendar-xmark text-xl"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-ink-900">No activities found</h3>
+                            <p class="mt-2 text-sm text-slate-500">Adjust the filters or return later when new school diary entries are published.</p>
+                        </div>
+                    <?php else: ?>
+                        <div class="grid gap-4 xl:grid-cols-2">
+                            <?php foreach ($activities as $activity): ?>
+                                <?php $activityStatusLabel = diary_student_status_label($activity, $current_date); ?>
+                                <article class="rounded-3xl border border-ink-900/5 bg-white p-5 shadow-soft transition hover:-translate-y-1 hover:shadow-lift">
+                                    <div class="flex flex-col gap-4">
+                                        <div class="flex flex-wrap items-start justify-between gap-3">
+                                            <div class="space-y-2">
+                                                <div class="flex flex-wrap gap-2">
+                                                    <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold <?php echo diary_type_classes($activity['activity_type']); ?>">
+                                                        <i class="fas fa-tag"></i>
+                                                        <?php echo htmlspecialchars($activity['activity_type']); ?>
+                                                    </span>
+                                                    <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold <?php echo diary_status_classes($activityStatusLabel); ?>">
+                                                        <i class="fas fa-signal"></i>
+                                                        <?php echo htmlspecialchars($activityStatusLabel); ?>
+                                                    </span>
+                                                </div>
+                                                <h3 class="text-xl font-semibold text-ink-900"><?php echo htmlspecialchars($activity['activity_title']); ?></h3>
+                                            </div>
+                                            <span class="rounded-2xl bg-mist-50 px-3 py-2 text-right">
+                                                <span class="block text-xs uppercase tracking-wide text-slate-500">Date</span>
+                                                <span class="text-sm font-semibold text-ink-900"><?php echo date('M j, Y', strtotime($activity['activity_date'])); ?></span>
+                                            </span>
+                                        </div>
+
+                                        <p class="text-sm leading-7 text-slate-600"><?php echo htmlspecialchars(diary_excerpt($activity['description'] ?? '', 170)); ?></p>
+
+                                        <div class="grid gap-3 sm:grid-cols-2">
+                                            <div class="rounded-2xl bg-mist-50 p-4">
+                                                <p class="text-xs uppercase tracking-wide text-slate-500">Venue</p>
+                                                <p class="mt-1 text-sm font-semibold text-ink-900"><?php echo htmlspecialchars($activity['venue'] ?: 'Venue to be confirmed'); ?></p>
+                                            </div>
+                                            <div class="rounded-2xl bg-mist-50 p-4">
+                                                <p class="text-xs uppercase tracking-wide text-slate-500">Time</p>
+                                                <p class="mt-1 text-sm font-semibold text-ink-900"><?php echo htmlspecialchars(diary_format_time_range($activity['start_time'], $activity['end_time'])); ?></p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-ink-900/5 pt-4">
+                                            <div class="flex flex-wrap items-center gap-3 text-sm text-slate-500">
+                                                <span class="inline-flex items-center gap-2"><i class="fas fa-user"></i><?php echo htmlspecialchars($activity['coordinator_name'] ?: 'Not assigned'); ?></span>
+                                                <span class="inline-flex items-center gap-2"><i class="fas fa-eye"></i><?php echo (int) ($activity['view_count'] ?? 0); ?></span>
+                                            </div>
+                                            <div class="flex flex-wrap gap-2">
+                                                <a href="school_diary.php?<?php echo htmlspecialchars(http_build_query(array_merge($filterState, ['id' => $activity['id'], 'view' => 'details']))); ?>" class="inline-flex items-center gap-2 rounded-xl border border-ink-900/10 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-teal-600/40 hover:bg-teal-600/10 hover:text-teal-700">
+                                                    <i class="fas fa-eye"></i>
+                                                    View details
+                                                </a>
+                                                <a href="school_diary.php?<?php echo htmlspecialchars(http_build_query(array_merge($filterState, ['id' => $activity['id'], 'pdf' => 1]))); ?>" target="_blank" class="inline-flex items-center gap-2 rounded-xl bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-600">
+                                                    <i class="fas fa-download"></i>
+                                                    PDF
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <div id="calendar-panel" class="view-panel hidden rounded-3xl border border-ink-900/5 bg-white p-5 shadow-soft">
+                    <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <h3 class="text-xl font-semibold text-ink-900">Diary Calendar</h3>
+                            <p class="text-sm text-slate-500">Browse the school diary month by month and open quick activity summaries.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-ink-900/10 bg-white text-slate-600 transition hover:border-teal-600/40 hover:bg-teal-600/10 hover:text-teal-700" id="prevMonthBtn">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button type="button" class="inline-flex items-center rounded-xl border border-ink-900/10 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-teal-600/40 hover:bg-teal-600/10 hover:text-teal-700" id="todayBtn">Today</button>
+                            <button type="button" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-ink-900/10 bg-white text-slate-600 transition hover:border-teal-600/40 hover:bg-teal-600/10 hover:text-teal-700" id="nextMonthBtn">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+                        <h4 id="calendarMonthLabel" class="text-2xl font-display text-ink-900"></h4>
+                        <div class="flex flex-wrap gap-2 text-xs font-semibold">
+                            <?php foreach ($activity_types as $type): ?>
+                                <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 <?php echo diary_type_classes($type); ?>">
+                                    <i class="fas fa-circle text-[8px]"></i>
+                                    <?php echo htmlspecialchars($type); ?>
+                                </span>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <div>Sun</div>
+                        <div>Mon</div>
+                        <div>Tue</div>
+                        <div>Wed</div>
+                        <div>Thu</div>
+                        <div>Fri</div>
+                        <div>Sat</div>
+                    </div>
+                    <div id="calendarGrid" class="mt-3 grid grid-cols-7 gap-2"></div>
+                </div>
+            </section>
+</main>
+
+    <div id="activityModal" class="pointer-events-none fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 opacity-0 transition-opacity sm:items-center">
+        <div class="w-full max-w-2xl translate-y-6 rounded-3xl border border-ink-900/5 bg-white shadow-lift transition-transform duration-200" id="activityModalPanel">
+            <div class="flex items-start justify-between gap-4 border-b border-ink-900/10 p-6">
+                <div class="space-y-2">
+                    <div id="modalBadges" class="flex flex-wrap gap-2"></div>
+                    <h3 id="modalTitle" class="text-2xl font-display text-ink-900"></h3>
+                    <p id="modalDescription" class="text-sm leading-7 text-slate-600"></p>
+                </div>
+                <button type="button" id="activityModalClose" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-ink-900/10 bg-white text-slate-600 transition hover:border-teal-600/40 hover:bg-teal-600/10 hover:text-teal-700">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-        </main>
+            <div class="grid gap-4 p-6 sm:grid-cols-2">
+                <div class="rounded-2xl bg-mist-50 p-4">
+                    <p class="text-xs uppercase tracking-wide text-slate-500">Date</p>
+                    <p id="modalDate" class="mt-2 text-sm font-semibold text-ink-900"></p>
+                </div>
+                <div class="rounded-2xl bg-mist-50 p-4">
+                    <p class="text-xs uppercase tracking-wide text-slate-500">Time</p>
+                    <p id="modalTime" class="mt-2 text-sm font-semibold text-ink-900"></p>
+                </div>
+                <div class="rounded-2xl bg-mist-50 p-4">
+                    <p class="text-xs uppercase tracking-wide text-slate-500">Venue</p>
+                    <p id="modalVenue" class="mt-2 text-sm font-semibold text-ink-900"></p>
+                </div>
+                <div class="rounded-2xl bg-mist-50 p-4">
+                    <p class="text-xs uppercase tracking-wide text-slate-500">Coordinator</p>
+                    <p id="modalCoordinator" class="mt-2 text-sm font-semibold text-ink-900"></p>
+                </div>
+            </div>
+            <div class="flex flex-wrap justify-end gap-2 border-t border-ink-900/10 p-6">
+                <a href="#" id="modalDetailLink" class="inline-flex items-center gap-2 rounded-xl border border-ink-900/10 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-teal-600/40 hover:bg-teal-600/10 hover:text-teal-700">
+                    <i class="fas fa-eye"></i>
+                    View details
+                </a>
+                <a href="#" id="modalPdfLink" target="_blank" class="inline-flex items-center gap-2 rounded-xl bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-600">
+                    <i class="fas fa-download"></i>
+                    Download PDF
+                </a>
+            </div>
+        </div>
     </div>
 
-    
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <?php include '../includes/floating-button.php'; ?>
 
     <script>
-        // Filter functionality
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const filter = this.getAttribute('data-filter');
+        const sidebarOverlay = document.getElementById('studentSidebarOverlay');
+        if (sidebarOverlay) {
+            sidebarOverlay.addEventListener('click', () => document.body.classList.remove('sidebar-open'));
+        }
+        if (window.matchMedia('(min-width: 768px)').matches) {
+            document.body.classList.remove('sidebar-open');
+        }
 
-                // Update button states
-                document.querySelectorAll('.filter-btn').forEach(b => {
-                    b.classList.remove('active');
-                });
-                this.classList.add('active');
+        const viewButtons = document.querySelectorAll('.view-toggle-btn');
+        const panels = document.querySelectorAll('.view-panel');
 
-                // Filter activities
-                const activities = document.querySelectorAll('#activities-container .activity-card');
-                activities.forEach(activity => {
-                    const status = activity.getAttribute('data-status');
-                    const date = activity.getAttribute('data-date');
-                    const today = new Date().toISOString().split('T')[0];
-
-                    if (filter === 'all') {
-                        activity.style.display = 'block';
-                    } else if (filter === 'today') {
-                        activity.style.display = date === today ? 'block' : 'none';
-                    } else {
-                        activity.style.display = status === filter ? 'block' : 'none';
-                    }
-                });
+        const activatePanel = (targetId) => {
+            panels.forEach((panel) => {
+                panel.classList.toggle('hidden', panel.id !== targetId);
             });
+
+            viewButtons.forEach((button) => {
+                const isActive = button.dataset.viewTarget === targetId;
+                button.classList.toggle('bg-teal-700', isActive);
+                button.classList.toggle('text-white', isActive);
+                button.classList.toggle('text-slate-600', !isActive);
+            });
+        };
+
+        viewButtons.forEach((button) => {
+            button.addEventListener('click', () => activatePanel(button.dataset.viewTarget));
         });
 
-        // View Activity Details - Redirect to separate page
-        function viewDetails(activityId) {
-            window.location.href = `activity_details.php?id=${activityId}`;
+        const calendarActivities = <?php echo json_encode($calendarActivities, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
+        const calendarGrid = document.getElementById('calendarGrid');
+        const calendarMonthLabel = document.getElementById('calendarMonthLabel');
+        const prevMonthBtn = document.getElementById('prevMonthBtn');
+        const nextMonthBtn = document.getElementById('nextMonthBtn');
+        const todayBtn = document.getElementById('todayBtn');
+        let currentDate = new Date();
+
+        const typeClassMap = {
+            Academics: 'bg-teal-600/10 text-teal-700',
+            Sports: 'bg-sky-100 text-sky-700',
+            Cultural: 'bg-fuchsia-100 text-fuchsia-700',
+            Competition: 'bg-amber-100 text-amber-700'
+        };
+
+        const statusClassMap = {
+            Upcoming: 'bg-sky-100 text-sky-700',
+            Today: 'bg-amber-100 text-amber-700',
+            Ongoing: 'bg-amber-100 text-amber-700',
+            Completed: 'bg-emerald-100 text-emerald-700',
+            Cancelled: 'bg-rose-100 text-rose-700'
+        };
+
+        const escapeHtml = (value) => String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+
+        const formatReadableDate = (value) => {
+            const date = new Date(value + 'T00:00:00');
+            return date.toLocaleDateString(undefined, {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        };
+
+        const renderCalendar = () => {
+            if (!calendarGrid || !calendarMonthLabel) return;
+
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const offset = firstDay.getDay();
+            const totalDays = lastDay.getDate();
+            const today = new Date();
+
+            calendarMonthLabel.textContent = currentDate.toLocaleDateString(undefined, {
+                month: 'long',
+                year: 'numeric'
+            });
+
+            let html = '';
+            for (let i = 0; i < offset; i++) {
+                html += '<div class="min-h-[120px] rounded-2xl border border-dashed border-ink-900/10 bg-slate-50"></div>';
+            }
+
+            for (let day = 1; day <= totalDays; day++) {
+                const isoDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayActivities = calendarActivities.filter((activity) => activity.date === isoDate);
+                const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
+
+                html += `<div class="min-h-[120px] rounded-2xl border border-ink-900/5 bg-white p-2 shadow-soft ${isToday ? 'ring-2 ring-teal-100' : ''}">`;
+                html += `<div class="mb-2 flex items-center justify-between"><span class="text-sm font-semibold text-ink-900">${day}</span>${isToday ? '<span class="rounded-full bg-teal-600/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-teal-700">Today</span>' : ''}</div>`;
+
+                if (dayActivities.length === 0) {
+                    html += '<div class="text-xs text-slate-400">No activities</div>';
+                } else {
+                    dayActivities.slice(0, 3).forEach((activity) => {
+                        const badgeClass = typeClassMap[activity.type] || 'bg-slate-100 text-slate-600';
+                        html += `<button type="button" class="calendar-activity mb-2 w-full rounded-xl px-2 py-2 text-left text-xs font-semibold ${badgeClass}" data-activity-id="${activity.id}">${escapeHtml(activity.title)}</button>`;
+                    });
+
+                    if (dayActivities.length > 3) {
+                        html += `<div class="text-[11px] font-semibold text-slate-500">+${dayActivities.length - 3} more</div>`;
+                    }
+                }
+
+                html += '</div>';
+            }
+
+            calendarGrid.innerHTML = html;
+        };
+
+        if (prevMonthBtn) {
+            prevMonthBtn.addEventListener('click', () => {
+                currentDate.setMonth(currentDate.getMonth() - 1);
+                renderCalendar();
+            });
         }
+
+        if (nextMonthBtn) {
+            nextMonthBtn.addEventListener('click', () => {
+                currentDate.setMonth(currentDate.getMonth() + 1);
+                renderCalendar();
+            });
+        }
+
+        if (todayBtn) {
+            todayBtn.addEventListener('click', () => {
+                currentDate = new Date();
+                renderCalendar();
+            });
+        }
+
+        const activityModal = document.getElementById('activityModal');
+        const activityModalPanel = document.getElementById('activityModalPanel');
+        const activityModalClose = document.getElementById('activityModalClose');
+
+        const openActivityModal = (activity) => {
+            if (!activityModal || !activity) return;
+
+            const typeClass = typeClassMap[activity.type] || 'bg-slate-100 text-slate-600';
+            const statusClass = statusClassMap[activity.status] || 'bg-slate-100 text-slate-600';
+
+            document.getElementById('modalBadges').innerHTML = `
+                <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${typeClass}">
+                    <i class="fas fa-tag"></i>${escapeHtml(activity.type)}
+                </span>
+                <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${statusClass}">
+                    <i class="fas fa-signal"></i>${escapeHtml(activity.status)}
+                </span>
+            `;
+            document.getElementById('modalTitle').textContent = activity.title;
+            document.getElementById('modalDescription').textContent = activity.description;
+            document.getElementById('modalDate').textContent = formatReadableDate(activity.date);
+            document.getElementById('modalTime').textContent = activity.time;
+            document.getElementById('modalVenue').textContent = activity.venue;
+            document.getElementById('modalCoordinator').textContent = activity.coordinator;
+            document.getElementById('modalDetailLink').href = activity.detailUrl;
+            document.getElementById('modalPdfLink').href = activity.pdfUrl;
+
+            activityModal.classList.remove('pointer-events-none', 'opacity-0');
+            activityModal.classList.add('opacity-100');
+            activityModalPanel.classList.remove('translate-y-6');
+        };
+
+        const closeActivityModal = () => {
+            if (!activityModal) return;
+            activityModal.classList.add('pointer-events-none', 'opacity-0');
+            activityModal.classList.remove('opacity-100');
+            activityModalPanel.classList.add('translate-y-6');
+        };
+
+        if (activityModalClose) {
+            activityModalClose.addEventListener('click', closeActivityModal);
+        }
+
+        if (activityModal) {
+            activityModal.addEventListener('click', (event) => {
+                if (event.target === activityModal) {
+                    closeActivityModal();
+                }
+            });
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closeActivityModal();
+            }
+        });
+
+        document.addEventListener('click', (event) => {
+            const button = event.target.closest('.calendar-activity');
+            if (!button) return;
+
+            const activityId = Number(button.dataset.activityId);
+            const activity = calendarActivities.find((item) => item.id === activityId);
+            openActivityModal(activity);
+        });
+
+        renderCalendar();
     </script>
-
-    <?php include __DIR__ . '/../includes/floating-button.php'; ?>
-
 <?php require_once __DIR__ . '/../includes/student_footer.php'; ?>
