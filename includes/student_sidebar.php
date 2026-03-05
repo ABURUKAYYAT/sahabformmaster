@@ -2,7 +2,7 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <h3>Navigation</h3>
-                <button class="sidebar-close" id="sidebarClose">✕</button>
+                <button class="sidebar-close" id="sidebarClose" aria-label="Close navigation">x</button>
             </div>
             <nav class="sidebar-nav">
                 <ul class="nav-list">
@@ -31,7 +31,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="mysubjects.php" class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'mysubjects.php' ? 'active' : ''; ?>">
+                        <a href="mysubjects.php" class="nav-link <?php echo in_array(basename($_SERVER['PHP_SELF']), ['mysubjects.php', 'subjects.php'], true) ? 'active' : ''; ?>">
                             <i class="fas fa-book-open nav-icon"></i>
                             <span class="nav-text">My Subjects</span>
                         </a>

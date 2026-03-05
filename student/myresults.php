@@ -307,9 +307,9 @@ require_once __DIR__ . '/../includes/student_header.php';
                 <h1 class="hero-title mt-2 text-3xl">My Results Dashboard</h1>
                 <p class="hero-meta mt-2 max-w-2xl text-sm">
                     <?php echo htmlspecialchars((string) ($student['full_name'] ?? 'Student')); ?>
-                    • Class <?php echo htmlspecialchars($class_name); ?>
-                    • <?php echo htmlspecialchars($term); ?>
-                    • <?php echo htmlspecialchars($academic_session !== '' ? $academic_session : 'Session Not Set'); ?>
+                    | Class <?php echo htmlspecialchars($class_name); ?>
+                    | <?php echo htmlspecialchars($term); ?>
+                    | <?php echo htmlspecialchars($academic_session !== '' ? $academic_session : 'Session Not Set'); ?>
                 </p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
@@ -414,7 +414,7 @@ require_once __DIR__ . '/../includes/student_header.php';
         <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h2 class="text-xl font-semibold text-ink-900">Result Sheet</h2>
             <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <?php echo htmlspecialchars($term . ' • ' . ($academic_session !== '' ? $academic_session : 'Session Not Set')); ?>
+                <?php echo htmlspecialchars($term . ' | ' . ($academic_session !== '' ? $academic_session : 'Session Not Set')); ?>
             </span>
         </div>
 

@@ -1,0 +1,488 @@
+.student-layout {
+    overflow-x: hidden;
+}
+
+.student-evaluations-page,
+.student-evaluations-page section,
+.student-evaluations-page article {
+    min-width: 0;
+}
+
+.student-evaluations-page section {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.evaluation-panel {
+    border-radius: 1.5rem;
+    border: 1px solid rgba(15, 31, 45, 0.08);
+    background: #fff;
+    box-shadow: 0 10px 24px rgba(15, 31, 51, 0.08);
+}
+
+.evaluation-hero {
+    background:
+        radial-gradient(circle at top right, rgba(248, 198, 102, 0.26), transparent 30%),
+        linear-gradient(135deg, #0f766e 0%, #0f766e 22%, #0f172a 100%);
+}
+
+.evaluation-hero,
+.evaluation-hero h1,
+.evaluation-hero h2,
+.evaluation-hero h3,
+.evaluation-hero p {
+    color: #fff;
+}
+
+.evaluation-hero-actions {
+    grid-template-columns: 1fr;
+}
+
+.evaluation-metrics-grid {
+    grid-template-columns: 1fr;
+}
+
+.evaluation-metric-card {
+    display: grid;
+    gap: 0.45rem;
+    border: 1px solid rgba(15, 31, 45, 0.06);
+    border-radius: 1.35rem;
+    background: #f8fbfb;
+    padding: 1rem;
+    box-shadow: 0 10px 24px rgba(15, 31, 45, 0.06);
+}
+
+.evaluation-metric-icon {
+    display: inline-flex;
+    width: 3rem;
+    height: 3rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.evaluation-toolbar {
+    gap: 1rem;
+}
+
+.evaluation-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    white-space: nowrap;
+    border: 1px solid rgba(15, 31, 45, 0.1);
+    border-radius: 9999px;
+    background: #fff;
+    color: #475569;
+    padding: 0.75rem 0.95rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    transition: all 0.2s ease;
+    flex: 0 0 auto;
+}
+
+.evaluation-filter-chip:hover,
+.evaluation-filter-chip.is-active {
+    border-color: #168575;
+    background: #168575;
+    color: #fff;
+    box-shadow: 0 12px 24px rgba(22, 133, 117, 0.18);
+}
+
+.evaluation-table-wrap {
+    overflow-x: auto;
+}
+
+.evaluation-table-row {
+    transition: background-color 0.2s ease;
+}
+
+.evaluation-table-row:hover {
+    background: #f8fbfb;
+}
+
+.session-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 9999px;
+    padding: 0.35rem 0.78rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: rgba(14, 165, 233, 0.14);
+    color: #0369a1;
+}
+
+.rating-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    padding: 0.35rem 0.72rem;
+    font-size: 0.74rem;
+    font-weight: 700;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.rating-pill.rating-excellent {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #047857;
+}
+
+.rating-pill.rating-very-good {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1d4ed8;
+}
+
+.rating-pill.rating-good {
+    background: #fffbeb;
+    border-color: #fde68a;
+    color: #b45309;
+}
+
+.rating-pill.rating-needs-improvement {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #b91c1c;
+}
+
+.mobile-rating-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 0.9rem;
+    background: #f8fafc;
+    padding: 0.6rem 0.75rem;
+}
+
+.mobile-rating-label {
+    font-size: 0.79rem;
+    font-weight: 700;
+    color: #334155;
+}
+
+.evaluation-action-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    padding: 0.45rem 0.82rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.evaluation-action-primary {
+    background: rgba(15, 118, 110, 0.12);
+    border-color: rgba(15, 118, 110, 0.25);
+    color: #0f766e;
+}
+
+.evaluation-action-primary:hover {
+    background: #0f766e;
+    border-color: #0f766e;
+    color: #fff;
+}
+
+.evaluation-action-secondary {
+    background: #fff;
+    border-color: rgba(15, 23, 42, 0.12);
+    color: #334155;
+}
+
+.evaluation-action-secondary:hover {
+    border-color: rgba(15, 118, 110, 0.35);
+    background: rgba(15, 118, 110, 0.08);
+    color: #0f6a5c;
+}
+
+.evaluation-empty-state {
+    display: grid;
+    place-items: center;
+    text-align: center;
+    border: 1px dashed rgba(15, 31, 45, 0.15);
+    border-radius: 1.5rem;
+    background: linear-gradient(180deg, rgba(240, 249, 255, 0.8), rgba(255, 255, 255, 0.95));
+    padding: 2rem 1.25rem;
+}
+
+.evaluation-empty-icon {
+    display: inline-flex;
+    width: 4rem;
+    height: 4rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1.4rem;
+    background: rgba(22, 133, 117, 0.1);
+    color: #0f6a5c;
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.evaluation-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.evaluation-modal.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.evaluation-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.58);
+    backdrop-filter: blur(4px);
+}
+
+.evaluation-modal-card {
+    position: relative;
+    width: 100%;
+    max-width: 52rem;
+    border: 1px solid rgba(15, 31, 45, 0.08);
+    border-radius: 1.5rem;
+    background: #fff;
+    box-shadow: 0 25px 80px rgba(15, 23, 42, 0.24);
+    overflow: hidden;
+}
+
+.evaluation-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+    padding: 1.25rem 1.25rem 1rem;
+}
+
+.evaluation-modal-close {
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    border-radius: 9999px;
+    background: #fff;
+    color: #334155;
+    width: 2.2rem;
+    height: 2.2rem;
+    cursor: pointer;
+}
+
+.evaluation-modal-body {
+    padding: 1.1rem 1.25rem 1.3rem;
+}
+
+.evaluation-modal-info,
+.evaluation-modal-rating-row {
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 0.95rem;
+    background: #f8fafc;
+    padding: 0.78rem 0.9rem;
+}
+
+.evaluation-modal-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #64748b;
+}
+
+.evaluation-modal-value {
+    margin-top: 0.25rem;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.evaluation-modal-rating-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.evaluation-modal-rating-label {
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: #334155;
+}
+
+body.modal-open {
+    overflow: hidden;
+}
+
+.student-sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 30;
+}
+
+.sidebar {
+    position: fixed;
+    top: 73px;
+    left: 0;
+    width: 16rem;
+    height: calc(100vh - 73px);
+    background: #fff;
+    border-right: 1px solid rgba(15, 31, 45, 0.1);
+    box-shadow: 0 18px 40px rgba(15, 31, 51, 0.12);
+    transform: translateX(-106%);
+    transition: transform 0.22s ease;
+    z-index: 40;
+    overflow-y: auto;
+}
+
+body.sidebar-open .sidebar {
+    transform: translateX(0);
+}
+
+body.sidebar-open .student-sidebar-overlay {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid rgba(15, 31, 45, 0.08);
+}
+
+.sidebar-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f1f2d;
+}
+
+.sidebar-close {
+    border: 0;
+    border-radius: 0.55rem;
+    padding: 0.35rem 0.55rem;
+    background: rgba(15, 31, 45, 0.08);
+    color: #334155;
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.sidebar-nav {
+    padding: 0.8rem;
+}
+
+.nav-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.2rem;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    border-radius: 0.75rem;
+    padding: 0.62rem 0.72rem;
+    color: #475569;
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.nav-link:hover {
+    background: rgba(22, 133, 117, 0.1);
+    color: #0f6a5c;
+}
+
+.nav-link.active {
+    background: rgba(22, 133, 117, 0.14);
+    color: #0f6a5c;
+}
+
+.nav-icon {
+    width: 1rem;
+    text-align: center;
+}
+
+#studentMain {
+    min-width: 0;
+}
+
+@media (min-width: 640px) {
+    .evaluation-hero {
+        padding: 1.5rem 2rem;
+    }
+
+    .evaluation-hero-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .evaluation-metrics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .evaluation-empty-state {
+        padding: 2.5rem 1.5rem;
+    }
+}
+
+@media (min-width: 768px) {
+    #studentMain {
+        padding-left: 16rem !important;
+    }
+
+    .sidebar {
+        transform: translateX(0);
+        top: 73px;
+        height: calc(100vh - 73px);
+    }
+
+    .sidebar-close {
+        display: none;
+    }
+
+    .student-sidebar-overlay {
+        display: none;
+    }
+}
+
+@media (min-width: 1280px) {
+    .evaluation-metrics-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 1279.98px) {
+    .evaluation-table {
+        min-width: 980px;
+    }
+}
+
+@media (max-width: 767.98px) {
+    #studentMain {
+        padding-left: 0 !important;
+    }
+}
