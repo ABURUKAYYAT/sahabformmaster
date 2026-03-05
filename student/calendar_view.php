@@ -33,9 +33,8 @@ $first_day = date('Y-m-01', strtotime("$year-$month-01"));
 $last_day = date('Y-m-t', strtotime("$year-$month-01"));
 
 $events_query = "
-    SELECT sd.*, ac.category_name, ac.color 
+    SELECT sd.*, sd.activity_type AS category_name, '#4361ee' AS color
     FROM school_diary sd 
-    LEFT JOIN activity_categories ac ON sd.category_id = ac.id 
     WHERE (sd.target_audience = 'All' 
            OR sd.target_audience = 'Secondary Only' 
            OR (sd.target_audience = 'Specific Classes' AND FIND_IN_SET(?, REPLACE(sd.target_classes, ', ', ','))))

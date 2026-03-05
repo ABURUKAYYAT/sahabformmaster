@@ -66,9 +66,8 @@ try {
 $current_date = date('Y-m-d');
 
 // Build query - students see activities for their class or all-school activities
-$query = "SELECT sd.*, ac.category_name, ac.color, ac.icon, u.full_name as coordinator_name
+$query = "SELECT sd.*, sd.activity_type AS category_name, '#6366f1' AS color, 'fas fa-calendar-alt' AS icon, u.full_name as coordinator_name
           FROM school_diary sd
-          LEFT JOIN activity_categories ac ON sd.category_id = ac.id
           LEFT JOIN users u ON sd.coordinator_id = u.id
           WHERE sd.school_id = ?
           AND (sd.target_audience = 'All'

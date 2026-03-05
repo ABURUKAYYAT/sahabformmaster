@@ -34,7 +34,7 @@ try {
     // Get event details
     $event_stmt = $pdo->prepare("
         SELECT sd.*,
-               ac.category_name, ac.color, ac.icon,
+               sd.activity_type AS category_name, '#4361ee' AS color, 'bi-tag' AS icon,
                u.full_name as coordinator_name, u.email as coordinator_email, u.phone as coordinator_phone,
                DATE_FORMAT(sd.activity_date, '%W, %M %e, %Y') as formatted_date,
                DATE_FORMAT(sd.activity_date, '%Y-%m-%d') as iso_date,
@@ -42,7 +42,6 @@ try {
                TIME_FORMAT(sd.end_time, '%h:%i %p') as formatted_end,
                TIMEDIFF(sd.end_time, sd.start_time) as duration
         FROM school_diary sd
-        LEFT JOIN activity_categories ac ON sd.category_id = ac.id
         LEFT JOIN users u ON sd.coordinator_id = u.id
         WHERE sd.id = ? AND sd.school_id = ?
         AND (sd.target_audience = 'All'
@@ -83,11 +82,11 @@ try {
     $registration_stmt->execute([$event_id, $student_id, $student_id, $current_school_id]);
     $registration = $registration_stmt->fetch(PDO::FETCH_ASSOC);
 
-    // Get similar events (same category)
+    // Get similar events (same activity type)
     $similar_events_stmt = $pdo->prepare("
         SELECT sd.id, sd.activity_title, sd.activity_date, sd.start_time, sd.venue
         FROM school_diary sd
-        WHERE sd.category_id = ?
+        WHERE sd.activity_type = ?
         AND sd.id != ?
         AND sd.status != 'Cancelled'
         AND sd.activity_date >= CURDATE()
@@ -95,7 +94,7 @@ try {
         ORDER BY sd.activity_date ASC
         LIMIT 3
     ");
-    $similar_events_stmt->execute([$event['category_id'], $event_id, $current_school_id]);
+    $similar_events_stmt->execute([$event['activity_type'], $event_id, $current_school_id]);
     $similar_events = $similar_events_stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Determine event status
