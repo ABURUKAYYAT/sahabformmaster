@@ -399,7 +399,7 @@ $pageTitle = 'School Diary | ' . (function_exists('get_school_display_name') ? g
 $extraHead = <<<'HTML'
 <style>
     .student-layout { overflow-x: hidden; }
-    .school-diary-page section { padding-top: 0; padding-bottom: 0; }
+    .school-diary-page section > * + * { margin-top: 1rem; }
 
     .student-sidebar-overlay { position: fixed; inset: 0; background: rgba(2, 6, 23, 0.45); opacity: 0; pointer-events: none; transition: opacity .2s ease; z-index: 30; }
     .sidebar { position: fixed; top: 73px; left: 0; width: 16rem; height: calc(100vh - 73px); background: #fff; border-right: 1px solid rgba(15,31,45,.1); box-shadow: 0 18px 40px rgba(15,31,51,.12); transform: translateX(-106%); transition: transform .22s ease; z-index: 40; overflow-y: auto; }

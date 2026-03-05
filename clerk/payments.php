@@ -287,6 +287,40 @@ $feeTypeOptions = $feeTypeOptions['fee_types'] ?? [];
 $yearStmt = $pdo->prepare("SELECT DISTINCT academic_year FROM fee_structure WHERE school_id = ? ORDER BY academic_year DESC");
 $yearStmt->execute([$current_school_id]);
 $academicYears = $yearStmt->fetchAll(PDO::FETCH_COLUMN);
+
+$statusSummary = [
+    'pending' => 0,
+    'verified' => 0,
+    'partial' => 0,
+    'completed' => 0,
+    'rejected' => 0,
+    'other' => 0,
+];
+$visibleTotalAmount = 0.0;
+$clearedTotalAmount = 0.0;
+
+foreach ($payments as $paymentRow) {
+    $statusKey = strtolower(trim((string) ($paymentRow['status'] ?? '')));
+    if (!array_key_exists($statusKey, $statusSummary)) {
+        $statusKey = 'other';
+    }
+
+    $statusSummary[$statusKey]++;
+    $amountPaid = (float) ($paymentRow['amount_paid'] ?? 0);
+    $visibleTotalAmount += $amountPaid;
+    if (in_array($statusKey, ['verified', 'partial', 'completed'], true)) {
+        $clearedTotalAmount += $amountPaid;
+    }
+}
+
+$statusClasses = [
+    'pending' => 'bg-amber-500/10 text-amber-700',
+    'verified' => 'bg-sky-500/10 text-sky-700',
+    'partial' => 'bg-indigo-500/10 text-indigo-700',
+    'completed' => 'bg-teal-600/10 text-teal-700',
+    'rejected' => 'bg-red-500/10 text-red-700',
+    'other' => 'bg-slate-500/10 text-slate-700',
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">

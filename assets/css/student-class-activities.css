@@ -12,11 +12,6 @@
     overflow-x: hidden;
 }
 
-.student-activities-page section {
-    padding-top: 0;
-    padding-bottom: 0;
-}
-
 .workspace-card {
     border-radius: 1.5rem;
     border: 1px solid var(--workspace-border);
@@ -24,8 +19,12 @@
     box-shadow: var(--workspace-shadow);
 }
 
+.workspace-card > * + * {
+    margin-top: 1rem;
+}
+
 .student-activities-page .workspace-card + .workspace-card {
-    margin-top: 0.5rem;
+    margin-top: 1rem;
 }
 
 .workspace-hero {
@@ -186,13 +185,13 @@
 .section-head {
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
-    margin-bottom: 0.5rem;
+    gap: 0.45rem;
+    margin-bottom: 0.9rem;
 }
 
 .activity-list {
     display: grid;
-    gap: 0.9rem;
+    gap: 1.1rem;
 }
 
 .activity-item {
@@ -323,7 +322,11 @@
     border: 1px solid rgba(15, 31, 45, 0.08);
     border-radius: 1.2rem;
     background: #fff;
-    padding: 1.25rem;
+    padding: 1.4rem;
+}
+
+.detail-card > * + * {
+    margin-top: 0.9rem;
 }
 
 .detail-list {

@@ -8,16 +8,15 @@
     min-width: 0;
 }
 
-.student-evaluations-page section {
-    padding-top: 0;
-    padding-bottom: 0;
-}
-
 .evaluation-panel {
     border-radius: 1.5rem;
     border: 1px solid rgba(15, 31, 45, 0.08);
     background: #fff;
     box-shadow: 0 10px 24px rgba(15, 31, 51, 0.08);
+}
+
+.evaluation-panel > * + * {
+    margin-top: 1rem;
 }
 
 .evaluation-hero {

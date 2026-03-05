@@ -308,7 +308,6 @@ $pageTitle = 'Student Dashboard | ' . (function_exists('get_school_display_name'
 $extraHead = <<<'HTML'
 <style>
     .student-layout{overflow-x:hidden}
-    .student-dashboard-page section{padding-top:0;padding-bottom:0}
     .dashboard-card{border-radius:1.5rem;border:1px solid rgba(15,31,45,.06);background:#fff;box-shadow:0 10px 24px rgba(15,31,51,.08)}
     .student-analytics-chart-wrap{position:relative;height:18rem;padding:.4rem .35rem .65rem}
     .student-analytics-chart-wrap canvas{max-width:100% !important}

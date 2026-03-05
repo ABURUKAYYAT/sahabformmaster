@@ -75,7 +75,7 @@ $pageTitle = 'Class Photo Album | ' . $class_name . ' | ' . get_school_display_n
 $extraHead = <<<'HTML'
 <style>
     .student-layout{overflow-x:hidden}
-    .student-album-page section{padding-top:0;padding-bottom:0}
+    .student-album-page section > * + *{margin-top:1rem}
     .dashboard-card{border-radius:1.5rem;border:1px solid rgba(15,31,45,.08);background:#fff;box-shadow:0 10px 24px rgba(15,31,51,.08)}
 
     .student-sidebar-overlay{position:fixed;inset:0;background:rgba(2,6,23,.45);opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:30}
