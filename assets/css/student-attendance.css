@@ -41,7 +41,7 @@
     font-size: 0.72rem;
     letter-spacing: 0.24em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.78);
+    color: #ffffff;
     font-weight: 700;
 }
 
@@ -54,7 +54,7 @@
 .workspace-hero p {
     margin-top: 0.7rem;
     max-width: 48rem;
-    color: rgba(255, 255, 255, 0.85);
+    color: #ffffff;
     font-size: 0.95rem;
 }
 
@@ -580,3 +580,5 @@
         font-size: 0.79rem;
     }
 }
+
+

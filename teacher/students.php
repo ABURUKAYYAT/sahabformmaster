@@ -423,11 +423,90 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if (isset($_GET['export']) && $_GET['export'] === 'students_pdf') {
     require_once '../TCPDF-main/TCPDF-main/tcpdf.php';
 
+    $export_class_id = intval($_GET['class_id'] ?? 0);
+    $export_gender = strtolower(trim($_GET['gender'] ?? 'all'));
+    $allowed_gender_filters = ['all', 'male', 'female'];
+
+    if ($export_class_id <= 0) {
+        die('Please select a class to export.');
+    }
+
+    if (!in_array($export_gender, $allowed_gender_filters, true)) {
+        $export_gender = 'all';
+    }
+
+    // Get school info
+    $stmt = $pdo->prepare("SELECT * FROM school_profile WHERE school_id = ? LIMIT 1");
+    $stmt->execute([$current_school_id]);
+    $school = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // Check if teacher has access to this class and fetch class info
+    $stmt_check = $pdo->prepare("
+        SELECT c.id, c.class_name
+        FROM classes c
+        WHERE c.id = :class_id
+          AND c.school_id = :school_id
+          AND (
+              EXISTS (
+                  SELECT 1
+                  FROM subject_assignments sa
+                  WHERE sa.class_id = c.id AND sa.teacher_id = :teacher_id
+              )
+              OR EXISTS (
+                  SELECT 1
+                  FROM class_teachers ct
+                  WHERE ct.class_id = c.id AND ct.teacher_id = :teacher_id2
+              )
+          )
+        LIMIT 1
+    ");
+    $stmt_check->execute([
+        'class_id' => $export_class_id,
+        'school_id' => $current_school_id,
+        'teacher_id' => $teacher_id,
+        'teacher_id2' => $teacher_id,
+    ]);
+    $export_class = $stmt_check->fetch(PDO::FETCH_ASSOC);
+
+    if (!$export_class) {
+        die('Access denied. You are not assigned to this class.');
+    }
+
+    $gender_labels = [
+        'all' => 'All Male and Female',
+        'male' => 'Male',
+        'female' => 'Female',
+    ];
+    $gender_label = $gender_labels[$export_gender];
+
+    // Get students for selected class and gender filter
+    $sql = "
+        SELECT s.id, s.full_name, s.admission_no
+        FROM students s
+        WHERE s.school_id = ?
+          AND s.class_id = ?
+    ";
+    $params = [$current_school_id, $export_class_id];
+
+    if ($export_gender !== 'all') {
+        $sql .= " AND LOWER(TRIM(COALESCE(s.gender, ''))) = ?";
+        $params[] = $export_gender;
+    }
+
+    $sql .= " ORDER BY s.full_name ASC";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $export_students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
     // Create new PDF document
     $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
 
     // Set document information
-    $pdf->SetSubject('Student Registration Numbers');
+    $pdf->SetCreator($school['school_name'] ?? 'School');
+    $pdf->SetAuthor($school['school_name'] ?? 'School');
+    $pdf->SetSubject('Student Registration List');
+    $pdf->SetTitle(($export_class['class_name'] ?? 'Class') . ' Students List');
 
     // Remove default header/footer
     $pdf->setPrintHeader(false);
@@ -442,110 +521,61 @@ if (isset($_GET['export']) && $_GET['export'] === 'students_pdf') {
     // Add a page
     $pdf->AddPage();
 
-    // Set font
-    $pdf->SetFont('helvetica', '', 12);
-
-    // Get school info
-    $stmt = $pdo->prepare("SELECT * FROM school_profile WHERE school_id = ? LIMIT 1");
-    $stmt->execute([$current_school_id]);
-    $school = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    // Set document information (school metadata)
-    $pdf->SetCreator($school['school_name'] ?? 'School');
-    $pdf->SetAuthor($school['school_name'] ?? 'School');
-
     // School Header
     $pdf->SetFont('helvetica', 'B', 20);
     $pdf->Cell(0, 15, $school['school_name'] ?? 'Sahab Academy', 0, 1, 'C');
     $pdf->SetFont('helvetica', '', 10);
     $pdf->Cell(0, 8, $school['school_address'] ?? '', 0, 1, 'C');
-    $pdf->Cell(0, 8, 'Phone: ' . ($school['school_phone'] ?? '') . ' | Email: ' . ($school['school_email'] ?? ''), 0, 1, 'C');
+    $school_phone = trim((string)($school['school_phone'] ?? ''));
+    $school_email = trim((string)($school['school_email'] ?? ''));
+    $contact_parts = [];
+    if ($school_phone !== '') {
+        $contact_parts[] = 'Phone: ' . $school_phone;
+    }
+    if ($school_email !== '') {
+        $contact_parts[] = 'Email: ' . $school_email;
+    }
+    if ($contact_parts) {
+        $pdf->Cell(0, 8, implode(' | ', $contact_parts), 0, 1, 'C');
+    }
 
     // Line separator
     $pdf->Ln(5);
     $pdf->Line(15, $pdf->GetY(), 195, $pdf->GetY());
     $pdf->Ln(10);
 
-    // Get export class filter
-    $export_class_id = intval($_GET['class_id'] ?? 0);
-    $export_class_name = '';
-
-    if ($export_class_id > 0) {
-        // Check if teacher has access to this class
-        $stmt_check = $pdo->prepare("
-            SELECT class_name
-            FROM classes c
-            WHERE c.id = ?
-            AND (
-                EXISTS (SELECT 1 FROM subject_assignments sa WHERE sa.class_id = c.id AND sa.teacher_id = ?)
-                OR EXISTS (SELECT 1 FROM class_teachers ct WHERE ct.class_id = c.id AND ct.teacher_id = ?)
-            )
-        ");
-        $stmt_check->execute([$export_class_id, $teacher_id, $teacher_id]);
-        $export_class_name = $stmt_check->fetchColumn();
-
-        if (!$export_class_name) {
-            // No access, export all instead
-            $export_class_id = 0;
-        }
-    }
-
     // Title
     $pdf->SetFont('helvetica', 'B', 16);
-    $title = $export_class_name ? $export_class_name . ' Students List' : 'STUDENTS REGISTRATION LIST';
-    $pdf->Cell(0, 12, $title, 0, 1, 'C');
-    $pdf->Ln(5);
+    $pdf->Cell(0, 12, 'STUDENTS REGISTRATION LIST', 0, 1, 'C');
+    $pdf->Ln(3);
 
-    // Get students for current teacher with class info
-    $sql = "
-        SELECT s.id, s.full_name, s.admission_no, c.class_name
-        FROM students s
-        JOIN classes c ON s.class_id = c.id
-        WHERE s.class_id IN (
-            SELECT DISTINCT c2.id
-            FROM classes c2
-            WHERE EXISTS (
-                SELECT 1 FROM subject_assignments sa WHERE sa.class_id = c2.id AND sa.teacher_id = ?
-            ) OR EXISTS (
-                SELECT 1 FROM class_teachers ct WHERE ct.class_id = c2.id AND ct.teacher_id = ?
-            )
-        )
-    ";
-    $params = [$teacher_id, $teacher_id];
-
-    if ($export_class_id > 0) {
-        $sql .= " AND s.class_id = ?";
-        $params[] = $export_class_id;
-    }
-
-    $sql .= " ORDER BY c.class_name, s.full_name";
-
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    $export_students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Class info
+    $pdf->SetFont('helvetica', '', 12);
+    $pdf->Cell(0, 8, 'Class: ' . $export_class['class_name'], 0, 1, 'L');
+    $pdf->Cell(0, 8, 'Gender: ' . $gender_label, 0, 1, 'L');
+    $pdf->Cell(0, 8, 'Total Students: ' . count($export_students), 0, 1, 'L');
+    $pdf->Ln(8);
 
     // Table Header
     $pdf->SetFont('helvetica', 'B', 12);
     $pdf->SetFillColor(240, 240, 240);
-    $pdf->Cell(15, 10, 'S/N', 1, 0, 'C', true);
-    $pdf->Cell(70, 10, 'Student Name', 1, 0, 'C', true);
-    $pdf->Cell(45, 10, 'Admission Number', 1, 0, 'C', true);
-    $pdf->Cell(35, 10, 'Class', 1, 1, 'C', true);
+    $pdf->Cell(20, 10, 'S/N', 1, 0, 'C', true);
+    $pdf->Cell(55, 10, 'Admission Number', 1, 0, 'C', true);
+    $pdf->Cell(100, 10, 'Name', 1, 1, 'C', true);
 
     // Table Data
     $pdf->SetFont('helvetica', '', 11);
     $serial = 1;
     foreach ($export_students as $student) {
-        $pdf->Cell(15, 8, $serial++, 1, 0, 'C');
-        $pdf->Cell(70, 8, $student['full_name'], 1, 0, 'L');
-        $pdf->Cell(45, 8, $student['admission_no'], 1, 0, 'C');
-        $pdf->Cell(35, 8, $student['class_name'], 1, 1, 'C');
+        $pdf->Cell(20, 8, $serial++, 1, 0, 'C');
+        $pdf->Cell(55, 8, $student['admission_no'], 1, 0, 'C');
+        $pdf->Cell(100, 8, $student['full_name'], 1, 1, 'L');
     }
 
     // Summary
     $pdf->Ln(10);
     $pdf->SetFont('helvetica', 'B', 12);
-    $pdf->Cell(0, 10, 'Total Students: ' . count($export_students), 0, 1, 'L');
+    $pdf->Cell(0, 10, 'Generated Students: ' . count($export_students), 0, 1, 'L');
 
     // Footer
     $pdf->Ln(15);
@@ -554,7 +584,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'students_pdf') {
     $pdf->Cell(0, 5, 'This document contains student registration information', 0, 1, 'C');
 
     // Output PDF
-    $filename = 'students_list_' . date('Y-m-d') . '.pdf';
+    $filename = 'students_list_' . preg_replace('/[^A-Za-z0-9_-]+/', '_', $export_class['class_name']) . '_' . $export_gender . '_' . date('Y-m-d') . '.pdf';
     $pdf->Output($filename, 'D');
     exit;
 }
@@ -1713,10 +1743,10 @@ if ($class_id > 0) {
                         <i class="fas fa-clipboard-list"></i>
                         <span>Exams record list</span>
                     </button>
-                    <a href="?export=students_pdf&class_id=<?php echo $class_id; ?>" class="quick-action-card">
+                    <button type="button" onclick="openModal('studentExportModal')" class="quick-action-card">
                         <i class="fas fa-download"></i>
                         <span>Export student PDF</span>
-                    </a>
+                    </button>
                 </div>
             </div>
 
@@ -2009,6 +2039,47 @@ if ($class_id > 0) {
                     <!-- Content will be loaded here -->
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Student Export Modal -->
+    <div id="studentExportModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Export Student PDF</h2>
+                <button class="close-btn" onclick="closeModal('studentExportModal')">Ã—</button>
+            </div>
+            <form method="GET" action="">
+                <input type="hidden" name="export" value="students_pdf">
+                <div class="modal-body">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="export_class_id">Class *</label>
+                            <select id="export_class_id" name="class_id" class="form-control" required>
+                                <option value="">-- Select Class --</option>
+                                <?php foreach($assigned_classes as $c): ?>
+                                    <option value="<?php echo $c['id']; ?>" <?php echo $class_id == $c['id'] ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($c['class_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="export_gender">Student Gender *</label>
+                            <select id="export_gender" name="gender" class="form-control" required>
+                                <option value="all">All Male and Female</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn" onclick="closeModal('studentExportModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Generate PDF</button>
+                </div>
+            </form>
         </div>
     </div>
 
